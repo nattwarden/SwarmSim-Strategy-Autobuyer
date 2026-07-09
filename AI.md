@@ -1,6 +1,6 @@
 # AI.md — SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-script-0.8.5-indexed
+Version: 2026-07-09-script-0.8.6-indexed
 Status: Project source map for ChatGPT/Codex/AI agents.
 
 ## Syfte
@@ -50,7 +50,7 @@ Policy från 0.8.0 och framåt:
 Tekniska fakta:
 
 - Script: SwarmSim Strategy Autobuyer
-- Version: 0.8.5
+- Version: 0.8.6
 - Körs på `swarmsim.com`, `www.swarmsim.com`, `swarmsim.github.io`
 - Exponerar botten som `window.kbcSwarmBot`
 - Använder Angular-services: `game`, `commands`, `$rootScope`
@@ -91,6 +91,7 @@ Tekniska fakta:
 - 0.8.3 parent-step conversion hotfix
 - 0.8.4 twin unlock threshold planner hotfix
 - 0.8.5 twin unlock cost resource detection hotfix
+- 0.8.6 twin threshold reachability hotfix
 
 ## Nytt i 0.8.0
 
@@ -139,6 +140,13 @@ twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade
 - Twin unlock planner läser nu uppgraderingskostnadens resurs/amount robustare för twin-upgrades där kostresursen inte är active action unit.
 - För Twin Neural Clusters detekteras tröskeln korrekt som Hive Network 1000, med current/missing från faktisk Hive Network-count.
 - Reason-texter skiljer nu på: "could not read twin upgrade cost resource", "invalid twin upgrade threshold amount" och "twin cost resource <name> not on target path <path>".
+
+0.8.6 är en hotfix ovanpå 0.8.5. Den ändrar inte säkra defaults och breddar inte strategin, men gör Twin Unlock Threshold Planner reachability-aware:
+
+- Near-threshold ratio (`twinUnlockNearThresholdRatio`) är kvar, men är inte längre enda trigger.
+- Under near-threshold utvärderas nu konservativ threshold prep ändå när prep-kandidaten är konkret, target-path-relevant och har säker chunk.
+- HOLD-reason rapporterar nu tydligt när prep är unsafe (t.ex. reserve under krav eller protected resource) i stället för att fastna i enbart "threshold not near enough".
+- Inspector/export visar reachability-fält för twin unlock prep (reachable/reason/ratio/prep/reserve).
 
 Exempel för live-scenariot:
 
