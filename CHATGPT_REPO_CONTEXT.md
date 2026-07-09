@@ -6,7 +6,24 @@ repository safely, without relying on old uploads or stale copies.
 ## What This Repo Is
 
 This project contains a Tampermonkey userscript for Swarm Simulator.
-It is a conservative smart advisor/autobuyer with strict safety defaults.
+It is a methodical smart advisor/autobuyer with explicit hard safety defaults.
+
+The bot is not conservative by identity. It should be logical, evidence-based,
+and transparent. It should optimize normal progression when the math and current
+user-selected mode support it. Caution is a risk posture, not the personality of
+the project.
+
+## Operating Posture
+
+Use this framing when reasoning about future work:
+
+- Advisor Mode: explain opportunities and risks for users who want to play more
+  manually.
+- Methodical Optimizer: default Smart behavior; goal-driven, rebuild/payback
+  aware, and willing to buy when evidence says the action is correct.
+- Aggressive Optimizer / Market Crusher: future explicit mode only; may push
+  progression harder, but still must remain observable and must not bypass hard
+  safety defaults or irreversible actions without explicit user choice.
 
 ## Canonical Source Of Truth
 
@@ -47,9 +64,11 @@ Use `reference/` only for sanity checks, not as active truth.
 - Do not create duplicate `.user.js` copies outside `src/`.
 - Do not invent or broaden automation unless explicitly requested.
 - Keep fixes narrow and scoped to the named issue.
-- Preserve conservative defaults unless explicitly requested otherwise.
+- Preserve hard safety defaults unless explicitly requested otherwise.
+- Do not confuse hard safety defaults with passive strategy. Normal progression
+  should be optimized logically within the selected user mode.
 
-## Safety Baseline (Must Stay Conservative)
+## Hard Safety Baseline
 
 - No auto-cast abilities by default.
 - No Clone Larvae auto-cast by default.
@@ -75,11 +94,11 @@ Run:
 node scripts/validate-repo-guardrails.js
 ```
 
-This checks syntax, safe defaults, and duplicate-script guardrails.
+This checks syntax, hard safety defaults, and duplicate-script guardrails.
 
 ## What To Tell ChatGPT In One Sentence
 
 "Treat `src/SwarmSim-Strategy-Autobuyer.user.js` and
 `docs/SWARMSIM_GAME_MODEL.md` as canonical truth, follow `AGENTS.md`/`AI.md`
-guardrails, keep changes narrow, and preserve conservative automation defaults
-unless explicitly asked to change them."
+guardrails, keep changes narrow, preserve hard safety defaults, and optimize
+methodically rather than passively within the selected user mode."
