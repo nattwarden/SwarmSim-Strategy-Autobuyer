@@ -1,14 +1,21 @@
 # releases
 
-Archived release snapshots.
+Archived release documentation.
 
-Each version folder should contain the installable `.user.js`, byte-identical copy/paste `.txt`, and release notes for that version.
+Each version folder contains the release notes and any version-scoped documentation needed for that release.
+
+From 0.8.0 onward, `src/SwarmSim-Strategy-Autobuyer.user.js` is the only executable Tampermonkey source.
 
 Expected baseline:
 
 ```text
 0.7.9/
-  SwarmSim-Strategy-Autobuyer-0.7.9-target-aware-upgrade-twin-planner.user.js
-  SwarmSim-Strategy-Autobuyer-0.7.9-target-aware-upgrade-twin-planner.txt
+  README.md
   SwarmSim-Strategy-Autobuyer-0.7.9-release-notes.md
+0.8.0/
+  README.md
+  SwarmSim-Strategy-Autobuyer-0.8.0-release-notes.md
+0.8.1/
+  README.md
+  SwarmSim-Strategy-Autobuyer-0.8.1-release-notes.md
 ```

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.0
+// @version      0.8.1
 // @description  Conservative smart advisor/autobuyer with unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -2183,7 +2183,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.0",
+      scriptVersion: "0.8.1",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -3423,6 +3423,51 @@ function getDisplayName(item) {
     return clampNumber(config.cloneBufferMatureProtectRatio, 0, 1, DEFAULT_CONFIG.cloneBufferMatureProtectRatio);
   }
 
+  function estimateCloneBufferRecoveryEta(target, cocoons, cocoonVelocity) {
+    const targetAmount = decimalFrom(target || 0);
+    const currentAmount = decimalFrom(cocoons || 0);
+    const remaining = targetAmount.minus(currentAmount);
+
+    if (!remaining.greaterThan(0)) return "0s";
+    if (!isPositive(cocoonVelocity)) return "n/a";
+
+    const etaSeconds = decimalToNumber(remaining.dividedBy(cocoonVelocity), Infinity);
+    if (!Number.isFinite(etaSeconds) || etaSeconds < 0) return "n/a";
+
+    return formatDuration(etaSeconds);
+  }
+
+  function resolveCloneBufferTarget({ mode, cap, bank }) {
+    const capTarget = decimalFrom(cap || 0);
+    const actualBank = decimalFrom(bank || 0);
+
+    if (mode === "POST_CLONE_LOCK") {
+      if (isPositive(actualBank)) {
+        return {
+          target: actualBank,
+          source: "actual clone bank/debt",
+          hardLockActive: true,
+        };
+      }
+
+      const fallbackRatio = Math.min(
+        clampNumber(config.cloneBufferPostCloneProtectRatio, 0, 1, DEFAULT_CONFIG.cloneBufferPostCloneProtectRatio),
+        0.1
+      );
+      return {
+        target: capTarget.times(fallbackRatio),
+        source: `bounded fallback because actual clone bank unavailable (${trimNumber(fallbackRatio * 100)}% cap reference)`,
+        hardLockActive: false,
+      };
+    }
+
+    return {
+      target: capTarget,
+      source: mode === "BUILDUP" ? "cap reference for buildup" : "cap reference for mature buffer",
+      hardLockActive: false,
+    };
+  }
+
   function runCloneBufferPlanner(game, commands) {
     if (!config.cloneBufferPlanner || !config.manageCloneLarvaeCocoons) {
       recordCloneBufferPlannerState({
@@ -3465,47 +3510,64 @@ function getDisplayName(item) {
     const cocoons = decimalFrom(cocoon.count?.() || 0);
     const larvae = decimalFrom(larva.count?.() || 0);
     const larvaVelocity = decimalFrom(getVelocity(game, "larva"));
+    const cocoonVelocity = decimalFrom(getVelocity(game, "cocoon"));
     const mode = resolveCloneBufferMode({ cap, bank, larvae, larvaVelocity });
     const protectRatio = getCloneBufferProtectionRatio(mode);
 
-    const target = cap.times(protectRatio);
+    const targetResolution = resolveCloneBufferTarget({ mode, cap: cap.times(protectRatio), bank });
+    const target = targetResolution.target;
     const rawDebt = target.minus(cocoons);
     const debt = rawDebt.greaterThan(0) ? rawDebt : newDecimal(0);
-    const desiredProtected = debt.times(protectRatio);
-    const larvaeProtected = decimalMin(larvae, desiredProtected);
+    let larvaeProtected;
+    if (mode === "BUILDUP") {
+      const maxBuildupProtection = larvae.times(protectRatio);
+      larvaeProtected = decimalMin(debt, maxBuildupProtection);
+    } else {
+      const desiredProtected = debt.times(protectRatio);
+      larvaeProtected = decimalMin(larvae, desiredProtected);
+    }
     const rawSpendable = larvae.minus(larvaeProtected);
     const spendableLarvae = rawSpendable.greaterThan(0) ? rawSpendable : newDecimal(0);
     const percent = isPositive(target) ? decimalToNumber(cocoons.dividedBy(target).times(100), 0) : 100;
+    const hardLockActive = !!targetResolution.hardLockActive && isPositive(debt);
+    const recoveryEta = estimateCloneBufferRecoveryEta(target, cocoons, cocoonVelocity);
 
     const modeReason = mode === "POST_CLONE_LOCK"
-      ? `post-clone lock active; cloned larvae must be cocooned first (${trimNumber(percent)}%)`
+      ? hardLockActive
+        ? `post-clone lock active; protecting actual Clone Larvae bank/debt (${formatSwarmNumber(target)} target, ${trimNumber(percent)}% recovered)`
+        : `post-clone lock fallback; actual Clone Larvae bank unavailable, using ${targetResolution.source}`
       : mode === "BUILDUP"
         ? "cocoon target is large relative to current larva production; protect partial larvae for cocoons, allow larva-engine/unlock buys"
         : "mature buffer; use spendable larvae above clone buffer debt";
 
     recordCloneBufferPlannerState({
       cloneBufferMode: mode,
+      cloneBufferCap: formatSwarmNumber(cap),
+      cloneBufferBank: formatSwarmNumber(bank),
       cloneBufferTarget: formatSwarmNumber(target),
       cloneBufferCurrent: formatSwarmNumber(cocoons),
       cloneBufferPercent: percent,
       cloneBufferDebt: formatSwarmNumber(debt),
       cloneBufferSpendableLarvae: formatSwarmNumber(spendableLarvae),
       cloneBufferLarvaeProtected: formatSwarmNumber(larvaeProtected),
+      cloneBufferTargetSource: targetResolution.source,
+      cloneBufferRecoveryEta: recoveryEta,
+      cloneBufferHardLockActive: hardLockActive,
       cloneBufferReason: modeReason,
       cloneBufferDebtRaw: debt,
       cloneBufferSpendableLarvaeRaw: spendableLarvae,
       cloneBufferLarvaeProtectedRaw: larvaeProtected,
       cloneBufferProtectLarvae: config.cloneBufferProtectLarvae && (mode !== "BUILDUP" || isPositive(debt)),
-      postCloneLockActive: mode === "POST_CLONE_LOCK" && isPositive(debt),
+      postCloneLockActive: hardLockActive,
     });
 
     addLaneCandidate({
       lane: "Clone Prep",
-      decision: mode === "POST_CLONE_LOCK" && isPositive(debt) ? "HOLD" : "OBSERVE",
+      decision: hardLockActive ? "HOLD" : "OBSERVE",
       candidate: "Clone Buffer Planner",
       reason: modeReason,
-      blockers: mode === "POST_CLONE_LOCK" && isPositive(debt) ? ["cloned larvae protected", "buffer recovery not complete"] : [],
-      score: mode === "POST_CLONE_LOCK" ? 82000 : mode === "BUILDUP" ? 42000 : 52000,
+      blockers: hardLockActive ? ["cloned larvae protected", "buffer recovery not complete"] : [],
+      score: hardLockActive ? 82000 : mode === "BUILDUP" ? 42000 : 52000,
       reserveAfter: `${formatSwarmNumber(cocoons)} / ${formatSwarmNumber(target)}`,
       resource: "larva",
       raw: {
@@ -3517,7 +3579,7 @@ function getDisplayName(item) {
       },
     });
 
-    if (!(mode === "POST_CLONE_LOCK" && isPositive(debt))) {
+    if (!hardLockActive) {
       return { actionTaken: false, bought: 0 };
     }
 
@@ -3571,11 +3633,11 @@ function getDisplayName(item) {
     }
 
     const plan = buildMeatGoalPlan(game);
-    if (!plan?.parentUnit || !plan?.actionUnit) {
+    if (!plan?.actionUnit) {
       recordUnlockPlannerState({
         candidate: "none",
         decision: "OBSERVE",
-        reason: "no unlock parent step available on current meat target path",
+        reason: "no unlock/action step available on current meat target path",
         target: plan?.target ? getDisplayName(plan.target) : "none",
         unlocks: "none",
         costResource: "none",
@@ -3586,17 +3648,19 @@ function getDisplayName(item) {
     }
 
     const targetName = getDisplayName(plan.target);
-    const candidate = plan.parentUnit;
+    const candidate = plan.actionUnit;
     const candidateName = getDisplayName(candidate);
+    const bottleneckUnit = getUnitBottleneckCost(candidate)?.unit || plan.bottleneck?.unit || null;
+    const bottleneckResource = bottleneckUnit ? getDisplayName(bottleneckUnit) : "bottleneck resource";
 
     if (!candidate?.isVisible?.() || !candidate?.isBuyable?.()) {
       recordUnlockPlannerState({
         candidate: candidateName,
         decision: "HOLD",
-        reason: `unlock candidate ${candidateName} is not buyable yet for ${targetName}`,
+        reason: `unlock/action candidate ${candidateName} is not buyable yet; bottleneck ${bottleneckResource}`,
         target: targetName,
         unlocks: "none",
-        costResource: getDisplayName(plan.actionUnit),
+        costResource: bottleneckResource,
         reserveRatio: NaN,
         paybackBypassed: false,
       });
@@ -3621,7 +3685,7 @@ function getDisplayName(item) {
 
     const protectedCost = shouldAvoidProtectedCost(candidate, protectedResources || new Set());
     if (protectedCost) {
-      const reason = `unlock candidate blocked; ${protectedResourceHoldReason(protectedCost)}`;
+      const reason = `unlock/action candidate blocked; ${protectedResourceHoldReason(protectedCost)}`;
       recordAdvisor("HOLD", candidateName, reason);
       addLaneCandidate({
         lane: "Meat",
@@ -3648,7 +3712,7 @@ function getDisplayName(item) {
 
     const guard = getMeatChainPurchaseAnalysis(candidate, num);
     const reserveRatio = rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
-    const hasConcreteUnlockValue = !!twin;
+    const hasConcreteUnlockValue = !!twin || candidateName !== targetName;
     let paybackBypassed = false;
 
     if (guard && !guard.ok) {
@@ -3661,7 +3725,7 @@ function getDisplayName(item) {
       ) {
         paybackBypassed = true;
       } else {
-        const reason = `unlock candidate blocked; would unlock ${unlocks.join(", ")} but ${guard.reason}`;
+        const reason = `unlock/action candidate blocked; would unlock ${unlocks.join(", ")} but ${guard.reason}`;
         recordAdvisor("HOLD", candidateName, reason);
         addLaneCandidate({
           lane: "Meat",
@@ -3691,8 +3755,8 @@ function getDisplayName(item) {
     }
 
     const reason = paybackBypassed
-      ? `target unlock step for ${targetName}; converts excess ${getDisplayName(plan.actionUnit)} to ${candidateName}; unlocks ${unlocks.join(", ")}; reserve after buy ${Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a"} >= required ${trimNumber(config.meatUnlockMinReserveRatio)}x; payback bypassed for unlock value`
-      : `target unlock step for ${targetName}; unlocks ${unlocks.join(", ")}; reserve/payback guard ok`;
+      ? `target unlock step for ${targetName}; converts ${bottleneckResource} into ${candidateName}; unlocks ${unlocks.join(", ")}; reserve after buy ${Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a"} >= required ${trimNumber(config.meatUnlockMinReserveRatio)}x; payback bypassed for unlock value`
+      : `target unlock step for ${targetName}; converts ${bottleneckResource} into ${candidateName}; unlocks ${unlocks.join(", ")}; reserve/payback guard ok`;
 
     recordAdvisor("BUY", candidateName, reason);
     addLaneCandidate({
@@ -3711,7 +3775,7 @@ function getDisplayName(item) {
       reason,
       target: targetName,
       unlocks: unlocks.join(", "),
-      costResource: getDisplayName(plan.actionUnit),
+      costResource: bottleneckResource,
       reserveRatio,
       paybackBypassed,
     });
@@ -4580,12 +4644,17 @@ function getDisplayName(item) {
 
     cloneBufferPlannerState = {
       cloneBufferMode: fields.cloneBufferMode || cloneBufferPlannerState?.cloneBufferMode || "none",
+      cloneBufferCap: fields.cloneBufferCap || cloneBufferPlannerState?.cloneBufferCap || "0",
+      cloneBufferBank: fields.cloneBufferBank || cloneBufferPlannerState?.cloneBufferBank || "0",
       cloneBufferTarget: fields.cloneBufferTarget || cloneBufferPlannerState?.cloneBufferTarget || "0",
       cloneBufferCurrent: fields.cloneBufferCurrent || cloneBufferPlannerState?.cloneBufferCurrent || "0",
       cloneBufferPercent: Number.isFinite(percent) ? percent : (Number(cloneBufferPlannerState?.cloneBufferPercent) || 0),
       cloneBufferDebt: fields.cloneBufferDebt || cloneBufferPlannerState?.cloneBufferDebt || "0",
       cloneBufferSpendableLarvae: fields.cloneBufferSpendableLarvae || cloneBufferPlannerState?.cloneBufferSpendableLarvae || "0",
       cloneBufferLarvaeProtected: fields.cloneBufferLarvaeProtected || cloneBufferPlannerState?.cloneBufferLarvaeProtected || "0",
+      cloneBufferTargetSource: fields.cloneBufferTargetSource || cloneBufferPlannerState?.cloneBufferTargetSource || "none",
+      cloneBufferRecoveryEta: fields.cloneBufferRecoveryEta || cloneBufferPlannerState?.cloneBufferRecoveryEta || "n/a",
+      cloneBufferHardLockActive: !!fields.cloneBufferHardLockActive,
       cloneBufferReason: fields.cloneBufferReason || cloneBufferPlannerState?.cloneBufferReason || "none",
       cloneBufferDebtRaw: fields.cloneBufferDebtRaw || cloneBufferPlannerState?.cloneBufferDebtRaw || newDecimal(0),
       cloneBufferSpendableLarvaeRaw: fields.cloneBufferSpendableLarvaeRaw || cloneBufferPlannerState?.cloneBufferSpendableLarvaeRaw || newDecimal(0),
@@ -4593,7 +4662,7 @@ function getDisplayName(item) {
       cloneBufferProtectLarvae: fields.cloneBufferProtectLarvae !== undefined
         ? !!fields.cloneBufferProtectLarvae
         : !!cloneBufferPlannerState?.cloneBufferProtectLarvae,
-      postCloneLockActive: !!fields.postCloneLockActive,
+      postCloneLockActive: fields.postCloneLockActive !== undefined ? !!fields.postCloneLockActive : !!cloneBufferPlannerState?.postCloneLockActive,
     };
 
     return cloneBufferPlannerState;

@@ -2,7 +2,7 @@
 
 Conservative Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current baseline: **0.8.0 — Unlock / Clone Buffer / Ability Prep Planner**.
+Current baseline: **0.8.1 — Unlock Candidate / Clone Buffer Hotfix**.
 
 ## Repository layout
 
@@ -12,6 +12,7 @@ src/
 releases/
   0.7.9/                                    # archived release documentation
   0.8.0/                                    # archived release documentation
+  0.8.1/                                    # archived release documentation
 docs/
   SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt
   release-notes/
