@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.13
-// @description  Methodical smart advisor/autobuyer with multi-lane coordination, territory starvation protection, twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
+// @version      0.9.0
+// @description  Methodical smart advisor/autobuyer with Post-Nexus Energy Planner, Swarm Council UI, multi-lane coordination, territory/army prep, twin unlock opportunity-cost bypass, parent-step refill, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
 // @match        https://swarmsim.com/*
@@ -31,6 +31,7 @@
     autoBuySafeDecisions: true,
     strategyInspector: true,
     strategyBar: true,
+    councilUi: true,
     showAdvisorPanel: true,
     showPurchasePanel: true,
     smartMaxActionsPerRun: 4,
@@ -56,6 +57,8 @@
     lepidopteraRoiMode: true,
     lepidopteraStopAtBoostPercent: 90,
     maxLepidopteraPerRun: 5,
+    postNexusEnergyReserveSeconds: 30,
+    postNexusLepidopteraMinBoostGainPercent: 0.01,
     offlineMode: false,
     nightbugStorageMode: false,
     abilityPlanner: false,
@@ -160,6 +163,7 @@
       autoBuySafeDecisions: true,
       strategyInspector: true,
       strategyBar: true,
+      councilUi: true,
       showAdvisorPanel: true,
       showPurchasePanel: true,
       smartMaxActionsPerRun: 4,
@@ -179,6 +183,8 @@
       lepidopteraRoiMode: true,
       lepidopteraStopAtBoostPercent: 90,
       maxLepidopteraPerRun: 5,
+      postNexusEnergyReserveSeconds: 30,
+      postNexusLepidopteraMinBoostGainPercent: 0.01,
       offlineMode: false,
       nightbugStorageMode: false,
       abilityPlanner: false,
@@ -421,6 +427,7 @@
   let cloneBufferPostCloneTargetSnapshotRaw = null;
   let cloneBufferPreviousMode = "none";
   let abilityPrepPlannerState = null;
+  let postNexusEnergyPlannerState = null;
   let territoryPrepPlannerState = null;
   let laneCoordinatorState = null;
   let panel = null;
@@ -577,6 +584,7 @@
 
     c.strategyInspector = c.strategyInspector !== false;
     c.strategyBar = c.strategyBar !== false;
+    c.councilUi = c.councilUi !== false;
     c.showAdvisorPanel = c.showAdvisorPanel !== false;
     c.showPurchasePanel = c.showPurchasePanel !== false;
     c.runEverySeconds = clampNumber(c.runEverySeconds, 1, 60, DEFAULT_CONFIG.runEverySeconds);
@@ -594,6 +602,13 @@
     c.longMothPreNexus5Target = Math.max(0, Number(c.longMothPreNexus5Target || 0));
     c.lepidopteraStopAtBoostPercent = clampNumber(c.lepidopteraStopAtBoostPercent, 0, 99.9, DEFAULT_CONFIG.lepidopteraStopAtBoostPercent);
     c.maxLepidopteraPerRun = Math.max(0, Number(c.maxLepidopteraPerRun || 0));
+    c.postNexusEnergyReserveSeconds = Math.round(clampNumber(c.postNexusEnergyReserveSeconds, 0, 86400, DEFAULT_CONFIG.postNexusEnergyReserveSeconds));
+    c.postNexusLepidopteraMinBoostGainPercent = clampNumber(
+      c.postNexusLepidopteraMinBoostGainPercent,
+      0,
+      10,
+      DEFAULT_CONFIG.postNexusLepidopteraMinBoostGainPercent
+    );
     c.offlineMode = !!c.offlineMode;
     c.nightbugStorageMode = !!c.nightbugStorageMode;
     c.abilityPlanner = !!c.abilityPlanner;
@@ -1711,6 +1726,9 @@ function getDisplayName(item) {
       blockLepidopteraBeforeNexus: config.blockLepidopteraBeforeNexus,
       fastNexus5MothSoftTarget: config.fastNexus5MothSoftTarget,
       lepidopteraStopAtBoostPercent: config.lepidopteraStopAtBoostPercent,
+      maxLepidopteraPerRun: config.maxLepidopteraPerRun,
+      postNexusEnergyReserveSeconds: config.postNexusEnergyReserveSeconds,
+      postNexusLepidopteraMinBoostGainPercent: config.postNexusLepidopteraMinBoostGainPercent,
       targetAwareUpgradePlanner: config.targetAwareUpgradePlanner,
       meatGoalPlanner: config.meatGoalPlanner,
       meatPlannerDepth: config.meatPlannerDepth,
@@ -1928,6 +1946,16 @@ function getDisplayName(item) {
       closestMainLaneToBuying: inspector.closestMainLaneToBuying,
       nextLikelyBuy: inspector.nextLikelyBuy,
       laneCandidates: (inspector.laneCandidates || []).slice(),
+      postNexusEnergyCandidate: inspector.postNexusEnergyCandidate,
+      postNexusEnergyDecision: inspector.postNexusEnergyDecision,
+      postNexusEnergyReason: inspector.postNexusEnergyReason,
+      postNexusEnergyAmount: inspector.postNexusEnergyAmount,
+      postNexusEnergyBoostBefore: inspector.postNexusEnergyBoostBefore,
+      postNexusEnergyBoostAfter: inspector.postNexusEnergyBoostAfter,
+      postNexusEnergyBoostGain: inspector.postNexusEnergyBoostGain,
+      postNexusEnergyReserve: inspector.postNexusEnergyReserve,
+      postNexusEnergyBlockedBy: inspector.postNexusEnergyBlockedBy,
+      postNexusEnergySpend: inspector.postNexusEnergySpend,
       meatFallbackEnabled: inspector.meatFallbackEnabled,
       meatFallbackCandidate: inspector.meatFallbackCandidate,
       meatFallbackReason: inspector.meatFallbackReason,
@@ -2085,6 +2113,7 @@ function getDisplayName(item) {
     const twinUnlockState = twinUnlockPlannerState || null;
     const cloneBufferState = cloneBufferPlannerState || null;
     const abilityPrepState = abilityPrepPlannerState || null;
+    const postNexusEnergyState = postNexusEnergyPlannerState || null;
     const territoryPrepState = territoryPrepPlannerState || null;
     const refillState = actionUnitRefillState || null;
     const coordinatorState = laneCoordinatorState || null;
@@ -2110,6 +2139,29 @@ function getDisplayName(item) {
       : Number(mainActions || 0) > 0
         ? "Main lane action ran."
         : "Main lanes held.";
+    const rawRemainingBudgetReason = coordinatorState?.coordinatorRemainingBudgetReason || refillState?.coordinatorRemainingBudgetReason || "none";
+    const firstBlockerReason = (items, label) => {
+      const first = Array.isArray(items) ? items[0] : null;
+      return first ? `${label}: ${candidateReason(first)}` : "";
+    };
+    let coordinatorRemainingBudgetReason = rawRemainingBudgetReason;
+    if (coordinatorRemainingBudgetReason === "none") {
+      if (Number(mainActions || 0) >= Number(maxActions || 1)) {
+        coordinatorRemainingBudgetReason = "budget fully used";
+      } else if (candidateSummary.blockedByProtectedResources?.length) {
+        coordinatorRemainingBudgetReason = firstBlockerReason(candidateSummary.blockedByProtectedResources, "protected resource");
+      } else if (candidateSummary.blockedByPayback?.length) {
+        coordinatorRemainingBudgetReason = firstBlockerReason(candidateSummary.blockedByPayback, "payback");
+      } else if (candidateSummary.blockedByReserve?.length) {
+        coordinatorRemainingBudgetReason = firstBlockerReason(candidateSummary.blockedByReserve, "reserve");
+      } else if (candidateSummary.blockedByEnergyPlan?.length) {
+        coordinatorRemainingBudgetReason = firstBlockerReason(candidateSummary.blockedByEnergyPlan, "save window");
+      } else if (candidateSummary.closestRejectedToBuying) {
+        coordinatorRemainingBudgetReason = `no safe chunk: ${candidateReason(candidateSummary.closestRejectedToBuying)}`;
+      } else {
+        coordinatorRemainingBudgetReason = "no safe chunk: no meaningful planner action remained";
+      }
+    }
 
     return {
       time: new Date().toLocaleTimeString(),
@@ -2141,7 +2193,7 @@ function getDisplayName(item) {
       laneCoordinatorDecision: coordinatorState?.coordinatorDecision || mainLaneDecisionLabel(mainActions, sideActions),
       laneCoordinatorSelectedActions: coordinatorState?.selectedLaneActions || [],
       laneCoordinatorSelectedSummary: coordinatorState?.selectedLaneSummary || "none",
-      coordinatorRemainingBudgetReason: coordinatorState?.coordinatorRemainingBudgetReason || refillState?.coordinatorRemainingBudgetReason || "none",
+      coordinatorRemainingBudgetReason,
       summaries: summaries?.length ? summaries.slice(0, 4).join("; ") : "none",
       whyWaiting: getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries),
       lanes: summarizeDecisionLanes(laneCandidates),
@@ -2273,6 +2325,16 @@ function getDisplayName(item) {
       cloneBufferRecoveryComplete: cloneBufferState?.cloneBufferRecoveryComplete ? "yes" : "no",
       cloneBufferCompletionThreshold: cloneBufferState?.cloneBufferCompletionThreshold || "n/a",
       cloneBufferReason: cloneBufferState?.cloneBufferReason || "none",
+      postNexusEnergyCandidate: postNexusEnergyState?.postNexusEnergyCandidate || "none",
+      postNexusEnergyDecision: postNexusEnergyState?.postNexusEnergyDecision || "OBSERVE",
+      postNexusEnergyReason: postNexusEnergyState?.postNexusEnergyReason || "none",
+      postNexusEnergyAmount: postNexusEnergyState?.postNexusEnergyAmount || "0",
+      postNexusEnergyBoostBefore: postNexusEnergyState?.postNexusEnergyBoostBefore || "n/a",
+      postNexusEnergyBoostAfter: postNexusEnergyState?.postNexusEnergyBoostAfter || "n/a",
+      postNexusEnergyBoostGain: postNexusEnergyState?.postNexusEnergyBoostGain || "n/a",
+      postNexusEnergyReserve: postNexusEnergyState?.postNexusEnergyReserve || "0",
+      postNexusEnergyBlockedBy: postNexusEnergyState?.postNexusEnergyBlockedBy || "none",
+      postNexusEnergySpend: postNexusEnergyState?.postNexusEnergySpend || "0",
       abilityPrepCandidate: abilityPrepState?.abilityPrepCandidate || "none",
       abilityPrepDecision: abilityPrepState?.abilityPrepDecision || "none",
       abilityPrepReason: abilityPrepState?.abilityPrepReason || "none",
@@ -2299,7 +2361,7 @@ function getDisplayName(item) {
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.13 keeps parent-step refill intact and restores a strict Twin Prep meaningful gate so tiny below-threshold prep chunks stay HOLD/OBSERVE.",
+      futurePlanners: "0.9.0 adds conservative post-Nexus Lepidoptera planning plus clearer budget, clone, territory and Council observability while preserving 0.8.13 Twin Prep and Parent Refill behavior.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2348,6 +2410,13 @@ function getDisplayName(item) {
       ["Focus", strategyInspector.smartFocus],
       ["Nexus", strategyInspector.nexus],
       ["Lepidoptera", strategyInspector.lepidoptera],
+      ["Post-Nexus energy candidate", strategyInspector.postNexusEnergyCandidate || "none"],
+      ["Post-Nexus energy decision", strategyInspector.postNexusEnergyDecision || "OBSERVE"],
+      ["Post-Nexus energy reason", strategyInspector.postNexusEnergyReason || "none"],
+      ["Post-Nexus energy amount", strategyInspector.postNexusEnergyAmount || "0"],
+      ["Post-Nexus energy boost", `${strategyInspector.postNexusEnergyBoostBefore || "n/a"} -> ${strategyInspector.postNexusEnergyBoostAfter || "n/a"} (${strategyInspector.postNexusEnergyBoostGain || "n/a"})`],
+      ["Post-Nexus energy reserve", strategyInspector.postNexusEnergyReserve || "0"],
+      ["Post-Nexus energy blocked by", strategyInspector.postNexusEnergyBlockedBy || "none"],
       ["Actions", strategyInspector.actions],
       ["Coordinator", strategyInspector.laneCoordinatorDecision || "none"],
       ["Selected lanes", strategyInspector.laneCoordinatorSelectedSummary || "none"],
@@ -2545,7 +2614,332 @@ function getDisplayName(item) {
     });
   }
 
-  function strategyBarHtml() {
+  function normalizeCouncilDecision(value, fallback = "OBSERVE") {
+    const text = String(value || "").toUpperCase();
+    if (text.includes("BUY") || text.includes("WOULD BUY")) return "BUY";
+    if (text.includes("SIDE")) return "PLAN";
+    if (text.includes("PLAN")) return "PLAN";
+    if (text.includes("HOLD")) return "HOLD";
+    if (text.includes("WAIT")) return "HOLD";
+    if (text.includes("OBSERVE")) return "OBSERVE";
+    return fallback;
+  }
+
+  function usefulCouncilText(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return "";
+    if (/^(none|n\/a|unknown|0|no)$/i.test(text)) return "";
+    return text;
+  }
+
+  function firstCouncilText(...values) {
+    for (const value of values) {
+      const text = usefulCouncilText(value);
+      if (text) return text;
+    }
+    return "";
+  }
+
+  function councilBadgeHtml(decision) {
+    const normalized = normalizeCouncilDecision(decision);
+    return `<span class="kbc-council-badge kbc-council-${normalized.toLowerCase()}">${escapeHtml(normalized)}</span>`;
+  }
+
+  function councilBlockersHtml(blockers = []) {
+    const filtered = blockers.map(usefulCouncilText).filter(Boolean).slice(0, 4);
+    if (!filtered.length) return "";
+    return `
+      <div class="kbc-council-blockers" aria-label="Blockers">
+        ${filtered.map((item) => `<span class="kbc-council-chip">${escapeHtml(item)}</span>`).join("")}
+      </div>
+    `;
+  }
+
+  function councilSummaryTile(label, value, tone = "") {
+    return `
+      <div class="kbc-council-summary-tile ${tone ? `kbc-council-summary-${tone}` : ""}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value || "none")}</strong>
+      </div>
+    `;
+  }
+
+  function councilLane(name) {
+    return (strategyInspector?.lanes || []).find((lane) => lane.name === name) || null;
+  }
+
+  function selectedLaneDecision(laneName, fallback) {
+    const selected = [
+      strategyInspector?.overseerMainSelected,
+      strategyInspector?.overseerSideSelected,
+      strategyInspector?.laneCoordinatorSelectedSummary,
+    ].join(" ");
+    if (new RegExp(`\\b${laneName}\\b`, "i").test(selected) && /\bBUY\b/i.test(selected)) return "BUY";
+    return normalizeCouncilDecision(fallback);
+  }
+
+  function buildCouncilFocusItems() {
+    if (!strategyInspector) return ["Waiting for the first Smart run."];
+
+    const items = [];
+
+    if (normalizeCouncilDecision(strategyInspector.mainDecision) === "BUY") {
+      items.push(`Main action active: ${strategyInspector.overseerMainSelected || strategyInspector.bestAllowedMainAction || "safe buy selected"}.`);
+    } else if (strategyInspector.whyWaiting) {
+      items.push(`Main lanes are holding: ${strategyInspector.whyWaiting}`);
+    }
+
+    if (usefulCouncilText(strategyInspector.meatActionUnitName)) {
+      items.push(`Meat-chain focus: ${strategyInspector.meatActionUnitName}${usefulCouncilText(strategyInspector.meatActionUnitTarget) ? ` toward ${strategyInspector.meatActionUnitTarget}` : ""}.`);
+    }
+
+    if (usefulCouncilText(strategyInspector.twinUnlockPrepDeferredReason)) {
+      items.push(`Twin prep is waiting: ${strategyInspector.twinUnlockPrepDeferredReason}`);
+    } else if (strategyInspector.twinUnlockPrepMeaningful === "yes") {
+      items.push(`Twin prep is meaningful: ${strategyInspector.twinUnlockPrepCandidate || "threshold prep"} is close enough to matter.`);
+    }
+
+    if (strategyInspector.cloneBufferHardLockActive === "yes") {
+      items.push(`Clone buffer is protecting larvae: ${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"}.`);
+    } else if (strategyInspector.cloneBufferRecoveryComplete === "yes") {
+      items.push("Clone buffer is safe.");
+    }
+
+    if (strategyInspector.abilityPrepDecision) {
+      items.push(`Energy abilities are ${config.autoCastAbilities ? "enabled by user setting" : "advisor-only"}: ${strategyInspector.abilityPrepDecision} ${strategyInspector.abilityPrepCandidate || "abilities"}.`);
+    }
+
+    if (normalizeCouncilDecision(strategyInspector.postNexusEnergyDecision) === "BUY") {
+      items.push(`Post-Nexus energy can grow now: ${strategyInspector.postNexusEnergyAmount || "0"} ${strategyInspector.postNexusEnergyCandidate || "Lepidoptera"}.`);
+    } else if (usefulCouncilText(strategyInspector.postNexusEnergyBlockedBy)) {
+      items.push(`Post-Nexus energy is holding: ${strategyInspector.postNexusEnergyBlockedBy}.`);
+    }
+
+    if (usefulCouncilText(strategyInspector.territoryDidNotBuyReason)) {
+      items.push(`Territory lane: ${strategyInspector.territoryDidNotBuyReason}`);
+    }
+
+    if (!items.length) {
+      items.push(strategyInspector.nextLikelyBuy ? `Watch next likely buy: ${strategyInspector.nextLikelyBuy}.` : "No urgent focus; observe the next Smart run.");
+    }
+
+    return items.slice(0, 4);
+  }
+
+  function councilCardHtml(card) {
+    const decision = normalizeCouncilDecision(card.decision);
+    const relevantClass = card.relevant ? "is-relevant" : "is-muted";
+    return `
+      <article class="kbc-council-card ${relevantClass}" data-kbc-decision="${escapeHtml(decision)}">
+        <div class="kbc-council-card-head">
+          <span class="kbc-council-icon" aria-hidden="true">${card.icon}</span>
+          <div>
+            <strong>${escapeHtml(card.name)}</strong>
+            <span>${escapeHtml(card.role)}</span>
+          </div>
+          ${councilBadgeHtml(decision)}
+        </div>
+        <div class="kbc-council-action">${escapeHtml(card.action || "No active action")}</div>
+        <p>${escapeHtml(card.advice || "Observing this lane.")}</p>
+        ${councilBlockersHtml(card.blockers)}
+        <details class="kbc-council-technical">
+          <summary>Technical details</summary>
+          <div>${escapeHtml(card.technical || "No technical detail reported this run.")}</div>
+        </details>
+      </article>
+    `;
+  }
+
+  function buildCouncilCards() {
+    const territoryLane = councilLane("Territory");
+    const energyLane = councilLane("Energy");
+    const meatLane = councilLane("Meat");
+    const engineLane = councilLane("Engine");
+    const cloneLane = councilLane("Clone Prep");
+    const abilityLane = councilLane("Ability");
+    const twinLane = councilLane("Twin") || councilLane("Upgrade");
+
+    return [
+      {
+        icon: "🐜",
+        name: "General Mandible",
+        role: "Territory & Army",
+        decision: selectedLaneDecision("Territory", strategyInspector.territoryPrepDecision || territoryLane?.decision),
+        action: firstCouncilText(strategyInspector.territoryPrepCandidate, territoryLane?.title, strategyInspector.armyPrepMissingUnits),
+        advice: normalizeCouncilDecision(strategyInspector.territoryPrepDecision || territoryLane?.decision) === "BUY"
+          ? "The front is moving with a bounded army or territory action."
+          : "I hold the front until territory ROI, army seed, and hard guards agree.",
+        technical: firstCouncilText(
+          strategyInspector.territoryPrepReason,
+          strategyInspector.territoryDidNotBuyReason,
+          territoryLane?.reason
+        ),
+        blockers: [
+          strategyInspector.territoryDidNotBuyReason,
+          strategyInspector.armyPrepMissingUnits && strategyInspector.armyPrepMissingUnits !== "none" ? `missing ${strategyInspector.armyPrepMissingUnits}` : "",
+          strategyInspector.overseerBlockedByHardGuard,
+        ],
+        relevant: selectedLaneDecision("Territory", strategyInspector.territoryPrepDecision || territoryLane?.decision) !== "OBSERVE" || usefulCouncilText(strategyInspector.territoryPrepCandidate),
+      },
+      {
+        icon: "🪲",
+        name: "Beetle Magus",
+        role: "Energy & Abilities",
+        decision: selectedLaneDecision("Energy", strategyInspector.postNexusEnergyDecision || strategyInspector.abilityPrepDecision || energyLane?.decision || abilityLane?.decision),
+        action: firstCouncilText(strategyInspector.postNexusEnergyCandidate, strategyInspector.abilityPrepCandidate, energyLane?.title, abilityLane?.title, strategyInspector.nexus),
+        advice: config.autoCastAbilities
+          ? "Ritual casting is enabled by user setting; hard guards still apply."
+          : (normalizeCouncilDecision(strategyInspector.postNexusEnergyDecision) === "BUY"
+            ? "Post-Nexus energy growth is allowed as a bounded unit buy; rituals remain disabled."
+            : "Mana is reserved. No rituals are cast without your order."),
+        technical: firstCouncilText(strategyInspector.postNexusEnergyReason, strategyInspector.abilityPrepReason, energyLane?.reason, abilityLane?.reason, strategyInspector.lepidoptera),
+        blockers: [
+          config.autoCastAbilities ? "" : "auto-cast disabled",
+          usefulCouncilText(strategyInspector.postNexusEnergyBlockedBy) ? strategyInspector.postNexusEnergyBlockedBy : "",
+          strategyInspector.abilityPrepRequiresArmyPrep === "yes" ? "army prep required" : "",
+          strategyInspector.abilityPrepRequiresCloneBuffer === "yes" ? "clone buffer required" : "",
+        ],
+        relevant: true,
+      },
+      {
+        icon: "🐛",
+        name: "Larva Steward",
+        role: "Larvae & Clone Buffer",
+        decision: strategyInspector.cloneBufferHardLockActive === "yes" ? "HOLD" : normalizeCouncilDecision(cloneLane?.decision, "OBSERVE"),
+        action: `Buffer ${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"})`,
+        advice: strategyInspector.cloneBufferHardLockActive === "yes"
+          ? "Larvae are guarded until clone debt is recovered."
+          : (normalizeCouncilDecision(cloneLane?.decision) === "SIDE" || normalizeCouncilDecision(cloneLane?.decision) === "BUY"
+            ? "I am building the cocoon buffer as a side task."
+            : (strategyInspector.cloneBufferRecoveryComplete === "yes"
+              ? "The larvae ledger is satisfied; clone prep remains a side task."
+              : "I am waiting for safe larvae, cooldown, or cocoon visibility.")),
+        technical: firstCouncilText(strategyInspector.cloneBufferReason, cloneLane?.reason, `spendable larvae ${strategyInspector.cloneBufferSpendableLarvae || "0"}`),
+        blockers: [
+          strategyInspector.cloneBufferHardLockActive === "yes" ? "clone hard lock" : "",
+          usefulCouncilText(strategyInspector.cloneBufferLarvaeProtected) ? `protected ${strategyInspector.cloneBufferLarvaeProtected}` : "",
+          usefulCouncilText(strategyInspector.cloneBufferDebt) ? `debt ${strategyInspector.cloneBufferDebt}` : "",
+        ],
+        relevant: true,
+      },
+      {
+        icon: "🔨",
+        name: "Flesh Smith",
+        role: "Meat Chain",
+        decision: selectedLaneDecision("Meat", strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision),
+        action: firstCouncilText(strategyInspector.parentStepCandidate, strategyInspector.unlockPlannerCandidate, strategyInspector.meatActionUnitName, meatLane?.title),
+        advice: normalizeCouncilDecision(strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision) === "BUY"
+          ? "I am forging the next meat-chain step with bounded spend."
+          : "I wait for reserve, payback, or the active action unit to line up.",
+        technical: firstCouncilText(
+          strategyInspector.parentStepReason,
+          strategyInspector.actionUnitRefillReason,
+          strategyInspector.unlockPlannerReason,
+          strategyInspector.meatActionUnitPaybackBypassReason,
+          meatLane?.reason
+        ),
+        blockers: [
+          strategyInspector.topMeatBlockedBy,
+          strategyInspector.actionUnitRefillBlockedBy,
+          strategyInspector.meatActionUnitReserveRatio && strategyInspector.meatActionUnitReserveRatio !== "n/a" ? `reserve ${strategyInspector.meatActionUnitReserveRatio}` : "",
+          strategyInspector.meatActionUnitPayback && strategyInspector.meatActionUnitPayback !== "n/a" ? `payback ${strategyInspector.meatActionUnitPayback}` : "",
+        ],
+        relevant: true,
+      },
+      {
+        icon: "🔮",
+        name: "Twin Oracle",
+        role: "Upgrades & Thresholds",
+        decision: selectedLaneDecision("Twin|Upgrade", strategyInspector.twinUnlockPrepDecision || strategyInspector.twinUnlockDecision || twinLane?.decision),
+        action: firstCouncilText(strategyInspector.twinUnlockPrepCandidate, strategyInspector.twinUnlockCandidate, strategyInspector.twinUnlockUpgrade, twinLane?.title),
+        advice: strategyInspector.twinUnlockPrepMeaningful === "yes"
+          ? "The threshold omen is close enough to prepare."
+          : "The threshold is too distant for a tiny offering.",
+        technical: firstCouncilText(
+          strategyInspector.twinUnlockPrepDeferredReason,
+          strategyInspector.twinUnlockReason,
+          strategyInspector.twinUnlockWhyPrepDidNotWin,
+          twinLane?.reason
+        ),
+        blockers: [
+          strategyInspector.twinUnlockPrepMeaningful === "yes" ? "" : "prep not meaningful",
+          strategyInspector.twinUnlockRatio && strategyInspector.twinUnlockRatio !== "n/a" ? `ratio ${strategyInspector.twinUnlockRatio}` : "",
+          strategyInspector.twinUnlockReserveRatio && strategyInspector.twinUnlockReserveRatio !== "n/a" ? `reserve ${strategyInspector.twinUnlockReserveRatio}` : "",
+        ],
+        relevant: usefulCouncilText(strategyInspector.twinUnlockPrepCandidate) || usefulCouncilText(strategyInspector.twinUnlockCandidate),
+      },
+      {
+        icon: "🏗️",
+        name: "Brood Architect",
+        role: "Hatchery & Expansion",
+        decision: selectedLaneDecision("Engine", engineLane?.decision || strategyInspector.mainDecision),
+        action: firstCouncilText(engineLane?.title, strategyInspector.waits, strategyInspector.protectedResources),
+        advice: "The build plan protects Hatchery, Expansion, and larva-engine timing.",
+        technical: firstCouncilText(engineLane?.reason, strategyInspector.waits, strategyInspector.protectedResources),
+        blockers: [
+          strategyInspector.protectedResources,
+          strategyInspector.waits,
+        ],
+        relevant: true,
+      },
+    ];
+  }
+
+  function councilStrategyBarHtml() {
+    if (!config.strategyInspector) {
+      return `<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Off</strong></div>`;
+    }
+
+    if (!strategyInspector) {
+      return `
+        <div class="kbc-council-shell">
+          <div class="kbc-council-hero">
+            <div>
+              <span class="kbc-council-eyebrow">The Swarm Council</span>
+              <strong>Waiting for first Smart run</strong>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const importantBlocker = firstCouncilText(
+      strategyInspector.overseerBlockedByHardGuard,
+      strategyInspector.blockedBySummary,
+      liveDiagnosticsWarningLabel()
+    ) || "none";
+    const focusItems = buildCouncilFocusItems();
+
+    return `
+      <div class="kbc-council-shell">
+        <div class="kbc-council-hero">
+          <div>
+            <span class="kbc-council-eyebrow">The Swarm Council</span>
+            <strong>${escapeHtml(strategyInspector.overseerDecision || strategyInspector.laneCoordinatorDecision || "OBSERVE")}</strong>
+          </div>
+          ${councilBadgeHtml(strategyInspector.mainDecision || strategyInspector.decision)}
+        </div>
+        <div class="kbc-council-summary">
+          ${councilSummaryTile("Phase", strategyInspector.phase || "n/a")}
+          ${councilSummaryTile("Goal", strategyInspector.goal || "n/a")}
+          ${councilSummaryTile("Main", strategyInspector.overseerMainSelected || "none")}
+          ${councilSummaryTile("Side", strategyInspector.overseerSideSelected || "none")}
+          ${councilSummaryTile("Actions", strategyInspector.overseerActionsUsed || strategyInspector.actions || "0/?")}
+          ${councilSummaryTile("Next", strategyInspector.nextLikelyBuy || "unknown")}
+          ${councilSummaryTile("Blocker", importantBlocker, importantBlocker === "none" ? "" : "warn")}
+        </div>
+        <section class="kbc-council-focus" aria-label="Focus now">
+          <strong>Focus now</strong>
+          <ul>${focusItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </section>
+        <div class="kbc-council-grid">
+          ${buildCouncilCards().map(councilCardHtml).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  function classicStrategyBarHtml() {
     if (!config.strategyInspector) {
       return `<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Off</strong></div>`;
     }
@@ -2589,6 +2983,10 @@ function getDisplayName(item) {
       .join("");
   }
 
+  function strategyBarHtml() {
+    return config.councilUi ? councilStrategyBarHtml() : classicStrategyBarHtml();
+  }
+
   function buildLogExportPayload() {
     const summary = summarizeLaneCandidates();
     const diagnostics = liveDiagnostics || buildLiveDiagnostics(runHistory);
@@ -2596,7 +2994,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.13",
+      scriptVersion: "0.9.0",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2676,6 +3074,16 @@ function getDisplayName(item) {
       antiPingpongGuardActive: strategyInspector?.antiPingpongGuardActive || (actionUnitRefillState?.antiPingpongGuardActive ? "yes" : "no"),
       antiPingpongGuardAllowedRefill: strategyInspector?.antiPingpongGuardAllowedRefill || (actionUnitRefillState?.antiPingpongGuardAllowedRefill ? "yes" : "no"),
       coordinatorRemainingBudgetReason: strategyInspector?.coordinatorRemainingBudgetReason || laneCoordinatorState?.coordinatorRemainingBudgetReason || actionUnitRefillState?.coordinatorRemainingBudgetReason || "none",
+      postNexusEnergyCandidate: strategyInspector?.postNexusEnergyCandidate || postNexusEnergyPlannerState?.postNexusEnergyCandidate || "none",
+      postNexusEnergyDecision: strategyInspector?.postNexusEnergyDecision || postNexusEnergyPlannerState?.postNexusEnergyDecision || "OBSERVE",
+      postNexusEnergyReason: strategyInspector?.postNexusEnergyReason || postNexusEnergyPlannerState?.postNexusEnergyReason || "none",
+      postNexusEnergyAmount: strategyInspector?.postNexusEnergyAmount || postNexusEnergyPlannerState?.postNexusEnergyAmount || "0",
+      postNexusEnergyBoostBefore: strategyInspector?.postNexusEnergyBoostBefore || postNexusEnergyPlannerState?.postNexusEnergyBoostBefore || "n/a",
+      postNexusEnergyBoostAfter: strategyInspector?.postNexusEnergyBoostAfter || postNexusEnergyPlannerState?.postNexusEnergyBoostAfter || "n/a",
+      postNexusEnergyBoostGain: strategyInspector?.postNexusEnergyBoostGain || postNexusEnergyPlannerState?.postNexusEnergyBoostGain || "n/a",
+      postNexusEnergyReserve: strategyInspector?.postNexusEnergyReserve || postNexusEnergyPlannerState?.postNexusEnergyReserve || "0",
+      postNexusEnergyBlockedBy: strategyInspector?.postNexusEnergyBlockedBy || postNexusEnergyPlannerState?.postNexusEnergyBlockedBy || "none",
+      postNexusEnergySpend: strategyInspector?.postNexusEnergySpend || postNexusEnergyPlannerState?.postNexusEnergySpend || "0",
       twinUnlockCandidate: strategyInspector?.twinUnlockCandidate || twinUnlockPlannerState?.candidate || "none",
       twinUnlockDecision: strategyInspector?.twinUnlockDecision || twinUnlockPlannerState?.decision || "none",
       twinUnlockReason: strategyInspector?.twinUnlockReason || twinUnlockPlannerState?.reason || "none",
@@ -2798,6 +3206,13 @@ function getDisplayName(item) {
       `- Focus: ${inspector.smartFocus || "n/a"}`,
       `- Nexus: ${inspector.nexus || "n/a"}`,
       `- Lepidoptera: ${inspector.lepidoptera || "n/a"}`,
+      `- Post-Nexus energy candidate: ${payload.postNexusEnergyCandidate || "none"}`,
+      `- Post-Nexus energy decision: ${payload.postNexusEnergyDecision || "OBSERVE"}`,
+      `- Post-Nexus energy reason: ${payload.postNexusEnergyReason || "none"}`,
+      `- Post-Nexus energy amount: ${payload.postNexusEnergyAmount || "0"}`,
+      `- Post-Nexus energy boost: ${payload.postNexusEnergyBoostBefore || "n/a"} -> ${payload.postNexusEnergyBoostAfter || "n/a"} (${payload.postNexusEnergyBoostGain || "n/a"})`,
+      `- Post-Nexus energy reserve: ${payload.postNexusEnergyReserve || "0"}`,
+      `- Post-Nexus energy blocked by: ${payload.postNexusEnergyBlockedBy || "none"}`,
       `- Actions: ${inspector.actions || "n/a"}`,
       `- Changed: ${inspector.summaries || "n/a"}`,
       `- Meat fallback enabled: ${payload.meatFallbackEnabled ? "true" : "false"}`,
@@ -3869,9 +4284,8 @@ function getDisplayName(item) {
     return merged;
   }
 
-  function getLepidopteraBoostPercent(game) {
-    const moth = getGameUnit(game, "moth");
-    const count = decimalFrom(moth?.count?.() || 0);
+  function estimateLepidopteraBoostPercentForCount(countValue) {
+    const count = decimalFrom(countValue || 0);
     const weight = count.times(0.001);
     if (!isPositive(weight)) return 0;
 
@@ -3879,6 +4293,11 @@ function getDisplayName(item) {
     // multiplier = 1 + count/(count + 1000). Displayed as +0..+100% energy.
     const bonus = weight.dividedBy(weight.plus(1));
     return decimalToNumber(bonus.times(100), 0);
+  }
+
+  function getLepidopteraBoostPercent(game) {
+    const moth = getGameUnit(game, "moth");
+    return estimateLepidopteraBoostPercentForCount(moth?.count?.() || 0);
   }
 
   function getLepidopteraCount(game) {
@@ -3967,6 +4386,104 @@ function getDisplayName(item) {
 
     num = decimalFrom(num).floor();
     return isPositive(num) ? num : newDecimal(1);
+  }
+
+  function buildPostNexusLepidopteraPlan(game, nexusCount) {
+    const moth = getGameUnit(game, "moth");
+    const boostBefore = getLepidopteraBoostPercent(game);
+
+    function hold(reason, blockedBy = "none", extra = {}) {
+      return {
+        ok: false,
+        reason,
+        blockedBy,
+        candidate: "Lepidoptera",
+        boostBefore,
+        ...extra,
+      };
+    }
+
+    if (!config.energyPlanner) {
+      return hold("post-Nexus Energy Planner disabled", "planner disabled");
+    }
+
+    if (nexusCount < config.nexusTarget) {
+      return hold(`Nexus target not met: ${Math.floor(nexusCount)}/${config.nexusTarget}`, "Nexus target not met");
+    }
+
+    if (!moth?.isVisible?.()) {
+      return hold("Lepidoptera not visible yet", "locked/unavailable");
+    }
+
+    if (!moth?.isBuyable?.()) {
+      return hold("no safe Lepidoptera chunk is currently buyable", "no safe chunk");
+    }
+
+    if (boostBefore >= config.lepidopteraStopAtBoostPercent) {
+      return hold(
+        `post-Nexus Lepidoptera held: +${trimNumber(boostBefore)}% energy is at/above stop threshold ${trimNumber(config.lepidopteraStopAtBoostPercent)}%`,
+        "lepidoptera stop threshold"
+      );
+    }
+
+    const costPer = getCostForResource(moth, "energy");
+    const currentEnergy = getCurrentResource(game, "energy");
+    const energyVelocity = getVelocity(game, "energy");
+    const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
+    const reserve = decimalFrom(energyVelocity).times(reserveSeconds);
+    const spendableEnergy = decimalFrom(currentEnergy).minus(reserve);
+
+    if (!isPositive(costPer)) {
+      return hold("missing Lepidoptera energy cost data", "no safe chunk", {
+        reserve,
+      });
+    }
+
+    if (!spendableEnergy.greaterThanOrEqualTo(costPer)) {
+      return hold(
+        `energy reserve blocks post-Nexus Lepidoptera: spendable ${formatSwarmNumber(spendableEnergy)} after ${formatDuration(reserveSeconds)} reserve < cost ${formatSwarmNumber(costPer)}`,
+        "protected resource",
+        { reserve }
+      );
+    }
+
+    const maxByButton = safe("Post-Nexus lepidoptera max", () => moth.maxCostMet?.(1)) || newDecimal(0);
+    const maxByReserve = spendableEnergy.dividedBy(costPer).floor();
+    const configuredMax = decimalFrom(Math.max(0, Number(config.maxLepidopteraPerRun || 0)));
+    const num = decimalMin(maxByButton, maxByReserve, configuredMax).floor();
+
+    if (!isPositive(num)) {
+      return hold("no safe chunk after max-per-run and energy reserve guards", "no safe chunk", {
+        reserve,
+      });
+    }
+
+    const countBefore = getLepidopteraCount(game);
+    const countAfter = countBefore.plus(num);
+    const boostAfter = estimateLepidopteraBoostPercentForCount(countAfter);
+    const boostGain = Math.max(0, boostAfter - boostBefore);
+    const minGain = Math.max(0, Number(config.postNexusLepidopteraMinBoostGainPercent || 0));
+    const spentEnergy = decimalFrom(costPer).times(num);
+
+    if (boostGain < minGain) {
+      return hold(
+        `post-Nexus Lepidoptera chunk not meaningful: +${trimNumber(boostGain)}% energy gain < ${trimNumber(minGain)}% minimum`,
+        "not meaningful",
+        { num, reserve, boostAfter, boostGain, spentEnergy }
+      );
+    }
+
+    return {
+      ok: true,
+      candidate: "Lepidoptera",
+      num,
+      reserve,
+      spentEnergy,
+      boostBefore,
+      boostAfter,
+      boostGain,
+      reason: `post-Nexus Energy Planner: bounded ${formatSwarmNumber(num)} Lepidoptera chunk, +${trimNumber(boostBefore)}% -> +${trimNumber(boostAfter)}% energy, reserve ${formatDuration(reserveSeconds)} kept`,
+    };
   }
 
   function getCompoundEffect(ability) {
@@ -5807,29 +6324,78 @@ function getDisplayName(item) {
     } else if (nexusCount >= config.nexusTarget && config.lepidopteraRoiMode) {
       const moth = getGameUnit(game, "moth");
       if (moth?.isVisible?.() && moth?.isBuyable?.()) {
-        const boost = getLepidopteraBoostPercent(game);
-        if (boost >= config.lepidopteraStopAtBoostPercent) {
-          recordAdvisor("HOLD", "Lepidoptera", `Nexus target met, but energy bonus already high: +${trimNumber(boost)}%`);
+        const plan = buildPostNexusLepidopteraPlan(game, nexusCount);
+        recordPostNexusEnergyPlannerState({
+          postNexusEnergyCandidate: "Lepidoptera",
+          postNexusEnergyDecision: plan.ok ? "BUY" : "HOLD",
+          postNexusEnergyReason: plan.reason,
+          postNexusEnergyAmount: plan.num ? formatSwarmNumber(plan.num) : "0",
+          postNexusEnergyBoostBefore: Number.isFinite(plan.boostBefore) ? `+${trimNumber(plan.boostBefore)}%` : "n/a",
+          postNexusEnergyBoostAfter: Number.isFinite(plan.boostAfter) ? `+${trimNumber(plan.boostAfter)}%` : "n/a",
+          postNexusEnergyBoostGain: Number.isFinite(plan.boostGain) ? `+${trimNumber(plan.boostGain)}%` : "n/a",
+          postNexusEnergyReserve: plan.reserve ? formatSwarmNumber(plan.reserve) : "0",
+          postNexusEnergyBlockedBy: plan.blockedBy || "none",
+          postNexusEnergySpend: plan.spentEnergy ? formatSwarmNumber(plan.spentEnergy) : "0",
+        });
+
+        if (plan.ok) {
+          recordAdvisor("BUY", "Lepidoptera", plan.reason);
+          addLaneCandidate({
+            lane: "Energy",
+            decision: "BUY",
+            candidate: "Lepidoptera",
+            reason: plan.reason,
+            score: 69000 + Math.max(0, Number(plan.boostGain || 0)) * 100,
+            wouldBuyAmount: formatSwarmNumber(plan.num),
+            reserveAfter: `${formatSwarmNumber(decimalFrom(getCurrentResource(game, "energy")).minus(plan.spentEnergy))} energy`,
+            target: "Post-Nexus energy growth",
+            resource: "energy",
+            raw: {
+              costAmount: plan.spentEnergy,
+              currentAmount: getCurrentResource(game, "energy"),
+              velocity: getVelocity(game, "energy"),
+              boostBeforePercent: plan.boostBefore,
+              boostAfterPercent: plan.boostAfter,
+              boostGainPercent: plan.boostGain,
+            },
+          });
+
+          if (config.advisorOnly || !config.autoBuySafeDecisions) {
+            recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(plan.num)} lepidoptera - ${plan.reason}`);
+            return { actionTaken: true, bought: 0, summary: "Would buy post-Nexus Lepidoptera" };
+          }
+
+          const didBuy = safe("Post-Nexus Energy Planner lepidoptera", () => buyUnitAmount(commands, moth, plan.num, "Energy Unit"));
+          return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought post-Nexus Lepidoptera" : "Post-Nexus Lepidoptera buy failed" };
+        } else {
+          recordAdvisor("HOLD", "Lepidoptera", plan.reason);
           addLaneCandidate({
             lane: "Energy",
             decision: "HOLD",
             candidate: "Lepidoptera",
-            reason: `Nexus target met, but energy bonus already high: +${trimNumber(boost)}%`,
-            blockers: ["energy plan", "lepidoptera stop threshold"],
-            score: 50000,
+            reason: plan.reason,
+            blockers: ["energy plan", plan.blockedBy || "not meaningful"].filter(Boolean),
+            score: plan.blockedBy === "lepidoptera stop threshold" ? 50000 : 47000,
+            wouldBuyAmount: plan.num ? formatSwarmNumber(plan.num) : "0",
+            target: "Post-Nexus energy growth",
             resource: "energy",
-          });
-        } else {
-          recordAdvisor("INFO", "Lepidoptera", "Nexus target met; post-Nexus Lepidoptera buying waits for a dedicated Energy Planner");
-          addLaneCandidate({
-            lane: "Energy",
-            decision: "OBSERVE",
-            candidate: "Lepidoptera",
-            reason: "Nexus target met; post-Nexus Lepidoptera buying waits for a dedicated Energy Planner",
-            score: 45000,
-            resource: "energy",
+            raw: {
+              costAmount: plan.spentEnergy || newDecimal(0),
+              currentAmount: getCurrentResource(game, "energy"),
+              velocity: getVelocity(game, "energy"),
+              boostBeforePercent: plan.boostBefore,
+              boostAfterPercent: plan.boostAfter,
+              boostGainPercent: plan.boostGain,
+            },
           });
         }
+      } else {
+        recordPostNexusEnergyPlannerState({
+          postNexusEnergyCandidate: "Lepidoptera",
+          postNexusEnergyDecision: "OBSERVE",
+          postNexusEnergyReason: "post-Nexus Energy Planner waiting for visible buyable Lepidoptera",
+          postNexusEnergyBlockedBy: "locked/unavailable",
+        });
       }
     }
 
@@ -6722,6 +7288,23 @@ function getDisplayName(item) {
     };
 
     return abilityPrepPlannerState;
+  }
+
+  function recordPostNexusEnergyPlannerState(fields = {}) {
+    postNexusEnergyPlannerState = {
+      postNexusEnergyCandidate: fields.postNexusEnergyCandidate || postNexusEnergyPlannerState?.postNexusEnergyCandidate || "none",
+      postNexusEnergyDecision: fields.postNexusEnergyDecision || postNexusEnergyPlannerState?.postNexusEnergyDecision || "OBSERVE",
+      postNexusEnergyReason: fields.postNexusEnergyReason || postNexusEnergyPlannerState?.postNexusEnergyReason || "none",
+      postNexusEnergyAmount: fields.postNexusEnergyAmount || postNexusEnergyPlannerState?.postNexusEnergyAmount || "0",
+      postNexusEnergyBoostBefore: fields.postNexusEnergyBoostBefore || postNexusEnergyPlannerState?.postNexusEnergyBoostBefore || "n/a",
+      postNexusEnergyBoostAfter: fields.postNexusEnergyBoostAfter || postNexusEnergyPlannerState?.postNexusEnergyBoostAfter || "n/a",
+      postNexusEnergyBoostGain: fields.postNexusEnergyBoostGain || postNexusEnergyPlannerState?.postNexusEnergyBoostGain || "n/a",
+      postNexusEnergyReserve: fields.postNexusEnergyReserve || postNexusEnergyPlannerState?.postNexusEnergyReserve || "0",
+      postNexusEnergyBlockedBy: fields.postNexusEnergyBlockedBy || postNexusEnergyPlannerState?.postNexusEnergyBlockedBy || "none",
+      postNexusEnergySpend: fields.postNexusEnergySpend || postNexusEnergyPlannerState?.postNexusEnergySpend || "0",
+    };
+
+    return postNexusEnergyPlannerState;
   }
 
   function recordTerritoryPrepPlannerState(fields = {}) {
@@ -8572,7 +9155,24 @@ function getDisplayName(item) {
       });
     }
 
+    function classifyCoordinatorBudgetReason(reason) {
+      const text = String(reason || "").trim();
+      const lower = text.toLowerCase();
+      if (!text) return "no safe chunk: no planner reported a safe bounded action";
+      if (/cooldown/.test(lower)) return text;
+      if (/save-window|saving meat|saving territory|saving energy|nexus save|hatchery|expansion/.test(lower)) return text;
+      if (/protected|hard lock|clone buffer|larva.*guard|energy reserve/.test(lower)) return text;
+      if (/payback/.test(lower)) return text;
+      if (/reserve/.test(lower)) return text;
+      if (/not meaningful|too far|too small|below.*minimum|roi below/.test(lower)) return text;
+      if (/consumed the remaining|single-main limit|main action slots were full|budget/.test(lower)) return text;
+      if (/not selected by coordinator/.test(lower)) return text;
+      if (/no .*candidate|no .*proposal|no buyable|no visible|no safe chunk/.test(lower)) return text;
+      return `no safe chunk: ${text}`;
+    }
+
     function syncCoordinatorHold(reason) {
+      const concreteReason = classifyCoordinatorBudgetReason(reason);
       recordLaneCoordinatorState({
         coordinatorDecision: selectedLaneActions.length ? "BUY" : "HOLD",
         selectedLaneActions,
@@ -8580,8 +9180,8 @@ function getDisplayName(item) {
         selectedLaneSummary: selectedLaneActions.length
           ? selectedLaneActions.map((item) => `${item.lane}: ${item.candidate}`).join(" · ")
           : "none",
-        coordinatorRemainingBudgetReason: reason || laneCoordinatorState?.coordinatorRemainingBudgetReason || "none",
-        territoryDidNotBuyReason: reason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
+        coordinatorRemainingBudgetReason: concreteReason || laneCoordinatorState?.coordinatorRemainingBudgetReason || "none",
+        territoryDidNotBuyReason: concreteReason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
       });
     }
 
@@ -8613,7 +9213,7 @@ function getDisplayName(item) {
     }
 
     if (plannerResult.actionTaken && plannerResult.stopFurtherUnitBuys) {
-      const holdReason = plannerResult.noFollowUpReason || plannerResult.summary || "meat goal planner held further unit buys this run";
+      const holdReason = plannerResult.noFollowUpReason || plannerResult.summary || "no safe chunk: meat planner found no bounded follow-up that passed target-path, reserve and payback guards";
       syncCoordinatorHold(holdReason);
       return boughtCount;
     }
@@ -8651,7 +9251,10 @@ function getDisplayName(item) {
     const strategicActionRank = getStrategicActionRank(strategicPlan);
     const collected = collectSmartUnitCandidates(game, engine, protectedResources);
     const candidates = collected.candidates || [];
-    if (!candidates.length) return 0;
+    if (!candidates.length) {
+      syncCoordinatorHold("no safe chunk: no ranked unit candidates after protected-resource, save-window and payback guards");
+      return 0;
+    }
 
     const meatCandidates = candidates.filter((entry) => getTabName(entry.unit) === "meat");
     const topMeatCandidate = meatCandidates[0] || null;
@@ -8888,7 +9491,7 @@ function getDisplayName(item) {
 
     syncCoordinatorHold(
       territoryPrepPlannerState?.territoryPrepCandidate && territoryPrepPlannerState?.territoryPrepCandidate !== "none"
-        ? "not selected by coordinator"
+        ? "not selected by coordinator: better target-path action already used budget or territory did not meet starvation/ROI gate"
         : (territoryPrepPlannerState?.territoryPrepReason || "no territory proposal this run")
     );
 
@@ -8930,6 +9533,7 @@ function getDisplayName(item) {
     twinUnlockPlannerState = null;
     cloneBufferPlannerState = null;
     abilityPrepPlannerState = null;
+    postNexusEnergyPlannerState = null;
     territoryPrepPlannerState = null;
     laneCoordinatorState = recordLaneCoordinatorState({
       coordinatorDecision: "HOLD",
@@ -9476,7 +10080,7 @@ function getDisplayName(item) {
       actions: `${upgrades} upgrades, ${units} unit-types`,
       summaries: lastStatus,
       settings: getSettingsInfluencingDecision(new Set()),
-      futurePlanners: "Switch Smart Mode on for full Strategy Inspector details.",
+      futurePlanners: "Switch Smart Mode on for full Strategy Inspector and Council UI details.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
 
@@ -9521,7 +10125,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.13 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.9.0 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -9529,7 +10133,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.13. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.9.0. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -9588,6 +10192,11 @@ function getDisplayName(item) {
           Strategy Inspector ${helpIcon("På = loggpanelen visar vad Smart Mode tror att strategin är just nu och vilka inställningar som påverkar beslutet.")}
         </label>
 
+        <label title="Byt Strategy Bar till Swarm Council-rådgivarkort. Detta ändrar bara presentation, inte planner eller köp.">
+          <input id="kbc-council-ui" type="checkbox">
+          Council UI ${helpIcon("På = visar Swarm Council med lane-rådgivare, focus now och tydliga BUY/HOLD/OBSERVE-badges. Av = klassisk Strategy Bar.")}
+        </label>
+
         <div class="kbc-note">Recommended Smart betyder: 25% Smart chunk, säkra auto-köp, Focus meat, Nexus-skydd på, auto-cast av och auto-ascend av.</div>
 
         <label title="Hur ofta botten ska analysera och eventuellt köpa.">Kör var X sekund ${helpIcon("Lägre = mer aktiv bot. Högre = lugnare och lättare att följa i loggen.")}
@@ -9630,7 +10239,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.13. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.9.0. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
@@ -9814,7 +10423,7 @@ function getDisplayName(item) {
           <input id="kbc-max-lepidoptera" type="number" min="0" step="1">
         </label>
 
-        <label title="Slå på den nya försiktiga Energy Planner-logiken från referensmodellen.">Energy planner-regler (experimental advisor guard) ${helpIcon("På = blockerar Lepidoptera före Nexus 4, använder Nexus 5-soft target och håller Nightbugs/Bats som default. Inte full Energy Planner ännu.")}
+        <label title="Slå på den försiktiga Energy Planner-logiken från referensmodellen.">Energy planner-regler ${helpIcon("På = blockerar Lepidoptera före Nexus 4, använder Nexus 5-soft target, kan köpa bounded Lepidoptera efter Nexus target och håller Nightbugs/Bats som default.")}
           <input id="kbc-energy-planner" type="checkbox">
         </label>
 
@@ -9894,7 +10503,7 @@ function getDisplayName(item) {
 
     strategyBar.innerHTML = `
       <div class="kbc-strategy-bar-head">
-        <strong>SwarmBot Strategy</strong>
+        <strong>The Swarm Council</strong>
         <button id="kbc-hide-strategy-bar" title="Dölj Strategy Bar">×</button>
       </div>
       <div id="kbc-strategy-bar-cards"></div>
@@ -10066,6 +10675,221 @@ function getDisplayName(item) {
         opacity: 0.8;
       }
 
+      .kbc-council-shell {
+        grid-column: 1 / -1;
+        --kbc-council-line: rgba(255,255,255,0.14);
+        --kbc-council-muted: rgba(255,255,255,0.68);
+        --kbc-buy: #7ce38b;
+        --kbc-hold: #ffd36a;
+        --kbc-observe: #9fc7ff;
+        --kbc-plan: #d8b4ff;
+        display: grid;
+        gap: 8px;
+      }
+
+      .kbc-council-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--kbc-council-line);
+      }
+
+      .kbc-council-hero strong {
+        display: block;
+        margin-top: 1px;
+        font-size: 13px;
+      }
+
+      .kbc-council-eyebrow {
+        display: block;
+        color: var(--kbc-council-muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .kbc-council-summary {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(88px, 1fr));
+        gap: 6px;
+      }
+
+      .kbc-council-summary-tile {
+        min-width: 0;
+        padding: 6px;
+        border: 1px solid var(--kbc-council-line);
+        border-radius: 6px;
+        background: rgba(255,255,255,0.06);
+      }
+
+      .kbc-council-summary-tile span {
+        display: block;
+        color: var(--kbc-council-muted);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .kbc-council-summary-tile strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 10px;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-summary-warn {
+        border-color: rgba(255, 211, 106, 0.5);
+        background: rgba(255, 211, 106, 0.12);
+      }
+
+      .kbc-council-focus {
+        padding: 7px 8px;
+        border: 1px solid rgba(124, 227, 139, 0.34);
+        border-radius: 6px;
+        background: rgba(124, 227, 139, 0.09);
+      }
+
+      .kbc-council-focus strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
+      .kbc-council-focus ul {
+        margin: 0;
+        padding-left: 16px;
+      }
+
+      .kbc-council-focus li {
+        margin: 2px 0;
+        line-height: 1.25;
+      }
+
+      .kbc-council-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(150px, 1fr));
+        gap: 6px;
+      }
+
+      .kbc-council-card {
+        min-width: 0;
+        padding: 7px;
+        border: 1px solid var(--kbc-council-line);
+        border-radius: 6px;
+        background: rgba(0,0,0,0.18);
+      }
+
+      .kbc-council-card.is-muted {
+        opacity: 0.78;
+      }
+
+      .kbc-council-card-head {
+        display: grid;
+        grid-template-columns: 20px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .kbc-council-icon {
+        font-size: 16px;
+        line-height: 1;
+        text-align: center;
+      }
+
+      .kbc-council-card-head strong,
+      .kbc-council-card-head span {
+        display: block;
+      }
+
+      .kbc-council-card-head div > span {
+        color: var(--kbc-council-muted);
+        font-size: 9px;
+        line-height: 1.2;
+      }
+
+      .kbc-council-badge,
+      .kbc-council-chip {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        min-height: 18px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.18);
+        color: white;
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-buy {
+        border-color: rgba(124, 227, 139, 0.8);
+        background: rgba(124, 227, 139, 0.24);
+      }
+
+      .kbc-council-hold {
+        border-color: rgba(255, 211, 106, 0.82);
+        background: rgba(255, 211, 106, 0.22);
+      }
+
+      .kbc-council-observe {
+        border-color: rgba(159, 199, 255, 0.75);
+        background: rgba(159, 199, 255, 0.2);
+      }
+
+      .kbc-council-plan {
+        border-color: rgba(216, 180, 255, 0.76);
+        background: rgba(216, 180, 255, 0.2);
+      }
+
+      .kbc-council-action {
+        margin-top: 6px;
+        font-weight: 700;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-card p {
+        margin: 4px 0 0 0;
+        color: rgba(255,255,255,0.86);
+        line-height: 1.25;
+      }
+
+      .kbc-council-blockers {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+      }
+
+      .kbc-council-chip {
+        color: rgba(255,255,255,0.9);
+        background: rgba(255,255,255,0.08);
+        font-weight: 600;
+      }
+
+      .kbc-council-technical {
+        margin-top: 6px;
+        color: rgba(255,255,255,0.72);
+      }
+
+      .kbc-council-technical summary {
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .kbc-council-technical div {
+        margin-top: 3px;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
       @media (max-width: 1100px) {
         .kbc-strategy-bar {
           right: 12px;
@@ -10073,6 +10897,21 @@ function getDisplayName(item) {
 
         #kbc-strategy-bar-cards {
           grid-template-columns: repeat(4, minmax(90px, 1fr));
+        }
+
+        .kbc-council-summary {
+          grid-template-columns: repeat(2, minmax(120px, 1fr));
+        }
+
+        .kbc-council-grid {
+          grid-template-columns: repeat(2, minmax(140px, 1fr));
+        }
+      }
+
+      @media (max-width: 700px) {
+        .kbc-council-summary,
+        .kbc-council-grid {
+          grid-template-columns: 1fr;
         }
       }
 
@@ -10424,6 +11263,12 @@ function getDisplayName(item) {
 
     $("#kbc-strategy-inspector").addEventListener("change", (e) => {
       config.strategyInspector = e.target.checked;
+      saveConfig();
+      refreshPanel();
+    });
+
+    $("#kbc-council-ui").addEventListener("change", (e) => {
+      config.councilUi = e.target.checked;
       saveConfig();
       refreshPanel();
     });
@@ -10806,6 +11651,7 @@ function getDisplayName(item) {
     $("#kbc-advisor-only").checked = !!config.advisorOnly;
     $("#kbc-auto-buy-safe").checked = !!config.autoBuySafeDecisions;
     $("#kbc-strategy-inspector").checked = !!config.strategyInspector;
+    $("#kbc-council-ui").checked = !!config.councilUi;
     $("#kbc-smart-max-actions").value = config.smartMaxActionsPerRun;
     $("#kbc-larva-engine").checked = !!config.larvaEnginePriority;
     $("#kbc-territory-roi").checked = !!config.territoryRoiMode;

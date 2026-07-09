@@ -35,6 +35,9 @@ docs/release-notes/
 - 0.8.11: Twin Prep Priority / Parent-Step Throughput Fix.
 - 0.8.12: Parent-Step Refill / Action Budget Fix.
 - 0.8.13: Twin Prep Meaningful Gate Regression Fix.
+- 0.8.14: Swarm Council Advisor UI presentation refresh.
+- 0.9.0: Post-Nexus Strategy Pack with conservative Lepidoptera planning,
+  clearer action-budget diagnostics, and Council planner-state integration.
 
 ## Documentation posture note
 
