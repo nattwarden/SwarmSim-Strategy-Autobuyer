@@ -40,7 +40,7 @@ Current verified baseline:
 
 0.8.7 is verified in live logs to:
 
-- buy Twin Neural Clusters when opportunity-cost loss is negligible versus child-resource bank,
+- buy Twin Neural Clusters when opportunity-cost loss is negligible versus resource bank,
 - wait for Hatchery when Hatchery is inside the save-window,
 - buy Hatchery when ready,
 - resume meat-chain progression after Hatchery,
@@ -50,7 +50,7 @@ Current verified baseline:
 > **Verification note — 2026-07-09**
 > Status: PARTIALLY CONFIRMED
 > Evidence: `docs/release-notes/SwarmSim-Strategy-Autobuyer-0.8.7-release-notes.md`, `docs/live-logs/2026-07-09-clicked-mechanics-progression.md`
-> Supports: 0.8.7 formalizes the observed Twin opportunity-cost problem by comparing lost production/hour against child-bank ratio.
+> Supports: 0.8.7 formalizes the observed Twin opportunity-cost problem by comparing lost production/hour against available bank ratio.
 > Script implication: Keep the opportunity-cost bypass conservative. The general Twin/Faster distinction is live-confirmed; exact 0.8.7 late-state behavior should continue to be checked against exported bot logs.
 
 Next planned work:
@@ -361,14 +361,20 @@ Recommended fields for 0.8.8:
 - Territory prep decision.
 - Territory prep reason.
 - Territory prep amount.
-- Territory prep ETA before/after if available.
 - Army prep missing units.
 - Why Territory did not buy:
   - no visible fighting units,
   - no buyable fighting units,
-  - `eachProduction().territory` missing/zero,
+  - territory production missing/zero,
   - ROI below minimum,
   - protected resource,
   - Hatchery save-window,
   - Expansion save-window,
   - Clone Buffer hard lock,
+  - not selected by coordinator.
+
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: `docs/live-logs/2026-07-09-clean-start-game-observation.md` and `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` both identify misleading or insufficient diagnostics.
+> Supports: Observability must distinguish actual BUY reasons from advisor-only HOLD reasons and distinguish locked future lanes from active blockers.
+> Script implication: Any next code change should keep behavior and Strategy Inspector/export aligned.
