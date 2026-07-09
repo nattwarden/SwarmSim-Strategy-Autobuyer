@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.10
+// @version      0.8.11
 // @description  Methodical smart advisor/autobuyer with multi-lane coordination, territory starvation protection, twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -1987,6 +1987,13 @@ function getDisplayName(item) {
       twinUnlockLostProductionBankRatioPerHour: inspector.twinUnlockLostProductionBankRatioPerHour,
       twinUnlockLostProductionBankRatioLimit: inspector.twinUnlockLostProductionBankRatioLimit,
       twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe: inspector.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe,
+      twinUnlockPrepMeaningful: inspector.twinUnlockPrepMeaningful,
+      twinUnlockPrepProgressGainPercent: inspector.twinUnlockPrepProgressGainPercent,
+      twinUnlockPrepProgressGainRequiredPercent: inspector.twinUnlockPrepProgressGainRequiredPercent,
+      twinUnlockDeferredByParentStep: inspector.twinUnlockDeferredByParentStep,
+      twinUnlockParentStepPreferred: inspector.twinUnlockParentStepPreferred,
+      twinUnlockWhyParentStepWon: inspector.twinUnlockWhyParentStepWon,
+      twinUnlockWhyPrepDidNotWin: inspector.twinUnlockWhyPrepDidNotWin,
       cloneBufferMode: inspector.cloneBufferMode,
       cloneBufferTarget: inspector.cloneBufferTarget,
       cloneBufferCurrent: inspector.cloneBufferCurrent,
@@ -2201,6 +2208,13 @@ function getDisplayName(item) {
       twinUnlockLostProductionBankRatioPerHour: twinUnlockState?.lostProductionBankRatioPerHourText || "n/a",
       twinUnlockLostProductionBankRatioLimit: twinUnlockState?.lostProductionBankRatioLimitText || "n/a",
       twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe: twinUnlockState?.upgradeBuyAllowedDespiteRebuildUnsafe ? "yes" : "no",
+      twinUnlockPrepMeaningful: twinUnlockState?.prepMeaningful ? "yes" : "no",
+      twinUnlockPrepProgressGainPercent: twinUnlockState?.prepProgressGainPercentText || "n/a",
+      twinUnlockPrepProgressGainRequiredPercent: twinUnlockState?.prepProgressGainRequiredPercentText || "n/a",
+      twinUnlockDeferredByParentStep: twinUnlockState?.deferredByParentStep ? "yes" : "no",
+      twinUnlockParentStepPreferred: twinUnlockState?.parentStepPreferred ? "yes" : "no",
+      twinUnlockWhyParentStepWon: twinUnlockState?.whyParentStepWon || "none",
+      twinUnlockWhyPrepDidNotWin: twinUnlockState?.whyTwinPrepDidNotWin || "none",
       cloneBufferMode: cloneBufferState?.cloneBufferMode || "none",
       cloneBufferTarget: cloneBufferState?.cloneBufferTarget || "0",
       cloneBufferCurrent: cloneBufferState?.cloneBufferCurrent || "0",
@@ -2239,7 +2253,7 @@ function getDisplayName(item) {
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.10 keeps the narrow multi-lane coordinator and adds Territory army-seed scanning plus a clearer Guard Status Bar / Overseer UI while keeping auto-cast and auto-ascend off by default.",
+      futurePlanners: "0.8.11 keeps the narrow multi-lane coordinator and adds a meaningful Twin Prep gate so tiny prep no longer steals budget from a buyable parent-step path.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2345,6 +2359,13 @@ function getDisplayName(item) {
       ["Twin lost prod bank ratio /h", strategyInspector.twinUnlockLostProductionBankRatioPerHour || "n/a"],
       ["Twin lost prod bank ratio limit", strategyInspector.twinUnlockLostProductionBankRatioLimit || "n/a"],
       ["Twin BUY despite rebuild unsafe", strategyInspector.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || "no"],
+      ["Twin prep meaningful", strategyInspector.twinUnlockPrepMeaningful || "no"],
+      ["Twin prep gain", strategyInspector.twinUnlockPrepProgressGainPercent || "n/a"],
+      ["Twin prep meaningful gate", strategyInspector.twinUnlockPrepProgressGainRequiredPercent || "n/a"],
+      ["Twin deferred by parent", strategyInspector.twinUnlockDeferredByParentStep || "no"],
+      ["Parent preferred over twin", strategyInspector.twinUnlockParentStepPreferred || "no"],
+      ["Why parent-step won", strategyInspector.twinUnlockWhyParentStepWon || "none"],
+      ["Why twin prep did not win", strategyInspector.twinUnlockWhyPrepDidNotWin || "none"],
       ["Clone buffer mode", strategyInspector.cloneBufferMode || "none"],
       ["Clone buffer", `${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"})`],
       ["Clone debt", strategyInspector.cloneBufferDebt || "0"],
@@ -2508,7 +2529,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.10",
+      scriptVersion: "0.8.11",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2594,6 +2615,13 @@ function getDisplayName(item) {
       twinUnlockLostProductionBankRatioPerHour: strategyInspector?.twinUnlockLostProductionBankRatioPerHour || twinUnlockPlannerState?.lostProductionBankRatioPerHourText || "n/a",
       twinUnlockLostProductionBankRatioLimit: strategyInspector?.twinUnlockLostProductionBankRatioLimit || twinUnlockPlannerState?.lostProductionBankRatioLimitText || "n/a",
       twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe: strategyInspector?.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || (twinUnlockPlannerState?.upgradeBuyAllowedDespiteRebuildUnsafe ? "yes" : "no"),
+      twinUnlockPrepMeaningful: strategyInspector?.twinUnlockPrepMeaningful || (twinUnlockPlannerState?.prepMeaningful ? "yes" : "no"),
+      twinUnlockPrepProgressGainPercent: strategyInspector?.twinUnlockPrepProgressGainPercent || twinUnlockPlannerState?.prepProgressGainPercentText || "n/a",
+      twinUnlockPrepProgressGainRequiredPercent: strategyInspector?.twinUnlockPrepProgressGainRequiredPercent || twinUnlockPlannerState?.prepProgressGainRequiredPercentText || "n/a",
+      twinUnlockDeferredByParentStep: strategyInspector?.twinUnlockDeferredByParentStep || (twinUnlockPlannerState?.deferredByParentStep ? "yes" : "no"),
+      twinUnlockParentStepPreferred: strategyInspector?.twinUnlockParentStepPreferred || (twinUnlockPlannerState?.parentStepPreferred ? "yes" : "no"),
+      twinUnlockWhyParentStepWon: strategyInspector?.twinUnlockWhyParentStepWon || twinUnlockPlannerState?.whyParentStepWon || "none",
+      twinUnlockWhyPrepDidNotWin: strategyInspector?.twinUnlockWhyPrepDidNotWin || twinUnlockPlannerState?.whyTwinPrepDidNotWin || "none",
       cloneBufferMode: strategyInspector?.cloneBufferMode || cloneBufferPlannerState?.cloneBufferMode || "none",
       cloneBufferTarget: strategyInspector?.cloneBufferTarget || cloneBufferPlannerState?.cloneBufferTarget || "0",
       cloneBufferCurrent: strategyInspector?.cloneBufferCurrent || cloneBufferPlannerState?.cloneBufferCurrent || "0",
@@ -2741,6 +2769,13 @@ function getDisplayName(item) {
       `- Twin unlock lost production bank ratio /h: ${payload.twinUnlockLostProductionBankRatioPerHour || "n/a"}`,
       `- Twin unlock lost production bank ratio limit: ${payload.twinUnlockLostProductionBankRatioLimit || "n/a"}`,
       `- Twin unlock BUY despite rebuild unsafe: ${payload.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || "no"}`,
+      `- Twin prep meaningful: ${payload.twinUnlockPrepMeaningful || "no"}`,
+      `- Twin prep progress gain: ${payload.twinUnlockPrepProgressGainPercent || "n/a"}`,
+      `- Twin prep meaningful gate: ${payload.twinUnlockPrepProgressGainRequiredPercent || "n/a"}`,
+      `- Twin deferred by parent step: ${payload.twinUnlockDeferredByParentStep || "no"}`,
+      `- Parent step preferred over twin prep: ${payload.twinUnlockParentStepPreferred || "no"}`,
+      `- Why parent step won: ${payload.twinUnlockWhyParentStepWon || "none"}`,
+      `- Why twin prep did not win: ${payload.twinUnlockWhyPrepDidNotWin || "none"}`,
       `- Clone buffer mode: ${payload.cloneBufferMode || "none"}`,
       `- Clone buffer current/target: ${payload.cloneBufferCurrent || "0"} / ${payload.cloneBufferTarget || "0"}`,
       `- Clone buffer percent: ${payload.cloneBufferPercent || "n/a"}`,
@@ -4900,6 +4935,11 @@ function getDisplayName(item) {
         .dividedBy(100)
         .floor();
       const prepNum = decimalMin(plannerNum, maxByChunk, twinMissing);
+      const prepGainPercent = isPositive(twinRequiredRaw)
+        ? decimalToNumber(decimalFrom(prepNum).dividedBy(twinRequiredRaw).times(100), 0)
+        : 0;
+      const parentStepPreferred = !!(parentChoice && parentSupportsActionUnit && parentChoice.decision === "BUY");
+      const twinPrepMeaningful = twinNearEnough || prepGainPercent >= 5 || decimalFrom(prepNum).greaterThanOrEqualTo(twinMissing) || !parentStepPreferred;
 
       if (protectedPrepCost) {
         recordTwinUnlockPlannerState({
@@ -4917,6 +4957,13 @@ function getDisplayName(item) {
           paybackBypassed: false,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
+          prepMeaningful: false,
+          prepProgressGainPercent: prepGainPercent,
+          prepProgressGainRequiredPercent: 5,
+          deferredByParentStep: parentStepPreferred,
+          parentStepPreferred,
+          whyParentStepWon: parentStepPreferred ? parentChoice.reason : "none",
+          whyTwinPrepDidNotWin: parentStepPreferred ? `deferred: threshold too far and parent-step target path is buyable; prep gain ${trimNumber(prepGainPercent)}% of required is below 5% meaningful gate` : "none",
         });
       } else if (!isPositive(prepNum)) {
         recordTwinUnlockPlannerState({
@@ -4934,6 +4981,53 @@ function getDisplayName(item) {
           paybackBypassed: false,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
+          prepMeaningful: false,
+          prepProgressGainPercent: prepGainPercent,
+          prepProgressGainRequiredPercent: 5,
+          deferredByParentStep: parentStepPreferred,
+          parentStepPreferred,
+          whyParentStepWon: parentStepPreferred ? parentChoice.reason : "none",
+          whyTwinPrepDidNotWin: parentStepPreferred ? `deferred: threshold too far and parent-step target path is buyable; prep gain ${trimNumber(prepGainPercent)}% of required is below 5% meaningful gate` : "no safe chunk this run",
+        });
+      } else if (parentStepPreferred && !twinPrepMeaningful) {
+        const reason = `deferred: threshold too far and parent-step target path is buyable; prep gain ${trimNumber(prepGainPercent)}% of required is below 5% meaningful gate; prefer ${parentUnitName} for ${targetName}`;
+        recordTwinUnlockPlannerState({
+          candidate: twinUpgradeName,
+          decision: "HOLD",
+          reason,
+          target: twinDecisionTarget,
+          upgrade: twinUpgradeName,
+          costResource: twinCostUnitName,
+          current: formatSwarmNumber(twinCurrentRaw),
+          required: formatSwarmNumber(twinRequiredRaw),
+          missing: formatSwarmNumber(twinMissing),
+          prepCandidate: twinPrepCandidateName,
+          reserveRatio: NaN,
+          paybackBypassed: false,
+          postUpgradeRebuildRatio: NaN,
+          rebuildSafe: false,
+          prepMeaningful: false,
+          prepProgressGainPercent: prepGainPercent,
+          prepProgressGainRequiredPercent: 5,
+          deferredByParentStep: true,
+          parentStepPreferred: true,
+          whyParentStepWon: parentChoice.reason,
+          whyTwinPrepDidNotWin: reason,
+        });
+        recordAdvisor("HOLD", twinUpgradeName, reason);
+        addLaneCandidate({
+          lane: "Twin",
+          decision: "HOLD",
+          candidate: twinUpgradeName,
+          reason,
+          blockers: ["parent-step preferred", "twin prep too small"],
+          observations: [
+            `prep gain ${trimNumber(prepGainPercent)}% of required`,
+            `parent step ready: ${parentUnitName}`,
+          ],
+          score: unitCostScore(twinUpgrade) + 7800,
+          target: twinDecisionTarget,
+          resource: twinCostUnitName,
         });
       } else {
         const guard = getMeatChainPurchaseAnalysis(twinCostUnit, prepNum);
@@ -4978,6 +5072,13 @@ function getDisplayName(item) {
           paybackBypassed,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
+          prepMeaningful: twinPrepMeaningful,
+          prepProgressGainPercent: prepGainPercent,
+          prepProgressGainRequiredPercent: 5,
+          deferredByParentStep: false,
+          parentStepPreferred,
+          whyParentStepWon: parentStepPreferred ? parentChoice.reason : "none",
+          whyTwinPrepDidNotWin: decision === "HOLD" ? reason : "none",
         });
 
         if (decision === "BUY") {
@@ -5016,6 +5117,13 @@ function getDisplayName(item) {
               paybackBypassed,
               postUpgradeRebuildRatio: NaN,
               rebuildSafe: false,
+              prepMeaningful: twinPrepMeaningful,
+              prepProgressGainPercent: prepGainPercent,
+              prepProgressGainRequiredPercent: 5,
+              deferredByParentStep: false,
+              parentStepPreferred,
+              whyParentStepWon: parentChoice?.reason || "none",
+              whyTwinPrepDidNotWin: "none",
               executed: true,
             });
           }
@@ -6362,6 +6470,8 @@ function getDisplayName(item) {
     const postUpgradeRebuildRatio = Number(fields.postUpgradeRebuildRatio);
     const lostProductionBankRatioPerHour = Number(fields.lostProductionBankRatioPerHour);
     const lostProductionBankRatioLimit = Number(fields.lostProductionBankRatioLimit);
+    const prepProgressGainPercent = Number(fields.prepProgressGainPercent);
+    const prepProgressGainRequiredPercent = Number(fields.prepProgressGainRequiredPercent);
 
     twinUnlockPlannerState = {
       candidate: fields.candidate || twinUnlockPlannerState?.candidate || "none",
@@ -6391,6 +6501,15 @@ function getDisplayName(item) {
       lostProductionBankRatioLimit: Number.isFinite(lostProductionBankRatioLimit) ? lostProductionBankRatioLimit : null,
       lostProductionBankRatioLimitText: Number.isFinite(lostProductionBankRatioLimit) ? `${trimNumber(lostProductionBankRatioLimit * 100)}%/h` : "n/a",
       upgradeBuyAllowedDespiteRebuildUnsafe: !!fields.upgradeBuyAllowedDespiteRebuildUnsafe,
+      prepMeaningful: !!fields.prepMeaningful,
+      prepProgressGainPercent: Number.isFinite(prepProgressGainPercent) ? prepProgressGainPercent : null,
+      prepProgressGainPercentText: Number.isFinite(prepProgressGainPercent) ? `${trimNumber(prepProgressGainPercent)}%` : "n/a",
+      prepProgressGainRequiredPercent: Number.isFinite(prepProgressGainRequiredPercent) ? prepProgressGainRequiredPercent : null,
+      prepProgressGainRequiredPercentText: Number.isFinite(prepProgressGainRequiredPercent) ? `${trimNumber(prepProgressGainRequiredPercent)}%` : "n/a",
+      deferredByParentStep: !!fields.deferredByParentStep,
+      parentStepPreferred: !!fields.parentStepPreferred,
+      whyParentStepWon: fields.whyParentStepWon || twinUnlockPlannerState?.whyParentStepWon || "none",
+      whyTwinPrepDidNotWin: fields.whyTwinPrepDidNotWin || twinUnlockPlannerState?.whyTwinPrepDidNotWin || "none",
       executed: !!fields.executed,
     };
 
@@ -7593,7 +7712,8 @@ function getDisplayName(item) {
       !config.advisorOnly &&
       config.autoBuySafeDecisions &&
       !!twinUnlockPlannerState?.executed &&
-      twinUnlockPlannerState?.target === targetLabel;
+      twinUnlockPlannerState?.target === targetLabel &&
+      !!twinUnlockPlannerState?.prepMeaningful;
 
     if (parentStepExecuted) {
       const parentName = parentStepPlannerState?.candidate || "parent step";
@@ -8902,7 +9022,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.10 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.11 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -8910,7 +9030,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.10. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.11. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -9011,7 +9131,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.10. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.11. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
@@ -10069,6 +10189,33 @@ function getDisplayName(item) {
     if (meatFallbackChunkInput) {
       meatFallbackChunkInput.addEventListener("change", (e) => {
         config.meatFallbackChunkPercent = clampNumber(e.target.value, 0.1, 100, config.meatFallbackChunkPercent);
+        saveConfig();
+        refreshPanel();
+      });
+    }
+
+    const meatActionBypassInput = $("#kbc-meat-action-payback-bypass");
+    if (meatActionBypassInput) {
+      meatActionBypassInput.addEventListener("change", (e) => {
+        config.meatActionUnitPaybackBypass = e.target.checked;
+        saveConfig();
+        refreshPanel();
+      });
+    }
+
+    const meatActionMinReserveInput = $("#kbc-meat-action-min-reserve");
+    if (meatActionMinReserveInput) {
+      meatActionMinReserveInput.addEventListener("change", (e) => {
+        config.meatActionUnitMinReserveRatio = clampNumber(e.target.value, 1, 1000, config.meatActionUnitMinReserveRatio);
+        saveConfig();
+        refreshPanel();
+      });
+    }
+
+    const meatFallbackFloorInput = $("#kbc-meat-fallback-floor-action");
+    if (meatFallbackFloorInput) {
+      meatFallbackFloorInput.addEventListener("change", (e) => {
+        config.meatFallbackDoNotDropBelowActionUnit = e.target.checked;
         saveConfig();
         refreshPanel();
       });
