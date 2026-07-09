@@ -5,6 +5,12 @@ Status: Canonical strategy model for SwarmSim Strategy Autobuyer.
 
 This is the single active game model for AI/Codex/Copilot agents. Older dated game model files were transitional snapshots and should not be used as active source material.
 
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: `docs/README.md`, `docs/live-logs/2026-07-09-clean-start-game-observation.md`, `docs/live-logs/2026-07-09-clicked-mechanics-progression.md`
+> Supports: This file is the active strategy model, while the 2026-07-09 live logs are the active empirical context for clean start, sacrifice/rebuild, Faster/Twin distinctions, Hatchery/Expansion coupling, and territory/army observations.
+> Script implication: Future script reviews should compare code behavior against confirmed notes in this file and the live logs before changing strategy.
+
 ## 1. Source-of-truth policy
 
 GitHub is source of truth for code, docs, prompts, release notes, and live logs.
@@ -41,6 +47,12 @@ Current verified baseline:
 - prep Hive Networks toward the next Twin Neural Clusters threshold,
 - release Clone Buffer hard lock after POST_CLONE recovery is complete.
 
+> **Verification note — 2026-07-09**
+> Status: PARTIALLY CONFIRMED
+> Evidence: `docs/release-notes/SwarmSim-Strategy-Autobuyer-0.8.7-release-notes.md`, `docs/live-logs/2026-07-09-clicked-mechanics-progression.md`
+> Supports: 0.8.7 formalizes the observed Twin opportunity-cost problem by comparing lost production/hour against child-bank ratio.
+> Script implication: Keep the opportunity-cost bypass conservative. The general Twin/Faster distinction is live-confirmed; exact 0.8.7 late-state behavior should continue to be checked against exported bot logs.
+
 Next planned work:
 
 ```text
@@ -54,6 +66,12 @@ Reason for 0.8.8:
 - Ability Prep simultaneously reported `HOLD House of Mirrors — army prep missing` with top fighting units empty.
 - Screenshot showed fighting units were buyable.
 - This is a lane coordination/starvation problem, not a meat-chain problem.
+
+> **Verification note — 2026-07-09**
+> Status: PARTIALLY CONFIRMED
+> Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md`; `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms Territory can indirectly advance the larva engine through Expansion.
+> Supports: The current gap is lane coordination/starvation, not a request to make meat-chain buying more aggressive.
+> Script implication: Next script review should focus on proposal/coordinator behavior, army/territory diagnostics, hard blockers, and small safe chunks. Do not broaden ability casting or meat buyMax.
 
 ## 3. Safety defaults
 
@@ -96,6 +114,12 @@ Default automation that must not be introduced:
 - Aggressive buyMax in Smart Mode.
 - Blind highest-unit buying.
 
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: `reference/REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned.txt` now marks Clone, mutation, and ascension claims as HEURISTIC/OPEN rather than implementation-ready.
+> Supports: Conservative defaults are still the correct baseline because several late-game guide claims are not live-verified.
+> Script implication: Any future automation around Clone Larvae, House of Mirrors, Bats/Nightbugs, or Ascension must be explicit and separately validated.
+
 ## 4. Game principles
 
 SwarmSim is not a simple “buy the most expensive thing” game.
@@ -110,6 +134,12 @@ Every planner should ask:
 - How quickly can it recover?
 - Does it improve a concrete target, not just raw cost rank?
 - Does it block Hatchery, Expansion, Nexus, Clone Buffer, or a near threshold?
+
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` Queen purchase and Faster/Twin tests.
+> Supports: Queen consumes Drones before rebuilding through passive Drone production; Faster upgrades sacrifice producer bank but multiply remaining production; Twin upgrades can sacrifice parent production for hatch conversion.
+> Script implication: Keep reserve/rebuild/payback and target-path checks as core planner rules. Do not implement blind highest-visible-unit purchase logic.
 
 ## 5. Meat-chain names
 
@@ -174,6 +204,12 @@ Required lanes:
    - Clone Buffer debt/protection/spendable larvae.
    - No default Clone Larvae cast.
 
+> **Verification note — 2026-07-09**
+> Status: PARTIALLY CONFIRMED
+> Evidence: `docs/live-logs/2026-07-09-clean-start-game-observation.md` confirms locked/unavailable lanes can be observability noise at clean start; `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms territory can unlock Expansion and therefore affect the larva engine.
+> Supports: Lanes need coordination and diagnostics. Future/locked lanes should not appear as active blockers before their systems are visible.
+> Script implication: Keep lane separation, but improve coordinator/diagnostic behavior so locked future lanes, active blockers, and starved lanes are distinguishable.
+
 ## 7. Multi-Lane Coordinator
 
 The next architecture step is a central coordinator/arbiter that receives proposals from lanes.
@@ -222,6 +258,12 @@ Hard blockers override lane desire:
 - Auto-cast disabled for abilities.
 - Explicit unsafe reserve/rebuild/payback guards.
 
+> **Verification note — 2026-07-09**
+> Status: PARTIALLY CONFIRMED
+> Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` reports meat dominance with Territory `OBSERVE none`; live mechanics confirm Territory can matter through Expansion.
+> Supports: A coordinator is the right design direction, but exact scoring and action cadence still need script/live-log validation.
+> Script implication: Implement coordinator changes narrowly, preserving hard blockers and conservative defaults.
+
 ## 8. Anti-starvation rule
 
 A lane should not become permanently dead simply because another lane always has a safe action.
@@ -247,6 +289,12 @@ unless Engine/Clone/Energy hard blockers say no.
 
 This is not permission to be aggressive. It is permission to avoid permanent lane starvation.
 
+> **Verification note — 2026-07-09**
+> Status: PARTIALLY CONFIRMED
+> Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` documents a 20/20 meat-action run with Territory `OBSERVE none` while army prep was missing.
+> Supports: Anti-starvation is needed as a planner coordination concept.
+> Script implication: Only allow small safe Army/Territory actions after hard blockers and diagnostics. This is not a buyMax or aggression permission.
+
 ## 9. Army / Territory lane requirements
 
 The Army/Territory planner must not rely only on generic unit candidate flow winning over meat.
@@ -265,10 +313,10 @@ It should consider a buy only when:
 Suggested conservative config for future implementation:
 
 ```js
-territoryPrepPlanner: true
-territoryPrepChunkPercent: 5
-territoryStarvationRunThreshold: 12
-territoryArmySeedWhenEmpty: true
+territoryPrepPlanner: true,
+territoryPrepChunkPercent: 5,
+territoryStarvationRunThreshold: 12,
+territoryArmySeedWhenEmpty: true,
 ```
 
 These defaults should be conservative. Do not buy max.
@@ -291,6 +339,12 @@ or:
 ```text
 HOLD Army Prep — Hatchery save-window active
 ```
+
+> **Verification note — 2026-07-09**
+> Status: PARTIALLY CONFIRMED
+> Evidence: `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms fighting units produce territory and Expansion uses territory to increase larvae; `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` reports missing top fighting units while House of Mirrors remains advisor-only.
+> Supports: Army/Territory lane needs independent scanning and better diagnostics.
+> Script implication: A small army seed may be appropriate only when safe and clearly explained; House of Mirrors must not auto-cast.
 
 ## 10. Diagnostics requirements
 
@@ -318,115 +372,3 @@ Recommended fields for 0.8.8:
   - Hatchery save-window,
   - Expansion save-window,
   - Clone Buffer hard lock,
-  - not selected by coordinator.
-
-Top-level Strategy Inspector reason must match the action actually selected.
-
-If `Decision: BUY`, top-level `Reason` should not show an unrelated Ability HOLD reason.
-
-## 11. Meat lane requirements
-
-Keep 0.8.7 behavior intact:
-
-- Twin threshold prep can buy safe Hive Network prep even below near-threshold ratio when threshold prep is reachable.
-- Twin upgrade opportunity-cost bypass is allowed only when lost child-resource production is negligible versus current child-resource bank.
-- Rebuild buffer remains enforced when opportunity cost is not negligible.
-- Parent-step conversion may bypass normal payback only when it advances a target-path parent step and reserve is safe.
-- Same-run lower filler guards should prevent immediate action-unit filler after target-path conversion or twin threshold prep.
-
-Meat lane should remain powerful, but not consume all coordinator attention forever.
-
-## 12. Energy / Nexus strategy
-
-Nexus remains high priority until `nexusTarget` is met.
-
-Lepidoptera strategy:
-
-- Before Nexus 4: HOLD Lepidoptera.
-- Between Nexus 4 and 5: use ROI and the 572 soft target as sanity check.
-- After Nexus 5: buy only when a dedicated energy planner says ROI is useful; otherwise OBSERVE.
-- Stop or downweight as bonus approaches `lepidopteraStopAtBoostPercent`.
-
-Nightbugs:
-
-- HOLD by default unless storage/offline mode or target cap explicitly requires them.
-
-Bats:
-
-- HOLD by default unless an explicit ability planner is active.
-
-Abilities:
-
-- Do not auto-cast by default.
-- Ability Prep can PLAN/HOLD for observability.
-
-## 13. Clone lane
-
-Clone Larvae is a cascade amplifier, not a generic energy dump.
-
-Default:
-
-- `autoCastAbilities: false`.
-- Clone Prep can cocoon small chunks as side-task.
-- Clone Buffer protects larvae after Clone Larvae was manually used.
-
-The Clone Buffer must use Decimal arithmetic end-to-end:
-
-```js
-const rawDebt = target.minus(cocoons);
-const debt = rawDebt.greaterThan(0) ? rawDebt : newDecimal(0);
-const desiredProtected = debt.times(protectRatio);
-const larvaeProtected = decimalMin(larvae, desiredProtected);
-const rawSpendable = larvae.minus(larvaeProtected);
-const spendableLarvae = rawSpendable.greaterThan(0) ? rawSpendable : newDecimal(0);
-```
-
-## 14. Territory and Expansion strategy
-
-Expansion is a global larvae engine upgrade and usually more valuable than normal unit growth.
-
-Territory units should be evaluated by:
-
-- extra territory/sec,
-- ETA improvement toward next Expansion,
-- meat/larvae cost,
-- whether Hatchery is near,
-- whether the unit also seeds House of Mirrors army value.
-
-A territory action should be small and explainable.
-
-## 15. Validation checklist for code changes
-
-After any script change:
-
-```bash
-node --check src/SwarmSim-Strategy-Autobuyer.user.js
-```
-
-Then verify:
-
-- Correct `@version`.
-- Correct `scriptVersion` and panel title if present.
-- No stale active UI version strings.
-- `autoCastAbilities` remains false unless explicitly changed.
-- `autoAscend` remains false unless explicitly changed.
-- House of Mirrors is not cast by default.
-- Clone Larvae is not cast by default.
-- Nightbug/Bat auto-buy defaults are not introduced.
-- Smart Mode does not use buyMax for meat-chain or army.
-- Hatchery/Expansion save-window can block Army/Territory.
-- Clone Buffer hard lock can block Army/Territory.
-- Strategy Inspector/export includes new lane diagnostics.
-
-## 16. Agent reading order
-
-Agents should read:
-
-1. `AI.md`
-2. `docs/SWARMSIM_GAME_MODEL.md`
-3. `src/SwarmSim-Strategy-Autobuyer.user.js`
-4. Relevant prompt in `docs/prompts/`
-5. Relevant release notes/live logs if needed
-6. Reference files only for strategy/math sanity checks
-
-Do not read old dated game model files as active truth.
