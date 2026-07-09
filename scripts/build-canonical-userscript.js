@@ -20,6 +20,14 @@ function readBuildConfig() {
   return config;
 }
 
+function readTextFile(relPath) {
+  const fullPath = path.join(root, relPath);
+  if (!fs.existsSync(fullPath)) {
+    throw new Error(`Missing build source file: ${fullPath}`);
+  }
+  return fs.readFileSync(fullPath, "utf8");
+}
+
 function extractSections(source) {
   const metadataMatch = source.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/u);
   if (!metadataMatch || typeof metadataMatch.index !== "number") {
@@ -43,12 +51,37 @@ function resolvePart(kind, sections) {
   throw new Error(`Unsupported build part kind: ${kind}`);
 }
 
-function buildCanonicalContent(source, config) {
-  const eol = source.includes("\r\n") ? "\r\n" : "\n";
-  const sections = extractSections(source);
+function buildCanonicalContent(config) {
+  const defaultSource = readTextFile(config.source);
+  const eol = defaultSource.includes("\r\n") ? "\r\n" : "\n";
+  const sectionCache = new Map();
+
+  function sectionsFor(relPath) {
+    const key = relPath || config.source;
+    if (!sectionCache.has(key)) {
+      sectionCache.set(key, extractSections(readTextFile(key)));
+    }
+    return sectionCache.get(key);
+  }
+
+  function resolveConfiguredPart(part) {
+    const kind = String(part?.kind || "").trim();
+    if (!kind) {
+      throw new Error("Build part is missing kind.");
+    }
+
+    if (kind === "file") {
+      const relPath = String(part.path || "").trim();
+      if (!relPath) throw new Error("Build part kind=file requires path.");
+      return readTextFile(relPath).replace(/(?:\r?\n)+$/u, "");
+    }
+
+    const source = String(part?.source || config.source).trim();
+    return resolvePart(kind, sectionsFor(source));
+  }
 
   const built = config.parts
-    .map((part) => resolvePart(part.kind, sections))
+    .map((part) => resolveConfiguredPart(part))
     .join(`${eol}${eol}`);
 
   return `${built}${eol}`;
@@ -68,9 +101,8 @@ function main() {
     throw new Error(`Missing source userscript: ${sourcePath}`);
   }
 
-  const source = fs.readFileSync(sourcePath, "utf8");
   const currentCanonical = fs.readFileSync(canonicalPath, "utf8");
-  const built = buildCanonicalContent(source, config);
+  const built = buildCanonicalContent(config);
 
   if (mode === "write") {
     if (currentCanonical !== built) {

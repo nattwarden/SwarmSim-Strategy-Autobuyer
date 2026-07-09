@@ -233,6 +233,10 @@ Build assembly config:
 scripts/canonical-build.config.json
 ```
 
+Build engine supports configured parts across sources (`metadata`, `runtime`,
+and `file`) to enable gradual lane extraction without changing the canonical
+runtime contract.
+
 This includes:
 
 - `node --check src/SwarmSim-Strategy-Autobuyer.user.js`
