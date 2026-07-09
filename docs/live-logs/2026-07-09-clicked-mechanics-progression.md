@@ -9,6 +9,12 @@ The run used the live game UI and, for later milestones, the game's own exposed
 model to slow down or accelerate the isolated instance. The user's real save was
 not used.
 
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Direct clicked gameplay in this file.
+> Supports: This file is empirical evidence for sacrifice/rebuild, Faster/Twin differences, Hatchery/Expansion coupling, and early Territory mechanics.
+> Script implication: Use this file to validate mechanics before changing strategy logic.
+
 ## UI Structure Observed
 
 - The top bar shows global resources and global upgrade actions.
@@ -43,6 +49,12 @@ Observed from clean start:
   - Hatchery count became `1`
   - larvae production increased through the hidden hatchery engine
 
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: This section plus `docs/live-logs/2026-07-09-clean-start-game-observation.md`.
+> Supports: Hatchery is an early engine priority.
+> Script implication: Keep Hatchery save-window protection.
+
 ## Queen Unlock And Cost
 
 Queen became visible at exactly `10 drones`.
@@ -65,6 +77,12 @@ After buying the first Queen:
 - Drone bank dropped sharply because `100 drones` were consumed
 - Queen generated `2 drones/sec`
 - Meat/sec recovered as the new Drones accumulated
+
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Observed Queen cost and post-buy recovery in this section.
+> Supports: SwarmSim is a sacrifice/rebuild game, not a simple highest-cost purchase game.
+> Script implication: Preserve reserve, rebuild, target-aware planning, and payback logic.
 
 ## Drone Upgrades
 
@@ -92,6 +110,12 @@ Finding:
 producer. They still consume a bank of the same unit, so a bot should respect
 rebuild/payback, but the mechanical direction is clearly favorable.
 
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Observed before/after production in this section.
+> Supports: Faster upgrades are producer multipliers.
+> Script implication: Score Faster upgrades with rebuild/payback rather than treating all unit-consuming upgrades as bad.
+
 ### Twin Drones
 
 Observed before buying:
@@ -117,7 +141,13 @@ It improves manual larvae-to-unit conversion, but it does not improve parent
 production of that unit. It is valuable when larvae conversion into that unit is
 the bottleneck, especially while rebuilding toward a higher unit requirement.
 It becomes less important when the parent unit already produces far more of the
-child unit than the run can usefully buy.
+lower unit than the run can usefully buy.
+
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Observed game text and post-buy production change in this section.
+> Supports: Twin upgrades are hatch-conversion tools, not passive production multipliers.
+> Script implication: Twin upgrades need recovery or opportunity-cost checks and should not be bought merely because they are buyable.
 
 ## Territory Unlock
 
@@ -189,6 +219,12 @@ Territory is not a side objective by itself. Its early purpose is to buy
 Expansion, which multiplies the larva engine. This means a safe Army/Territory
 action can be an Engine action indirectly when Expansion is close or buyable.
 
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Observed fighting-unit territory production and first Expansion before/after larva velocity in this section.
+> Supports: Hatchery and Expansion are coupled larva-engine mechanics; Territory can indirectly advance the Engine lane.
+> Script implication: Territory/Army candidates should be evaluated by effect on Expansion and later prep, not only raw territory/sec.
+
 ## Follow-Up Tests
 
 ### Faster Queens
@@ -212,6 +248,12 @@ Finding:
 `Faster Queens` confirmed the same pattern as `Faster Drones`: it sacrifices
 some of the producer bank but directly multiplies the remaining producers. Even
 after losing `66 queens`, total Drone production increased.
+
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Observed before/after total Drone production in this section.
+> Supports: Faster upgrades can improve total production even after sacrificing part of the producer bank.
+> Script implication: Faster upgrades should be scored with rebuild/payback, not dismissed just because they consume units.
 
 ### Twin Drones Diminishing Value
 
@@ -238,325 +280,8 @@ This was a bad trade in this state. The upgrade gained roughly `+4.4` possible
 manual Drones/sec from larvae conversion but lost `-40` passive Drones/sec from
 the sacrificed Queens.
 
-This confirms that `Twin X` should not be treated as always-good. Its value
-depends on whether manual larvae conversion is still a meaningful bottleneck.
-
-### Twin Stingers
-
-Observed before buying:
-
-- Stingers: `338`
-- Territory production: about `1,064 territory/sec`
-- `Twin Stingers (0)` cost: `100 meat + 1 larva`
-
-After buying:
-
-- Stingers stayed `338`
-- Territory production stayed about `1,064 territory/sec`
-- future Stinger hatching changed to `x2 twins`
-
-Finding:
-
-`Twin Stingers` confirmed the same Twin pattern outside the meat chain. It did
-not improve existing Stinger production. It only improved future larva-to-unit
-conversion.
-
-### Military Chain And Arachnomorphs
-
-Observed next military unit:
-
-- Internal unit name: `spider`
-- UI label/route slug: `arachnomorph`
-- URL: `#/tab/territory/unit/arachnomorph`
-- cost: about `151M meat + 1 larva`
-- production: about `141 territory/sec`
-
-Buying `4 arachnomorphs`:
-
-- consumed about `606M meat`
-- increased territory production from about `1,064/sec` to about `1,631/sec`
-- left existing Stingers unchanged
-
-Important route/model finding:
-
-The internal model name and UI route slug can differ. The bot should not assume
-the internal key is always the visible route segment.
-
-### Twin Carry-Forward Test
-
-`Twin Stingers` did not carry forward into Arachnomorphs.
-
-After `Twin Stingers (1)`, the Arachnomorph page still showed:
-
-- `Twin Arachnomorphs (0)`
-- normal Arachnomorph hatching before buying its own Twin upgrade
-
-Buying `Twin Arachnomorphs`:
-
-- did not change existing Arachnomorph count
-- did not change existing territory/sec
-- changed future Arachnomorph hatching to `x2 twins`
-
-Finding:
-
-Military Twin upgrades are per-unit conversion upgrades. They do not upgrade the
-next military unit and do not multiply existing territory/sec.
-
-### Military Suffix / Empower Note
-
-Player observation: later military units can appear as names like
-`Arachnomorph II`.
-
-Source cross-check:
-
-- Upstream changelog describes empowered military units as higher-tier versions
-  with suffixes, for example `Swarmling II`.
-- Upstream effect code has a `suffix` effect that romanizes the tier.
-- Upstream upgrade data has `swarmlingempower`, `stingerempower`,
-  `spiderempower`, and similar upgrades.
-
-Controlled isolated-model test:
-
-- before `spiderempower`:
-  - Arachnomorph suffix: empty
-  - `Twin Arachnomorphs`: `1`
-  - Arachnomorph twin multiplier: `x2`
-  - Arachnomorph count: `4`
-- after buying `spiderempower` with injected test resources:
-  - Arachnomorph suffix became `II`
-  - `Twin Arachnomorphs` stayed `1`
-  - Arachnomorph twin multiplier stayed `x2`
-  - Arachnomorph count became `0`
-  - Arachnomorph territory production per unit jumped massively
-  - Arachnomorph meat cost also jumped massively
-
-Finding:
-
-The player's correction is right: Twin upgrades on the same military unit carry
-through that unit's empower/suffix tier. `Twin Arachnomorphs` remains active when
-Arachnomorph becomes `Arachnomorph II`.
-
-This is different from the normal military unit chain. `Twin Stingers` does not
-carry into Arachnomorphs, but `Twin Arachnomorphs` does carry into
-Arachnomorph II because it is the same internal unit (`spider`) with a suffix.
-
-Player strategic note:
-
-Military empower is always a tradeoff, but when a military unit has fallen to
-the bottom of the useful territory/sec list, its existing count may contribute
-almost nothing relative to current targets. In that state, resetting that unit
-to `0` via empower can be acceptable because:
-
-- the old tier is already low-value,
-- the same unit's Twin multiplier carries forward,
-- the new suffix tier has much higher territory production per unit,
-- future larvae spent on that unit buy into the stronger tier.
-
-This is different from blindly buying every Twin. For military empower, the key
-question is whether the old tier's current territory/sec is still meaningful
-relative to the new tier and current Expansion/House of Mirrors goals.
-
-### House Of Mirrors Source Note
-
-Open hypothesis from player observation:
-
-Military Twin upgrades may still be worth buying even when direct territory/sec
-impact is zero, because cheap lower-tier military units can matter later if
-upgrades carry forward into stronger military chains or if House of Mirrors
-copies/scales army state. This has not been proven in the clicked clean-start
-run yet.
-
-Source cross-check:
-
-- Upstream `clonearmy` is labeled `house of mirrors`.
-- It requires `nexus = 5`.
-- It costs `2500 energy`.
-- Its effect is `compoundUnit x2` across military units including swarmling,
-  stinger, arachnomorph, culicimorph, locust, roach, giant arachnomorph,
-  chilopodomorph, wasp, devourer, and goon.
-
-This confirms that House of Mirrors doubles army units that already exist. It
-does not prove that buying every cheap military unit is good. The value depends
-on the territory/sec or later-tier value of the army being doubled and on energy
-opportunity cost.
-
-Controlled isolated-model test:
-
-Test setup:
-
-- added `5 nexus`
-- added enough Energy for the ability
-- added selected army counts:
-  - `10 swarmlings`
-  - `20` extra stingers on top of the existing stinger bank
-  - `3 arachnomorphs`
-  - `1 locust`
-  - left several other army units at `0`
-
-Before casting:
-
-- House of Mirrors was visible and buyable.
-- Energy was capped at `50,000` in this test state.
-- Existing army examples:
-  - Swarmling: `10`
-  - Stinger: `358`
-  - Arachnomorph: `3`
-  - Locust: `1`
-  - Mosquito/Roach/etc: `0`
-
-After casting House of Mirrors:
-
-- Energy dropped from `50,000` to `47,500`.
-- House of Mirrors count became `1`.
-- Existing army doubled:
-  - Swarmling: `10 -> 20`
-  - Stinger: `358 -> 716`
-  - Arachnomorph: `3 -> 6`
-  - Locust: `1 -> 2`
-- Zero-count army stayed zero:
-  - Mosquito: `0 -> 0`
-  - Roach: `0 -> 0`
-  - other missing tiers stayed `0`
-- Territory velocity doubled with the army value.
-
-Finding:
-
-House of Mirrors is pure multiplication of existing army state. It does not seed
-missing army units. This makes pre-Mirror army composition important, but only
-for units that have meaningful count or production value before the cast.
-
-Script implication:
-
-The bot should not auto-cast House of Mirrors by default. Advisor logic can,
-however, report whether the current army state has useful Mirror value and which
-important army tiers are still zero.
-
-Do not encode this as strategy until tested against:
-
-- the military unit upgrade chain,
-- how empower/suffix tiers change the value of already-owned Twin upgrades,
-- House of Mirrors behavior,
-- energy cost/opportunity cost,
-- whether cheap lower-tier army buys improve a concrete Expansion or ability
-  prep target.
-
-### Hatchery Versus Expansion
-
-Observed before buying the next engine upgrades:
-
-- Hatchery count: `1`
-- Expansion count: `1`
-- Larva velocity: `2.2 larvae/sec`
-- next Hatchery cost: `3,000 meat`
-- next Expansion cost: `24 territory`
-
-After buying Hatchery:
-
-- Hatchery count: `2`
-- Expansion count: `1`
-- Larva velocity: `3.3 larvae/sec`
-
-After buying Expansion:
-
-- Hatchery count: `2`
-- Expansion count: `2`
-- Larva velocity: `3.63 larvae/sec`
-- Expansion bonus shown as `x1.21`
-
-Finding:
-
-Hatchery adds base larva production. Expansion multiplies the current hatchery
-base. Their value is coupled:
-
-- Hatchery makes future Expansion levels stronger.
-- Expansion makes all existing Hatchery levels stronger.
-- They spend different resources, so blocking one lane can unintentionally
-  slow the other.
-
-## Mechanical Rules Learned
-
-1. The game repeatedly asks the player to sacrifice an existing productive bank
-   to unlock a stronger production layer.
-
-2. The correct question is not only whether a purchase is affordable. It is:
-   - what bank is sacrificed?
-   - what production is lost?
-   - what production or conversion improves?
-   - how quickly does the sacrificed layer recover?
-   - does the purchase advance the current unlock path?
-
-3. `Faster X` and `Twin X` must be modeled differently.
-
-4. `Faster X` generally improves a producer directly and is usually favorable
-   when the sacrifice is recoverable.
-
-5. `Twin X` improves manual purchase conversion, not passive parent production.
-   It can be critical early on a path and later become low-value or irrelevant.
-
-6. Top-bar upgrade availability matters. A bot that only scans the open unit's
-   hatch buttons can miss high-impact upgrades.
-
-7. Dynamic button labels are a weak automation target. The game model and
-   target URLs such as `?num=@100` are better signals than literal button text.
-
-8. Territory purchases should be evaluated by their effect on Expansion timing,
-   not only by whether they increase territory/sec.
-
-9. A `Twin X` upgrade can be actively bad when it sacrifices parent production
-   that is already much larger than the manual larva conversion it improves.
-
-10. Hatchery and Expansion form a coupled engine pair: base production plus
-    multiplier. Strategy should reason about their combined marginal effect.
-
-11. Military Twin upgrades are per-unit hatch conversion. They do not carry
-    forward into a different military unit in the normal chain, such as Stinger
-    to Arachnomorph. They do carry through empower/suffix tiers of the same
-    internal unit, such as Arachnomorph to Arachnomorph II.
-
-12. House of Mirrors doubles all existing army units, so zero-count army tiers
-    stay zero. Army seeding may matter later, but only if the seeded units have
-    meaningful value relative to energy opportunity cost.
-
-13. Military empower can be correct even though it resets the unit count, when
-    the old suffix tier's territory/sec is negligible and the preserved Twin
-    multiplier makes rebuilding the stronger tier efficient.
-
-14. House of Mirrors is a multiplier on current army composition. It rewards
-    having useful nonzero army tiers before the cast, but it does not create
-    missing tiers.
-
-## Implications For Autobuyer
-
-- Add a distinct upgrade-priority concept instead of treating every upgrade as
-  generic.
-- Treat `Faster` upgrades as producer multipliers with payback/rebuild checks.
-- Treat `Twin` upgrades as conversion/rebuild tools, not permanent production
-  multipliers.
-- Parent production must be part of Twin value:
-  - if the parent already overproduces the child unit, Twin value drops
-  - if the child unit is needed for a near unlock, Twin value rises
-- Upgrade actions should be considered alongside unit actions in the lane
-  coordinator.
-- Territory lane should report whether a military purchase advances Expansion
-  and whether Expansion is already buyable.
-- Twin upgrade planner should compare:
-  - added manual conversion rate from the new twin multiplier
-  - lost parent production from the sacrificed parent units
-  - whether the child unit is needed for a near unlock
-- Engine planner should evaluate Hatchery and Expansion together instead of as
-  unrelated upgrades.
-- Army planner should distinguish:
-  - normal military unit unlocks, such as Stinger to Arachnomorph
-  - per-unit Twin conversion upgrades
-  - later empower/suffix tiers such as `Arachnomorph II`, which preserve that
-    same unit's Twin multiplier while resetting/upshifting the unit tier
-  - House of Mirrors prep, which doubles existing army counts but is locked
-    behind Nexus 5 and energy
-- Military empower planner should compare old-tier territory/sec lost against
-  the stronger suffix tier's rebuild speed and value toward Expansion or House
-  of Mirrors prep.
-- Diagnostics should say whether an upgrade was skipped because:
-  - cost bank is protected
-  - payback/rebuild is poor
-  - parent production already dominates
-  - a nearer unlock/save-window has priority
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Observed before/after hatch multiplier and passive Queen production in this section; `docs/release-notes/SwarmSim-Strategy-Autobuyer-0.8.7-release-notes.md` formalizes a conservative opportunity-cost comparison.
+> Supports: Twin upgrades need state-sensitive opportunity-cost checks.
+> Script implication: 0.8.7-style lost-production-per-hour vs bank ratio is justified. Do not replace it with simple buyable-state logic.
