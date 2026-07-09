@@ -1,217 +1,136 @@
 # AI.md — SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-script-0.8.7-indexed
-Status: Project source map for ChatGPT/Codex/AI agents.
+Version: 2026-07-09-canonical-0.8.8-planning
+Status: Project source map for ChatGPT/Codex/Copilot/AI agents.
 
-## Syfte
+## Purpose
 
-Den här filen beskriver vilka filer som hör till SwarmSim-projektet och hur en AI-assistent, Codex eller kodagent ska använda dem.
+This file tells AI agents which project files to trust, in what order to read them, and which rules must not be violated.
 
-Målet är att undvika att agenten gissar, bygger mot fel version eller blandar ihop faktisk script-source, spelmodell/strategisk sanning, externa referenser och äldre backupmaterial.
+The goal is to avoid building from old uploaded scripts, stale release copies, or transitional game-model snapshots.
 
-## Primär läsordning
+## Primary reading order
 
 1. `AI.md`
-2. `docs/SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt`
+2. `docs/SWARMSIM_GAME_MODEL.md`
 3. `src/SwarmSim-Strategy-Autobuyer.user.js`
-4. Relevanta referenser vid behov:
+4. Relevant prompt in `docs/prompts/`
+5. Relevant release notes or live logs if needed
+6. Reference files only for strategy/math sanity checks:
    - `reference/REFERENCE_SwarmSim_ichbinsisyphos_2015.txt`
    - `reference/REFERENCE_SwarmSim_featherwinglove_reddit_strategy_2015.txt`
    - `reference/REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned.txt`
 
-Från och med 0.8.0 är `src/SwarmSim-Strategy-Autobuyer.user.js` den enda kanoniska scriptsourcen.
-
 ## Source-of-truth hierarchy
 
-### 1. Strategisk sanning
-
-`docs/SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt`
-
-Detta styr önskat beteende för Smart Mode, Advisor, Energy/Nexus, Meat-chain, reserve/payback, Cascade/Twin-riktning och target-aware upgrade/twin support.
-
-### 2. Faktisk kodbas
-
-`src/SwarmSim-Strategy-Autobuyer.user.js`
-
-Aktuell Tampermonkey-source (kanonisk och enda körbara scriptsource).
-
-### 3. Dokumentation och releasehistorik
-
-- Dokumentation finns i `.md`-filer.
-- `releases/` innehåller dokumentation (README/release notes), inte scriptkopior.
-- Versionerad releasehistorik hanteras via Git commits/tags.
-
-Policy från 0.8.0 och framåt:
-
-- Ingen `.txt` script-mirror.
-- Ingen duplicerad `.user.js` i `releases/`.
-- Installationskälla för Tampermonkey är alltid `src/SwarmSim-Strategy-Autobuyer.user.js` vid rätt tag/commit.
-
-Tekniska fakta:
-
-- Script: SwarmSim Strategy Autobuyer
-- Version: 0.8.5
-- Körs på `swarmsim.com`, `www.swarmsim.com`, `swarmsim.github.io`
-- Exponerar botten som `window.kbcSwarmBot`
-- Använder Angular-services: `game`, `commands`, `$rootScope`
-
-## Viktiga implementerade delar
-
-0.8-serien innehåller:
-
-- Smart Mode
-- Advisor-logg
-- Purchase-logg
-- Strategy Bar
-- separata Advisor- och Purchase-fönster
-- AI-vänlig Markdown/JSON-export
-- Strategy Inspector med `whyWaiting`
-- Larva Engine Priority
-- Production Upgrade-prioritet
-- Energy Strategy
-- Nexus target
-- Lepidoptera ROI
-- Nightbug/Bat HOLD-advisor i default Smart Mode
-- Clone Larvae cocoon prep, side-task only
-- Territory ROI med minimum-improvement guard
-- Meat Goal Planner med lookahead
-- Meat-chain reserve/payback guard
-- Twin Prep med recovery-buffer
-- Meat fallback queue
-- Stall breaker diagnostics
-- 0.7.7 active meat-action fallback floor
-- 0.7.8 active action payback bypass fix
-- 0.7.9 target-aware upgrade/twin support planner
-- 0.8.0 unlock planner
-- 0.8.0 clone buffer planner
-- 0.8.0 ability prep planner (advisor-only)
-- 0.8.1 clone buffer target-source hotfix
-- 0.8.1 unlock candidate hotfix
-- 0.8.2 clone buffer post-clone release-threshold hotfix
-- 0.8.3 parent-step conversion hotfix
-- 0.8.4 twin unlock threshold planner hotfix
-- 0.8.5 twin unlock cost resource detection hotfix
-- 0.8.7 twin upgrade opportunity-cost bypass hotfix
-
-## Nytt i 0.8.0
-
-0.8.0 bygger vidare på 0.7.9 och adresserar nästa lucka i post-Nexus-läget: scriptet behöver kunna väga unlock-värde, clone-buffer-skydd och ability-prep utan att bli aggressivt.
+### 1. Actual implementation
 
 ```text
-twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying
+src/SwarmSim-Strategy-Autobuyer.user.js
 ```
 
-0.8.0 lägger därför till:
+This is the current Tampermonkey source and the only executable script source.
 
-- Unlock Planner för target-path parent-steps med konservativ payback-bypass endast när unlock-värde är konkret och reserve är trygg.
-- Clone Buffer Planner med lägena BUILDUP, POST_CLONE_LOCK och MATURE.
-- Ability Prep Planner i advisor-läge (PLAN/HOLD), utan default auto-cast.
-- Globala larvae-spending guards som respekterar `cloneBufferSpendableLarvae`.
-
-0.8.1 är en hotfix ovanpå 0.8.0. Den ändrar inte strategin, men rättar två felaktiga planner-beslut:
-
-- Clone Buffer POST_CLONE_LOCK använder faktisk Clone Larvae-bank/debt när den finns, i stället för att falla tillbaka till full cap.
-- Unlock Planner använder aktuell action-enhet som kandidat och rapporterar bottleneck-resursen korrekt.
-
-0.8.2 är en hotfix ovanpå 0.8.1. Den ändrar inte strategin och ändrar inte säkra defaults, men rättar post-clone tail-chasing i Clone Buffer Planner:
-
-- POST_CLONE_LOCK har nu tydlig completion-condition (percent/debt-ratio/absolut liten skuld).
-- Hard lock släpps när återhämtning är effektivt klar i stället för att hårdlåsa vid avrundat 100%.
-- POST_CLONE_LOCK använder snapshotad actual clone bank/debt target-källa för att undvika rörlig måljakt varje tick.
-- Inspector/export visar nu recovery complete, completion threshold, target source och hard lock status.
-
-0.8.3 är en hotfix ovanpå 0.8.2. Den ändrar inte strategin och ändrar inte säkra defaults, men rättar endless action-unit filler i unlock-läget:
-
-- Unlock Planner kan nu välja direkt target-path parent step (t.ex. Neural Cluster över Hive Neuron) när parent-steget är buyable och reserv är trygg.
-- Parent-step payback bypass är konservativ och begränsad till direkt parent-step conversion med tydlig reserve-tröskel.
-- Parent-step conversion körs före generell action-unit filler och fallback i samma run.
-- Inspector/export visar parent-step candidate/decision/reason/target/action/cost/reserve/bypass/supports-action.
-
-0.8.4 är en hotfix ovanpå 0.8.3. Den ändrar inte säkra defaults och breddar inte strategin, men lägger till en smal Twin Unlock Threshold Planner:
-
-- Plannern kan förbereda en konkret twin-tröskel (t.ex. Twin Neural Clusters vid 1000 Hive Networks) med konservativ payback-bypass när reserve är trygg.
-- Plannern kräver target-path-relevans för twin-upgrade och kostnadsresurs.
-- När twinnen blir buyable krävs post-upgrade rebuild-buffer, annars HOLD med tydlig reason.
-- Same-run guard hindrar omedelbar lower filler efter twin-threshold prep eller twin-köp.
-- Inspector/export visar twin unlock candidate/decision/reason/target/upgrade/cost/current/required/missing/prep/reserve/bypass/rebuild.
-
-0.8.5 är en hotfix ovanpå 0.8.4. Den ändrar inte säkra defaults och breddar inte strategin, men rättar kostnadsdetektering i Twin Unlock Threshold Planner:
-
-- Twin unlock planner läser nu uppgraderingskostnadens resurs/amount robustare för twin-upgrades där kostresursen inte är active action unit.
-- För Twin Neural Clusters detekteras tröskeln korrekt som Hive Network 1000, med current/missing från faktisk Hive Network-count.
-- Reason-texter skiljer nu på: "could not read twin upgrade cost resource", "invalid twin upgrade threshold amount" och "twin cost resource <name> not on target path <path>".
-
-0.8.7 är en hotfix ovanpå 0.8.5. Den ändrar inte säkra defaults och breddar inte strategin, men lägger till en smal möjlighet att köpa target-path twin-upgrade när enda blockern är rebuild-buffer och opportunity cost är praktiskt försumbar:
-
-- Twin unlock planner kan nu tillåta buyable twin-upgrade trots rebuild-buffer HOLD när tappad child-resource-produktion per timme är under en konservativ andel av aktuell child-resource-bank.
-- Bypassen gäller bara för target-path relevant twin-upgrade med läsbar threshold-kostresurs, utan protected resource-kost.
-- Rebuild-buffern finns kvar och bypass nekas fortsatt när förlorad produktion inte är försumbar.
-- Inspector/export visar nu opportunity-cost bypass-status, reason, lost production per second/hour, bank-ratio per hour, ratio limit och om BUY tilläts trots rebuild-unsafe.
-
-Exempel för live-scenariot:
+### 2. Strategic truth
 
 ```text
-Target: Lesser Hive Mind
-Active action: Hive Neuron
-Relevant support: Twin Neuroprophets, because Hive Neuron uses Neuroprophets
+docs/SWARMSIM_GAME_MODEL.md
 ```
 
-Förväntat 0.7.9-beteende:
+This is the single active game model. Older dated game model files were transitional snapshots and must not be used as active truth.
 
-- `BUY twin neuroprophets` om target-aware recovery/reserve är trygg.
-- `HOLD twin neuroprophets` med exakt reserve/recovery/protected-resource reason om inte trygg.
-- Inte generisk `handled by goal planner` som enda reason för den target-relevanta twinnen.
+### 3. Prompts and release notes
 
-## Export / observability i 0.8.0
+```text
+docs/prompts/
+docs/release-notes/
+docs/live-logs/
+releases/
+```
 
-Strategy Inspector och export visar fortfarande 0.7.9-fälten och nu även:
+Release folders are documentation-only. Do not create script copies in `releases/`.
 
-- `unlockPlannerCandidate`
-- `unlockPlannerDecision`
-- `unlockPlannerReason`
-- `unlockPlannerTarget`
-- `unlockPlannerUnlocks`
-- `unlockPlannerCostResource`
-- `unlockPlannerReserveRatio`
-- `unlockPlannerPaybackBypassed`
-- `parentStepCandidate`
-- `parentStepDecision`
-- `parentStepReason`
-- `parentStepTarget`
-- `parentStepActionUnit`
-- `parentStepCostResource`
-- `parentStepReserveRatio`
-- `parentStepPaybackBypassed`
-- `parentStepSupportsActionUnit`
-- `cloneBufferMode`
-- `cloneBufferTarget`
-- `cloneBufferCurrent`
-- `cloneBufferPercent`
-- `cloneBufferDebt`
-- `cloneBufferSpendableLarvae`
-- `cloneBufferLarvaeProtected`
-- `cloneBufferReason`
-- `abilityPrepCandidate`
-- `abilityPrepDecision`
-- `abilityPrepReason`
-- `abilityPrepType`
-- `abilityPrepEnergyAvailable`
-- `abilityPrepRequiresArmyPrep`
-- `abilityPrepRequiresCloneBuffer`
-- `houseOfMirrorsArmyValue`
-- `houseOfMirrorsMissingUnits`
+## Repository policy
 
-0.7.8-fälten för active action payback bypass finns kvar:
+From 0.8.0 onward:
 
-- `meatActionUnitPaybackBypassTriggered`
-- `meatActionUnitPaybackBypassReason`
-- `meatActionUnitReserveRatio`
-- `meatActionUnitPaybackSeconds`
-- `meatActionUnitName`
+- GitHub is source of truth for code, docs, prompts, live logs, and release history.
+- The only executable script is `src/SwarmSim-Strategy-Autobuyer.user.js`.
+- Do not create `.txt` script mirrors.
+- Do not create duplicated release `.user.js` files.
+- Do not build from old uploaded script files.
+- Do not change `AGENTS.md` unless explicitly needed.
+
+## Current baseline
+
+Current verified main baseline:
+
+```text
+0.8.7 — Twin Upgrade Opportunity Cost Bypass
+```
+
+0.8.7 has been live-verified for:
+
+- Twin Neural Clusters opportunity-cost bypass.
+- Hatchery save-window and Hatchery purchase.
+- Meat-chain progression resuming after Hatchery.
+- Twin threshold prep toward 10K Hive Networks.
+- Parent-step conversion toward Lesser Hive Mind.
+- Clone Buffer hard lock release after recovery.
+
+## Next planned work
+
+```text
+0.8.8 — Multi-Lane Coordinator / Territory Starvation Fix
+```
+
+Prompt:
+
+```text
+docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md
+```
+
+Reason:
+
+- Meat-chain planning now works well enough that it can dominate every run.
+- Latest live logs showed 20/20 main-buy runs on meat while Territory lane reported `OBSERVE none`.
+- Ability Prep simultaneously reported `HOLD House of Mirrors — army prep missing` with top fighting units empty.
+- Screenshot showed fighting units were buyable.
+- This is a lane coordination/starvation problem, not a meat-chain problem.
+
+## Implemented capabilities through 0.8.7
+
+- Smart Mode.
+- Advisor log.
+- Purchase log.
+- Strategy Bar.
+- Strategy Inspector and export.
+- Larva Engine Priority.
+- Production Upgrade priority.
+- Energy Strategy and Nexus target.
+- Lepidoptera ROI guard.
+- Nightbug/Bat HOLD advisor in default Smart Mode.
+- Clone Larvae cocoon prep, side-task only.
+- Territory ROI with minimum-improvement guard.
+- Meat Goal Planner with lookahead.
+- Meat-chain reserve/payback guard.
+- Twin Prep with recovery buffer.
+- Meat fallback queue.
+- Stall breaker diagnostics.
+- Active meat-action fallback floor.
+- Active action payback bypass.
+- Target-aware upgrade/twin support planner.
+- Unlock planner.
+- Clone Buffer Planner.
+- Ability Prep Planner, advisor-only.
+- Parent-step conversion.
+- Twin unlock threshold planner.
+- Twin unlock cost resource detection.
+- Twin upgrade opportunity-cost bypass.
 
 ## Safety defaults
 
-Dessa ska inte ändras utan explicit uppgift:
+These must not be changed without explicit instruction:
 
 ```js
 autoCastAbilities: false
@@ -221,6 +140,8 @@ nexusTarget: 5
 energyPlanner: true
 blockLepidopteraBeforeNexus: 4
 fastNexus5MothSoftTarget: 572
+lepidopteraStopAtBoostPercent: 90
+territoryRoiMode: true
 territoryMinEtaImprovementSeconds: 2
 territoryMinEtaImprovementRatio: 0.001
 smartUnitBuyPercent: 0.25
@@ -229,32 +150,49 @@ meatChainMaxPaybackSeconds: 1800
 meatActionUnitPaybackBypass: true
 meatActionUnitMinReserveRatio: 5
 meatFallbackDoNotDropBelowActionUnit: true
+cloneBufferPlanner: true
+cloneBufferProtectLarvae: true
 ```
 
-Får inte införas som default automation:
+Do not introduce as default automation:
 
-- Nightbug auto-buy
-- Bat auto-buy
-- ability auto-cast
-- Clone Larvae auto-cast
-- auto-ascend
-- aggressivt buyMax i Smart Mode
-- lower filler-köp under active action unit
+- Nightbug auto-buy.
+- Bat auto-buy.
+- Ability auto-cast.
+- Clone Larvae auto-cast.
+- House of Mirrors auto-cast.
+- Auto-ascend.
+- Aggressive buyMax in Smart Mode.
+- Blind highest-unit buying.
 
-## Referensfiler
+## Work rules for AI agents
 
-`reference/REFERENCE_SwarmSim_ichbinsisyphos_2015.txt` används för Energy/Nexus/Ascension-matte.
+- Read AI.md, canonical game model, and current source first.
+- Build against `src/SwarmSim-Strategy-Autobuyer.user.js` only.
+- Keep strategy and implementation separate: GitHub source shows actual behavior; game model shows desired behavior.
+- Preserve conservative defaults.
+- Prefer narrow hotfixes over broad strategy rewrites.
+- Risky planners should start as advisor/observability or be tightly config-gated.
+- Smart Mode should use safe chunks, not buyMax.
+- Every changed behavior needs Inspector/export observability.
 
-`reference/REFERENCE_SwarmSim_featherwinglove_reddit_strategy_2015.txt` används som praktisk community-guide för twinning, passive ratio, two-tap och cascade-idén.
+## Validation after script changes
 
-`reference/REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned.txt` används som heuristik och errata. Den varnar för att högre meat-chain-units kan vara traps och att scriptet inte ska köpa högst synliga unit blint. Den stöder också att twin-prep behöver recovery-buffer och inte bara buyable-check.
+Run:
 
-## Arbetsregler
+```bash
+node --check src/SwarmSim-Strategy-Autobuyer.user.js
+```
 
-- Läs AI.md, game model och aktuell script-source först.
-- Bygg aldrig från äldre source om inte användaren uttryckligen ber om jämförelse.
-- Skilj på strategiskt mål och praktiskt köp.
-- Bevara Nexus-skydd, Hatchery/Expansion-skydd, reserve/payback, twin recovery, no ability auto-cast och no auto-ascend.
-- Smart Mode ska köpa exakta chunks, inte buyMax.
-- Riskabla idéer ska först synas i Advisor/export.
-- 0.8.0 är en planner-fix, inte en aggressiv strategi-release.
+Also verify:
+
+- correct `@version`,
+- correct `scriptVersion`/panel title if present,
+- no stale active UI version strings,
+- `autoCastAbilities` remains false unless explicitly changed,
+- `autoAscend` remains false unless explicitly changed,
+- House of Mirrors is not cast by default,
+- Clone Larvae is not cast by default,
+- no Nightbug/Bat auto-buy defaults,
+- no buyMax for Smart Mode meat-chain or army,
+- Strategy Inspector/export shows new relevant fields.
