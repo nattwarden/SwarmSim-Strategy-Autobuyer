@@ -11,6 +11,36 @@ This is the single active game model for AI/Codex/Copilot agents. Older dated ga
 > Supports: This file is the active strategy model, while the 2026-07-09 live logs are the active empirical context for clean start, sacrifice/rebuild, Faster/Twin distinctions, Hatchery/Expansion coupling, and territory/army observations.
 > Script implication: Future script reviews should compare code behavior against confirmed notes in this file and the live logs before changing strategy.
 
+## 0. Optimization posture
+
+The bot is not conservative by identity. It is a methodical optimizer and advisor.
+
+Default automation avoids irreversible or high-risk actions, but ordinary
+progression should be optimized logically within the selected user mode. Hard
+safety defaults are guardrails; they are not an instruction to under-buy when a
+normal reversible action is well-scored and unblocked.
+
+User-facing modes should be treated as separate risk/automation profiles:
+
+1. Advisor Mode
+   - explain opportunities, risks, and timing;
+   - avoid automatic buying unless explicitly enabled;
+   - help users who want to play more manually.
+
+2. Methodical Optimizer
+   - default Smart behavior;
+   - goal-driven, rebuild/payback-aware, and lane-coordinated;
+   - willing to buy when the evidence says the action is correct.
+
+3. High-Tempo Optimizer
+   - future explicit user-selected mode;
+   - may push normal progression harder;
+   - still must remain observable and must not bypass hard safety defaults or
+     irreversible actions without explicit user choice.
+
+When this document says "safe", read it as "passes the explicit hard blockers
+and selected-mode risk rules", not as "passive".
+
 ## 1. Source-of-truth policy
 
 GitHub is source of truth for code, docs, prompts, release notes, and live logs.
@@ -51,7 +81,7 @@ Current verified baseline:
 > Status: PARTIALLY CONFIRMED
 > Evidence: `docs/release-notes/SwarmSim-Strategy-Autobuyer-0.8.7-release-notes.md`, `docs/live-logs/2026-07-09-clicked-mechanics-progression.md`
 > Supports: 0.8.7 formalizes the observed Twin opportunity-cost problem by comparing lost production/hour against available bank ratio.
-> Script implication: Keep the opportunity-cost bypass conservative. The general Twin/Faster distinction is live-confirmed; exact 0.8.7 late-state behavior should continue to be checked against exported bot logs.
+> Script implication: Keep the opportunity-cost bypass bounded and observable. The general Twin/Faster distinction is live-confirmed; exact 0.8.7 late-state behavior should continue to be checked against exported bot logs.
 
 Next planned work:
 
@@ -70,12 +100,12 @@ Reason for 0.8.8:
 > **Verification note — 2026-07-09**
 > Status: PARTIALLY CONFIRMED
 > Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md`; `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms Territory can indirectly advance the larva engine through Expansion.
-> Supports: The current gap is lane coordination/starvation, not a request to make meat-chain buying more aggressive.
-> Script implication: Next script review should focus on proposal/coordinator behavior, army/territory diagnostics, hard blockers, and small safe chunks. Do not broaden ability casting or meat buyMax.
+> Supports: The current gap is lane coordination/starvation, not a request to make meat-chain buying blindly larger.
+> Script implication: Next script review should focus on proposal/coordinator behavior, army/territory diagnostics, hard blockers, and bounded scored chunks. Do not broaden ability casting or default buyMax.
 
-## 3. Safety defaults
+## 3. Hard safety defaults
 
-These must remain conservative unless explicitly changed by the user:
+These must remain unchanged unless explicitly changed by the user:
 
 ```js
 autoCastAbilities: false
@@ -117,7 +147,7 @@ Default automation that must not be introduced:
 > **Verification note — 2026-07-09**
 > Status: CONFIRMED
 > Evidence: `reference/REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned.txt` now marks Clone, mutation, and ascension claims as HEURISTIC/OPEN rather than implementation-ready.
-> Supports: Conservative defaults are still the correct baseline because several late-game guide claims are not live-verified.
+> Supports: Hard safety defaults are still the correct baseline because several late-game guide claims are not live-verified.
 > Script implication: Any future automation around Clone Larvae, House of Mirrors, Bats/Nightbugs, or Ascension must be explicit and separately validated.
 
 ## 4. Game principles
@@ -262,7 +292,7 @@ Hard blockers override lane desire:
 > Status: PARTIALLY CONFIRMED
 > Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` reports meat dominance with Territory `OBSERVE none`; live mechanics confirm Territory can matter through Expansion.
 > Supports: A coordinator is the right design direction, but exact scoring and action cadence still need script/live-log validation.
-> Script implication: Implement coordinator changes narrowly, preserving hard blockers and conservative defaults.
+> Script implication: Implement coordinator changes narrowly, preserving hard blockers and hard safety defaults.
 
 ## 8. Anti-starvation rule
 
@@ -277,23 +307,23 @@ runsSinceEngineAction
 runsSinceCloneAction
 ```
 
-If Army/Territory has safe proposals but has not been selected for many runs, the coordinator may grant it a small action if all hard blockers allow it.
+If Army/Territory has safe proposals but has not been selected for many runs, the coordinator may grant it a bounded action if all hard blockers allow it.
 
 Guideline:
 
 ```text
 If Territory/Army has safe candidate and last territory action age >= 10–20 runs:
-    allow a small safe Army/Territory action
+    allow a bounded scored Army/Territory action
 unless Engine/Clone/Energy hard blockers say no.
 ```
 
-This is not permission to be aggressive. It is permission to avoid permanent lane starvation.
+This is not permission to buy blindly. It is permission to avoid permanent lane starvation.
 
 > **Verification note — 2026-07-09**
 > Status: PARTIALLY CONFIRMED
 > Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` documents a 20/20 meat-action run with Territory `OBSERVE none` while army prep was missing.
 > Supports: Anti-starvation is needed as a planner coordination concept.
-> Script implication: Only allow small safe Army/Territory actions after hard blockers and diagnostics. This is not a buyMax or aggression permission.
+> Script implication: Allow bounded scored Army/Territory actions after hard blockers and diagnostics. This is not a default buyMax permission.
 
 ## 9. Army / Territory lane requirements
 
@@ -308,9 +338,9 @@ It should consider a buy only when:
 - Clone Buffer is not hard-locking larvae,
 - protected resources are respected,
 - the candidate improves territory ETA enough, or army is completely empty and needs a tiny seed for House of Mirrors prep,
-- the chunk is small and safe.
+- the chunk is bounded, scored, and observable.
 
-Suggested conservative config for future implementation:
+Suggested methodical config for future implementation:
 
 ```js
 territoryPrepPlanner: true,
@@ -319,7 +349,7 @@ territoryStarvationRunThreshold: 12,
 territoryArmySeedWhenEmpty: true,
 ```
 
-These defaults should be conservative. Do not buy max.
+These defaults should remain bounded and observable. Do not buy max by default.
 
 ### House of Mirrors interaction
 
