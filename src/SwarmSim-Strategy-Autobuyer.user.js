@@ -5836,6 +5836,11 @@ function getDisplayName(item) {
     });
   }
 
+  // Phase 3 extraction: dedicated proposal adapter boundary for territory/army lane.
+  function buildTerritoryGuardProposal({ game, engine, protectedResources }) {
+    return buildTerritoryPrepProposal(game, engine, protectedResources);
+  }
+
   function scoreMeatCandidate(unit, num) {
     const tab = getTabName(unit);
     if (tab !== "meat") return null;
@@ -7671,7 +7676,7 @@ function getDisplayName(item) {
     markSelectedLane,
     syncCoordinatorHold,
   }) {
-    const state = territoryPrepPlannerState || buildTerritoryPrepProposal(game, engine, protectedResources);
+    const state = territoryPrepPlannerState || buildTerritoryGuardProposal({ game, engine, protectedResources });
     const proposal = state?.proposal;
     const territoryAge = getLaneActionAge("Territory");
     const starvationCount = getTerritoryStarvationCount();
@@ -7789,7 +7794,7 @@ function getDisplayName(item) {
       const row = latestAdvisorRow(["BUY"]);
       markSelectedLane("Meat", row?.title || plannerResult.summary || "Meat planner", formatAdvisorReason(row), "");
 
-      buildTerritoryPrepProposal(game, engine, protectedResources);
+      buildTerritoryGuardProposal({ game, engine, protectedResources });
       if (boughtCount < maxUnitActions) {
         const territoryAction = executeTerritoryGuardAction({
           trigger: "post-meat",
@@ -7823,7 +7828,7 @@ function getDisplayName(item) {
       );
     }
 
-    buildTerritoryPrepProposal(game, engine, protectedResources);
+    buildTerritoryGuardProposal({ game, engine, protectedResources });
 
     const preQueueTerritoryAction = executeTerritoryGuardAction({
       trigger: "pre-queue",

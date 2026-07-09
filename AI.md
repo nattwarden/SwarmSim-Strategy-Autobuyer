@@ -197,6 +197,9 @@ Do not introduce as default automation:
 - For territory/army lane runtime work, use the extracted adapter boundary
   `executeTerritoryGuardAction(...)` in the canonical userscript and keep
   behavior parity unless explicitly changing strategy.
+- For territory/army lane proposal work, use
+  `buildTerritoryGuardProposal(...)` as the adapter boundary and keep
+  behavior parity unless explicitly changing strategy.
 
 ## Validation
 
