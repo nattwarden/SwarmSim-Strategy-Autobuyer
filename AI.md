@@ -1,6 +1,6 @@
 # AI.md — SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-script-0.8.0-indexed
+Version: 2026-07-09-script-0.8.1-indexed
 Status: Project source map for ChatGPT/Codex/AI agents.
 
 ## Syfte
@@ -50,7 +50,7 @@ Policy från 0.8.0 och framåt:
 Tekniska fakta:
 
 - Script: SwarmSim Strategy Autobuyer
-- Version: 0.8.0
+- Version: 0.8.1
 - Körs på `swarmsim.com`, `www.swarmsim.com`, `swarmsim.github.io`
 - Exponerar botten som `window.kbcSwarmBot`
 - Använder Angular-services: `game`, `commands`, `$rootScope`
@@ -85,6 +85,8 @@ Tekniska fakta:
 - 0.8.0 unlock planner
 - 0.8.0 clone buffer planner
 - 0.8.0 ability prep planner (advisor-only)
+- 0.8.1 clone buffer target-source hotfix
+- 0.8.1 unlock candidate hotfix
 
 ## Nytt i 0.8.0
 
@@ -100,6 +102,11 @@ twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade
 - Clone Buffer Planner med lägena BUILDUP, POST_CLONE_LOCK och MATURE.
 - Ability Prep Planner i advisor-läge (PLAN/HOLD), utan default auto-cast.
 - Globala larvae-spending guards som respekterar `cloneBufferSpendableLarvae`.
+
+0.8.1 är en hotfix ovanpå 0.8.0. Den ändrar inte strategin, men rättar två felaktiga planner-beslut:
+
+- Clone Buffer POST_CLONE_LOCK använder faktisk Clone Larvae-bank/debt när den finns, i stället för att falla tillbaka till full cap.
+- Unlock Planner använder aktuell action-enhet som kandidat och rapporterar bottleneck-resursen korrekt.
 
 Exempel för live-scenariot:
 
