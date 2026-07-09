@@ -2,7 +2,7 @@
 
 Conservative Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current baseline: **0.8.3 — Parent Step Conversion Fix**.
+Current baseline: **0.8.4 — Twin Unlock Threshold Planner**.
 
 ## Repository layout
 
@@ -15,6 +15,7 @@ releases/
   0.8.1/                                    # archived release documentation
   0.8.2/                                    # archived release documentation
   0.8.3/                                    # archived release documentation
+  0.8.4/                                    # archived release documentation
 docs/
   SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt
   release-notes/
