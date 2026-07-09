@@ -5841,6 +5841,11 @@ function getDisplayName(item) {
     return buildTerritoryPrepProposal(game, engine, protectedResources);
   }
 
+  // Phase 3 extraction: dedicated execution adapter boundary for meat lane.
+  function executeMeatGuardAction({ game, commands, protectedResources }) {
+    return handleMeatGoalPlanner(game, commands, protectedResources);
+  }
+
   function scoreMeatCandidate(unit, num) {
     const tab = getTabName(unit);
     if (tab !== "meat") return null;
@@ -7788,7 +7793,7 @@ function getDisplayName(item) {
       });
     }
 
-    const plannerResult = handleMeatGoalPlanner(game, commands, protectedResources);
+    const plannerResult = executeMeatGuardAction({ game, commands, protectedResources });
     if (plannerResult.actionTaken && Number(plannerResult.bought || 0) > 0) {
       boughtCount += Number(plannerResult.bought || 0);
       const row = latestAdvisorRow(["BUY"]);
