@@ -1,6 +1,6 @@
 # AI.md — SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-script-0.8.4-indexed
+Version: 2026-07-09-script-0.8.5-indexed
 Status: Project source map for ChatGPT/Codex/AI agents.
 
 ## Syfte
@@ -50,7 +50,7 @@ Policy från 0.8.0 och framåt:
 Tekniska fakta:
 
 - Script: SwarmSim Strategy Autobuyer
-- Version: 0.8.4
+- Version: 0.8.5
 - Körs på `swarmsim.com`, `www.swarmsim.com`, `swarmsim.github.io`
 - Exponerar botten som `window.kbcSwarmBot`
 - Använder Angular-services: `game`, `commands`, `$rootScope`
@@ -90,6 +90,7 @@ Tekniska fakta:
 - 0.8.2 clone buffer post-clone release-threshold hotfix
 - 0.8.3 parent-step conversion hotfix
 - 0.8.4 twin unlock threshold planner hotfix
+- 0.8.5 twin unlock cost resource detection hotfix
 
 ## Nytt i 0.8.0
 
@@ -132,6 +133,12 @@ twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade
 - När twinnen blir buyable krävs post-upgrade rebuild-buffer, annars HOLD med tydlig reason.
 - Same-run guard hindrar omedelbar lower filler efter twin-threshold prep eller twin-köp.
 - Inspector/export visar twin unlock candidate/decision/reason/target/upgrade/cost/current/required/missing/prep/reserve/bypass/rebuild.
+
+0.8.5 är en hotfix ovanpå 0.8.4. Den ändrar inte säkra defaults och breddar inte strategin, men rättar kostnadsdetektering i Twin Unlock Threshold Planner:
+
+- Twin unlock planner läser nu uppgraderingskostnadens resurs/amount robustare för twin-upgrades där kostresursen inte är active action unit.
+- För Twin Neural Clusters detekteras tröskeln korrekt som Hive Network 1000, med current/missing från faktisk Hive Network-count.
+- Reason-texter skiljer nu på: "could not read twin upgrade cost resource", "invalid twin upgrade threshold amount" och "twin cost resource <name> not on target path <path>".
 
 Exempel för live-scenariot:
 
