@@ -1,0 +1,449 @@
+# REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned
+
+Cleaned AI-readable version of Reddit comments from:
+`tutorial_complete_50_but_theres_no_need_to_panic`
+
+Source raw file:
+`REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.txt`
+
+Purpose:
+- Keep comment discussion readable for AI/Codex.
+- Remove Reddit UI noise such as avatar labels, upvote/downvote/reply/share rows.
+- Preserve strategic claims, corrections, disagreements and OP replies.
+
+Important:
+- This is not a mathematical source of truth.
+- Treat as community heuristics and errata around the main Reddit guide.
+- Prefer ichbinsisyphos for exact Energy/Nexus math.
+- Prefer `SWARMSIM_GAME_MODEL-2026-07-08-energy-math-updated.txt` as project strategy truth.
+
+## Extracted high-value points for the SwarmSim project
+
+### 1. Upper meat-chain units can be traps
+A commenter questions whether building OM6 is worthwhile except for twinning OM5.
+Practical script interpretation:
+- Do not blindly buy the highest meat-chain unit just because it is visible/buyable.
+- Higher units should be bought only when they move the current planner target forward or improve cascade/payback.
+- This supports the existing conservative Smart Mode rule.
+
+### 2. Twinning stop/start needs clearer logic
+Comment discussion clarifies:
+- Stop twinning a unit when the prime unit advances and the player is no longer actively producing the old prime.
+- Starting prime+1 twinning can happen as soon as it is possible, but it should not wipe out the stack.
+- Buying/twinning should preserve enough prime/prime-1 recovery capacity.
+
+Practical script interpretation:
+- Twin-prep should not merely check “twin upgrade buyable”.
+- It should check whether post-twin recovery is safe.
+- Advisor should explain when twin is held because recovery buffer is too low.
+
+### 3. Cascade definition is clearer in comments
+OP explains cascade as:
+- Passive production of prime from prime+1 catches up to active production.
+- Around 2:1 passive/active, making more old prime with larvae becomes wasteful.
+- Save larvae while producing only the new prime.
+- When new prime hits larvae wall, spend saved larvae and/or Clone Larvae.
+- This creates a downhill flood of production through lower units.
+
+Practical script interpretation:
+- Future Cascade Planner should detect passive/active ratios.
+- When ratio exceeds target, shift planner target upward.
+- Clone Larvae should be treated as cascade amplifier, not as a standalone energy dump.
+
+### 4. Clone Larvae timing
+Comment discussion adds nuance:
+- Do not “save larvae for clone” as a goal by itself.
+- Save larvae for cascade; clone is incidental to the cascade.
+- Best clone moment is when advanced data indicates the prime is naturally larvae-limited.
+- If Warp mutation is much stronger or the timing is early in a weekly cycle, Swarm Warp may outperform Clone Larvae.
+- Clone can become useful later in the cycle when numbers line up.
+
+Practical script interpretation:
+- Current Clone Prep buffer is safe as a side-task.
+- Full auto-cast Clone Larvae should remain off by default.
+- A future Ability/Cascade Planner should only recommend Clone when a cascade state is detected.
+
+### 5. Mutagen / ascension comments are useful but not stable enough for default automation
+The comments discuss first ascent mutagen targets, delayed first ascent, two vs three mutations, five-mutation order, and late-game diminishing returns.
+Practical script interpretation:
+- Useful for future Ascension Advisor.
+- Not reliable enough to drive automatic ascension.
+- Auto-ascend should stay off.
+
+### 6. Mutation order comments
+The guide/comment thread has some confusion and correction around mutation ordering.
+One clarified sequence for five mutations is roughly:
+- Warp
+- Bats
+- Lepidoptera
+- Hatchery
+- Clone
+
+Practical script interpretation:
+- Treat this as community heuristic only.
+- Useful for future Mutagen Advisor notes, not direct autobuyer behavior.
+
+### 7. Late-game ascension overhead
+A commenter notes that after extreme mutagen levels, early ascension becomes less attractive because setup overhead matters and extra hatcheries may be worth squeezing out.
+Practical script interpretation:
+- Future Ascension Planner should consider setup overhead / run phase, not just raw energy threshold.
+
+---
+
+## Cleaned comment text
+
+---
+Author: u/intrafinesse
+intrafinesse
+Time: 11y ago
+Time: Edited 11y ago
+There is a point at which the passive production of OM5 via huge numbers of OM6 will outstrip the ability to actively produce OM5
+
+I'm not sure that that's true. I don't think it's ever worthwhile to build OM6, except for twinning OM5. At the point that OM6 can produce a lot of OM5, you would have been better off producing more OM5, and using their production to eventually produce more drones. Maybe if you play the same game (without ascending) for an insanely long period OM6s might be worthwhile?
+
+As for a swarm warp of 1,000,000 would you please explain how to get it? My Swarps are 18 years, and could sure use a bump like that.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Nope. If you play without ascending, your warp never gets longer than 24 minutes (and it's not worth making it longer than 18 minutes because you'll be wasting energy on bats.) That's certainly not the approach to a million year warp! I don't know if a million year warp is possible. I believe (someone who has played longer might be able to confirm) that the maximum amount of mutagen that's possible is about 1e500 with several months of efficient play. I can't figure out at this exact moment how long the warp would be. It would help me if I knew how much mutagen you've used on your warp. I've used 4e138 on warp plus 2e138 on bats. (My first calculation came back in the billions of years, but I think if that were possible, I'd have seen a comment about actual million year warps by now.)
+
+---
+Author: u/intrafinesse
+intrafinesse
+Time: 11y ago
+Time: Edited 11y ago
+someone who has played longer might be able to confirm) that the maximum amount of mutagen that's possible is about 1e500 with several months of efficient play.
+
+I doubt that 1e500 mutagen can be reached in a few months of efficient play. The amount of Mutagen you gain per ascension begins to contract as you acquire more. I think it dropped to 5 OOM around e450. By 1e479 you will be gaining 2 OOM, and it slows down even more after that. I'm not sure I'll gain 1 OOM at 480
+
+Warp mutation: e478 Bats mutation: e478 the # of Bats: Currently 1800
+
+Once you pass e425 - e450 you will not be ascending early. Because of the overhead in setting up the run, you will want to spend extra time on the run to squeeze out an additional couple of hatcheries.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Warp mutation: e478 Bats mutation: e478 the # of Bats: Currently 1800
+
+...bummer...
+
+I know the feeling of "ascending early". I forked the manual's game at the first ascent because at 10.6M mutagen, it was close to getting an empress cascade. I went for it and got the third mutation's worth (270M) with an extra day. I don't know yet how useful this will be because I haven't spec'd it.
+
+---
+Author: u/intrafinesse
+intrafinesse
+Time: 11y ago
+I think I'm going to end the game after this ascension. (end with < 2 e 481 mutagen)
+
+I probably won't even gain 1 OOM.
+
+PM me if you want the save file
+
+---
+Author: u/fragglefrock
+fragglefrock
+Time: 11y ago
+Time: Edited 11y ago
+At the moment one has to read both this and the FAQ, ignoring the FAQ where it disagrees with this, which is a hard job for a beginner. I've done it but I don't think this thread will catch on until it can entirely replace the FAQ.
+
+Your guide doesn't say when to stop twinning. Reading between the lines implies you stop when you start two-tapping, but this isn't right. You should keep twinning until your active:passive prime production is getting pretty close to 1:1.
+
+A related issue is when to start twinning prime+1 units (i.e. buying prime+2 units). I'm guessing a bit before you reach 1:1, but not as soon as you can. What do you think?
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+I stop twinning a particular unit when the prime unit advances and I'm no longer actively producing it. (I thought that was clear, is it not?) I start twinning prime+1 units as soon as it is possible to do so. Until you hit the Overmind levels, there is a point at which the number of prime+1 units exactly equals the cost of a single prime+2 unit. At this point, I twin the prime unit first, then twin the prime+1 unit immediately thereafter. I tend to do this when the number of prime+1 units required for the necessary prime+2 units is on the 25% production button. I hit it, twin prime+1 after the prime+2 purchase, and then the 100% production button for the prime unit is just below the number needed for the prime+1 requirement for the next twinning of the prime unit. I hope that makes sense.
+
+---
+Author: u/fragglefrock
+fragglefrock
+Time: 11y ago
+Thanks. I think I see what you mean, I'll give it a go.
+
+There's a lot that isn't clear in your guide. It helps to write as simply as possible, really spell everything out step-by-step so everyone can understand easily.
+
+U03A6
+Time: 11y ago
+I've never found this mentioned anywhere, so I will mention it here:
+
+It makes a lot of sense to buy hatcherys and expansions at the latest possible moment, i.e. when you can either buy enough of them to make them larva faster than your mutagen or as the least thing before ascension. Prior to buying them invest all remaining mutagen you haven't used in this ascension into Meta-Mutation. Same goes for hatchery mutation as long as you have not enough mutagen to outproduce the hatcherys.
+I have not done any math to test this, but if you follow the advice of investing something between 1-10% of your mutagen and use the rest to produce larva, you will get at least some more mutagen for your next ascension.
+Maybe this goes without saying for most people, but I found it worth having in ming.
+
+---
+Author: u/fragglefrock
+fragglefrock
+Time: 11y ago
+Yeah this is covered in brilliand's thread which is linked to from the FAQ.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+I've got the 1% mutagen rule in the latest edition, which includes later ascents. The Meta-Mutation strategy is probably applicable only to games where you're not getting your hatchery production to outpace your mutagen production, which happens for me in the ballpark of the 8th ascent. Prior to this point, the main reason for hatcheries and expansions is to get more larvae rather than more mutagen.
+
+drowsyzang
+Time: 11y ago
+What do you mean by cascade?
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+I'm not sure how I can explain it any better... The general idea is that once you've made enough prime+1 units that they're producing more units than you can using your larvae (i.e. twice as much), it becomes a waste of larvae to make more prime units. At this point, you quit producing them and produce only prime+1 units. But, your production of prime+1 units (actually the new prime unit as you climb the stack) is not yet limited by larvae, so you start saving up larvae. Once it becomes larvae limited, your saved up larvae go into the production, creating an unnaturally large slush pile of prime units (prime+1 in the beginning of this description.) They produce a crapton of prime-1 units, which then produces a crapton of prime-2 units, et cetera down the stack until you're at drones and meat. Like a waterfall or a ...well... "cascade". Does that help? If it does, how can the manual be improved?
+
+drowsyzang
+Time: 11y ago
+ahh yeah that makes sense, he manual is fine I was just unsure as to what the cascade was. Maybe just state that once you hit a 2:1 ratio either save up larva (in the case of the nest and GQ cascade, depending on nexus and clone availability) or energy for HQ up until they hit larva wall and then make them all a once, although wouldn't i make more sense to increase them as you go?
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Save up energy? :/ The reason you want to wait until exactly 100% larvae income and 100% prime-1 income to start cloning is because that's when you have the natural maximum larvae population. The first clone doubles whatever you have, so it pays to wait until the natural maximum before cloning and then do all the cloning at once. The 2:1 passive production rule is a general one all the way up to OM4. I even use it for the queen cascade (although it makes very little difference.)
+
+---
+Author: u/grasiu
+grasiu
+Time: 11y ago
+Ascend when you have about 300M mutagen, no less than 270M mutagen.
+
+I'm currently sitting at 85 Hatcheries, 158 Expansions and I only have 209M mutagen. I haven't gotten lucky in drawing the 20% for a long time. If the next Hatchery will give me mutagen it will be 312M of it, so I'm at the point, where I end up with 209M or more than twice the amount. Meh.
+
+BTW the Neuroprophets are already my Prime unit (I have 5T of them) and I can see that soon I'm gonna hit a wall. Not a larva wall, but just a wall, where I can't really get much further.
+
+I know that there is nothing awful with ascending with <270M, but now I feel kind of committed to getting it (the damn game won't make me), I could have ascended with ~50M mutagen few days ago.
+
+BTW why is that 20% draw mechanic even in the game? Well, I guess there can't be a game without some dice rolling in it...
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Wow! I don't like the probability mechanic either. It's out of character for a game like this. (PSA: There's a patch available.) Also, my own experience in pressing for the Hive Empress cascade has been mixed. The game upon which this manual was based must've gotten unusually lucky with the rolls. I think the PRNG seed is fixed at the start of the game but is random between games. Wadyathink? Should I change the guide regarding these numbers? I'm personally leaning towards yes, I should change the main strategy to a two mutation ascent, but first ascents have happened everywhere between 486K (which is a rather badly played game; I can top that without using a single special before my 100 bats are finished ...although it took system clock cranking to simulate continuous play) all the way up to 2 billion.
+
+The main reason I'm thinking 'no' is that I can't get it stickied and it's hard to find.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+...okay, this is a bit of a shock: I forked the game at the first ascent to see if going for the Hive Empress cascade and the third (lepidoptera) mutation would be worth it. It turns out that it is! The fork ascended late (719e) with 270M mutagen, while prime ascended with 10.6M mutagen (~18000e). Now both are in second swarm (i.e. 1 ascent) and prime is nearly ready to ascend the second time with 98.6T mutagen ...but the delayed fork, which still has a ways to go, has over twice as much mutagen and five times as many neural clusters! Being the same game until just before prime's first ascent, when I copied it for the fork, both games started at the same time 13 days ago. Needless to say, an overhaul of the first ascent chapter is probably pending. It'll be a couple days though, I want to see how they do second ascent first.
+
+---
+Author: u/fragglefrock
+fragglefrock
+Time: 11y ago
+This is great, it should already replace the tutorial in the FAQ.
+
+The writing is a bit unclear and waffly, after reading it a few times I worked it out. The worst is this:
+
+"Build up enough larva or prime-1 units (whichever is build limiting) to indicate you can build half of units you have before producing your units for twinning."
+
+which I think means
+
+"Before you produce the prime units you need for twinning, build up enough larva or prime-1 units (whichever is build limiting) so that immediately after twinning you're able to build half of the prime units you just spent on twinning. This prevents you taking any hit on lower unit production, so it's a pure upgrade with none of the stalling you'd have otherwise."
+
+---
+Author: u/fragglefrock
+fragglefrock
+Time: 11y ago
+Also I have a question: am I right in thinking that you shouldn't keep any prime+1 units until you've finished twinning?
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Mostly. When the passive production of prime+1 units for the next twinning exceeds about 1%, I recommend beginning to build prime+1 units in "two-tap" operation (first tap is all the prime+1 units you can produce after a warp or other interval, second tap all the prime units you can produce.) Ctrl-F for "anachronism" There's some waffling, lol!
+
+---
+Author: u/fragglefrock
+fragglefrock
+Time: 11y ago
+Time: Edited 11y ago
+I assume you mean passive production of prime units from the prime+1 units you have temporarily when twinning? You're not going to have any passive prime+1 production unless you have prime+2 units...
+
+So to do this you just have to make a note of your prime "can hatch" number and compare it to your passive prime production when you create your 1eX prime+1 for twinning.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Yup. I have that in the manual already. I tend to miss it on the first cascade after the ascent, which happens between the 4th and 5th nexus when I'm not warping yet. About the only downside to that is not getting a fighting unit twinning in a timely fashion, since that soon after an ascent doesn't have many larvae involved compared to later on.
+
+---
+Author: u/fragglefrock
+fragglefrock
+Time: 11y ago
+It's not clear in the manual, which is why I asked. I'm not an especially obtuse person so if it's not clear to me I'm sure it's not clear to many others.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+I like it, I'm a paste that into the local copy. If you don't see it yet, it's because I'm working on a re-write of the first ascent strategy for three mutations and haven't updated it yet. I'm quite astonished at how much of a difference it makes!
+
+I'm hoping that this guide will take the relatively new second sticky post next to the FAQ, and hopefully motivate either the moderator or OP to correct its errors. If not, I might build it up to replace the FAQ.
+
+Feel free to let me know if there are other improvements that can be made or parts you have trouble making it. Sometimes, I have an ability to think without words, so I can have trouble bringing it back into English, or whatever language this is. :D
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+I'm blowing a little anecdote out of the OP and this comment is to give me a place to link it:
+
+Saving up larvae: There are two reasons to save up larvae ... (Passive:active production ratio when I got the ten million HQ twinning for the game following this manual, hatchery cluster at 44/90 producing 2.83Ml/s was 66.113%:1. I went for hive twinning, but made sure I could restore the 10M HQs prior to taking it. I ran 17 warps before realizing that I hadn't finished my butterflies. The exact equation for determining the purchase point for the twinning was 10.0T = 2a + b where a was the build max displayed value prior to purchasing the twinning, and b was the population of hives passively produced by the 10.0013 million HQs when I stopped producing them in order to push for the hive twinning. While waiting, I was purchasing then current (according to the 20% larvae income rule) mosquito II, and got one expansion, going to a 44/91 hatchery configuration producing 3.12Ml/s, which dropped the passive ratio to 60.10%:1. If the larvae rates seem a bit low, it's because I hadn't yet scanned for missed high population achievements and had only 640 points. The actual numbers at hive twinning 7 were 10.0T = 2(3.86T) + (2.28T), and yes, I had my calculator out that time.)
+
+ELLEN_POO
+Time: 11y ago
+How did you come to the conclusion that 300M is a good number for your first ascend? How long of playtime does it take to ascend with 300M mutagen for you? I'm pretty sure waiting for the third mutation slot is NOT worth it. The consensus on this subreddit has always been to ascend at 1-10M mutagen, which takes 5-6 days to achieve.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+It takes one more day to get to 300M mutagen. Experimentation has shown that it doesn't make any significant difference to mutagen-vs-time, which means that if you're looking to complete all the achievements as quickly as possible, ascend at about 1M. (It is quite likely that the fastest ascent strategy can be figured out analytically, specifying exactly how many lepidoptera to build and how much energy to use before storing up for the ascent to get it as early as possible, but I don't think anyone's done that. I'd be very surprised if you couldn't generate over 100k mutagen by that point, even if you spent every lick of energy on lepidoptera.) But if you're trying to get, say, 1e480 mutagen by your 20th ascent, it's definitely worth it. Incidentally, 2 billion is the known record for first ascent mutagen. It is the new clone-enhanced HQ and HE cascade strategy in this guide that makes the difference between "no significant difference" and "NOT worth it". To the best of my knowledge, this is the first guide to incorporate that strategy.
+
+---
+Author: u/Rookzor
+Rookzor
+Time: 11y ago
+Time: Edited 11y ago
+I'm gonna repost this here, since its closely related. I'm not sure about the point of clone larvae during second ascend with 6 mutations. I have been following this guide and I'm at the point where I can choose clone larvae as my 6th mutation, but I'm really not sure if its even worth it. I just can't see a scenario when saving the larvae would be beneficial.
+
+I tried 2 approaches at spending 12000 energy:
+
+Approach I just continued as normally spending all my larvae as efficiently as possible, upgrading my fighting units and everything... After that when I did my 7th warp i gained ~2E36 larvae
+
+Approach did basically the same, with only difference was that instead of spending larvae I cocooned all of it. At the end of this i had ~3E36 larvae spend, but because my swarm basically didn't advance much my next swarp warp would give me only around 300E33 larvae. Or I can at that point choose to clone larvae (my limit is still way ahead of that with 37E36), but that would only give me another 3E36 of larvae,
+
+Now the VERY quick glance the second approach might seem better, but if I at the end choose to clone I would spent 24000 energy with 6 warps and 1 clone. While at with the first approach I would be much better of in the long run.
+
+So I guess my question is when and how to start saving up larvae for clone? Is it just worth it when the progress is really slow just before ascending? And if so isn't it better to just have lets say mutated meat and push for bit more mutagen from hatcheries?
+
+TL&DR: When to use it and when to start saving up larvae if ever. Math so far point me out to never :(
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+I don't save up larvae for clones, I save up larvae for cascades, the clone is incidental to the cascade. First, if you haven't already head into Options and check "Advanced unit information", which gives you the production income costs. I compare the "you earn" with "you can produce" numbers. If the former is tiny compared to the latter, it's not yet time to bother producing the next unit up except for twinning the current unit. Once the former "you earn" (which I call "passive production ratio") starts catching up to the active production, I produce both units. Once "you earn" is greater than "you can produce" (about twice as much is my rule of thumb), produce only the upper unit. Since it is waiting for the lower unit and not larvae, and if you're smart about territory units and not use too many larvae on them, you'd be saving up larvae that way. The only reason I ever cocoon them is to keep the twinning alarms on the territory tab from annoying me. There, I just keep on warping, producing only the upper (new "prime") unit on the food stack, usually with some twinning on the next one. The manual has the details. When the "you can produce" says "100% larvae income", the larvae population is at a natural peak. At that point is when you clone, so you can build a huge crapton of prime units with all the extra larvae. Done properly, the next warp after spending all the larvae (including any in cocoons) on the prime unit should have Faster alarms for every, or nearly every, unit in the food stack below the prime because of the swarm passive production. That's why I call it a cascade: the passive production effects of the huge pile of prime units flows down the stack like a flood stage waterfall. It's pretty spectacular. That, I think would be something on the order of 1e+46 Overminds, if I remember this phase of the game correctly.
+
+One thing to remember is that between when you mutate Warp and when you mutate Clone, the latter is totally useless and you're better off with normal cascading.
+
+---
+Author: u/Rookzor
+Rookzor
+Time: 11y ago
+Time: Edited 11y ago
+Hi, thanks for reply. Problem i see here, at least in my situation is that i did save up larvae when it was no longer viable for prime-1 (when my ratio was about 2:1) but i saved only about 7 warps worths of it. Then i spent it all when my prime units were only limited by larvae and warped again and reaped the benefits of that, i already had so much more larvae per second that the next warp after that gave me the equivalent of what i would have got from clone larvae for just 1/6 of the cost (actually 2/6 the cost, but im sure you get the idea)
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+I've had that effect before. I find it tends to happen as a result of letting the game sit for too long early after an ascent, which slows the progress in the food stack behind energy generation. If you had this happen on the initial swarm, I'm guessing you cascaded the Hives. I've also observed putting in like 48k or 60k energy into clone to amplify a cascade (4-5 clones) and a few warps after running the larvae pile out, the warp is generating just as much larvae as all the clones combined - as long as the next cascade isn't too close, I consider this normal. A part of that judgement call is when you think the next cascade is going to be relative to the next ascent. If you think you can get another one before your next ascent, it's better to save energy for that bigger cascade. I have trouble making that prediction myself. Another possibility is that your Warp mutation is stronger than your Clone mutation from the way you've allocated your mutagen; if you're reaching the natural peak in the larvae population well above the number of larvae you can clone, this is probably the case (unless it's due to a long push of like 50 warps pushing close to the next ascent or mistakes with Empower, both of which I've done to myself.)
+
+---
+Author: u/Rookzor
+Rookzor
+Time: 11y ago
+Mystery solved! ;)
+
+It just happens later in the weekly ascend cycle. I wrote the original question on day 3 after ascend and by then even though my hatcheries were already producing like billion times more larvae than my mutagen would there was just something. I guess the warp was just too fast at that point for the cloning to make sense. Anyway today at day 5 after ascend the numbers finally match up for cloning to be good.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Awesome! Glad I could help :)
+
+---
+Author: u/gdukin
+gdukin
+Time: 11y ago
+Under "Your Second Ascent" you state:
+
+If you have more than 90Qa mutagen, you can unlock three mutations (to a total of six)
+
+However, I actually got up to nearly 2 Qi mutagen due to having some energy to burn before ascending, but I could only unlock 2 additional mutations (for a total of 5). The 6th costs 931 Qi. Unfortunately, this means I won't have the amount needed to unlock Clone Larvae this go around (I know I can get it next time). Did I do something wrong? Or is the guide off?
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+...oops, I go fix that right away (blush).
+
+---
+Author: u/gdukin
+gdukin
+Time: 11y ago
+Um...not to be overly picky, but you changed the numbers, but not the actual instructions.
+
+If you took the first ascent with two mutations, unlock Lepidoptera Mutation as the third mutation overall. The next two mutations to unlock are Meat and Hatchery; if you have less than 90Qa, only unlock Hatchery Mutation (Clone Larvae is a higher priority, but not worth unlocking before you can use it.)
+
+Should one get either meat/hatchery and then get clone later. Or both meat/hatchery, and wait for the next ascent for clone (in either case, then the guide for the 3rd ascent should be adjusted as well).
+
+(This is what I get for being overly analytical...)
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+It's supposed to be Warp, Bats, Lepidoptera, Hatchery, Clone for five mutations. Meat might be better if you can't afford the fifth mutation, but if you can, Hatchery and Clone work together. I've never gone into second ascent without enough mutagen for five mutations except, possibly, my very first game when I didn't really know what I was doing yet, and then I think I got something useless like Frequency.
+
+---
+Author: u/gdukin
+gdukin
+Time: 11y ago
+Yeah...that's what I understood...but that's not what your directions say (they still tell you to get meat and hatchery, but then tell you to save up for clone). I understood what the goal was (even though I didn't get it as I didn't realize the purchase price prior to buying the other two), but just trying to help you clear up the guide.
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Hmm... I think I get it now: somehow I was thinking in terms of six mutations with Clone as the sixth. Now that I think of it, I think I may have intended Clone as the sixth after Meat and Hatchery because of the primarily Warp strategy. Hatchery and Meat work well together with Warp, and it has been noted that the cascade strategy with Warp alone still opens a pretty big can of wupas. I'm not sure what to do with it at the moment, 'cus right now I'm trying to wup something else and am a bit out of currency in SwarmSim. Still my overall favorite among incrementals.
+
+---
+Author: u/gdukin
+gdukin
+Time: 11y ago
+Yeah...I've been dabbling in Reactor Idle some too...but I can't stand the off-line mode (and with work/kids/etc, I need to be able to leave a game alone a while and not suffer a huge penalty for it).
+
+Either way, with Meat and Hatchery I'm doing OK. Haven't gotten to my 3rd ascent yet (still costs 101.6K energy), and (as long as I get at least 1 pop from my remaining hatcheries) I'll be well over 1 UDc mutagen, and perhaps a ton more depending on what tomorrow's play time looks like (a whole day's worth of energy into warps has a way of building things up nicely).
+
+---
+Author: u/featherwinglove
+featherwinglove
+Role: OP
+Time: 11y ago
+Reactor is the sort of game, I think, where you pull the old Pentium 4 out of the basement (or better yet, get it running in the basement), set it up with Chrome (or Chromium, or some other browser that runs in XP or Linux and runs JavaScript super efficient) and an auto-clicker and that's all the machine does all day, all night, all weekend. The offline mode is an unmitigated catastrophe for a game with the word "Idle" in its name, especially on a shared system!
+
+I almost never ascend particularly early in SwarmSim - I have an expansion fetish: I try to get as many expansions as possible. I don't know if its despite the fact they've become totally meaningless, or because of it, lol! If you were to, for example, use expansions in SwarmSim to determine your specific impulse in Orbiter, it would get very interesting. The standard "trainer" Delta Glider spacecraft gets 4027s, most "normal" spacecraft in Orbiter at least 1450s (thinking XR series and DG4 low-end configurations, the 1450s versions barely make orbit while more standard 4000s let you take off from Earth and catch up to New Horizons in a single stage), anything realistic about 300-450s, and with less than 200s, you'd need a custom Vinka multistage job just to get into orbit (once you're doing that, you're half way to making your own mods ...more than half way actually 'cus a lot of mods are little more than Vinka spacecraft/multistage whackjobs already.)
+
+...I read over this comment again and I'm like #LOLWUT??? Why don't more people call me weird?
