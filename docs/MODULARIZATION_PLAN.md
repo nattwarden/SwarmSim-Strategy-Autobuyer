@@ -6,13 +6,18 @@ Goal:
 
 - Keep Tampermonkey runtime stable with one executable userscript in src.
 - Improve maintainability by defining lane guard module boundaries for future extraction.
+- Preserve a methodical optimizer architecture where lanes can act decisively
+  when evidence supports action, while hard safety defaults still block
+  high-risk or irreversible automation by default.
 
 Constraints:
 
 - `src/SwarmSim-Strategy-Autobuyer.user.js` remains the only executable script.
 - No duplicate `.user.js` files.
 - No byte-identical full script copies outside src.
-- Safe defaults must remain conservative.
+- Hard safety defaults must remain explicit and preserved.
+- Do not confuse hard safety defaults with passive play. Normal reversible
+  progression should be optimized logically inside the selected user mode.
 
 Proposed lane/module boundaries:
 
