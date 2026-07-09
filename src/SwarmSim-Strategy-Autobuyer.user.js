@@ -5836,15 +5836,17 @@ function getDisplayName(item) {
     });
   }
 
+  // <build:section:adapter-territory-meat:start>
   // Phase 3 extraction: dedicated proposal adapter boundary for territory/army lane.
   function buildTerritoryGuardProposal({ game, engine, protectedResources }) {
     return buildTerritoryPrepProposal(game, engine, protectedResources);
   }
-
+  
   // Phase 3 extraction: dedicated execution adapter boundary for meat lane.
   function executeMeatGuardAction({ game, commands, protectedResources }) {
     return handleMeatGoalPlanner(game, commands, protectedResources);
   }
+  // <build:section:adapter-territory-meat:end>
 
   function scoreMeatCandidate(unit, num) {
     const tab = getTabName(unit);
@@ -7668,6 +7670,7 @@ function getDisplayName(item) {
     return { bought, didPrep: true };
   }
 
+  // <build:section:adapter-territory-execution:start>
   // Phase 2 extraction: territory/army lane execution is handled through a
   // dedicated adapter boundary so coordinator flow can call one stable function.
   function executeTerritoryGuardAction({
@@ -7687,27 +7690,27 @@ function getDisplayName(item) {
     const starvationCount = getTerritoryStarvationCount();
     const threshold = Math.max(1, Number(config.territoryStarvationRunThreshold || DEFAULT_CONFIG.territoryStarvationRunThreshold));
     const shouldForce = territoryAge >= threshold || starvationCount >= threshold;
-
+  
     recordLaneCoordinatorState({
       territoryActionAge: territoryAge,
       territoryStarvationCount: starvationCount,
     });
-
+  
     if (!proposal) {
       syncCoordinatorHold(state?.territoryPrepReason || "no territory proposal this run");
       return { executed: false, bought: 0 };
     }
-
+  
     if (boughtCount >= maxUnitActions) {
       syncCoordinatorHold(`not selected by coordinator: ${state.territoryPrepCandidate} stayed pending because main action slots were full`);
       return { executed: false, bought: 0 };
     }
-
+  
     if (trigger !== "post-meat" && !shouldForce) {
       syncCoordinatorHold(`not selected by coordinator: territory starvation age ${territoryAge}/${threshold}`);
       return { executed: false, bought: 0 };
     }
-
+  
     recordAdvisor("BUY", getDisplayName(proposal.unit), proposal.reason);
     addLaneCandidate({
       lane: "Territory",
@@ -7722,16 +7725,16 @@ function getDisplayName(item) {
       resource: "territory",
       raw: proposal.raw || null,
     });
-
+  
     if (config.advisorOnly || !config.autoBuySafeDecisions) {
       markSelectedLane("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num));
       return { executed: true, bought: 1 };
     }
-
+  
     const bought = safe(`Territory prep ${getDisplayName(proposal.unit)}`, () =>
       buyUnitAmount(commands, proposal.unit, proposal.num, proposal.armySeed ? "Army Seed" : "Territory Prep")
     );
-
+  
     if (bought) {
       markSelectedLane("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num));
       recordTerritoryPrepPlannerState({
@@ -7741,10 +7744,11 @@ function getDisplayName(item) {
       });
       return { executed: true, bought: 1 };
     }
-
+  
     syncCoordinatorHold(`territory prep buy failed: ${getDisplayName(proposal.unit)}`);
     return { executed: false, bought: 0 };
   }
+  // <build:section:adapter-territory-execution:end>
 
   function buySmartUnits(game, commands, engine, protectedResources, remainingActions = 1) {
     if (shouldPauseUnitsForAscension(game)) {
@@ -8102,20 +8106,22 @@ function getDisplayName(item) {
     return boughtCount;
   }
 
+  // <build:section:adapter-smart-execution:start>
   // Phase 3 extraction: dedicated execution adapter boundary for engine lane.
   function executeEngineGuardAction({ game, commands, engine }) {
     return handleLarvaEnginePriority(game, commands, engine);
   }
-
+  
   // Phase 3 extraction: dedicated execution adapter boundary for energy lane.
   function executeEnergyGuardAction({ game, commands, protectedResources }) {
     return handleEnergyStrategy(game, commands, protectedResources);
   }
-
+  
   // Phase 3 extraction: dedicated execution adapter boundary for clone lane.
   function executeCloneGuardAction({ game, commands }) {
     return runCloneBufferPlanner(game, commands);
   }
+  // <build:section:adapter-smart-execution:end>
 
   function smartRunOnce() {
     if (!config.enabled) {

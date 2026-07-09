@@ -237,6 +237,10 @@ Build engine supports configured parts across sources (`metadata`, `runtime`,
 and `file`) to enable gradual lane extraction without changing the canonical
 runtime contract.
 
+Runtime adapter extraction in practice uses build marker sections in
+`src/SwarmSim-Strategy-Autobuyer.user.js` and syncs from
+`dev-src/runtime-sections/` via `scripts/canonical-build.config.json`.
+
 This includes:
 
 - `node --check src/SwarmSim-Strategy-Autobuyer.user.js`

@@ -51,6 +51,57 @@ function resolvePart(kind, sections) {
   throw new Error(`Unsupported build part kind: ${kind}`);
 }
 
+function indentBlock(blockText, indent, eol) {
+  const normalized = blockText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/(?:\n)+$/u, "");
+  if (!normalized) return "";
+  return normalized.split("\n").map((line) => `${indent}${line}`).join(eol);
+}
+
+function syncNamedSection(content, section, eol) {
+  const marker = String(section?.marker || "").trim();
+  const sourcePath = String(section?.path || "").trim();
+  if (!marker || !sourcePath) {
+    throw new Error("Each build section must provide marker and path.");
+  }
+
+  const startToken = `// <build:section:${marker}:start>`;
+  const endToken = `// <build:section:${marker}:end>`;
+
+  const startIndex = content.indexOf(startToken);
+  const endIndex = content.indexOf(endToken);
+  if (startIndex < 0 || endIndex < 0 || endIndex <= startIndex) {
+    throw new Error(`Missing or invalid marker section: ${marker}`);
+  }
+
+  const lineStart = content.lastIndexOf(eol, startIndex - 1);
+  const startLineStart = lineStart >= 0 ? lineStart + eol.length : 0;
+  const indent = content.slice(startLineStart, startIndex);
+
+  const startLineEnd = content.indexOf(eol, startIndex);
+  if (startLineEnd < 0) {
+    throw new Error(`Malformed start marker line for section: ${marker}`);
+  }
+
+  const endLineStartRaw = content.lastIndexOf(eol, endIndex - 1);
+  const endLineStart = endLineStartRaw >= 0 ? endLineStartRaw + eol.length : 0;
+  const bodyStart = startLineEnd + eol.length;
+
+  const sectionSource = readTextFile(sourcePath);
+  const indented = indentBlock(sectionSource, indent, eol);
+  const replacement = indented ? `${indented}${eol}` : "";
+
+  return `${content.slice(0, bodyStart)}${replacement}${content.slice(endLineStart)}`;
+}
+
+function applyConfiguredSections(content, config, eol) {
+  const sections = Array.isArray(config?.sections) ? config.sections : [];
+  let synced = content;
+  for (const section of sections) {
+    synced = syncNamedSection(synced, section, eol);
+  }
+  return synced;
+}
+
 function buildCanonicalContent(config) {
   const defaultSource = readTextFile(config.source);
   const eol = defaultSource.includes("\r\n") ? "\r\n" : "\n";
@@ -84,7 +135,8 @@ function buildCanonicalContent(config) {
     .map((part) => resolveConfiguredPart(part))
     .join(`${eol}${eol}`);
 
-  return `${built}${eol}`;
+  const withSections = applyConfiguredSections(`${built}${eol}`, config, eol);
+  return withSections;
 }
 
 function main() {
