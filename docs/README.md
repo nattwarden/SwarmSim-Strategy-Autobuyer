@@ -13,6 +13,26 @@ live-logs/2026-07-09-clean-start-game-observation.md
 live-logs/2026-07-09-clicked-mechanics-progression.md
 ```
 
+## Project posture
+
+The active strategy direction is methodical optimization.
+
+The bot is not cautious by identity. It should be logical, evidence-based, and
+transparent. It should optimize normal progression when the math and selected
+user mode support action.
+
+Hard safety defaults remain in place for high-risk or irreversible automation,
+such as ability auto-casts, Clone Larvae, House of Mirrors, auto-ascend,
+Nightbug/Bat defaults, and blind buyMax behavior. These defaults are guardrails,
+not an instruction to play timidly.
+
+Future user-facing modes should distinguish:
+
+- Advisor Mode: tips and explanations for manual play.
+- Methodical Optimizer: default Smart behavior with rebuild/payback-aware buys.
+- High-Tempo Optimizer: future explicit mode for pushing progression harder
+  while preserving hard blockers and observability.
+
 ## Structure
 
 ```text
