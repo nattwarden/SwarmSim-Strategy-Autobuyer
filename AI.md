@@ -35,6 +35,15 @@ AGENTS.md
 Release history belongs in Git commits, tags, `docs/HISTORY.md`, and
 `docs/release-notes/`.
 
+Development-only modular scaffolds:
+
+```text
+dev-src/
+```
+
+These files are non-executable and must never become a byte-identical full
+script copy of `src/SwarmSim-Strategy-Autobuyer.user.js`.
+
 ## Required reading order
 
 Before code changes, read:
@@ -46,6 +55,8 @@ Before code changes, read:
 5. Relevant prompt in `docs/prompts/`
 6. Relevant release notes or live logs if needed
 7. `reference/` only for strategy/math sanity checks
+8. `docs/MODULARIZATION_PLAN.md` for lane/overseer extraction work
+9. Relevant `dev-src/` modules for scaffold/contract context
 
 Do not use old dated game-model files as active truth.
 
@@ -121,6 +132,12 @@ From 0.8.0 onward:
   storage.
 - Do not change `AGENTS.md` unless the repo/process policy itself changes.
 
+For modularization:
+
+- Keep runtime behavior in the canonical userscript unless migration scope is explicit.
+- Extract one lane at a time and keep observability parity in Strategy Inspector/export.
+- Use `dev-src/contracts/lane-proposal.js` proposal shape for lane module boundaries.
+
 ## Safety defaults
 
 These must not change unless explicitly requested:
@@ -175,6 +192,8 @@ Do not introduce as default automation:
 - Every changed behavior needs Strategy Inspector/export observability.
 - Do not mix repo hygiene changes with gameplay strategy changes unless the user
   explicitly asks for both.
+- `dev-src/` is allowed for modular scaffolds, but `src/SwarmSim-Strategy-Autobuyer.user.js`
+  remains the executable source of truth until explicitly migrated.
 
 ## Validation
 

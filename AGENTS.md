@@ -38,6 +38,15 @@ Do not create:
 - duplicate release-note trees in `releases/`
 - byte-identical script copies outside `src/`
 
+Development modular scaffolds may live under:
+
+```text
+dev-src/
+```
+
+but they are non-executable and must not become a byte-identical full copy of
+the canonical userscript.
+
 ## Required reading order
 
 Before code changes, read:
@@ -50,6 +59,11 @@ Before code changes, read:
 6. relevant `docs/release-notes/`
 7. relevant `docs/live-logs/`
 8. `reference/` only when needed
+
+For modularization tasks, also read:
+
+9. `docs/MODULARIZATION_PLAN.md`
+10. relevant `dev-src/` modules
 
 Do not use old dated game-model files or indexed AI snapshots as active truth.
 

@@ -13,9 +13,14 @@ Current focus: **0.8.8 - Multi-Lane Coordinator / Territory Starvation Fix**.
 ```text
 src/
   SwarmSim-Strategy-Autobuyer.user.js       # current installable Tampermonkey source
+dev-src/
+  guards/                                   # modular lane guard scaffolds (non-executable)
+  overseer/                                 # modular coordinator scaffold (non-executable)
+  contracts/                                # shared proposal contract scaffold
 docs/
   SWARMSIM_GAME_MODEL.md                    # canonical active game model
   HISTORY.md                                # summarized historical cleanup/version context
+  MODULARIZATION_PLAN.md                    # phased lane/overseer modularization plan
   PR_CHECKLIST.md                           # PR body checklist
   release-notes/
   prompts/
@@ -37,6 +42,10 @@ src/SwarmSim-Strategy-Autobuyer.user.js
 
 Do not create `.txt` script mirrors, duplicate release `.user.js` files,
 `releases/` script copies, or byte-identical script copies outside `src/`.
+
+`dev-src/` is intentionally non-executable scaffold code for the ongoing
+modularization effort. Runtime remains in `src/SwarmSim-Strategy-Autobuyer.user.js`
+until explicit migration steps are completed.
 
 ## Canonical game model
 
