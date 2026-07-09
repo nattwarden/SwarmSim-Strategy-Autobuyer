@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.7.9
-// @description  Conservative smart advisor/autobuyer with target-aware upgrade/twin planner
+// @version      0.8.0
+// @description  Conservative smart advisor/autobuyer with unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
 // @match        https://swarmsim.com/*
@@ -86,6 +86,18 @@
     meatActionUnitPaybackBypass: true,
     meatActionUnitMinReserveRatio: 5,
     meatFallbackDoNotDropBelowActionUnit: true,
+    meatUnlockPlanner: true,
+    meatUnlockPaybackBypass: true,
+    meatUnlockMinReserveRatio: 3,
+    meatUnlockMaxChunkPercent: 25,
+
+    cloneBufferPlanner: true,
+    cloneBufferMode: "auto",
+    cloneBufferEarlyProtectRatio: 0.5,
+    cloneBufferMatureProtectRatio: 1,
+    cloneBufferPostCloneProtectRatio: 1,
+    cloneBufferMinLarvaProductionForHardLock: 0,
+    cloneBufferProtectLarvae: true,
 
     runEverySeconds: 5,
     purchaseOrder: "upgrades-first",
@@ -184,6 +196,17 @@
       meatActionUnitPaybackBypass: true,
       meatActionUnitMinReserveRatio: 5,
       meatFallbackDoNotDropBelowActionUnit: true,
+      meatUnlockPlanner: true,
+      meatUnlockPaybackBypass: true,
+      meatUnlockMinReserveRatio: 3,
+      meatUnlockMaxChunkPercent: 25,
+      cloneBufferPlanner: true,
+      cloneBufferMode: "auto",
+      cloneBufferEarlyProtectRatio: 0.5,
+      cloneBufferMatureProtectRatio: 1,
+      cloneBufferPostCloneProtectRatio: 1,
+      cloneBufferMinLarvaProductionForHardLock: 0,
+      cloneBufferProtectLarvae: true,
       maxUnitTypesPerRun: 1,
       maxUpgradesPerRun: 10,
       focusTab: "meat",
@@ -349,6 +372,9 @@
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let targetAwareUpgradeState = null;
+  let unlockPlannerState = null;
+  let cloneBufferPlannerState = null;
+  let abilityPrepPlannerState = null;
   let panel = null;
   let strategyBar = null;
   let logPanel = null;
@@ -546,6 +572,24 @@
     c.meatActionUnitPaybackBypass = c.meatActionUnitPaybackBypass !== false;
     c.meatActionUnitMinReserveRatio = clampNumber(c.meatActionUnitMinReserveRatio, 1, 1000, DEFAULT_CONFIG.meatActionUnitMinReserveRatio);
     c.meatFallbackDoNotDropBelowActionUnit = c.meatFallbackDoNotDropBelowActionUnit !== false;
+    c.meatUnlockPlanner = c.meatUnlockPlanner !== false;
+    c.meatUnlockPaybackBypass = c.meatUnlockPaybackBypass !== false;
+    c.meatUnlockMinReserveRatio = clampNumber(c.meatUnlockMinReserveRatio, 1, 1000, DEFAULT_CONFIG.meatUnlockMinReserveRatio);
+    c.meatUnlockMaxChunkPercent = clampNumber(c.meatUnlockMaxChunkPercent, 0.1, 100, DEFAULT_CONFIG.meatUnlockMaxChunkPercent);
+    c.cloneBufferPlanner = c.cloneBufferPlanner !== false;
+    c.cloneBufferMode = ["auto", "buildup", "mature", "post-clone-lock"].includes(String(c.cloneBufferMode || "").toLowerCase())
+      ? String(c.cloneBufferMode || "auto").toLowerCase()
+      : DEFAULT_CONFIG.cloneBufferMode;
+    c.cloneBufferEarlyProtectRatio = clampNumber(c.cloneBufferEarlyProtectRatio, 0, 1, DEFAULT_CONFIG.cloneBufferEarlyProtectRatio);
+    c.cloneBufferMatureProtectRatio = clampNumber(c.cloneBufferMatureProtectRatio, 0, 1, DEFAULT_CONFIG.cloneBufferMatureProtectRatio);
+    c.cloneBufferPostCloneProtectRatio = clampNumber(c.cloneBufferPostCloneProtectRatio, 0, 1, DEFAULT_CONFIG.cloneBufferPostCloneProtectRatio);
+    c.cloneBufferMinLarvaProductionForHardLock = clampNumber(
+      c.cloneBufferMinLarvaProductionForHardLock,
+      0,
+      1e30,
+      DEFAULT_CONFIG.cloneBufferMinLarvaProductionForHardLock
+    );
+    c.cloneBufferProtectLarvae = c.cloneBufferProtectLarvae !== false;
     c.unitBuyPercent = clampNumber(c.unitBuyPercent, 0.01, 1, DEFAULT_CONFIG.unitBuyPercent);
     c.upgradeBuyPercent = clampNumber(c.upgradeBuyPercent, 0.01, 1, DEFAULT_CONFIG.upgradeBuyPercent);
     c.maxUnitTypesPerRun = Math.max(0, Number(c.maxUnitTypesPerRun || 0));
@@ -1512,9 +1556,12 @@ function getDisplayName(item) {
     if (config.meatChainPaybackGuard) settings.push(`reserve ${trimNumber(config.meatChainReserveMultiplier)}x / payback ${formatDuration(config.meatChainMaxPaybackSeconds)}`);
     if (config.meatFallbackEnabled) settings.push(`meat fallback after ${config.meatFallbackMinHoldRuns} holds / ${trimNumber(config.meatFallbackChunkPercent)}% chunk`);
     if (config.meatActionUnitPaybackBypass) settings.push(`active meat action payback bypass ≥${trimNumber(config.meatActionUnitMinReserveRatio)}x reserve`);
+    if (config.meatUnlockPlanner) settings.push(`unlock planner ${config.meatUnlockPaybackBypass ? "payback bypass on" : "payback bypass off"} (min ${trimNumber(config.meatUnlockMinReserveRatio)}x)`);
     if (config.meatFallbackDoNotDropBelowActionUnit) settings.push("fallback floor at planner action unit");
     if (config.meatChainTwinPrep) settings.push(`twin buffer ${trimNumber(config.twinRecoveryBufferMultiplier)}x`);
     if (config.manageCloneLarvaeCocoons) settings.push("Clone Prep cocoons only");
+    if (config.cloneBufferPlanner) settings.push(`clone buffer ${String(config.cloneBufferMode || "auto")}`);
+    settings.push(`ability prep advisor ${config.abilityPlanner ? "on" : "baseline"}`);
     settings.push(`auto-cast ${config.autoCastAbilities ? "ON (risk)" : "off"}`);
     settings.push(`auto-ascend ${config.autoAscend ? "ON (risk)" : "off"}`);
 
@@ -1555,11 +1602,22 @@ function getDisplayName(item) {
       meatActionUnitPaybackBypass: config.meatActionUnitPaybackBypass,
       meatActionUnitMinReserveRatio: config.meatActionUnitMinReserveRatio,
       meatFallbackDoNotDropBelowActionUnit: config.meatFallbackDoNotDropBelowActionUnit,
+      meatUnlockPlanner: config.meatUnlockPlanner,
+      meatUnlockPaybackBypass: config.meatUnlockPaybackBypass,
+      meatUnlockMinReserveRatio: config.meatUnlockMinReserveRatio,
+      meatUnlockMaxChunkPercent: config.meatUnlockMaxChunkPercent,
       twinRecoveryBufferMultiplier: config.twinRecoveryBufferMultiplier,
       manageCloneLarvaeCocoons: config.manageCloneLarvaeCocoons,
       cloneCocoonTargetPercent: config.cloneCocoonTargetPercent,
       cloneCocoonChunkPercent: config.cloneCocoonChunkPercent,
       clonePrepCooldownSeconds: config.clonePrepCooldownSeconds,
+      cloneBufferPlanner: config.cloneBufferPlanner,
+      cloneBufferMode: config.cloneBufferMode,
+      cloneBufferEarlyProtectRatio: config.cloneBufferEarlyProtectRatio,
+      cloneBufferMatureProtectRatio: config.cloneBufferMatureProtectRatio,
+      cloneBufferPostCloneProtectRatio: config.cloneBufferPostCloneProtectRatio,
+      cloneBufferMinLarvaProductionForHardLock: config.cloneBufferMinLarvaProductionForHardLock,
+      cloneBufferProtectLarvae: config.cloneBufferProtectLarvae,
       autoCastAbilities: config.autoCastAbilities,
       autoAscend: config.autoAscend,
     };
@@ -1759,6 +1817,31 @@ function getDisplayName(item) {
       targetAwareUpgradeSupportsActionUnit: inspector.targetAwareUpgradeSupportsActionUnit,
       targetAwareUpgradeReserveRatio: inspector.targetAwareUpgradeReserveRatio,
       targetAwareUpgradeCostResource: inspector.targetAwareUpgradeCostResource,
+      unlockPlannerCandidate: inspector.unlockPlannerCandidate,
+      unlockPlannerDecision: inspector.unlockPlannerDecision,
+      unlockPlannerReason: inspector.unlockPlannerReason,
+      unlockPlannerTarget: inspector.unlockPlannerTarget,
+      unlockPlannerUnlocks: inspector.unlockPlannerUnlocks,
+      unlockPlannerCostResource: inspector.unlockPlannerCostResource,
+      unlockPlannerReserveRatio: inspector.unlockPlannerReserveRatio,
+      unlockPlannerPaybackBypassed: inspector.unlockPlannerPaybackBypassed,
+      cloneBufferMode: inspector.cloneBufferMode,
+      cloneBufferTarget: inspector.cloneBufferTarget,
+      cloneBufferCurrent: inspector.cloneBufferCurrent,
+      cloneBufferPercent: inspector.cloneBufferPercent,
+      cloneBufferDebt: inspector.cloneBufferDebt,
+      cloneBufferSpendableLarvae: inspector.cloneBufferSpendableLarvae,
+      cloneBufferLarvaeProtected: inspector.cloneBufferLarvaeProtected,
+      cloneBufferReason: inspector.cloneBufferReason,
+      abilityPrepCandidate: inspector.abilityPrepCandidate,
+      abilityPrepDecision: inspector.abilityPrepDecision,
+      abilityPrepReason: inspector.abilityPrepReason,
+      abilityPrepType: inspector.abilityPrepType,
+      abilityPrepEnergyAvailable: inspector.abilityPrepEnergyAvailable,
+      abilityPrepRequiresArmyPrep: inspector.abilityPrepRequiresArmyPrep,
+      abilityPrepRequiresCloneBuffer: inspector.abilityPrepRequiresCloneBuffer,
+      houseOfMirrorsArmyValue: inspector.houseOfMirrorsArmyValue,
+      houseOfMirrorsMissingUnits: inspector.houseOfMirrorsMissingUnits,
       configSummary: compactConfigSummary(),
       // Legacy names kept for log consumers written against 0.7.3.
       bestAllowedCandidate: inspector.bestAllowedCandidate,
@@ -1793,6 +1876,9 @@ function getDisplayName(item) {
     const candidateSummary = summarizeLaneCandidates();
     const meatActionState = meatActionUnitPaybackBypassState || getCurrentMeatActionUnitPaybackState(game);
     const targetAwareState = targetAwareUpgradeState || null;
+    const unlockState = unlockPlannerState || null;
+    const cloneBufferState = cloneBufferPlannerState || null;
+    const abilityPrepState = abilityPrepPlannerState || null;
     const bestAllowedMain = candidateSummary.bestAllowedMainCandidate;
     const bestAllowedSide = candidateSummary.bestAllowedSideCandidate;
     const bestRejectedStrategic = candidateSummary.bestRejectedStrategicCandidate;
@@ -1874,8 +1960,33 @@ function getDisplayName(item) {
       targetAwareUpgradeSupportsActionUnit: targetAwareState?.supportsActionUnit ? "yes" : "no",
       targetAwareUpgradeReserveRatio: targetAwareState?.reserveRatioText || "n/a",
       targetAwareUpgradeCostResource: targetAwareState?.costResource || "none",
+      unlockPlannerCandidate: unlockState?.candidate || "none",
+      unlockPlannerDecision: unlockState?.decision || "none",
+      unlockPlannerReason: unlockState?.reason || "none",
+      unlockPlannerTarget: unlockState?.target || "none",
+      unlockPlannerUnlocks: unlockState?.unlocks || "none",
+      unlockPlannerCostResource: unlockState?.costResource || "none",
+      unlockPlannerReserveRatio: unlockState?.reserveRatioText || "n/a",
+      unlockPlannerPaybackBypassed: !!unlockState?.paybackBypassed,
+      cloneBufferMode: cloneBufferState?.cloneBufferMode || "none",
+      cloneBufferTarget: cloneBufferState?.cloneBufferTarget || "0",
+      cloneBufferCurrent: cloneBufferState?.cloneBufferCurrent || "0",
+      cloneBufferPercent: Number.isFinite(cloneBufferState?.cloneBufferPercent) ? `${trimNumber(cloneBufferState.cloneBufferPercent)}%` : "n/a",
+      cloneBufferDebt: cloneBufferState?.cloneBufferDebt || "0",
+      cloneBufferSpendableLarvae: cloneBufferState?.cloneBufferSpendableLarvae || "0",
+      cloneBufferLarvaeProtected: cloneBufferState?.cloneBufferLarvaeProtected || "0",
+      cloneBufferReason: cloneBufferState?.cloneBufferReason || "none",
+      abilityPrepCandidate: abilityPrepState?.abilityPrepCandidate || "none",
+      abilityPrepDecision: abilityPrepState?.abilityPrepDecision || "none",
+      abilityPrepReason: abilityPrepState?.abilityPrepReason || "none",
+      abilityPrepType: abilityPrepState?.abilityPrepType || "none",
+      abilityPrepEnergyAvailable: abilityPrepState?.abilityPrepEnergyAvailable || "n/a",
+      abilityPrepRequiresArmyPrep: abilityPrepState?.abilityPrepRequiresArmyPrep || "no",
+      abilityPrepRequiresCloneBuffer: abilityPrepState?.abilityPrepRequiresCloneBuffer || "no",
+      houseOfMirrorsArmyValue: abilityPrepState?.houseOfMirrorsArmyValue || "n/a",
+      houseOfMirrorsMissingUnits: abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "Ability Planner, Ascension Planner, Nightbug/Bat planner and Clone auto-cast are still advisor-only / not automatic in this version.",
+      futurePlanners: "0.8.0 adds Unlock Planner, Clone Buffer Planner and Ability Prep advisor logic; auto-cast and auto-ascend remain conservative/off by default.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -1935,6 +2046,27 @@ function getDisplayName(item) {
       ["Target-aware supports action", strategyInspector.targetAwareUpgradeSupportsActionUnit || "no"],
       ["Target-aware reserve", strategyInspector.targetAwareUpgradeReserveRatio || "n/a"],
       ["Target-aware cost", strategyInspector.targetAwareUpgradeCostResource || "none"],
+      ["Unlock candidate", strategyInspector.unlockPlannerCandidate || "none"],
+      ["Unlock decision", strategyInspector.unlockPlannerDecision || "none"],
+      ["Unlock reason", strategyInspector.unlockPlannerReason || "none"],
+      ["Unlock target", strategyInspector.unlockPlannerTarget || "none"],
+      ["Unlocks", strategyInspector.unlockPlannerUnlocks || "none"],
+      ["Unlock reserve", strategyInspector.unlockPlannerReserveRatio || "n/a"],
+      ["Unlock bypass", strategyInspector.unlockPlannerPaybackBypassed ? "yes" : "no"],
+      ["Clone buffer mode", strategyInspector.cloneBufferMode || "none"],
+      ["Clone buffer", `${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"})`],
+      ["Clone debt", strategyInspector.cloneBufferDebt || "0"],
+      ["Spendable larvae", strategyInspector.cloneBufferSpendableLarvae || "0"],
+      ["Protected larvae", strategyInspector.cloneBufferLarvaeProtected || "0"],
+      ["Clone buffer reason", strategyInspector.cloneBufferReason || "none"],
+      ["Ability prep", `${strategyInspector.abilityPrepDecision || "none"} ${strategyInspector.abilityPrepCandidate || "none"}`],
+      ["Ability prep reason", strategyInspector.abilityPrepReason || "none"],
+      ["Ability prep type", strategyInspector.abilityPrepType || "none"],
+      ["Ability prep energy", strategyInspector.abilityPrepEnergyAvailable || "n/a"],
+      ["Requires army prep", strategyInspector.abilityPrepRequiresArmyPrep || "no"],
+      ["Requires clone buffer", strategyInspector.abilityPrepRequiresCloneBuffer || "no"],
+      ["House of Mirrors value", strategyInspector.houseOfMirrorsArmyValue || "n/a"],
+      ["House of Mirrors missing", strategyInspector.houseOfMirrorsMissingUnits || "none"],
       ["Settings now", strategyInspector.settings.join(" · ")],
       ["Recommended", strategyInspector.recommendedSmart],
       ["Future", strategyInspector.futurePlanners],
@@ -2051,7 +2183,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.7.9",
+      scriptVersion: "0.8.0",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2097,6 +2229,31 @@ function getDisplayName(item) {
       targetAwareUpgradeSupportsActionUnit: strategyInspector?.targetAwareUpgradeSupportsActionUnit || (targetAwareUpgradeState?.supportsActionUnit ? "yes" : "no"),
       targetAwareUpgradeReserveRatio: strategyInspector?.targetAwareUpgradeReserveRatio || targetAwareUpgradeState?.reserveRatioText || "n/a",
       targetAwareUpgradeCostResource: strategyInspector?.targetAwareUpgradeCostResource || targetAwareUpgradeState?.costResource || "none",
+      unlockPlannerCandidate: strategyInspector?.unlockPlannerCandidate || unlockPlannerState?.candidate || "none",
+      unlockPlannerDecision: strategyInspector?.unlockPlannerDecision || unlockPlannerState?.decision || "none",
+      unlockPlannerReason: strategyInspector?.unlockPlannerReason || unlockPlannerState?.reason || "none",
+      unlockPlannerTarget: strategyInspector?.unlockPlannerTarget || unlockPlannerState?.target || "none",
+      unlockPlannerUnlocks: strategyInspector?.unlockPlannerUnlocks || unlockPlannerState?.unlocks || "none",
+      unlockPlannerCostResource: strategyInspector?.unlockPlannerCostResource || unlockPlannerState?.costResource || "none",
+      unlockPlannerReserveRatio: strategyInspector?.unlockPlannerReserveRatio || unlockPlannerState?.reserveRatioText || "n/a",
+      unlockPlannerPaybackBypassed: !!(strategyInspector?.unlockPlannerPaybackBypassed || unlockPlannerState?.paybackBypassed),
+      cloneBufferMode: strategyInspector?.cloneBufferMode || cloneBufferPlannerState?.cloneBufferMode || "none",
+      cloneBufferTarget: strategyInspector?.cloneBufferTarget || cloneBufferPlannerState?.cloneBufferTarget || "0",
+      cloneBufferCurrent: strategyInspector?.cloneBufferCurrent || cloneBufferPlannerState?.cloneBufferCurrent || "0",
+      cloneBufferPercent: strategyInspector?.cloneBufferPercent || (Number.isFinite(cloneBufferPlannerState?.cloneBufferPercent) ? `${trimNumber(cloneBufferPlannerState.cloneBufferPercent)}%` : "n/a"),
+      cloneBufferDebt: strategyInspector?.cloneBufferDebt || cloneBufferPlannerState?.cloneBufferDebt || "0",
+      cloneBufferSpendableLarvae: strategyInspector?.cloneBufferSpendableLarvae || cloneBufferPlannerState?.cloneBufferSpendableLarvae || "0",
+      cloneBufferLarvaeProtected: strategyInspector?.cloneBufferLarvaeProtected || cloneBufferPlannerState?.cloneBufferLarvaeProtected || "0",
+      cloneBufferReason: strategyInspector?.cloneBufferReason || cloneBufferPlannerState?.cloneBufferReason || "none",
+      abilityPrepCandidate: strategyInspector?.abilityPrepCandidate || abilityPrepPlannerState?.abilityPrepCandidate || "none",
+      abilityPrepDecision: strategyInspector?.abilityPrepDecision || abilityPrepPlannerState?.abilityPrepDecision || "none",
+      abilityPrepReason: strategyInspector?.abilityPrepReason || abilityPrepPlannerState?.abilityPrepReason || "none",
+      abilityPrepType: strategyInspector?.abilityPrepType || abilityPrepPlannerState?.abilityPrepType || "none",
+      abilityPrepEnergyAvailable: strategyInspector?.abilityPrepEnergyAvailable || abilityPrepPlannerState?.abilityPrepEnergyAvailable || "n/a",
+      abilityPrepRequiresArmyPrep: strategyInspector?.abilityPrepRequiresArmyPrep || abilityPrepPlannerState?.abilityPrepRequiresArmyPrep || "no",
+      abilityPrepRequiresCloneBuffer: strategyInspector?.abilityPrepRequiresCloneBuffer || abilityPrepPlannerState?.abilityPrepRequiresCloneBuffer || "no",
+      houseOfMirrorsArmyValue: strategyInspector?.houseOfMirrorsArmyValue || abilityPrepPlannerState?.houseOfMirrorsArmyValue || "n/a",
+      houseOfMirrorsMissingUnits: strategyInspector?.houseOfMirrorsMissingUnits || abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "none",
       advisorLog: advisorLog.slice(),
       purchaseLog: purchaseLog.slice(),
       configSummary: cfg,
@@ -2169,6 +2326,30 @@ function getDisplayName(item) {
       `- Target-aware supports action: ${payload.targetAwareUpgradeSupportsActionUnit || "no"}`,
       `- Target-aware reserve ratio: ${payload.targetAwareUpgradeReserveRatio || "n/a"}`,
       `- Target-aware cost resource: ${payload.targetAwareUpgradeCostResource || "none"}`,
+      `- Unlock candidate: ${payload.unlockPlannerCandidate || "none"}`,
+      `- Unlock decision: ${payload.unlockPlannerDecision || "none"}`,
+      `- Unlock reason: ${payload.unlockPlannerReason || "none"}`,
+      `- Unlock target: ${payload.unlockPlannerTarget || "none"}`,
+      `- Unlocks: ${payload.unlockPlannerUnlocks || "none"}`,
+      `- Unlock cost resource: ${payload.unlockPlannerCostResource || "none"}`,
+      `- Unlock reserve ratio: ${payload.unlockPlannerReserveRatio || "n/a"}`,
+      `- Unlock payback bypassed: ${payload.unlockPlannerPaybackBypassed ? "yes" : "no"}`,
+      `- Clone buffer mode: ${payload.cloneBufferMode || "none"}`,
+      `- Clone buffer current/target: ${payload.cloneBufferCurrent || "0"} / ${payload.cloneBufferTarget || "0"}`,
+      `- Clone buffer percent: ${payload.cloneBufferPercent || "n/a"}`,
+      `- Clone buffer debt: ${payload.cloneBufferDebt || "0"}`,
+      `- Clone buffer spendable larvae: ${payload.cloneBufferSpendableLarvae || "0"}`,
+      `- Clone buffer larvae protected: ${payload.cloneBufferLarvaeProtected || "0"}`,
+      `- Clone buffer reason: ${payload.cloneBufferReason || "none"}`,
+      `- Ability prep candidate: ${payload.abilityPrepCandidate || "none"}`,
+      `- Ability prep decision: ${payload.abilityPrepDecision || "none"}`,
+      `- Ability prep reason: ${payload.abilityPrepReason || "none"}`,
+      `- Ability prep type: ${payload.abilityPrepType || "none"}`,
+      `- Ability prep energy available: ${payload.abilityPrepEnergyAvailable || "n/a"}`,
+      `- Ability prep requires army prep: ${payload.abilityPrepRequiresArmyPrep || "no"}`,
+      `- Ability prep requires clone buffer: ${payload.abilityPrepRequiresCloneBuffer || "no"}`,
+      `- House of Mirrors army value: ${payload.houseOfMirrorsArmyValue || "n/a"}`,
+      `- House of Mirrors missing units: ${payload.houseOfMirrorsMissingUnits || "none"}`,
       `- Skipped meat candidates: ${(payload.skippedMeatCandidates || []).map((item) => `${item.candidate || "unknown"}: ${item.reason || "skipped"}`).join("; ") || "none"}`,
       ``,
       `## Live diagnostics`,
@@ -2569,6 +2750,9 @@ function getDisplayName(item) {
   }
 
   function shouldAvoidProtectedCost(item, protectedResources) {
+    const cloneBufferIssue = getCloneBufferProtectionIssue(item);
+    if (cloneBufferIssue) return "larva";
+
     for (const resourceName of protectedResources) {
       if (costUsesResource(item, resourceName)) return resourceName;
     }
@@ -2580,15 +2764,47 @@ function getDisplayName(item) {
     if (resourceName === "energy") return "Nexus";
     if (resourceName === "territory") return "Expansion";
     if (resourceName === "meat") return "Hatchery";
+    if (resourceName === "larva") return "Clone Cocoon Buffer";
     return "protected plan";
   }
 
   function protectedResourceHoldReason(resourceName) {
+    if (resourceName === "larva" && cloneBufferPlannerState?.cloneBufferReason) {
+      return `cloned larvae protected for Clone Cocoon Buffer; ${cloneBufferPlannerState.cloneBufferReason}`;
+    }
     return `saving ${resourceName} for ${protectedResourceTarget(resourceName)}`;
   }
 
   function protectedResourceBlocker(resourceName) {
     return `${resourceName} protected for ${protectedResourceTarget(resourceName)}`;
+  }
+
+  function getCloneBufferProtectionIssue(item, num = newDecimal(1)) {
+    if (!config.cloneBufferPlanner || !config.cloneBufferProtectLarvae) return null;
+    if (!cloneBufferPlannerState) return null;
+    if (!cloneBufferPlannerState.cloneBufferProtectLarvae) return null;
+    if (!item || String(item?.name || "").toLowerCase() === "cocoon") return null;
+    if (!costUsesResource(item, "larva")) return null;
+
+    const protectedRaw = decimalFrom(cloneBufferPlannerState.cloneBufferLarvaeProtectedRaw || 0);
+    const debtRaw = decimalFrom(cloneBufferPlannerState.cloneBufferDebtRaw || 0);
+    const postCloneLockActive = !!cloneBufferPlannerState.postCloneLockActive;
+
+    if (!isPositive(protectedRaw)) return null;
+    if (!isPositive(debtRaw) && !postCloneLockActive) return null;
+
+    const larvaCost = decimalFrom(getCostForResource(item, "larva")).times(decimalFrom(num || 1));
+    if (!isPositive(larvaCost)) return null;
+
+    const spendable = decimalFrom(cloneBufferPlannerState.cloneBufferSpendableLarvaeRaw || 0);
+    if (!spendable.lessThan(larvaCost)) return null;
+
+    return {
+      type: "clone-buffer",
+      larvaCost,
+      spendable,
+      reason: `clone buffer lock: spendable larvae ${formatSwarmNumber(spendable)} < cost ${formatSwarmNumber(larvaCost)}`,
+    };
   }
 
   function hasActiveExpansionSave(candidate) {
@@ -3182,6 +3398,447 @@ function getDisplayName(item) {
     return { actionTaken: !!didBuy, bought: didBuy ? 1 : 0, sideAction: true, summary: didBuy ? "prepared Clone Larvae cocoons" : "Clone prep failed" };
   }
 
+  function resolveCloneBufferMode({ cap, bank, larvae, larvaVelocity }) {
+    const configured = String(config.cloneBufferMode || "auto").toLowerCase();
+    if (configured && configured !== "auto") {
+      if (configured === "post-clone-lock") return "POST_CLONE_LOCK";
+      if (configured === "buildup") return "BUILDUP";
+      return "MATURE";
+    }
+
+    if (isPositive(bank)) return "POST_CLONE_LOCK";
+
+    const capDec = decimalFrom(cap || 0);
+    const larvaeDec = decimalFrom(larvae || 0);
+    const earlyThreshold = capDec.times(0.5);
+    const lowProduction = decimalToNumber(larvaVelocity, 0) <= Number(config.cloneBufferMinLarvaProductionForHardLock || 0);
+
+    if (larvaeDec.lessThan(earlyThreshold) || lowProduction) return "BUILDUP";
+    return "MATURE";
+  }
+
+  function getCloneBufferProtectionRatio(mode) {
+    if (mode === "POST_CLONE_LOCK") return clampNumber(config.cloneBufferPostCloneProtectRatio, 0, 1, DEFAULT_CONFIG.cloneBufferPostCloneProtectRatio);
+    if (mode === "BUILDUP") return clampNumber(config.cloneBufferEarlyProtectRatio, 0, 1, DEFAULT_CONFIG.cloneBufferEarlyProtectRatio);
+    return clampNumber(config.cloneBufferMatureProtectRatio, 0, 1, DEFAULT_CONFIG.cloneBufferMatureProtectRatio);
+  }
+
+  function runCloneBufferPlanner(game, commands) {
+    if (!config.cloneBufferPlanner || !config.manageCloneLarvaeCocoons) {
+      recordCloneBufferPlannerState({
+        cloneBufferMode: "OFF",
+        cloneBufferTarget: "0",
+        cloneBufferCurrent: "0",
+        cloneBufferPercent: 0,
+        cloneBufferDebt: "0",
+        cloneBufferSpendableLarvae: "0",
+        cloneBufferLarvaeProtected: "0",
+        cloneBufferReason: "clone buffer planner disabled",
+        cloneBufferProtectLarvae: false,
+        postCloneLockActive: false,
+      });
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const cloneAbility = getGameUpgrade(game, "clonelarvae");
+    const cocoon = getGameUnit(game, "cocoon");
+    const larva = getGameUnit(game, "larva");
+
+    if (!cloneAbility?.isVisible?.() || !cocoon || !larva) {
+      recordCloneBufferPlannerState({
+        cloneBufferMode: "WAIT",
+        cloneBufferTarget: "0",
+        cloneBufferCurrent: "0",
+        cloneBufferPercent: 0,
+        cloneBufferDebt: "0",
+        cloneBufferSpendableLarvae: formatSwarmNumber(larva?.count?.() || 0),
+        cloneBufferLarvaeProtected: "0",
+        cloneBufferReason: "Clone Larvae not visible yet",
+        cloneBufferProtectLarvae: false,
+        postCloneLockActive: false,
+      });
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const cap = decimalFrom(getCloneLarvaeCap(game));
+    const bank = decimalFrom(getCloneLarvaeBank(game));
+    const cocoons = decimalFrom(cocoon.count?.() || 0);
+    const larvae = decimalFrom(larva.count?.() || 0);
+    const larvaVelocity = decimalFrom(getVelocity(game, "larva"));
+    const mode = resolveCloneBufferMode({ cap, bank, larvae, larvaVelocity });
+    const protectRatio = getCloneBufferProtectionRatio(mode);
+
+    const target = cap.times(protectRatio);
+    const rawDebt = target.minus(cocoons);
+    const debt = rawDebt.greaterThan(0) ? rawDebt : newDecimal(0);
+    const desiredProtected = debt.times(protectRatio);
+    const larvaeProtected = decimalMin(larvae, desiredProtected);
+    const rawSpendable = larvae.minus(larvaeProtected);
+    const spendableLarvae = rawSpendable.greaterThan(0) ? rawSpendable : newDecimal(0);
+    const percent = isPositive(target) ? decimalToNumber(cocoons.dividedBy(target).times(100), 0) : 100;
+
+    const modeReason = mode === "POST_CLONE_LOCK"
+      ? `post-clone lock active; cloned larvae must be cocooned first (${trimNumber(percent)}%)`
+      : mode === "BUILDUP"
+        ? "cocoon target is large relative to current larva production; protect partial larvae for cocoons, allow larva-engine/unlock buys"
+        : "mature buffer; use spendable larvae above clone buffer debt";
+
+    recordCloneBufferPlannerState({
+      cloneBufferMode: mode,
+      cloneBufferTarget: formatSwarmNumber(target),
+      cloneBufferCurrent: formatSwarmNumber(cocoons),
+      cloneBufferPercent: percent,
+      cloneBufferDebt: formatSwarmNumber(debt),
+      cloneBufferSpendableLarvae: formatSwarmNumber(spendableLarvae),
+      cloneBufferLarvaeProtected: formatSwarmNumber(larvaeProtected),
+      cloneBufferReason: modeReason,
+      cloneBufferDebtRaw: debt,
+      cloneBufferSpendableLarvaeRaw: spendableLarvae,
+      cloneBufferLarvaeProtectedRaw: larvaeProtected,
+      cloneBufferProtectLarvae: config.cloneBufferProtectLarvae && (mode !== "BUILDUP" || isPositive(debt)),
+      postCloneLockActive: mode === "POST_CLONE_LOCK" && isPositive(debt),
+    });
+
+    addLaneCandidate({
+      lane: "Clone Prep",
+      decision: mode === "POST_CLONE_LOCK" && isPositive(debt) ? "HOLD" : "OBSERVE",
+      candidate: "Clone Buffer Planner",
+      reason: modeReason,
+      blockers: mode === "POST_CLONE_LOCK" && isPositive(debt) ? ["cloned larvae protected", "buffer recovery not complete"] : [],
+      score: mode === "POST_CLONE_LOCK" ? 82000 : mode === "BUILDUP" ? 42000 : 52000,
+      reserveAfter: `${formatSwarmNumber(cocoons)} / ${formatSwarmNumber(target)}`,
+      resource: "larva",
+      raw: {
+        cloneBufferTarget: target,
+        cloneBufferCurrent: cocoons,
+        cloneBufferPercent: percent,
+        cloneBufferDebt: debt,
+        cloneBufferSpendableLarvae: spendableLarvae,
+      },
+    });
+
+    if (!(mode === "POST_CLONE_LOCK" && isPositive(debt))) {
+      return { actionTaken: false, bought: 0 };
+    }
+
+    if (!cocoon?.isVisible?.() || !cocoon?.isBuyable?.()) {
+      recordAdvisor("HOLD", "Clone Buffer", `post-clone lock active but cocoons are not buyable; ${modeReason}`);
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const maxChunk = larvae.floor ? larvae.floor() : larvae;
+    const buyNum = decimalMin(debt, maxChunk);
+    if (!isPositive(buyNum)) {
+      recordAdvisor("HOLD", "Clone Buffer", "post-clone lock active; no larvae available for cocoon recovery");
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const reason = `post-clone buffer recovery; cloned larvae must be cocooned before normal spending (${formatSwarmNumber(cocoons)} / ${formatSwarmNumber(target)})`;
+    recordAdvisor("BUY", getDisplayName(cocoon), reason);
+    addLaneCandidate({
+      lane: "Clone Prep",
+      decision: "BUY",
+      candidate: getDisplayName(cocoon),
+      reason,
+      score: 92000,
+      wouldBuyAmount: formatSwarmNumber(buyNum),
+      reserveAfter: `${formatSwarmNumber(cocoons.plus(buyNum))} / ${formatSwarmNumber(target)}`,
+      resource: "larva",
+    });
+
+    if (config.advisorOnly || !config.autoBuySafeDecisions) {
+      recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(buyNum)} ${getDisplayName(cocoon)} — post-clone lock recovery`);
+      return { actionTaken: true, bought: 0, summary: "Would recover clone buffer" };
+    }
+
+    const didBuy = safe("Clone buffer recovery", () => buyUnitAmount(commands, cocoon, buyNum, "Clone Buffer"));
+    return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed" };
+  }
+
+  function runUnlockPlanner(game, commands, protectedResources) {
+    if (!config.meatUnlockPlanner || !config.meatGoalPlanner) {
+      recordUnlockPlannerState({
+        candidate: "none",
+        decision: "OBSERVE",
+        reason: "unlock planner disabled",
+        target: "none",
+        unlocks: "none",
+        costResource: "none",
+        reserveRatio: NaN,
+        paybackBypassed: false,
+      });
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const plan = buildMeatGoalPlan(game);
+    if (!plan?.parentUnit || !plan?.actionUnit) {
+      recordUnlockPlannerState({
+        candidate: "none",
+        decision: "OBSERVE",
+        reason: "no unlock parent step available on current meat target path",
+        target: plan?.target ? getDisplayName(plan.target) : "none",
+        unlocks: "none",
+        costResource: "none",
+        reserveRatio: NaN,
+        paybackBypassed: false,
+      });
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const targetName = getDisplayName(plan.target);
+    const candidate = plan.parentUnit;
+    const candidateName = getDisplayName(candidate);
+
+    if (!candidate?.isVisible?.() || !candidate?.isBuyable?.()) {
+      recordUnlockPlannerState({
+        candidate: candidateName,
+        decision: "HOLD",
+        reason: `unlock candidate ${candidateName} is not buyable yet for ${targetName}`,
+        target: targetName,
+        unlocks: "none",
+        costResource: getDisplayName(plan.actionUnit),
+        reserveRatio: NaN,
+        paybackBypassed: false,
+      });
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const plannerNum = getPlannerUnitBuyNum(candidate);
+    const maxByChunk = decimalFrom(candidate.maxCostMet?.(config.unitBuyPercent) || 0)
+      .times(clampNumber(config.meatUnlockMaxChunkPercent, 0.1, 100, DEFAULT_CONFIG.meatUnlockMaxChunkPercent))
+      .dividedBy(100)
+      .floor();
+    const num = decimalMin(plannerNum, maxByChunk);
+
+    if (!isPositive(num)) {
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const twin = getTwinUpgradeForUnit(game, candidate);
+    const unlocks = [];
+    if (twin) unlocks.push(getDisplayName(twin));
+    unlocks.push(`progress toward ${targetName}`);
+
+    const protectedCost = shouldAvoidProtectedCost(candidate, protectedResources || new Set());
+    if (protectedCost) {
+      const reason = `unlock candidate blocked; ${protectedResourceHoldReason(protectedCost)}`;
+      recordAdvisor("HOLD", candidateName, reason);
+      addLaneCandidate({
+        lane: "Meat",
+        decision: "HOLD",
+        candidate: candidateName,
+        reason,
+        blockers: [protectedResourceBlocker(protectedCost), "cost uses protected resource"],
+        score: unitCostScore(candidate) + 6000,
+        wouldBuyAmount: formatSwarmNumber(num),
+        target: targetName,
+      });
+      recordUnlockPlannerState({
+        candidate: candidateName,
+        decision: "HOLD",
+        reason,
+        target: targetName,
+        unlocks: unlocks.join(", "),
+        costResource: protectedCost,
+        reserveRatio: NaN,
+        paybackBypassed: false,
+      });
+      return { actionTaken: false, bought: 0 };
+    }
+
+    const guard = getMeatChainPurchaseAnalysis(candidate, num);
+    const reserveRatio = rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
+    const hasConcreteUnlockValue = !!twin;
+    let paybackBypassed = false;
+
+    if (guard && !guard.ok) {
+      if (
+        guard.type === "payback" &&
+        config.meatUnlockPaybackBypass &&
+        hasConcreteUnlockValue &&
+        Number.isFinite(reserveRatio) &&
+        reserveRatio >= Number(config.meatUnlockMinReserveRatio || DEFAULT_CONFIG.meatUnlockMinReserveRatio)
+      ) {
+        paybackBypassed = true;
+      } else {
+        const reason = `unlock candidate blocked; would unlock ${unlocks.join(", ")} but ${guard.reason}`;
+        recordAdvisor("HOLD", candidateName, reason);
+        addLaneCandidate({
+          lane: "Meat",
+          decision: "HOLD",
+          candidate: candidateName,
+          reason,
+          blockers: [guard.type === "payback" ? "payback guard" : "reserve guard"],
+          score: unitCostScore(candidate) + 5500,
+          wouldBuyAmount: formatSwarmNumber(num),
+          payback: guard.type === "payback" ? guard.reason : "",
+          reserveAfter: guard.reason,
+          target: targetName,
+          raw: guard.raw || null,
+        });
+        recordUnlockPlannerState({
+          candidate: candidateName,
+          decision: "HOLD",
+          reason,
+          target: targetName,
+          unlocks: unlocks.join(", "),
+          costResource: getDisplayName(guard?.raw?.costResource || plan.actionUnit),
+          reserveRatio,
+          paybackBypassed: false,
+        });
+        return { actionTaken: false, bought: 0 };
+      }
+    }
+
+    const reason = paybackBypassed
+      ? `target unlock step for ${targetName}; converts excess ${getDisplayName(plan.actionUnit)} to ${candidateName}; unlocks ${unlocks.join(", ")}; reserve after buy ${Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a"} >= required ${trimNumber(config.meatUnlockMinReserveRatio)}x; payback bypassed for unlock value`
+      : `target unlock step for ${targetName}; unlocks ${unlocks.join(", ")}; reserve/payback guard ok`;
+
+    recordAdvisor("BUY", candidateName, reason);
+    addLaneCandidate({
+      lane: "Meat",
+      decision: "BUY",
+      candidate: candidateName,
+      reason,
+      score: unitCostScore(candidate) + 8000,
+      wouldBuyAmount: formatSwarmNumber(num),
+      target: targetName,
+      raw: guard?.raw || null,
+    });
+    recordUnlockPlannerState({
+      candidate: candidateName,
+      decision: "BUY",
+      reason,
+      target: targetName,
+      unlocks: unlocks.join(", "),
+      costResource: getDisplayName(plan.actionUnit),
+      reserveRatio,
+      paybackBypassed,
+    });
+
+    if (config.advisorOnly || !config.autoBuySafeDecisions) {
+      recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(num)} ${candidateName} — unlock planner`);
+      return { actionTaken: true, bought: 0, summary: "Would buy unlock step" };
+    }
+
+    const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, num, "Unlock Step"));
+    return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? `Unlock planner ${candidateName}` : "Unlock planner buy failed" };
+  }
+
+  function unitCountByNameLike(game, query) {
+    const q = String(query || "").toLowerCase();
+    if (!q) return newDecimal(0);
+
+    let total = newDecimal(0);
+    for (const unit of game.unitlist?.() || []) {
+      const text = `${unit?.name || ""} ${getDisplayName(unit)}`.toLowerCase();
+      if (!text.includes(q)) continue;
+      total = total.plus(decimalFrom(unit?.count?.() || 0));
+    }
+    return total;
+  }
+
+  function runAbilityPrepPlanner(game) {
+    const energy = getCurrentResource(game, "energy");
+    let lastState = null;
+
+    const clone = getGameUpgrade(game, "clonelarvae");
+    if (clone?.isVisible?.()) {
+      const cloneCost = getCostForResource(clone, "energy");
+      const energyOk = decimalAtLeast(energy, cloneCost);
+      const bufferDebt = decimalFrom(cloneBufferPlannerState?.cloneBufferDebtRaw || 0);
+      const needsCloneBuffer = isPositive(bufferDebt) || !!cloneBufferPlannerState?.postCloneLockActive;
+      const decision = energyOk && !needsCloneBuffer ? "PLAN" : "HOLD";
+      const reason = energyOk && !needsCloneBuffer
+        ? "energy safe, clone cap high enough and cocoon buffer can absorb cloned larvae; auto-cast disabled"
+        : "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled";
+
+      recordAdvisor(decision, "Clone Larvae", reason);
+      addLaneCandidate({
+        lane: "Ability",
+        decision: decision === "PLAN" ? "OBSERVE" : "HOLD",
+        candidate: "Clone Larvae",
+        reason,
+        blockers: decision === "HOLD" ? ["clone buffer required", "ability auto-cast disabled"] : ["ability auto-cast disabled"],
+        score: 38000,
+        resource: "energy",
+      });
+
+      lastState = recordAbilityPrepPlannerState({
+        abilityPrepCandidate: "Clone Larvae",
+        abilityPrepDecision: decision,
+        abilityPrepReason: reason,
+        abilityPrepType: "clone-larvae",
+        abilityPrepEnergyAvailable: formatSwarmNumber(energy),
+        abilityPrepRequiresArmyPrep: false,
+        abilityPrepRequiresCloneBuffer: needsCloneBuffer,
+        houseOfMirrorsArmyValue: abilityPrepPlannerState?.houseOfMirrorsArmyValue || "n/a",
+        houseOfMirrorsMissingUnits: abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "none",
+      });
+    }
+
+    const mirrors = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    if (mirrors?.isVisible?.()) {
+      const tiers = [
+        { key: "culicimorph v", label: "Culicimorph V" },
+        { key: "arachnomorph v", label: "Arachnomorph V" },
+        { key: "stinger v", label: "Stinger V" },
+      ];
+
+      const missing = [];
+      let armyValue = newDecimal(0);
+
+      for (const tier of tiers) {
+        const count = unitCountByNameLike(game, tier.key);
+        armyValue = armyValue.plus(count);
+        if (!isPositive(count)) missing.push(tier.label);
+      }
+
+      const needsArmyPrep = missing.length >= 2 || !isPositive(armyValue);
+      const decision = needsArmyPrep ? "HOLD" : "PLAN";
+      const reason = needsArmyPrep
+        ? `army prep missing; top fighting units ${missing.join(", ")} are empty`
+        : "army has meaningful mirror value; energy available; auto-cast disabled";
+
+      recordAdvisor(decision, "House of Mirrors", reason);
+      addLaneCandidate({
+        lane: "Ability",
+        decision: decision === "PLAN" ? "OBSERVE" : "HOLD",
+        candidate: "House of Mirrors",
+        reason,
+        blockers: decision === "HOLD" ? ["army prep missing", "ability auto-cast disabled"] : ["ability auto-cast disabled"],
+        score: 37000,
+        resource: "energy",
+      });
+
+      lastState = recordAbilityPrepPlannerState({
+        abilityPrepCandidate: "House of Mirrors",
+        abilityPrepDecision: decision,
+        abilityPrepReason: reason,
+        abilityPrepType: "house-of-mirrors",
+        abilityPrepEnergyAvailable: formatSwarmNumber(energy),
+        abilityPrepRequiresArmyPrep: needsArmyPrep,
+        abilityPrepRequiresCloneBuffer: false,
+        houseOfMirrorsArmyValue: formatSwarmNumber(armyValue),
+        houseOfMirrorsMissingUnits: missing.length ? missing.join(", ") : "none",
+      });
+    }
+
+    if (!lastState) {
+      recordAbilityPrepPlannerState({
+        abilityPrepCandidate: "none",
+        abilityPrepDecision: "none",
+        abilityPrepReason: "no ability prep candidate visible",
+        abilityPrepType: "none",
+        abilityPrepEnergyAvailable: formatSwarmNumber(energy),
+        abilityPrepRequiresArmyPrep: false,
+        abilityPrepRequiresCloneBuffer: false,
+        houseOfMirrorsArmyValue: "n/a",
+        houseOfMirrorsMissingUnits: "none",
+      });
+    }
+  }
+
   function recordEnergyCreatureHolds(game) {
     const nightbug = getGameUnit(game, "nightbug");
     if (nightbug?.isVisible?.() && nightbug?.isBuyable?.()) {
@@ -3754,6 +4411,16 @@ function getDisplayName(item) {
     if (!unit) return { type: "missing", reason: "candidate missing unit" };
     if (!isPositive(num)) return { type: "amount", reason: "no safe amount" };
 
+    const cloneBufferIssue = getCloneBufferProtectionIssue(unit, num);
+    if (cloneBufferIssue) {
+      return {
+        type: "clone-buffer",
+        resource: "larva",
+        reason: cloneBufferIssue.reason,
+        blockers: ["larva protected for Clone Cocoon Buffer", "clone buffer spendable larvae guard"],
+      };
+    }
+
     const protectedCost = shouldAvoidProtectedCost(unit, protectedResources);
     if (protectedCost) {
       return {
@@ -3888,6 +4555,64 @@ function getDisplayName(item) {
     };
 
     return targetAwareUpgradeState;
+  }
+
+  function recordUnlockPlannerState(fields = {}) {
+    const reserveRatio = Number(fields.reserveRatio);
+
+    unlockPlannerState = {
+      candidate: fields.candidate || unlockPlannerState?.candidate || "none",
+      decision: fields.decision || unlockPlannerState?.decision || "OBSERVE",
+      reason: fields.reason || unlockPlannerState?.reason || "none",
+      target: fields.target || unlockPlannerState?.target || "none",
+      unlocks: fields.unlocks || unlockPlannerState?.unlocks || "none",
+      costResource: fields.costResource || unlockPlannerState?.costResource || "none",
+      reserveRatio: Number.isFinite(reserveRatio) ? reserveRatio : null,
+      reserveRatioText: Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a",
+      paybackBypassed: !!fields.paybackBypassed,
+    };
+
+    return unlockPlannerState;
+  }
+
+  function recordCloneBufferPlannerState(fields = {}) {
+    const percent = Number(fields.cloneBufferPercent);
+
+    cloneBufferPlannerState = {
+      cloneBufferMode: fields.cloneBufferMode || cloneBufferPlannerState?.cloneBufferMode || "none",
+      cloneBufferTarget: fields.cloneBufferTarget || cloneBufferPlannerState?.cloneBufferTarget || "0",
+      cloneBufferCurrent: fields.cloneBufferCurrent || cloneBufferPlannerState?.cloneBufferCurrent || "0",
+      cloneBufferPercent: Number.isFinite(percent) ? percent : (Number(cloneBufferPlannerState?.cloneBufferPercent) || 0),
+      cloneBufferDebt: fields.cloneBufferDebt || cloneBufferPlannerState?.cloneBufferDebt || "0",
+      cloneBufferSpendableLarvae: fields.cloneBufferSpendableLarvae || cloneBufferPlannerState?.cloneBufferSpendableLarvae || "0",
+      cloneBufferLarvaeProtected: fields.cloneBufferLarvaeProtected || cloneBufferPlannerState?.cloneBufferLarvaeProtected || "0",
+      cloneBufferReason: fields.cloneBufferReason || cloneBufferPlannerState?.cloneBufferReason || "none",
+      cloneBufferDebtRaw: fields.cloneBufferDebtRaw || cloneBufferPlannerState?.cloneBufferDebtRaw || newDecimal(0),
+      cloneBufferSpendableLarvaeRaw: fields.cloneBufferSpendableLarvaeRaw || cloneBufferPlannerState?.cloneBufferSpendableLarvaeRaw || newDecimal(0),
+      cloneBufferLarvaeProtectedRaw: fields.cloneBufferLarvaeProtectedRaw || cloneBufferPlannerState?.cloneBufferLarvaeProtectedRaw || newDecimal(0),
+      cloneBufferProtectLarvae: fields.cloneBufferProtectLarvae !== undefined
+        ? !!fields.cloneBufferProtectLarvae
+        : !!cloneBufferPlannerState?.cloneBufferProtectLarvae,
+      postCloneLockActive: !!fields.postCloneLockActive,
+    };
+
+    return cloneBufferPlannerState;
+  }
+
+  function recordAbilityPrepPlannerState(fields = {}) {
+    abilityPrepPlannerState = {
+      abilityPrepCandidate: fields.abilityPrepCandidate || abilityPrepPlannerState?.abilityPrepCandidate || "none",
+      abilityPrepDecision: fields.abilityPrepDecision || abilityPrepPlannerState?.abilityPrepDecision || "none",
+      abilityPrepReason: fields.abilityPrepReason || abilityPrepPlannerState?.abilityPrepReason || "none",
+      abilityPrepType: fields.abilityPrepType || abilityPrepPlannerState?.abilityPrepType || "none",
+      abilityPrepEnergyAvailable: fields.abilityPrepEnergyAvailable || abilityPrepPlannerState?.abilityPrepEnergyAvailable || "n/a",
+      abilityPrepRequiresArmyPrep: fields.abilityPrepRequiresArmyPrep ? "yes" : "no",
+      abilityPrepRequiresCloneBuffer: fields.abilityPrepRequiresCloneBuffer ? "yes" : "no",
+      houseOfMirrorsArmyValue: fields.houseOfMirrorsArmyValue || abilityPrepPlannerState?.houseOfMirrorsArmyValue || "n/a",
+      houseOfMirrorsMissingUnits: fields.houseOfMirrorsMissingUnits || abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "none",
+    };
+
+    return abilityPrepPlannerState;
   }
 
   function getCurrentMeatActionUnitPaybackState(game) {
@@ -5439,6 +6164,9 @@ function getDisplayName(item) {
     meatFallbackState = null;
     meatActionUnitPaybackBypassState = null;
     targetAwareUpgradeState = null;
+    unlockPlannerState = null;
+    cloneBufferPlannerState = null;
+    abilityPrepPlannerState = null;
 
     const game = getGame();
     const commands = getCommands();
@@ -5503,6 +6231,18 @@ function getDisplayName(item) {
     if (canDoMoreMainActions()) {
       const energyAction = handleEnergyStrategy(game, commands, protectedResources);
       addMainResult("Energy", energyAction);
+    }
+
+    if (canDoMoreMainActions()) {
+      const cloneBufferAction = runCloneBufferPlanner(game, commands);
+      addMainResult("Clone buffer", cloneBufferAction);
+    } else {
+      runCloneBufferPlanner(game, commands);
+    }
+
+    if (canDoMoreMainActions()) {
+      const unlockAction = runUnlockPlanner(game, commands, protectedResources);
+      addMainResult("Unlock planner", unlockAction);
     }
 
     const smartFocus = decideSmartFocus(engine);
@@ -5575,6 +6315,8 @@ function getDisplayName(item) {
     // not prevent upgrades, Nexus, lepidoptera or normal unit decisions in the same run.
     const clonePrep = manageCloneCocoons(game, commands);
     addSideResult("Clone prep", clonePrep);
+
+    runAbilityPrepPlanner(game);
 
     strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, summaries, mainActions, sideActions);
     recordRunHistoryEntry(strategyInspector);
@@ -5977,7 +6719,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.7.9 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.0 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -5985,7 +6727,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.7.9. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.0. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -6086,7 +6828,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.7.9. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.0. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
@@ -6311,7 +7053,7 @@ function getDisplayName(item) {
 
         <label title="Ability-casts är avstängda som standard. Rush-abilities är oftast dåliga här.">
           <input id="kbc-auto-cast-abilities" type="checkbox">
-          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. 0.7.9 bygger ingen ability planner och castar aldrig Clone Larvae automatiskt när detta är av.")}
+          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. 0.8.0 planerar abilities i advisor-läge men castar aldrig Clone Larvae eller House of Mirrors automatiskt när detta är av.")}
         </label>
       </div>
 
@@ -6332,7 +7074,7 @@ function getDisplayName(item) {
 
         <label title="Låt botten ascenda automatiskt när det är möjligt. Lämna normalt avstängt.">
           <input id="kbc-auto-asc" type="checkbox">
-          Auto-ascend (risk / off by default) ${helpIcon("Riskabelt. 0.7.9 ändrar inte ascension automatiskt när detta är av.")}
+          Auto-ascend (risk / off by default) ${helpIcon("Riskabelt. 0.8.0 ändrar inte ascension automatiskt när detta är av.")}
         </label>
 
         <label title="Skriv mer teknisk information i webbläsarens console.">
