@@ -10,7 +10,7 @@ Its job is to:
 - start from the correct source of truth
 - preserve repo structure
 - keep hotfixes narrow
-- protect safe defaults
+- protect hard safety defaults
 - validate before PR
 - avoid duplicate artifacts
 
@@ -67,7 +67,25 @@ For modularization tasks, also read:
 
 Do not use old dated game-model files or indexed AI snapshots as active truth.
 
-## Safe defaults that must not change unless explicitly requested
+## Optimization posture
+
+The project posture is methodical optimization, not passive caution.
+
+The bot should be logical, evidence-based, and transparent. It should optimize
+normal progression when the math and the selected user mode support action.
+Hard safety defaults exist to block irreversible or high-risk automation, not to
+make ordinary progression timid.
+
+User-facing modes should be understood as:
+
+- Advisor Mode: explain opportunities and risks so the user can play manually.
+- Methodical Optimizer: default Smart behavior; goal-driven, rebuild/payback
+  aware, and willing to buy when evidence says the action is correct.
+- High-Tempo Optimizer: future explicit user-selected mode; may push progression
+  harder, but must remain observable and must not bypass hard safety defaults
+  without explicit user choice.
+
+## Hard safety defaults that must not change unless explicitly requested
 
 - `autoCastAbilities` must default false
 - `autoAscend` must default false
@@ -77,14 +95,18 @@ Do not use old dated game-model files or indexed AI snapshots as active truth.
 - Nexus/energy protection must remain enabled
 - Smart planners must not use aggressive buyMax behavior by default
 
+These defaults are hard safety guardrails. They are not permission to make the
+bot passive when a normal, reversible, well-scored progression action is clearly
+correct.
+
 ## Hotfix rules
 
 For hotfixes:
 
 - branch from current `origin/main`
 - fix only the named issue
-- do not add new strategy
-- do not widen automation
+- do not add unrelated strategy
+- do not widen automation unless explicitly requested
 - avoid unrelated refactors
 - update version markers only when requested
 - update docs/release notes only when relevant
@@ -181,5 +203,6 @@ Known bug patterns:
 
 ## Core principle
 
-When in doubt: make the smallest safe fix, preserve defaults, improve
-observability, and do not invent new strategy.
+When in doubt: make the smallest correct fix, preserve hard safety defaults,
+improve observability, and do not invent unrelated strategy. Methodical
+optimization is allowed when it is explicitly scoped and evidence-backed.
