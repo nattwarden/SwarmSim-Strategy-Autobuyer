@@ -227,6 +227,12 @@ npm run build
 npm run verify
 ```
 
+Build assembly config:
+
+```text
+scripts/canonical-build.config.json
+```
+
 This includes:
 
 - `node --check src/SwarmSim-Strategy-Autobuyer.user.js`

@@ -29,6 +29,7 @@ reference/                                  # strategy/source references for san
 scripts/
   validate-repo-guardrails.js               # syntax, defaults, and artifact validation
   build-canonical-userscript.js             # phase-4 build entrypoint (canonical userscript)
+  canonical-build.config.json               # configured assembly parts for canonical userscript
 AGENTS.md                                   # repo/process guard for AI agents
 AI.md                                       # source map and AI-agent instructions
 ```
