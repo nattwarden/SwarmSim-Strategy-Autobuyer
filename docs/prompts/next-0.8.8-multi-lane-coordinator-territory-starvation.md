@@ -27,6 +27,15 @@ src/SwarmSim-Strategy-Autobuyer.user.js
 3. `src/SwarmSim-Strategy-Autobuyer.user.js`
 4. Relevanta live logs vid behov
 
+## Inriktning
+
+Botten ska vara logisk, metodisk och transparent. Den ska inte vara passiv av
+rädsla för att köpa. När en normal progression-action är välmotiverad, storleks-
+begränsad, observerbar och inte bryter hard blockers ska botten kunna agera.
+
+Hard safety defaults ska fortfarande skydda irreversibla eller högrisk-actions.
+Det betyder inte att vanlig progression ska underoptimeras.
+
 ## Repo-regler
 
 - GitHub är source of truth för kod.
@@ -34,10 +43,10 @@ src/SwarmSim-Strategy-Autobuyer.user.js
 - Skapa inte `.txt` script mirrors.
 - Skapa inte release `.user.js` copies.
 - Ändra inte `AGENTS.md` om det inte uttryckligen behövs.
-- Inga safe defaults får göras aggressiva.
+- Hard safety defaults får inte göras riskablare utan uttryckligt användarval.
 - `autoCastAbilities` ska fortsatt vara `false`.
 - `autoAscend` ska fortsatt vara `false`.
-- Smart Mode får inte börja buyMax:a meat-chain eller army.
+- Smart Mode får inte börja buyMax:a meat-chain eller army som default.
 - House of Mirrors får inte auto-castas.
 - Clone Larvae får inte auto-castas.
 
@@ -83,7 +92,7 @@ Detta är inte en meat-bugg. Det är en lane coordination/starvation-bugg. Meat-
 
 ## Mål
 
-Bygg en Multi-Lane Coordinator som låter flera försiktiga planners existera samtidigt:
+Bygg en Multi-Lane Coordinator som låter flera metodiska planners existera samtidigt:
 
 1. Meat lane
    - Fortsätt med lesser hive mind, twin threshold, parent-step, unlock.
@@ -97,13 +106,13 @@ Bygg en Multi-Lane Coordinator som låter flera försiktiga planners existera sa
 3. Army/Territory lane
    - Ska kunna hitta fighting-unit candidates även när meat-lanen också har en main action.
    - Ska inte vara beroende av att generic unit candidate-flow vinner över meat.
-   - Ska kunna köpa små safe chunks när:
+   - Ska kunna köpa begränsade scored chunks när:
      - Expansion är relevant,
      - Hatchery/Expansion inte är i save-window,
      - Clone Buffer inte är hard lock,
      - protectedResources inte bryts,
      - territory ROI är positiv eller army prep är tom,
-     - köpet är litet och safe.
+     - köpet är observerbart och inte buyMax som default.
 
 4. Energy/Ability lane
    - Ska fortsätta hålla auto-cast av.
@@ -149,7 +158,7 @@ Coordinator/arbiter ska:
 4. Inte låta samma lane dominera för evigt om andra lanes har safe/starved proposals.
 5. Införa anti-starvation:
    - Tracka runsSinceLaneAction för åtminstone Meat, Territory, Engine, Clone.
-   - Om Territory/Army har haft safe candidates men inte fått action på t.ex. 10–20 runs, ge den en liten safe action om den inte bryter guards.
+   - Om Territory/Army har haft safe candidates men inte fått action på t.ex. 10–20 runs, ge den en begränsad scored action om den inte bryter guards.
 6. Main/side:
    - Engine/Nexus/hard critical kan vara main.
    - Meat kan vara main.
@@ -164,7 +173,7 @@ Coordinator/arbiter ska:
 - Separat från `collectSmartUnitCandidates` så den alltid kan scanna fighting units.
 - Den ska kunna läsa top fighting units som saknas från Ability Prep / House of Mirrors state, eller själv hitta territory units.
 - Den ska prioritera köpbara top fighting units som är 0 om de ger territory eller behövs för HoM prep.
-- Den ska välja små chunks, baserat på `smartUnitBuyPercent` eller ny konservativ config:
+- Den ska välja begränsade scored chunks, baserat på `smartUnitBuyPercent` eller ny metodisk config:
 
 ```js
 territoryPrepPlanner: true,
@@ -173,7 +182,7 @@ territoryStarvationRunThreshold: 12,
 territoryArmySeedWhenEmpty: true,
 ```
 
-- Den får aldrig buyMax:a.
+- Den får aldrig buyMax:a som default.
 
 ### B. Bevara Territory ROI
 
@@ -232,7 +241,7 @@ Verifiera efter kodändring:
 - Clone Larvae castas inte.
 - Nightbug/Bat defaults ändras inte.
 - Meat-chain använder inte buyMax.
-- Army/Territory använder små chunks.
+- Army/Territory använder begränsade scored chunks.
 - Hatchery/Expansion save-window kan blockera army/territory.
 - Clone Buffer hard lock kan blockera army/territory.
 - Meat-chain 0.8.7-beteenden fortsätter fungera.
