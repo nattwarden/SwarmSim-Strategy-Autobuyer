@@ -2,7 +2,7 @@
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
 // @version      0.8.8
-// @description  Conservative smart advisor/autobuyer with multi-lane coordination, territory starvation protection, twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
+// @description  Methodical smart advisor/autobuyer with multi-lane coordination, territory starvation protection, twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
 // @match        https://swarmsim.com/*
