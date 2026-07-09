@@ -31,3 +31,19 @@ only. They should not be used as current strategy truth.
 The current live/mechanics logs above are the active empirical context for
 clean-start behavior, sacrifice/rebuild mechanics, Faster/Twin distinctions,
 Hatchery/Expansion coupling, and military empower/suffix behavior.
+
+## Verification annotation status
+
+The following files include 2026-07-09 verification notes that mark claims as
+`CONFIRMED`, `PARTIALLY CONFIRMED`, `HEURISTIC`, or `OPEN`:
+
+```text
+SWARMSIM_GAME_MODEL.md
+live-logs/2026-07-09-clean-start-game-observation.md
+live-logs/2026-07-09-clicked-mechanics-progression.md
+../reference/REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned.txt
+```
+
+These notes should guide the next script review. Confirmed notes can be used as
+strong evidence. Heuristic/Open notes should not drive automation without more
+live-log or math validation.
