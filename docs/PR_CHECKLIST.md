@@ -8,7 +8,14 @@ Use this checklist for every PR, especially AI-assisted changes.
 - Why this is narrow:
 - Files changed:
 
-## Safety preserved
+## Optimization posture preserved
+
+- The change treats the bot as a methodical optimizer, not a passive cautious bot.
+- Normal reversible progression is optimized when evidence and selected mode support it.
+- Hard safety defaults are preserved separately from ordinary progression logic.
+- Advisor-only behavior is used when the user wants advice rather than automation.
+
+## Hard safety preserved
 
 - `autoCastAbilities` remains false by default.
 - `autoAscend` remains false by default.
