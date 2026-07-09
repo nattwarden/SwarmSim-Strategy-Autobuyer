@@ -194,6 +194,9 @@ Do not introduce as default automation:
   explicitly asks for both.
 - `dev-src/` is allowed for modular scaffolds, but `src/SwarmSim-Strategy-Autobuyer.user.js`
   remains the executable source of truth until explicitly migrated.
+- For territory/army lane runtime work, use the extracted adapter boundary
+  `executeTerritoryGuardAction(...)` in the canonical userscript and keep
+  behavior parity unless explicitly changing strategy.
 
 ## Validation
 

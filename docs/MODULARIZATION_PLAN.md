@@ -1,6 +1,6 @@
 # Modularization Plan (Phase 1 start)
 
-Status: Started 2026-07-09
+Status: Started 2026-07-09, Phase 2 in progress
 
 Goal:
 
@@ -26,7 +26,7 @@ Proposed lane/module boundaries:
 Migration phases:
 
 1. Phase 1 (done): scaffold contracts and module entry points; no runtime wiring.
-2. Phase 2: adapter extraction of one lane at a time behind stable context interfaces.
+2. Phase 2 (started): territory/army lane execution extracted behind a runtime adapter boundary in the canonical userscript.
 3. Phase 3: overseer selects lane proposals via shared contract.
 4. Phase 4: build/bundle flow for canonical userscript, preserving behavior.
 
