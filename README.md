@@ -4,6 +4,8 @@ Conservative Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
 Current baseline: **0.8.7 — Twin Upgrade Opportunity Cost Bypass**.
 
+Next planned work: **0.8.8 — Multi-Lane Coordinator / Territory Starvation Fix**.
+
 ## Repository layout
 
 ```text
@@ -19,7 +21,7 @@ releases/
   0.8.5/                                    # archived release documentation
   0.8.7/                                    # archived release documentation
 docs/
-  SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt
+  SWARMSIM_GAME_MODEL.md                    # canonical active game model
   release-notes/
   prompts/
   live-logs/
@@ -27,7 +29,7 @@ reference/                                  # strategy/source references used by
 AI.md                                       # source map and AI-agent instructions
 ```
 
-## Canonical Script Source
+## Canonical script source
 
 From 0.8.0 onward, the only executable Tampermonkey/javascript source is:
 
@@ -36,6 +38,16 @@ src/SwarmSim-Strategy-Autobuyer.user.js
 ```
 
 Release folders are documentation-only. Release history is tracked through Git commits/tags.
+
+## Canonical game model
+
+Use only this active model for current strategy work:
+
+```text
+docs/SWARMSIM_GAME_MODEL.md
+```
+
+Older dated game model files were transitional snapshots and should not be used as active truth.
 
 ## Safety defaults
 
@@ -46,7 +58,7 @@ The baseline keeps conservative Smart Mode defaults:
 - no House of Mirrors auto-cast by default
 - no auto-ascend
 - no Nightbug/Bat auto-buy
-- no aggressive `buyMaxUnit` in Smart Mode meat-chain planning
+- no aggressive `buyMaxUnit` in Smart Mode meat-chain or army planning
 - twin unlock rebuild buffer still enforced by default, with narrow opportunity-cost bypass only when lost production is negligible versus current child-resource bank
 
 ## Validation
@@ -62,5 +74,5 @@ node --check src/SwarmSim-Strategy-Autobuyer.user.js
 See:
 
 ```text
-docs/prompts/next-0.8.0-unlock-clone-buffer-ability-prep.md
+docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md
 ```
