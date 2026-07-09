@@ -8,4 +8,5 @@ Expected file:
 SwarmSim-Strategy-Autobuyer.user.js
 ```
 
-For 0.7.9 baseline, this should match the archived release source in `releases/0.7.9/`.
+This is the only executable script source in the repository. Do not add script
+mirrors or versioned copies outside this directory.

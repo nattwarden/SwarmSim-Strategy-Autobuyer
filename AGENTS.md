@@ -1,11 +1,12 @@
-# SwarmSim Strategy Autobuyer — Repo Guard
+# SwarmSim Strategy Autobuyer - Repo Guard
 
 ## Role
 
-This is not a gameplay strategy agent.
-It is a repository/process guard for AI coding agents.
+This is not a gameplay strategy agent. It is a repository/process guard for AI
+coding agents.
 
 Its job is to:
+
 - start from the correct source of truth
 - preserve repo structure
 - keep hotfixes narrow
@@ -17,31 +18,45 @@ Its job is to:
 
 The only executable Tampermonkey script source is:
 
+```text
 src/SwarmSim-Strategy-Autobuyer.user.js
+```
 
-Release folders are documentation-only.
-Release history is tracked through Git commits/tags.
+The active game model is:
+
+```text
+docs/SWARMSIM_GAME_MODEL.md
+```
+
+Release history is tracked through Git commits, tags, `docs/HISTORY.md`, and
+`docs/release-notes/`.
 
 Do not create:
-- .txt script mirrors
-- duplicate .user.js files in releases/
-- byte-identical script copies outside src/
+
+- `.txt` script mirrors
+- duplicate `.user.js` files in `releases/`
+- duplicate release-note trees in `releases/`
+- byte-identical script copies outside `src/`
 
 ## Required reading order
 
 Before code changes, read:
 
-1. AI.md
-2. docs/SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt
-3. src/SwarmSim-Strategy-Autobuyer.user.js
-4. relevant docs/release-notes/
-5. relevant docs/live-logs/
-6. reference/ only when needed
+1. `AGENTS.md`
+2. `AI.md`
+3. `docs/SWARMSIM_GAME_MODEL.md`
+4. `src/SwarmSim-Strategy-Autobuyer.user.js`
+5. relevant `docs/prompts/`
+6. relevant `docs/release-notes/`
+7. relevant `docs/live-logs/`
+8. `reference/` only when needed
+
+Do not use old dated game-model files or indexed AI snapshots as active truth.
 
 ## Safe defaults that must not change unless explicitly requested
 
-- autoCastAbilities must default false
-- autoAscend must default false
+- `autoCastAbilities` must default false
+- `autoAscend` must default false
 - no Clone Larvae auto-cast by default
 - no House of Mirrors auto-cast by default
 - no Nightbug/Bat auto-buy by default
@@ -51,7 +66,8 @@ Before code changes, read:
 ## Hotfix rules
 
 For hotfixes:
-- branch from current origin/main
+
+- branch from current `origin/main`
 - fix only the named issue
 - do not add new strategy
 - do not widen automation
@@ -63,16 +79,22 @@ For hotfixes:
 
 ## Branch/PR hygiene
 
-Before starting:
+Before starting in a Git checkout:
 
+```bash
 git fetch origin
 git checkout main
 git pull --ff-only origin main
 git checkout -b feature/<short-descriptive-name>
+```
+
+If the working directory is not a Git checkout, do not invent branch state. Say
+so, keep changes narrow, and list the files changed.
 
 If a PR branch was squash-merged:
-- checkout main
-- pull main
+
+- checkout `main`
+- pull `main`
 - delete the old feature branch locally
 - do not press Sync Changes on the old feature branch
 
@@ -80,9 +102,15 @@ If a PR branch was squash-merged:
 
 Always run:
 
-node --check src/SwarmSim-Strategy-Autobuyer.user.js
+```bash
+node scripts/validate-repo-guardrails.js
+```
+
+The validation script runs the Tampermonkey syntax check and guards against
+unsafe defaults and duplicate script artifacts.
 
 PR body should include:
+
 - what changed
 - why it is narrow
 - safety preserved
@@ -93,6 +121,7 @@ PR body should include:
 ## Live-log caution
 
 When changing behavior from live logs, check:
+
 - script version
 - decision/main/side
 - best allowed main/side
@@ -105,6 +134,7 @@ When changing behavior from live logs, check:
 - config summary
 
 Known bug patterns:
+
 - clone buffer shows 100% recovered but hard lock remains active
 - BUILDUP makes spendable larvae 0
 - unlock candidate uses final target instead of current action unit
@@ -115,8 +145,5 @@ Known bug patterns:
 
 ## Core principle
 
-When in doubt:
-make the smallest safe fix,
-preserve defaults,
-improve observability,
-and do not invent new strategy.
+When in doubt: make the smallest safe fix, preserve defaults, improve
+observability, and do not invent new strategy.

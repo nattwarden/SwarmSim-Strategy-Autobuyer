@@ -2,30 +2,28 @@
 
 Conservative Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current baseline: **0.8.7 — Twin Upgrade Opportunity Cost Bypass**.
+Current script version in `src/`: **0.8.8**.
 
-Next planned work: **0.8.8 — Multi-Lane Coordinator / Territory Starvation Fix**.
+Last live-verified baseline: **0.8.7 - Twin Upgrade Opportunity Cost Bypass**.
+
+Current focus: **0.8.8 - Multi-Lane Coordinator / Territory Starvation Fix**.
 
 ## Repository layout
 
 ```text
 src/
   SwarmSim-Strategy-Autobuyer.user.js       # current installable Tampermonkey source
-releases/
-  0.7.9/                                    # archived release documentation
-  0.8.0/                                    # archived release documentation
-  0.8.1/                                    # archived release documentation
-  0.8.2/                                    # archived release documentation
-  0.8.3/                                    # archived release documentation
-  0.8.4/                                    # archived release documentation
-  0.8.5/                                    # archived release documentation
-  0.8.7/                                    # archived release documentation
 docs/
   SWARMSIM_GAME_MODEL.md                    # canonical active game model
+  HISTORY.md                                # summarized historical cleanup/version context
+  PR_CHECKLIST.md                           # PR body checklist
   release-notes/
   prompts/
   live-logs/
-reference/                                  # strategy/source references used by AI agents
+reference/                                  # strategy/source references for sanity checks
+scripts/
+  validate-repo-guardrails.js               # syntax, defaults, and artifact validation
+AGENTS.md                                   # repo/process guard for AI agents
 AI.md                                       # source map and AI-agent instructions
 ```
 
@@ -37,7 +35,8 @@ From 0.8.0 onward, the only executable Tampermonkey/javascript source is:
 src/SwarmSim-Strategy-Autobuyer.user.js
 ```
 
-Release folders are documentation-only. Release history is tracked through Git commits/tags.
+Do not create `.txt` script mirrors, duplicate release `.user.js` files,
+`releases/` script copies, or byte-identical script copies outside `src/`.
 
 ## Canonical game model
 
@@ -47,7 +46,8 @@ Use only this active model for current strategy work:
 docs/SWARMSIM_GAME_MODEL.md
 ```
 
-Older dated game model files were transitional snapshots and should not be used as active truth.
+Older dated game model files were transitional snapshots and should not be used
+as active truth.
 
 ## Safety defaults
 
@@ -58,18 +58,24 @@ The baseline keeps conservative Smart Mode defaults:
 - no House of Mirrors auto-cast by default
 - no auto-ascend
 - no Nightbug/Bat auto-buy
-- no aggressive `buyMaxUnit` in Smart Mode meat-chain or army planning
-- twin unlock rebuild buffer still enforced by default, with narrow opportunity-cost bypass only when lost production is negligible versus current child-resource bank
+- no aggressive `buyMax` behavior in Smart Mode meat-chain or army planning
+- Nexus/energy protection remains enabled
 
 ## Validation
 
-For script syntax checks:
+Run the full repo guardrail check before PR:
 
 ```bash
-node --check src/SwarmSim-Strategy-Autobuyer.user.js
+node scripts/validate-repo-guardrails.js
 ```
 
-## Next planned work
+This includes:
+
+- `node --check src/SwarmSim-Strategy-Autobuyer.user.js`
+- safe-default checks
+- duplicate script artifact checks
+
+## Current 0.8.8 work
 
 See:
 

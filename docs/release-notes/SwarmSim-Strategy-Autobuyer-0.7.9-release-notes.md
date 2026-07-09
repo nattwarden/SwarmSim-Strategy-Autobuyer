@@ -194,3 +194,7 @@ Static checks performed:
 - `SwarmSim-Strategy-Autobuyer-0.7.9-release-notes.md`
 - `AI-2026-07-08-script-0.7.9-indexed.md`
 - `AI.md`
+Historical note: artifact lists in this file describe the original 0.7.9
+release packaging. The current repo keeps executable source only in
+`src/SwarmSim-Strategy-Autobuyer.user.js`; do not recreate old `.user.js` or
+`.txt` release mirrors.

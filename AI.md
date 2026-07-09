@@ -1,136 +1,100 @@
-# AI.md — SwarmSim Strategy Autobuyer
+# AI.md - SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-canonical-0.8.8-planning
-Status: Project source map for ChatGPT/Codex/Copilot/AI agents.
+Version: 2026-07-09-agent-guardrails
+Status: Source map and repo policy for ChatGPT/Codex/Copilot/AI agents.
 
 ## Purpose
 
-This file tells AI agents which project files to trust, in what order to read them, and which rules must not be violated.
+This file tells AI agents which project files to trust, in what order to read
+them, and which safety rules must not be violated.
 
-The goal is to avoid building from old uploaded scripts, stale release copies, or transitional game-model snapshots.
+The goal is to prevent work from old uploaded scripts, stale release copies,
+transitional game-model snapshots, or broad strategy rewrites when a narrow fix
+was requested.
 
-## Primary reading order
+## Canonical sources
 
-1. `AI.md`
-2. `docs/SWARMSIM_GAME_MODEL.md`
-3. `src/SwarmSim-Strategy-Autobuyer.user.js`
-4. Relevant prompt in `docs/prompts/`
-5. Relevant release notes or live logs if needed
-6. Reference files only for strategy/math sanity checks:
-   - `reference/REFERENCE_SwarmSim_ichbinsisyphos_2015.txt`
-   - `reference/REFERENCE_SwarmSim_featherwinglove_reddit_strategy_2015.txt`
-   - `reference/REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned.txt`
-
-## Source-of-truth hierarchy
-
-### 1. Actual implementation
+Executable Tampermonkey source:
 
 ```text
 src/SwarmSim-Strategy-Autobuyer.user.js
 ```
 
-This is the current Tampermonkey source and the only executable script source.
-
-### 2. Strategic truth
+Active strategy model:
 
 ```text
 docs/SWARMSIM_GAME_MODEL.md
 ```
 
-This is the single active game model. Older dated game model files were transitional snapshots and must not be used as active truth.
-
-### 3. Prompts and release notes
+Repo/process guard:
 
 ```text
-docs/prompts/
-docs/release-notes/
-docs/live-logs/
-releases/
+AGENTS.md
 ```
 
-Release folders are documentation-only. Do not create script copies in `releases/`.
+Release history belongs in Git commits, tags, `docs/HISTORY.md`, and
+`docs/release-notes/`.
+
+## Required reading order
+
+Before code changes, read:
+
+1. `AGENTS.md`
+2. `AI.md`
+3. `docs/SWARMSIM_GAME_MODEL.md`
+4. `src/SwarmSim-Strategy-Autobuyer.user.js`
+5. Relevant prompt in `docs/prompts/`
+6. Relevant release notes or live logs if needed
+7. `reference/` only for strategy/math sanity checks
+
+Do not use old dated game-model files as active truth.
+
+## Current state
+
+Current script version in `src/`:
+
+```text
+0.8.8
+```
+
+Last live-verified baseline documented in release notes:
+
+```text
+0.8.7 - Twin Upgrade Opportunity Cost Bypass
+```
+
+Current 0.8.8 focus:
+
+```text
+Multi-Lane Coordinator / Territory Starvation Fix
+```
+
+Reason:
+
+- Meat-chain planning can dominate every run.
+- Territory/Army can remain stuck at OBSERVE while buyable fighting units exist.
+- Ability Prep can report House of Mirrors army prep missing, but no safe army
+  seed action is selected.
+- This is a lane coordination/starvation problem, not a broad meat-chain rewrite.
 
 ## Repository policy
 
 From 0.8.0 onward:
 
-- GitHub is source of truth for code, docs, prompts, live logs, and release history.
+- GitHub is source of truth for code, docs, prompts, live logs, and release
+  history.
 - The only executable script is `src/SwarmSim-Strategy-Autobuyer.user.js`.
 - Do not create `.txt` script mirrors.
 - Do not create duplicated release `.user.js` files.
+- Do not create byte-identical script copies outside `src/`.
 - Do not build from old uploaded script files.
-- Do not change `AGENTS.md` unless explicitly needed.
-
-## Current baseline
-
-Current verified main baseline:
-
-```text
-0.8.7 — Twin Upgrade Opportunity Cost Bypass
-```
-
-0.8.7 has been live-verified for:
-
-- Twin Neural Clusters opportunity-cost bypass.
-- Hatchery save-window and Hatchery purchase.
-- Meat-chain progression resuming after Hatchery.
-- Twin threshold prep toward 10K Hive Networks.
-- Parent-step conversion toward Lesser Hive Mind.
-- Clone Buffer hard lock release after recovery.
-
-## Next planned work
-
-```text
-0.8.8 — Multi-Lane Coordinator / Territory Starvation Fix
-```
-
-Prompt:
-
-```text
-docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md
-```
-
-Reason:
-
-- Meat-chain planning now works well enough that it can dominate every run.
-- Latest live logs showed 20/20 main-buy runs on meat while Territory lane reported `OBSERVE none`.
-- Ability Prep simultaneously reported `HOLD House of Mirrors — army prep missing` with top fighting units empty.
-- Screenshot showed fighting units were buyable.
-- This is a lane coordination/starvation problem, not a meat-chain problem.
-
-## Implemented capabilities through 0.8.7
-
-- Smart Mode.
-- Advisor log.
-- Purchase log.
-- Strategy Bar.
-- Strategy Inspector and export.
-- Larva Engine Priority.
-- Production Upgrade priority.
-- Energy Strategy and Nexus target.
-- Lepidoptera ROI guard.
-- Nightbug/Bat HOLD advisor in default Smart Mode.
-- Clone Larvae cocoon prep, side-task only.
-- Territory ROI with minimum-improvement guard.
-- Meat Goal Planner with lookahead.
-- Meat-chain reserve/payback guard.
-- Twin Prep with recovery buffer.
-- Meat fallback queue.
-- Stall breaker diagnostics.
-- Active meat-action fallback floor.
-- Active action payback bypass.
-- Target-aware upgrade/twin support planner.
-- Unlock planner.
-- Clone Buffer Planner.
-- Ability Prep Planner, advisor-only.
-- Parent-step conversion.
-- Twin unlock threshold planner.
-- Twin unlock cost resource detection.
-- Twin upgrade opportunity-cost bypass.
+- Do not recreate `releases/` as executable source or as duplicate release-note
+  storage.
+- Do not change `AGENTS.md` unless the repo/process policy itself changes.
 
 ## Safety defaults
 
-These must not be changed without explicit instruction:
+These must not change unless explicitly requested:
 
 ```js
 autoCastAbilities: false
@@ -150,6 +114,10 @@ meatChainMaxPaybackSeconds: 1800
 meatActionUnitPaybackBypass: true
 meatActionUnitMinReserveRatio: 5
 meatFallbackDoNotDropBelowActionUnit: true
+meatUnlockPlanner: true
+meatParentStepPlanner: true
+twinUnlockPlanner: true
+twinUpgradeOpportunityCostBypass: true
 cloneBufferPlanner: true
 cloneBufferProtectLarvae: true
 ```
@@ -167,32 +135,36 @@ Do not introduce as default automation:
 
 ## Work rules for AI agents
 
-- Read AI.md, canonical game model, and current source first.
 - Build against `src/SwarmSim-Strategy-Autobuyer.user.js` only.
-- Keep strategy and implementation separate: GitHub source shows actual behavior; game model shows desired behavior.
+- Keep strategy and implementation separate: code shows actual behavior; the game
+  model shows desired behavior.
 - Preserve conservative defaults.
 - Prefer narrow hotfixes over broad strategy rewrites.
-- Risky planners should start as advisor/observability or be tightly config-gated.
+- Risky planners should start as advisor/observability or be tightly
+  config-gated.
 - Smart Mode should use safe chunks, not buyMax.
-- Every changed behavior needs Inspector/export observability.
+- Every changed behavior needs Strategy Inspector/export observability.
+- Do not mix repo hygiene changes with gameplay strategy changes unless the user
+  explicitly asks for both.
 
-## Validation after script changes
+## Validation
 
-Run:
+Always run:
+
+```bash
+node scripts/validate-repo-guardrails.js
+```
+
+This includes:
+
+- `node --check src/SwarmSim-Strategy-Autobuyer.user.js`
+- safe-default checks
+- duplicate script artifact checks
+
+If the validation script cannot run, at minimum run:
 
 ```bash
 node --check src/SwarmSim-Strategy-Autobuyer.user.js
 ```
 
-Also verify:
-
-- correct `@version`,
-- correct `scriptVersion`/panel title if present,
-- no stale active UI version strings,
-- `autoCastAbilities` remains false unless explicitly changed,
-- `autoAscend` remains false unless explicitly changed,
-- House of Mirrors is not cast by default,
-- Clone Larvae is not cast by default,
-- no Nightbug/Bat auto-buy defaults,
-- no buyMax for Smart Mode meat-chain or army,
-- Strategy Inspector/export shows new relevant fields.
+and manually verify the safety defaults above.
