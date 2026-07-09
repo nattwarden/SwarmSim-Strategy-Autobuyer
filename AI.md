@@ -1,6 +1,6 @@
 # AI.md — SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-script-0.8.2-indexed
+Version: 2026-07-09-script-0.8.3-indexed
 Status: Project source map for ChatGPT/Codex/AI agents.
 
 ## Syfte
@@ -50,7 +50,7 @@ Policy från 0.8.0 och framåt:
 Tekniska fakta:
 
 - Script: SwarmSim Strategy Autobuyer
-- Version: 0.8.2
+- Version: 0.8.3
 - Körs på `swarmsim.com`, `www.swarmsim.com`, `swarmsim.github.io`
 - Exponerar botten som `window.kbcSwarmBot`
 - Använder Angular-services: `game`, `commands`, `$rootScope`
@@ -88,6 +88,7 @@ Tekniska fakta:
 - 0.8.1 clone buffer target-source hotfix
 - 0.8.1 unlock candidate hotfix
 - 0.8.2 clone buffer post-clone release-threshold hotfix
+- 0.8.3 parent-step conversion hotfix
 
 ## Nytt i 0.8.0
 
@@ -116,6 +117,13 @@ twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade
 - POST_CLONE_LOCK använder snapshotad actual clone bank/debt target-källa för att undvika rörlig måljakt varje tick.
 - Inspector/export visar nu recovery complete, completion threshold, target source och hard lock status.
 
+0.8.3 är en hotfix ovanpå 0.8.2. Den ändrar inte strategin och ändrar inte säkra defaults, men rättar endless action-unit filler i unlock-läget:
+
+- Unlock Planner kan nu välja direkt target-path parent step (t.ex. Neural Cluster över Hive Neuron) när parent-steget är buyable och reserv är trygg.
+- Parent-step payback bypass är konservativ och begränsad till direkt parent-step conversion med tydlig reserve-tröskel.
+- Parent-step conversion körs före generell action-unit filler och fallback i samma run.
+- Inspector/export visar parent-step candidate/decision/reason/target/action/cost/reserve/bypass/supports-action.
+
 Exempel för live-scenariot:
 
 ```text
@@ -142,6 +150,15 @@ Strategy Inspector och export visar fortfarande 0.7.9-fälten och nu även:
 - `unlockPlannerCostResource`
 - `unlockPlannerReserveRatio`
 - `unlockPlannerPaybackBypassed`
+- `parentStepCandidate`
+- `parentStepDecision`
+- `parentStepReason`
+- `parentStepTarget`
+- `parentStepActionUnit`
+- `parentStepCostResource`
+- `parentStepReserveRatio`
+- `parentStepPaybackBypassed`
+- `parentStepSupportsActionUnit`
 - `cloneBufferMode`
 - `cloneBufferTarget`
 - `cloneBufferCurrent`

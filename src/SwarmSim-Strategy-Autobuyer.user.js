@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.2
-// @description  Conservative smart advisor/autobuyer with unlock, clone buffer and ability prep planners
+// @version      0.8.3
+// @description  Conservative smart advisor/autobuyer with parent-step conversion, unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
 // @match        https://swarmsim.com/*
@@ -90,6 +90,10 @@
     meatUnlockPaybackBypass: true,
     meatUnlockMinReserveRatio: 3,
     meatUnlockMaxChunkPercent: 25,
+    meatParentStepPlanner: true,
+    meatParentStepPaybackBypass: true,
+    meatParentStepMinReserveRatio: 1.5,
+    meatParentStepMaxChunkPercent: 25,
 
     cloneBufferPlanner: true,
     cloneBufferMode: "auto",
@@ -200,6 +204,10 @@
       meatUnlockPaybackBypass: true,
       meatUnlockMinReserveRatio: 3,
       meatUnlockMaxChunkPercent: 25,
+      meatParentStepPlanner: true,
+      meatParentStepPaybackBypass: true,
+      meatParentStepMinReserveRatio: 1.5,
+      meatParentStepMaxChunkPercent: 25,
       cloneBufferPlanner: true,
       cloneBufferMode: "auto",
       cloneBufferEarlyProtectRatio: 0.5,
@@ -376,6 +384,7 @@
   let meatActionUnitPaybackBypassState = null;
   let targetAwareUpgradeState = null;
   let unlockPlannerState = null;
+  let parentStepPlannerState = null;
   let cloneBufferPlannerState = null;
   let cloneBufferPostCloneTargetSnapshotRaw = null;
   let cloneBufferPreviousMode = "none";
@@ -581,6 +590,10 @@
     c.meatUnlockPaybackBypass = c.meatUnlockPaybackBypass !== false;
     c.meatUnlockMinReserveRatio = clampNumber(c.meatUnlockMinReserveRatio, 1, 1000, DEFAULT_CONFIG.meatUnlockMinReserveRatio);
     c.meatUnlockMaxChunkPercent = clampNumber(c.meatUnlockMaxChunkPercent, 0.1, 100, DEFAULT_CONFIG.meatUnlockMaxChunkPercent);
+    c.meatParentStepPlanner = c.meatParentStepPlanner !== false;
+    c.meatParentStepPaybackBypass = c.meatParentStepPaybackBypass !== false;
+    c.meatParentStepMinReserveRatio = clampNumber(c.meatParentStepMinReserveRatio, 1, 1000, DEFAULT_CONFIG.meatParentStepMinReserveRatio);
+    c.meatParentStepMaxChunkPercent = clampNumber(c.meatParentStepMaxChunkPercent, 0.1, 100, DEFAULT_CONFIG.meatParentStepMaxChunkPercent);
     c.cloneBufferPlanner = c.cloneBufferPlanner !== false;
     c.cloneBufferMode = ["auto", "buildup", "mature", "post-clone-lock"].includes(String(c.cloneBufferMode || "").toLowerCase())
       ? String(c.cloneBufferMode || "auto").toLowerCase()
@@ -1562,6 +1575,7 @@ function getDisplayName(item) {
     if (config.meatFallbackEnabled) settings.push(`meat fallback after ${config.meatFallbackMinHoldRuns} holds / ${trimNumber(config.meatFallbackChunkPercent)}% chunk`);
     if (config.meatActionUnitPaybackBypass) settings.push(`active meat action payback bypass ≥${trimNumber(config.meatActionUnitMinReserveRatio)}x reserve`);
     if (config.meatUnlockPlanner) settings.push(`unlock planner ${config.meatUnlockPaybackBypass ? "payback bypass on" : "payback bypass off"} (min ${trimNumber(config.meatUnlockMinReserveRatio)}x)`);
+    if (config.meatParentStepPlanner) settings.push(`parent-step planner ${config.meatParentStepPaybackBypass ? "payback bypass on" : "payback bypass off"} (min ${trimNumber(config.meatParentStepMinReserveRatio)}x)`);
     if (config.meatFallbackDoNotDropBelowActionUnit) settings.push("fallback floor at planner action unit");
     if (config.meatChainTwinPrep) settings.push(`twin buffer ${trimNumber(config.twinRecoveryBufferMultiplier)}x`);
     if (config.manageCloneLarvaeCocoons) settings.push("Clone Prep cocoons only");
@@ -1611,6 +1625,10 @@ function getDisplayName(item) {
       meatUnlockPaybackBypass: config.meatUnlockPaybackBypass,
       meatUnlockMinReserveRatio: config.meatUnlockMinReserveRatio,
       meatUnlockMaxChunkPercent: config.meatUnlockMaxChunkPercent,
+      meatParentStepPlanner: config.meatParentStepPlanner,
+      meatParentStepPaybackBypass: config.meatParentStepPaybackBypass,
+      meatParentStepMinReserveRatio: config.meatParentStepMinReserveRatio,
+      meatParentStepMaxChunkPercent: config.meatParentStepMaxChunkPercent,
       twinRecoveryBufferMultiplier: config.twinRecoveryBufferMultiplier,
       manageCloneLarvaeCocoons: config.manageCloneLarvaeCocoons,
       cloneCocoonTargetPercent: config.cloneCocoonTargetPercent,
@@ -1830,6 +1848,15 @@ function getDisplayName(item) {
       unlockPlannerCostResource: inspector.unlockPlannerCostResource,
       unlockPlannerReserveRatio: inspector.unlockPlannerReserveRatio,
       unlockPlannerPaybackBypassed: inspector.unlockPlannerPaybackBypassed,
+      parentStepCandidate: inspector.parentStepCandidate,
+      parentStepDecision: inspector.parentStepDecision,
+      parentStepReason: inspector.parentStepReason,
+      parentStepTarget: inspector.parentStepTarget,
+      parentStepActionUnit: inspector.parentStepActionUnit,
+      parentStepCostResource: inspector.parentStepCostResource,
+      parentStepReserveRatio: inspector.parentStepReserveRatio,
+      parentStepPaybackBypassed: inspector.parentStepPaybackBypassed,
+      parentStepSupportsActionUnit: inspector.parentStepSupportsActionUnit,
       cloneBufferMode: inspector.cloneBufferMode,
       cloneBufferTarget: inspector.cloneBufferTarget,
       cloneBufferCurrent: inspector.cloneBufferCurrent,
@@ -1886,6 +1913,7 @@ function getDisplayName(item) {
     const meatActionState = meatActionUnitPaybackBypassState || getCurrentMeatActionUnitPaybackState(game);
     const targetAwareState = targetAwareUpgradeState || null;
     const unlockState = unlockPlannerState || null;
+    const parentStepState = parentStepPlannerState || null;
     const cloneBufferState = cloneBufferPlannerState || null;
     const abilityPrepState = abilityPrepPlannerState || null;
     const bestAllowedMain = candidateSummary.bestAllowedMainCandidate;
@@ -1977,6 +2005,15 @@ function getDisplayName(item) {
       unlockPlannerCostResource: unlockState?.costResource || "none",
       unlockPlannerReserveRatio: unlockState?.reserveRatioText || "n/a",
       unlockPlannerPaybackBypassed: !!unlockState?.paybackBypassed,
+      parentStepCandidate: parentStepState?.candidate || "none",
+      parentStepDecision: parentStepState?.decision || "none",
+      parentStepReason: parentStepState?.reason || "none",
+      parentStepTarget: parentStepState?.target || "none",
+      parentStepActionUnit: parentStepState?.actionUnit || "none",
+      parentStepCostResource: parentStepState?.costResource || "none",
+      parentStepReserveRatio: parentStepState?.reserveRatioText || "n/a",
+      parentStepPaybackBypassed: !!parentStepState?.paybackBypassed,
+      parentStepSupportsActionUnit: parentStepState?.supportsActionUnit ? "yes" : "no",
       cloneBufferMode: cloneBufferState?.cloneBufferMode || "none",
       cloneBufferTarget: cloneBufferState?.cloneBufferTarget || "0",
       cloneBufferCurrent: cloneBufferState?.cloneBufferCurrent || "0",
@@ -1999,7 +2036,7 @@ function getDisplayName(item) {
       houseOfMirrorsArmyValue: abilityPrepState?.houseOfMirrorsArmyValue || "n/a",
       houseOfMirrorsMissingUnits: abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.2 keeps Unlock Planner, Clone Buffer Planner and Ability Prep advisor logic; auto-cast and auto-ascend remain conservative/off by default.",
+      futurePlanners: "0.8.3 keeps parent-step conversion, Unlock Planner, Clone Buffer Planner and Ability Prep advisor logic; auto-cast and auto-ascend remain conservative/off by default.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2066,6 +2103,15 @@ function getDisplayName(item) {
       ["Unlocks", strategyInspector.unlockPlannerUnlocks || "none"],
       ["Unlock reserve", strategyInspector.unlockPlannerReserveRatio || "n/a"],
       ["Unlock bypass", strategyInspector.unlockPlannerPaybackBypassed ? "yes" : "no"],
+      ["Parent step candidate", strategyInspector.parentStepCandidate || "none"],
+      ["Parent step decision", strategyInspector.parentStepDecision || "none"],
+      ["Parent step reason", strategyInspector.parentStepReason || "none"],
+      ["Parent step target", strategyInspector.parentStepTarget || "none"],
+      ["Parent step action", strategyInspector.parentStepActionUnit || "none"],
+      ["Parent step cost", strategyInspector.parentStepCostResource || "none"],
+      ["Parent step reserve", strategyInspector.parentStepReserveRatio || "n/a"],
+      ["Parent step bypass", strategyInspector.parentStepPaybackBypassed ? "yes" : "no"],
+      ["Parent supports action", strategyInspector.parentStepSupportsActionUnit || "no"],
       ["Clone buffer mode", strategyInspector.cloneBufferMode || "none"],
       ["Clone buffer", `${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"})`],
       ["Clone debt", strategyInspector.cloneBufferDebt || "0"],
@@ -2200,7 +2246,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.2",
+      scriptVersion: "0.8.3",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2254,6 +2300,15 @@ function getDisplayName(item) {
       unlockPlannerCostResource: strategyInspector?.unlockPlannerCostResource || unlockPlannerState?.costResource || "none",
       unlockPlannerReserveRatio: strategyInspector?.unlockPlannerReserveRatio || unlockPlannerState?.reserveRatioText || "n/a",
       unlockPlannerPaybackBypassed: !!(strategyInspector?.unlockPlannerPaybackBypassed || unlockPlannerState?.paybackBypassed),
+      parentStepCandidate: strategyInspector?.parentStepCandidate || parentStepPlannerState?.candidate || "none",
+      parentStepDecision: strategyInspector?.parentStepDecision || parentStepPlannerState?.decision || "none",
+      parentStepReason: strategyInspector?.parentStepReason || parentStepPlannerState?.reason || "none",
+      parentStepTarget: strategyInspector?.parentStepTarget || parentStepPlannerState?.target || "none",
+      parentStepActionUnit: strategyInspector?.parentStepActionUnit || parentStepPlannerState?.actionUnit || "none",
+      parentStepCostResource: strategyInspector?.parentStepCostResource || parentStepPlannerState?.costResource || "none",
+      parentStepReserveRatio: strategyInspector?.parentStepReserveRatio || parentStepPlannerState?.reserveRatioText || "n/a",
+      parentStepPaybackBypassed: !!(strategyInspector?.parentStepPaybackBypassed || parentStepPlannerState?.paybackBypassed),
+      parentStepSupportsActionUnit: strategyInspector?.parentStepSupportsActionUnit || (parentStepPlannerState?.supportsActionUnit ? "yes" : "no"),
       cloneBufferMode: strategyInspector?.cloneBufferMode || cloneBufferPlannerState?.cloneBufferMode || "none",
       cloneBufferTarget: strategyInspector?.cloneBufferTarget || cloneBufferPlannerState?.cloneBufferTarget || "0",
       cloneBufferCurrent: strategyInspector?.cloneBufferCurrent || cloneBufferPlannerState?.cloneBufferCurrent || "0",
@@ -2355,6 +2410,15 @@ function getDisplayName(item) {
       `- Unlock cost resource: ${payload.unlockPlannerCostResource || "none"}`,
       `- Unlock reserve ratio: ${payload.unlockPlannerReserveRatio || "n/a"}`,
       `- Unlock payback bypassed: ${payload.unlockPlannerPaybackBypassed ? "yes" : "no"}`,
+      `- Parent step candidate: ${payload.parentStepCandidate || "none"}`,
+      `- Parent step decision: ${payload.parentStepDecision || "none"}`,
+      `- Parent step reason: ${payload.parentStepReason || "none"}`,
+      `- Parent step target: ${payload.parentStepTarget || "none"}`,
+      `- Parent step action unit: ${payload.parentStepActionUnit || "none"}`,
+      `- Parent step cost resource: ${payload.parentStepCostResource || "none"}`,
+      `- Parent step reserve ratio: ${payload.parentStepReserveRatio || "n/a"}`,
+      `- Parent step payback bypassed: ${payload.parentStepPaybackBypassed ? "yes" : "no"}`,
+      `- Parent step supports action unit: ${payload.parentStepSupportsActionUnit || "no"}`,
       `- Clone buffer mode: ${payload.cloneBufferMode || "none"}`,
       `- Clone buffer current/target: ${payload.cloneBufferCurrent || "0"} / ${payload.cloneBufferTarget || "0"}`,
       `- Clone buffer percent: ${payload.cloneBufferPercent || "n/a"}`,
@@ -3751,6 +3815,17 @@ function getDisplayName(item) {
         reserveRatio: NaN,
         paybackBypassed: false,
       });
+      recordParentStepPlannerState({
+        candidate: "none",
+        decision: "OBSERVE",
+        reason: "parent-step planner disabled",
+        target: "none",
+        actionUnit: "none",
+        costResource: "none",
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        supportsActionUnit: false,
+      });
       return { actionTaken: false, bought: 0 };
     }
 
@@ -3766,14 +3841,183 @@ function getDisplayName(item) {
         reserveRatio: NaN,
         paybackBypassed: false,
       });
+      recordParentStepPlannerState({
+        candidate: "none",
+        decision: "OBSERVE",
+        reason: "no active action unit on current meat target path",
+        target: plan?.target ? getDisplayName(plan.target) : "none",
+        actionUnit: "none",
+        costResource: "none",
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        supportsActionUnit: false,
+      });
       return { actionTaken: false, bought: 0 };
     }
 
     const targetName = getDisplayName(plan.target);
-    const candidate = plan.actionUnit;
+    const actionUnit = plan.actionUnit;
+    const actionUnitName = getDisplayName(actionUnit);
+    const directParentUnit = getDirectTargetPathParentUnit(plan);
+    const parentUnitName = directParentUnit ? getDisplayName(directParentUnit) : "none";
+    const actionOnPath = isUnitOnPlanPath(plan, actionUnit);
+    const parentOnPath = isUnitOnPlanPath(plan, directParentUnit);
+    const parentCostRow = directParentUnit
+      ? getCostList(directParentUnit).find((cost) => cost?.unit && isPositive(cost.val) && isSameGameItem(cost.unit, actionUnit))
+      : null;
+    const parentCostResourceName = parentCostRow?.unit ? getDisplayName(parentCostRow.unit) : "none";
+    const parentSupportsActionUnit = !!parentCostRow || (actionOnPath && parentOnPath);
+    let parentChoice = null;
+
+    if (!config.meatParentStepPlanner) {
+      recordParentStepPlannerState({
+        candidate: parentUnitName,
+        decision: "OBSERVE",
+        reason: `parent-step planner disabled for ${targetName}`,
+        target: targetName,
+        actionUnit: actionUnitName,
+        costResource: parentCostResourceName,
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        supportsActionUnit: parentSupportsActionUnit,
+      });
+    } else if (!directParentUnit) {
+      recordParentStepPlannerState({
+        candidate: "none",
+        decision: "HOLD",
+        reason: `no direct parent step above ${actionUnitName} on target path to ${targetName}`,
+        target: targetName,
+        actionUnit: actionUnitName,
+        costResource: "none",
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        supportsActionUnit: false,
+      });
+    } else if (!actionOnPath || !parentOnPath || !isSameGameItem(plan.parentUnit, directParentUnit)) {
+      recordParentStepPlannerState({
+        candidate: parentUnitName,
+        decision: "HOLD",
+        reason: `candidate ${parentUnitName} is not a direct target-path parent step for action ${actionUnitName}`,
+        target: targetName,
+        actionUnit: actionUnitName,
+        costResource: parentCostResourceName,
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        supportsActionUnit: false,
+      });
+    } else if (!parentCostRow) {
+      recordParentStepPlannerState({
+        candidate: parentUnitName,
+        decision: "HOLD",
+        reason: `candidate ${parentUnitName} does not directly consume ${actionUnitName} as cost resource`,
+        target: targetName,
+        actionUnit: actionUnitName,
+        costResource: "none",
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        supportsActionUnit: false,
+      });
+    } else if (!directParentUnit?.isVisible?.() || !directParentUnit?.isBuyable?.()) {
+      recordParentStepPlannerState({
+        candidate: parentUnitName,
+        decision: "HOLD",
+        reason: `parent-step candidate ${parentUnitName} is not buyable yet`,
+        target: targetName,
+        actionUnit: actionUnitName,
+        costResource: parentCostResourceName,
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        supportsActionUnit: parentSupportsActionUnit,
+      });
+    } else {
+      const protectedCost = shouldAvoidProtectedCost(directParentUnit, protectedResources || new Set());
+      if (protectedCost) {
+        recordParentStepPlannerState({
+          candidate: parentUnitName,
+          decision: "HOLD",
+          reason: `parent-step candidate blocked: ${protectedResourceHoldReason(protectedCost)}`,
+          target: targetName,
+          actionUnit: actionUnitName,
+          costResource: protectedCost,
+          reserveRatio: NaN,
+          paybackBypassed: false,
+          supportsActionUnit: parentSupportsActionUnit,
+        });
+      } else {
+        const plannerNum = getPlannerUnitBuyNum(directParentUnit);
+        const maxByChunk = decimalFrom(directParentUnit.maxCostMet?.(config.unitBuyPercent) || 0)
+          .times(clampNumber(config.meatParentStepMaxChunkPercent, 0.1, 100, DEFAULT_CONFIG.meatParentStepMaxChunkPercent))
+          .dividedBy(100)
+          .floor();
+        const parentNum = decimalMin(plannerNum, maxByChunk);
+
+        if (!isPositive(parentNum)) {
+          recordParentStepPlannerState({
+            candidate: parentUnitName,
+            decision: "HOLD",
+            reason: `parent-step candidate ${parentUnitName} has no safe chunk this run`,
+            target: targetName,
+            actionUnit: actionUnitName,
+            costResource: parentCostResourceName,
+            reserveRatio: NaN,
+            paybackBypassed: false,
+            supportsActionUnit: parentSupportsActionUnit,
+          });
+        } else {
+          const guard = getMeatChainPurchaseAnalysis(directParentUnit, parentNum);
+          const reserveRatio = rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
+          const requiredRatio = Number(config.meatParentStepMinReserveRatio || DEFAULT_CONFIG.meatParentStepMinReserveRatio);
+          let decision = "BUY";
+          let paybackBypassed = false;
+          let reason = `target parent-step conversion for ${targetName}; converts ${actionUnitName} into ${parentUnitName}; ${parentUnitName} supports ${actionUnitName} and advances toward ${targetName}; reserve/payback guard ok`;
+
+          if (guard && !guard.ok) {
+            if (
+              guard.type === "payback" &&
+              config.meatParentStepPaybackBypass &&
+              parentSupportsActionUnit &&
+              Number.isFinite(reserveRatio) &&
+              reserveRatio >= requiredRatio
+            ) {
+              paybackBypassed = true;
+              reason = `target parent-step conversion for ${targetName}; converts ${actionUnitName} into ${parentUnitName}; ${parentUnitName} supports ${actionUnitName} and advances toward ${targetName}; reserve after buy ${trimNumber(reserveRatio)}x >= required ${trimNumber(requiredRatio)}x; payback bypassed for target-path parent-step value`;
+            } else {
+              decision = "HOLD";
+              reason = `target parent-step conversion blocked for ${targetName}; ${parentUnitName} from ${actionUnitName}; ${guard.reason}`;
+            }
+          }
+
+          recordParentStepPlannerState({
+            candidate: parentUnitName,
+            decision,
+            reason,
+            target: targetName,
+            actionUnit: actionUnitName,
+            costResource: parentCostResourceName,
+            reserveRatio,
+            paybackBypassed,
+            supportsActionUnit: parentSupportsActionUnit,
+          });
+
+          if (decision === "BUY") {
+            parentChoice = {
+              unit: directParentUnit,
+              num: parentNum,
+              reason,
+              reserveRatio,
+              paybackBypassed,
+              costResource: parentCostResourceName,
+              raw: guard?.raw || null,
+            };
+          }
+        }
+      }
+    }
+
+    const candidate = parentChoice?.unit || actionUnit;
     const candidateName = getDisplayName(candidate);
     const bottleneckUnit = getUnitBottleneckCost(candidate)?.unit || plan.bottleneck?.unit || null;
-    const bottleneckResource = bottleneckUnit ? getDisplayName(bottleneckUnit) : "bottleneck resource";
+    const bottleneckResource = parentChoice?.costResource || (bottleneckUnit ? getDisplayName(bottleneckUnit) : "bottleneck resource");
 
     if (!candidate?.isVisible?.() || !candidate?.isBuyable?.()) {
       recordUnlockPlannerState({
@@ -3789,12 +4033,16 @@ function getDisplayName(item) {
       return { actionTaken: false, bought: 0 };
     }
 
-    const plannerNum = getPlannerUnitBuyNum(candidate);
-    const maxByChunk = decimalFrom(candidate.maxCostMet?.(config.unitBuyPercent) || 0)
-      .times(clampNumber(config.meatUnlockMaxChunkPercent, 0.1, 100, DEFAULT_CONFIG.meatUnlockMaxChunkPercent))
-      .dividedBy(100)
-      .floor();
-    const num = decimalMin(plannerNum, maxByChunk);
+    const num = parentChoice
+      ? parentChoice.num
+      : (() => {
+        const plannerNum = getPlannerUnitBuyNum(candidate);
+        const maxByChunk = decimalFrom(candidate.maxCostMet?.(config.unitBuyPercent) || 0)
+          .times(clampNumber(config.meatUnlockMaxChunkPercent, 0.1, 100, DEFAULT_CONFIG.meatUnlockMaxChunkPercent))
+          .dividedBy(100)
+          .floor();
+        return decimalMin(plannerNum, maxByChunk);
+      })();
 
     if (!isPositive(num)) {
       return { actionTaken: false, bought: 0 };
@@ -3832,12 +4080,12 @@ function getDisplayName(item) {
       return { actionTaken: false, bought: 0 };
     }
 
-    const guard = getMeatChainPurchaseAnalysis(candidate, num);
-    const reserveRatio = rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
-    const hasConcreteUnlockValue = !!twin || candidateName !== targetName;
-    let paybackBypassed = false;
+    const guard = parentChoice ? { ok: true, raw: parentChoice.raw } : getMeatChainPurchaseAnalysis(candidate, num);
+    const reserveRatio = parentChoice?.reserveRatio ?? rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
+    const hasConcreteUnlockValue = parentChoice ? true : (!!twin || candidateName !== targetName);
+    let paybackBypassed = !!parentChoice?.paybackBypassed;
 
-    if (guard && !guard.ok) {
+    if (!parentChoice && guard && !guard.ok) {
       if (
         guard.type === "payback" &&
         config.meatUnlockPaybackBypass &&
@@ -3868,7 +4116,7 @@ function getDisplayName(item) {
           reason,
           target: targetName,
           unlocks: unlocks.join(", "),
-          costResource: getDisplayName(guard?.raw?.costResource || plan.actionUnit),
+          costResource: getDisplayName(guard?.raw?.costResource || actionUnit),
           reserveRatio,
           paybackBypassed: false,
         });
@@ -3876,9 +4124,11 @@ function getDisplayName(item) {
       }
     }
 
-    const reason = paybackBypassed
-      ? `target unlock step for ${targetName}; converts ${bottleneckResource} into ${candidateName}; unlocks ${unlocks.join(", ")}; reserve after buy ${Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a"} >= required ${trimNumber(config.meatUnlockMinReserveRatio)}x; payback bypassed for unlock value`
-      : `target unlock step for ${targetName}; converts ${bottleneckResource} into ${candidateName}; unlocks ${unlocks.join(", ")}; reserve/payback guard ok`;
+    const reason = parentChoice
+      ? parentChoice.reason
+      : paybackBypassed
+        ? `target unlock step for ${targetName}; converts ${bottleneckResource} into ${candidateName}; unlocks ${unlocks.join(", ")}; reserve after buy ${Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a"} >= required ${trimNumber(config.meatUnlockMinReserveRatio)}x; payback bypassed for unlock value`
+        : `target unlock step for ${targetName}; converts ${bottleneckResource} into ${candidateName}; unlocks ${unlocks.join(", ")}; reserve/payback guard ok`;
 
     recordAdvisor("BUY", candidateName, reason);
     addLaneCandidate({
@@ -3886,10 +4136,10 @@ function getDisplayName(item) {
       decision: "BUY",
       candidate: candidateName,
       reason,
-      score: unitCostScore(candidate) + 8000,
+      score: unitCostScore(candidate) + (parentChoice ? 8600 : 8000),
       wouldBuyAmount: formatSwarmNumber(num),
       target: targetName,
-      raw: guard?.raw || null,
+      raw: parentChoice?.raw || guard?.raw || null,
     });
     recordUnlockPlannerState({
       candidate: candidateName,
@@ -3907,7 +4157,21 @@ function getDisplayName(item) {
       return { actionTaken: true, bought: 0, summary: "Would buy unlock step" };
     }
 
-    const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, num, "Unlock Step"));
+    const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, num, parentChoice ? "Parent Step" : "Unlock Step"));
+    if (didBuy && parentChoice) {
+      recordParentStepPlannerState({
+        candidate: candidateName,
+        decision: "BUY",
+        reason,
+        target: targetName,
+        actionUnit: actionUnitName,
+        costResource: bottleneckResource,
+        reserveRatio,
+        paybackBypassed,
+        supportsActionUnit: parentSupportsActionUnit,
+        executed: true,
+      });
+    }
     return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? `Unlock planner ${candidateName}` : "Unlock planner buy failed" };
   }
 
@@ -4761,6 +5025,26 @@ function getDisplayName(item) {
     return unlockPlannerState;
   }
 
+  function recordParentStepPlannerState(fields = {}) {
+    const reserveRatio = Number(fields.reserveRatio);
+
+    parentStepPlannerState = {
+      candidate: fields.candidate || parentStepPlannerState?.candidate || "none",
+      decision: fields.decision || parentStepPlannerState?.decision || "OBSERVE",
+      reason: fields.reason || parentStepPlannerState?.reason || "none",
+      target: fields.target || parentStepPlannerState?.target || "none",
+      actionUnit: fields.actionUnit || parentStepPlannerState?.actionUnit || "none",
+      costResource: fields.costResource || parentStepPlannerState?.costResource || "none",
+      reserveRatio: Number.isFinite(reserveRatio) ? reserveRatio : null,
+      reserveRatioText: Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a",
+      paybackBypassed: !!fields.paybackBypassed,
+      supportsActionUnit: !!fields.supportsActionUnit,
+      executed: !!fields.executed,
+    };
+
+    return parentStepPlannerState;
+  }
+
   function recordCloneBufferPlannerState(fields = {}) {
     const percent = Number(fields.cloneBufferPercent);
 
@@ -4897,6 +5181,27 @@ function getDisplayName(item) {
 
   function getStrategicActionUnit(strategicPlan) {
     return strategicPlan?.actionUnit || null;
+  }
+
+  function getPlanPathIndex(strategicPlan, unit) {
+    if (!strategicPlan?.path?.length || !unit) return -1;
+
+    for (let i = 0; i < strategicPlan.path.length; i++) {
+      if (isSameGameItem(strategicPlan.path[i]?.unit, unit)) return i;
+    }
+
+    return -1;
+  }
+
+  function isUnitOnPlanPath(strategicPlan, unit) {
+    return getPlanPathIndex(strategicPlan, unit) >= 0;
+  }
+
+  function getDirectTargetPathParentUnit(strategicPlan) {
+    const actionUnit = getStrategicActionUnit(strategicPlan);
+    const actionIndex = getPlanPathIndex(strategicPlan, actionUnit);
+    if (actionIndex <= 0) return null;
+    return strategicPlan.path[actionIndex - 1]?.unit || null;
   }
 
   function getStrategicActionRank(strategicPlan) {
@@ -5888,6 +6193,29 @@ function getDisplayName(item) {
       resource: bottleneckLabel,
     });
 
+    const parentStepExecuted =
+      !config.advisorOnly &&
+      config.autoBuySafeDecisions &&
+      !!parentStepPlannerState?.executed &&
+      parentStepPlannerState?.target === targetLabel;
+
+    if (parentStepExecuted) {
+      const parentName = parentStepPlannerState?.candidate || "parent step";
+      const reason = `parent-step conversion already executed this run (${parentName}); skip immediate lower action-unit filler ${actionLabel}`;
+      recordAdvisor("HOLD", actionLabel, reason);
+      addLaneCandidate({
+        lane: "Meat",
+        decision: "HOLD",
+        candidate: actionLabel,
+        reason,
+        blockers: ["parent-step conversion just executed"],
+        score: unitCostScore(plan.actionUnit),
+        target: targetLabel,
+        resource: bottleneckLabel,
+      });
+      return { actionTaken: true, bought: 0, summary: `Parent step conversion ${parentName}` };
+    }
+
     if (!canPlannerBuyUnit(plan.actionUnit)) {
       recordAdvisor(
         "HOLD",
@@ -6360,6 +6688,7 @@ function getDisplayName(item) {
     meatActionUnitPaybackBypassState = null;
     targetAwareUpgradeState = null;
     unlockPlannerState = null;
+    parentStepPlannerState = null;
     cloneBufferPlannerState = null;
     abilityPrepPlannerState = null;
 
@@ -6914,7 +7243,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.2 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.3 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -6922,7 +7251,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.2. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.3. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -7023,7 +7352,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.2. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.3. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
@@ -7248,7 +7577,7 @@ function getDisplayName(item) {
 
         <label title="Ability-casts är avstängda som standard. Rush-abilities är oftast dåliga här.">
           <input id="kbc-auto-cast-abilities" type="checkbox">
-          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. 0.8.2 planerar abilities i advisor-läge men castar aldrig Clone Larvae eller House of Mirrors automatiskt när detta är av.")}
+          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. 0.8.3 planerar abilities i advisor-läge men castar aldrig Clone Larvae eller House of Mirrors automatiskt när detta är av.")}
         </label>
       </div>
 
@@ -7269,7 +7598,7 @@ function getDisplayName(item) {
 
         <label title="Låt botten ascenda automatiskt när det är möjligt. Lämna normalt avstängt.">
           <input id="kbc-auto-asc" type="checkbox">
-          Auto-ascend (risk / off by default) ${helpIcon("Riskabelt. 0.8.2 ändrar inte ascension automatiskt när detta är av.")}
+          Auto-ascend (risk / off by default) ${helpIcon("Riskabelt. 0.8.3 ändrar inte ascension automatiskt när detta är av.")}
         </label>
 
         <label title="Skriv mer teknisk information i webbläsarens console.">
