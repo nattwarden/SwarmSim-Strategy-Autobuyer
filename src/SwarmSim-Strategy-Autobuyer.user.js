@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.9
+// @version      0.8.10
 // @description  Methodical smart advisor/autobuyer with multi-lane coordination, territory starvation protection, twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -2044,7 +2044,7 @@ function getDisplayName(item) {
     return "none";
   }
 
-  function buildStrategyInspector(game, engine, protectedResources, smartFocus, summaries, mainActions, sideActions) {
+  function buildStrategyInspector(game, engine, protectedResources, smartFocus, summaries, mainActions, sideActions, maxActions = 1) {
     if (!config.strategyInspector) return null;
 
     const nexusCount = Math.floor(decimalToNumber(getNexusCount(game), 0));
@@ -2063,10 +2063,16 @@ function getDisplayName(item) {
     const abilityPrepState = abilityPrepPlannerState || null;
     const territoryPrepState = territoryPrepPlannerState || null;
     const coordinatorState = laneCoordinatorState || null;
+    const selectedMainAction = coordinatorState?.selectedLaneActions?.[0] || null;
     const selectedSideAction = coordinatorState?.selectedLaneActions?.[1] || null;
     const bestAllowedMain = candidateSummary.bestAllowedMainCandidate;
     const bestAllowedSide = candidateSummary.bestAllowedSideCandidate;
     const bestRejectedStrategic = candidateSummary.bestRejectedStrategicCandidate;
+    const noSideReason = selectedSideAction?.reason
+      ? selectedSideAction.reason
+      : (coordinatorState?.territoryDidNotBuyReason && coordinatorState.territoryDidNotBuyReason !== "none"
+        ? coordinatorState.territoryDidNotBuyReason
+        : (bestAllowedSide ? "not selected by coordinator" : (bestRejectedStrategic ? candidateReason(bestRejectedStrategic) : "no side-capable proposal")));
     const compactStatus = Number(mainActions || 0) === 0 && Number(sideActions || 0) > 0
       ? "Main lanes held; side-task allowed."
       : Number(mainActions || 0) > 0
@@ -2080,11 +2086,18 @@ function getDisplayName(item) {
       goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
       decision,
       mainDecision: mainLaneDecisionLabel(mainActions, sideActions),
-      sideDecision: selectedSideAction ? `${selectedSideAction.lane} BUY` : (Number(sideActions || 0) > 0 ? "Clone Prep" : "none"),
+      sideDecision: selectedSideAction ? `${selectedSideAction.lane} BUY` : "none",
       compactStatus,
       reason,
       mainReason: getSelectedLaneActionReason(0),
       sideReason: getSelectedLaneActionReason(1),
+      overseerDecision: coordinatorState?.coordinatorDecision || mainLaneDecisionLabel(mainActions, sideActions),
+      overseerMainSelected: selectedMainAction ? `${selectedMainAction.lane} BUY ${selectedMainAction.candidate}` : (bestAllowedMain ? shortCandidate(bestAllowedMain) : "none"),
+      overseerSideSelected: selectedSideAction ? `${selectedSideAction.lane} BUY ${selectedSideAction.candidate}` : "none",
+      overseerActionsUsed: `${Number(mainActions || 0)}/${maxActions}`,
+      overseerWhySelected: selectedMainAction?.reason || reason,
+      overseerWhyNoSide: selectedSideAction ? selectedSideAction.reason : `No side selected — ${noSideReason}`,
+      overseerBlockedByHardGuard: candidateSummary.blockedBySummary || "none",
       protectedResources: inspectProtectedResources(protectedResources),
       waits: getWaitSignals(game, engine, protectedResources),
       smartFocus: smartFocus || "unknown",
@@ -2219,10 +2232,14 @@ function getDisplayName(item) {
       territoryPrepExpansionEtaBefore: territoryPrepState?.territoryPrepExpansionEtaBefore || "n/a",
       territoryPrepExpansionEtaAfter: territoryPrepState?.territoryPrepExpansionEtaAfter || "n/a",
       territoryPrepArmySeed: territoryPrepState?.territoryPrepArmySeed || "no",
+      territoryPrepScannedFightingUnits: territoryPrepState?.territoryPrepScannedFightingUnits ?? 0,
+      territoryPrepVisibleFightingUnits: territoryPrepState?.territoryPrepVisibleFightingUnits ?? 0,
+      territoryPrepBuyableFightingUnits: territoryPrepState?.territoryPrepBuyableFightingUnits ?? 0,
+      territoryPrepMissingMatchedCount: territoryPrepState?.territoryPrepMissingMatchedCount ?? 0,
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.9 keeps the narrow multi-lane coordinator and adds methodical territory follow-through, locked-lane Energy diagnostics, and selected-action reasons while keeping auto-cast and auto-ascend off by default.",
+      futurePlanners: "0.8.10 keeps the narrow multi-lane coordinator and adds Territory army-seed scanning plus a clearer Guard Status Bar / Overseer UI while keeping auto-cast and auto-ascend off by default.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2241,6 +2258,13 @@ function getDisplayName(item) {
       ["Phase", strategyInspector.phase],
       ["Goal", strategyInspector.goal],
       ["Decision", strategyInspector.decision],
+      ["Overseer decision", strategyInspector.overseerDecision || strategyInspector.laneCoordinatorDecision || "none"],
+      ["Main selected", strategyInspector.overseerMainSelected || "none"],
+      ["Side selected", strategyInspector.overseerSideSelected || "none"],
+      ["Actions used", strategyInspector.overseerActionsUsed || `${strategyInspector.mainActions || 0}/?`],
+      ["Why selected", strategyInspector.overseerWhySelected || "none"],
+      ["Why no side", strategyInspector.overseerWhyNoSide || "none"],
+      ["Blocked by hard guard", strategyInspector.overseerBlockedByHardGuard || "none"],
       ["Main", strategyInspector.mainDecision || strategyInspector.decision],
       ["Side", strategyInspector.sideDecision || "none"],
       ["Status", strategyInspector.compactStatus || "n/a"],
@@ -2349,6 +2373,10 @@ function getDisplayName(item) {
       ["Territory ETA before", strategyInspector.territoryPrepExpansionEtaBefore || "n/a"],
       ["Territory ETA after", strategyInspector.territoryPrepExpansionEtaAfter || "n/a"],
       ["Territory army seed", strategyInspector.territoryPrepArmySeed || "no"],
+      ["Territory scanned fighting units", String(strategyInspector.territoryPrepScannedFightingUnits ?? 0)],
+      ["Territory visible fighting units", String(strategyInspector.territoryPrepVisibleFightingUnits ?? 0)],
+      ["Territory buyable fighting units", String(strategyInspector.territoryPrepBuyableFightingUnits ?? 0)],
+      ["Territory HoM matches", String(strategyInspector.territoryPrepMissingMatchedCount ?? 0)],
       ["Army prep missing units", strategyInspector.armyPrepMissingUnits || "none"],
       ["Why territory did not buy", strategyInspector.territoryDidNotBuyReason || "none"],
       ["Settings now", strategyInspector.settings.join(" · ")],
@@ -2438,23 +2466,36 @@ function getDisplayName(item) {
       return `<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Waiting for first Smart run</strong></div>`;
     }
 
+    const laneByName = new Map((strategyInspector.lanes || []).map((lane) => [lane.name, lane]));
+
+    const laneCard = (label, lane) => [
+      label,
+      lane ? `${lane.decision} ${lane.title}`.trim() : "none",
+      lane?.reason || "no lane-specific candidate this run",
+      "",
+    ];
+
     const cards = [
-      ["Main", strategyInspector.bestAllowedMainAction !== "none" ? strategyInspector.bestAllowedMainAction : (strategyInspector.mainDecision || strategyInspector.decision)],
-      ["Side", strategyInspector.bestAllowedSideAction !== "none" ? strategyInspector.bestAllowedSideAction : (strategyInspector.sideDecision || "none")],
-      ["Next likely buy", strategyInspector.nextLikelyBuy || strategyInspector.waits],
-      ["Closest main", strategyInspector.closestMainLaneToBuying ? `${strategyInspector.closestMainLaneToBuying.lane}: ${strategyInspector.closestMainLaneToBuying.candidate}` : "none"],
-      ["Best rejected strategic", strategyInspector.bestRejectedStrategicAction || strategyInspector.bestRejectedAction || "none"],
-      ["Dominant blocker", liveDiagnostics?.dominantHoldReason || strategyInspector.blockedBySummary || "none"],
-      ["Warning", liveDiagnosticsWarningLabel()],
-      ["Phase", strategyInspector.phase],
-      ["Nexus", strategyInspector.nexus],
+      ["Overseer", strategyInspector.overseerDecision || strategyInspector.laneCoordinatorDecision || "none", strategyInspector.overseerWhySelected || "", strategyInspector.overseerActionsUsed || ""],
+      ["Main selected", strategyInspector.overseerMainSelected || "none", strategyInspector.overseerWhySelected || "", ""],
+      ["Side selected", strategyInspector.overseerSideSelected || "none", strategyInspector.overseerWhyNoSide || "", strategyInspector.overseerBlockedByHardGuard || ""],
+      laneCard("Engine / Larva", laneByName.get("Engine")),
+      laneCard("Meat", laneByName.get("Meat")),
+      laneCard("Territory / Army", laneByName.get("Territory")),
+      laneCard("Energy", laneByName.get("Energy")),
+      laneCard("Clone", laneByName.get("Clone Prep")),
+      laneCard("Ability", laneByName.get("Ability")),
+      laneCard("Twin / Upgrade", laneByName.get("Upgrade") || laneByName.get("Twin")),
+      ["Next likely buy", strategyInspector.nextLikelyBuy || strategyInspector.waits, liveDiagnosticsWarningLabel(), strategyInspector.blockedBySummary || ""],
     ];
 
     return cards
-      .map(([key, value]) => `
+      .map(([key, value, reason, extra]) => `
         <div class="kbc-strategy-card">
           <span>${escapeHtml(key)}</span>
           <strong>${escapeHtml(value)}</strong>
+          ${reason ? `<small>${escapeHtml(reason)}</small>` : ""}
+          ${extra ? `<small>${escapeHtml(extra)}</small>` : ""}
         </div>
       `)
       .join("");
@@ -2467,7 +2508,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.9",
+      scriptVersion: "0.8.10",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2584,6 +2625,10 @@ function getDisplayName(item) {
       territoryPrepExpansionEtaBefore: strategyInspector?.territoryPrepExpansionEtaBefore || territoryPrepPlannerState?.territoryPrepExpansionEtaBefore || "n/a",
       territoryPrepExpansionEtaAfter: strategyInspector?.territoryPrepExpansionEtaAfter || territoryPrepPlannerState?.territoryPrepExpansionEtaAfter || "n/a",
       territoryPrepArmySeed: strategyInspector?.territoryPrepArmySeed || territoryPrepPlannerState?.territoryPrepArmySeed || "no",
+      territoryPrepScannedFightingUnits: strategyInspector?.territoryPrepScannedFightingUnits ?? territoryPrepPlannerState?.territoryPrepScannedFightingUnits ?? 0,
+      territoryPrepVisibleFightingUnits: strategyInspector?.territoryPrepVisibleFightingUnits ?? territoryPrepPlannerState?.territoryPrepVisibleFightingUnits ?? 0,
+      territoryPrepBuyableFightingUnits: strategyInspector?.territoryPrepBuyableFightingUnits ?? territoryPrepPlannerState?.territoryPrepBuyableFightingUnits ?? 0,
+      territoryPrepMissingMatchedCount: strategyInspector?.territoryPrepMissingMatchedCount ?? territoryPrepPlannerState?.territoryPrepMissingMatchedCount ?? 0,
       territoryDidNotBuyReason: strategyInspector?.territoryDidNotBuyReason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: strategyInspector?.armyPrepMissingUnits || territoryPrepPlannerState?.armyPrepMissingUnits || abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "none",
       advisorLog: advisorLog.slice(),
@@ -5676,10 +5721,46 @@ function getDisplayName(item) {
     };
   }
 
-  function getArmyPrepMissingUnitLabels() {
+  function getHouseOfMirrorsArmyPrep(game) {
+    const mirrors = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const tiers = [
+      { key: "culicimorph v", label: "Culicimorph V" },
+      { key: "arachnomorph v", label: "Arachnomorph V" },
+      { key: "stinger v", label: "Stinger V" },
+    ];
+
+    if (!mirrors?.isVisible?.()) {
+      return {
+        visible: false,
+        armyValue: newDecimal(0),
+        missing: [],
+      };
+    }
+
+    const missing = [];
+    let armyValue = newDecimal(0);
+
+    for (const tier of tiers) {
+      const count = unitCountByNameLike(game, tier.key);
+      armyValue = armyValue.plus(count);
+      if (!isPositive(count)) missing.push(tier.label);
+    }
+
+    return {
+      visible: true,
+      armyValue,
+      missing,
+    };
+  }
+
+  function getArmyPrepMissingUnitLabels(game) {
     const raw = String(abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "").trim();
-    if (!raw || raw === "none") return [];
-    return raw.split(",").map((part) => part.trim()).filter(Boolean);
+    if (raw && raw !== "none") {
+      return raw.split(",").map((part) => part.trim()).filter(Boolean);
+    }
+
+    const direct = getHouseOfMirrorsArmyPrep(game);
+    return direct.visible ? direct.missing : [];
   }
 
   function unitMatchesArmyPrepLabel(unit, label) {
@@ -5701,8 +5782,10 @@ function getDisplayName(item) {
   }
 
   function buildTerritoryPrepProposal(game, engine, protectedResources) {
-    const missingLabels = getArmyPrepMissingUnitLabels();
+    const armyPrep = getHouseOfMirrorsArmyPrep(game);
+    const missingLabels = getArmyPrepMissingUnitLabels(game);
     const expansionEtaBefore = Number.isFinite(engine?.expansionEta) ? formatDuration(engine.expansionEta) : "n/a";
+    const scannedFightingUnits = (game.unitlist?.() || []).filter((unit) => unit?.isVisible?.() && (getTabName(unit) === "territory" || HOUSE_OF_MIRRORS_ARMY_TIERS.some((tier) => unitMatchesArmyPrepLabel(unit, tier.label))));
 
     if (!config.territoryPrepPlanner) {
       return recordTerritoryPrepPlannerState({
@@ -5713,22 +5796,29 @@ function getDisplayName(item) {
         territoryPrepExpansionEtaAfter: "n/a",
         territoryPrepBlockedBy: "planner disabled",
         armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+        territoryPrepScannedFightingUnits: scannedFightingUnits.length,
+        territoryPrepVisibleFightingUnits: scannedFightingUnits.length,
+        territoryPrepBuyableFightingUnits: scannedFightingUnits.filter((unit) => unit?.isBuyable?.()).length,
+        territoryPrepMissingMatchedCount: missingLabels.length,
       });
     }
 
-    const visibleUnits = (game.unitlist?.() || []).filter((unit) => unit?.isVisible?.() && getTabName(unit) === "territory");
-    const visibleFightingUnits = visibleUnits.filter((unit) => {
+    const visibleFightingUnits = scannedFightingUnits.filter((unit) => {
       const producesTerritory = isPositive(productionPerUnit(unit, "territory"));
       return producesTerritory || HOUSE_OF_MIRRORS_ARMY_TIERS.some((tier) => unitMatchesArmyPrepLabel(unit, tier.label));
     });
+    const buyableUnits = visibleFightingUnits.filter((unit) => unit?.isBuyable?.());
+    const matchingBuyableUnits = buyableUnits.filter((unit) => missingLabels.some((label) => unitMatchesArmyPrepLabel(unit, label)));
 
     if (!visibleFightingUnits.length) {
       addLaneCandidate({
         lane: "Territory",
         decision: "HOLD",
         candidate: "Territory prep",
-        reason: "no visible fighting units",
-        blockers: ["no visible fighting units"],
+        reason: armyPrep.visible && missingLabels.length
+          ? "House of Mirrors army prep missing; no visible matching fighting units"
+          : "no visible fighting units",
+        blockers: [armyPrep.visible && missingLabels.length ? "no visible matching fighting units" : "no visible fighting units"],
         score: 0,
         target: "Expansion",
         resource: "territory",
@@ -5736,22 +5826,29 @@ function getDisplayName(item) {
       return recordTerritoryPrepPlannerState({
         territoryPrepCandidate: "none",
         territoryPrepDecision: "HOLD",
-        territoryPrepReason: "no visible fighting units",
+        territoryPrepReason: armyPrep.visible && missingLabels.length
+          ? "House of Mirrors army prep missing; no visible matching fighting units"
+          : "no visible fighting units",
         territoryPrepExpansionEtaBefore: expansionEtaBefore,
         territoryPrepExpansionEtaAfter: "n/a",
-        territoryPrepBlockedBy: "no visible fighting units",
+        territoryPrepBlockedBy: armyPrep.visible && missingLabels.length ? "no visible matching fighting units" : "no visible fighting units",
         armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+        territoryPrepScannedFightingUnits: scannedFightingUnits.length,
+        territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
+        territoryPrepBuyableFightingUnits: buyableUnits.length,
+        territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
       });
     }
 
-    const buyableUnits = visibleFightingUnits.filter((unit) => unit?.isBuyable?.());
     if (!buyableUnits.length) {
       addLaneCandidate({
         lane: "Territory",
         decision: "HOLD",
         candidate: "Territory prep",
-        reason: "no buyable fighting units",
-        blockers: ["no buyable fighting units"],
+        reason: armyPrep.visible && missingLabels.length
+          ? "House of Mirrors army prep missing; no buyable matching fighting units found"
+          : "no buyable fighting units",
+        blockers: [armyPrep.visible && missingLabels.length ? "no buyable matching fighting units found" : "no buyable fighting units"],
         score: 0,
         target: "Expansion",
         resource: "territory",
@@ -5759,11 +5856,17 @@ function getDisplayName(item) {
       return recordTerritoryPrepPlannerState({
         territoryPrepCandidate: "none",
         territoryPrepDecision: "HOLD",
-        territoryPrepReason: "no buyable fighting units",
+        territoryPrepReason: armyPrep.visible && missingLabels.length
+          ? "House of Mirrors army prep missing; no buyable matching fighting units found"
+          : "no buyable fighting units",
         territoryPrepExpansionEtaBefore: expansionEtaBefore,
         territoryPrepExpansionEtaAfter: "n/a",
-        territoryPrepBlockedBy: "no buyable fighting units",
+        territoryPrepBlockedBy: armyPrep.visible && missingLabels.length ? "no buyable matching fighting units found" : "no buyable fighting units",
         armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+        territoryPrepScannedFightingUnits: scannedFightingUnits.length,
+        territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
+        territoryPrepBuyableFightingUnits: buyableUnits.length,
+        territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
       });
     }
 
@@ -5814,7 +5917,7 @@ function getDisplayName(item) {
 
       candidate.armySeed = !!(armySeedAllowed && (!territory || !territory.meetsMinimum));
       candidate.reason = candidate.armySeed
-        ? `army seed: ${matchingMissing} is empty; safe small territory chunk for House of Mirrors prep`
+        ? `House of Mirrors army prep missing; seeding ${getDisplayName(unit)} with bounded scored chunk; hard blockers clear`
         : matchingMissing
           ? `${territory.reason}; supports House of Mirrors prep (${matchingMissing})`
           : territory.reason;
@@ -5833,7 +5936,9 @@ function getDisplayName(item) {
         lane: "Territory",
         decision: "HOLD",
         candidate: "Territory prep",
-        reason,
+        reason: armyPrep.visible && missingLabels.length && reason === "ROI below minimum"
+          ? "House of Mirrors army prep missing; no buyable matching fighting units found"
+          : reason,
         blockers: [reason],
         score: 0,
         target: "Expansion",
@@ -5842,11 +5947,17 @@ function getDisplayName(item) {
       return recordTerritoryPrepPlannerState({
         territoryPrepCandidate: "none",
         territoryPrepDecision: "HOLD",
-        territoryPrepReason: reason,
+        territoryPrepReason: armyPrep.visible && missingLabels.length && reason === "ROI below minimum"
+          ? "House of Mirrors army prep missing; no buyable matching fighting units found"
+          : reason,
         territoryPrepExpansionEtaBefore: expansionEtaBefore,
         territoryPrepExpansionEtaAfter: "n/a",
         territoryPrepBlockedBy: reason,
         armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+        territoryPrepScannedFightingUnits: scannedFightingUnits.length,
+        territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
+        territoryPrepBuyableFightingUnits: buyableUnits.length,
+        territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
       });
     }
 
@@ -5878,6 +5989,10 @@ function getDisplayName(item) {
       territoryPrepSafeCandidate: true,
       territoryPrepBlockedBy: "none",
       armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+      territoryPrepScannedFightingUnits: scannedFightingUnits.length,
+      territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
+      territoryPrepBuyableFightingUnits: buyableUnits.length,
+      territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
       proposal: best,
     });
   }
@@ -6344,6 +6459,10 @@ function getDisplayName(item) {
       territoryPrepSafeCandidate: fields.territoryPrepSafeCandidate ? "yes" : "no",
       territoryPrepBlockedBy: fields.territoryPrepBlockedBy || territoryPrepPlannerState?.territoryPrepBlockedBy || "none",
       armyPrepMissingUnits: fields.armyPrepMissingUnits || territoryPrepPlannerState?.armyPrepMissingUnits || "none",
+      territoryPrepScannedFightingUnits: Number.isFinite(Number(fields.territoryPrepScannedFightingUnits)) ? Number(fields.territoryPrepScannedFightingUnits) : (territoryPrepPlannerState?.territoryPrepScannedFightingUnits ?? 0),
+      territoryPrepVisibleFightingUnits: Number.isFinite(Number(fields.territoryPrepVisibleFightingUnits)) ? Number(fields.territoryPrepVisibleFightingUnits) : (territoryPrepPlannerState?.territoryPrepVisibleFightingUnits ?? 0),
+      territoryPrepBuyableFightingUnits: Number.isFinite(Number(fields.territoryPrepBuyableFightingUnits)) ? Number(fields.territoryPrepBuyableFightingUnits) : (territoryPrepPlannerState?.territoryPrepBuyableFightingUnits ?? 0),
+      territoryPrepMissingMatchedCount: Number.isFinite(Number(fields.territoryPrepMissingMatchedCount)) ? Number(fields.territoryPrepMissingMatchedCount) : (territoryPrepPlannerState?.territoryPrepMissingMatchedCount ?? 0),
       proposal: fields.proposal || territoryPrepPlannerState?.proposal || null,
     };
 
@@ -8382,7 +8501,7 @@ function getDisplayName(item) {
 
     runAbilityPrepPlanner(game);
 
-    strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, summaries, mainActions, sideActions);
+    strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, summaries, mainActions, sideActions, maxActions);
     recordRunHistoryEntry(strategyInspector);
 
     refreshUi();
@@ -8783,7 +8902,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.9 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.10 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -8791,7 +8910,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.9. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.10. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -8892,7 +9011,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.9. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.10. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
@@ -9315,8 +9434,17 @@ function getDisplayName(item) {
         display: block;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
+        white-space: normal;
         font-size: 11px;
+        line-height: 1.2;
+      }
+
+      .kbc-strategy-card small {
+        display: block;
+        margin-top: 3px;
+        font-size: 10px;
+        line-height: 1.2;
+        opacity: 0.8;
       }
 
       @media (max-width: 1100px) {
