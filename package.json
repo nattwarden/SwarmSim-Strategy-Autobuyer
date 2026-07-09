@@ -1,0 +1,13 @@
+{
+  "name": "swarmsim-strategy-autobuyer",
+  "private": true,
+  "version": "0.8.8",
+  "description": "SwarmSim Strategy Autobuyer tooling",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "node scripts/build-canonical-userscript.js --write",
+    "build:check": "node scripts/build-canonical-userscript.js --check",
+    "validate:guardrails": "node scripts/validate-repo-guardrails.js",
+    "verify": "node scripts/build-canonical-userscript.js --check && node scripts/validate-repo-guardrails.js"
+  }
+}

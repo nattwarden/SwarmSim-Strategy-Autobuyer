@@ -28,6 +28,7 @@ docs/
 reference/                                  # strategy/source references for sanity checks
 scripts/
   validate-repo-guardrails.js               # syntax, defaults, and artifact validation
+  build-canonical-userscript.js             # phase-4 build entrypoint (canonical userscript)
 AGENTS.md                                   # repo/process guard for AI agents
 AI.md                                       # source map and AI-agent instructions
 ```
@@ -83,6 +84,21 @@ This includes:
 - `node --check src/SwarmSim-Strategy-Autobuyer.user.js`
 - safe-default checks
 - duplicate script artifact checks
+
+## Build And Verify
+
+Phase 4 bootstrap introduces a deterministic build/check entrypoint for the
+canonical userscript without changing runtime behavior.
+
+Commands:
+
+```bash
+npm run build:check
+npm run build
+npm run verify
+```
+
+`npm run verify` runs build check plus guardrails validation.
 
 ## Current 0.8.8 work
 

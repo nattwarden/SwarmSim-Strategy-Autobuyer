@@ -1,6 +1,6 @@
 # Modularization Plan (Phase 1 start)
 
-Status: Started 2026-07-09, Phase 3 in progress
+Status: Started 2026-07-09, Phase 4 bootstrap in progress
 
 Goal:
 
@@ -28,7 +28,7 @@ Migration phases:
 1. Phase 1 (done): scaffold contracts and module entry points; no runtime wiring.
 2. Phase 2 (done): territory/army lane execution extracted behind a runtime adapter boundary in the canonical userscript.
 3. Phase 3 (in progress): territory/army proposal generation and meat execution routed through dedicated runtime adapter boundaries.
-4. Phase 4: build/bundle flow for canonical userscript, preserving behavior.
+4. Phase 4 (started): build/check entrypoint added for canonical userscript with behavior-preserving bootstrap pipeline.
 
 Validation required after each phase:
 

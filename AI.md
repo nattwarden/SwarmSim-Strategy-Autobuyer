@@ -213,6 +213,14 @@ Always run:
 node scripts/validate-repo-guardrails.js
 ```
 
+Build/check commands (Phase 4 bootstrap):
+
+```bash
+npm run build:check
+npm run build
+npm run verify
+```
+
 This includes:
 
 - `node --check src/SwarmSim-Strategy-Autobuyer.user.js`
