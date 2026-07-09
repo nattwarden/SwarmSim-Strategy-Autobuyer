@@ -1,0 +1,2027 @@
+Spoiling Swarm Simulator
+Analysis and Optimization in Continuous Approximation
+
+
+
+
+                    authored by
+                ichbinsisyphos
+
+
+                   June 2015
+dedicated to all people that don’t suck, or only very little.
+
+
+
+
+                i
+Abstract
+
+
+Swarm Simulator is an online idle and management game that runs in a web
+browser. Goal of the game is to have a hive of eusocial alien insects grow as
+much as possible. One special characteristic is that ingame-time progresses even
+when the player is offline. The hive grows exponentially as the player buy units to
+start or help growth and works to provide resources. After building the necessary
+infrastructure the player has access to energy abilities that produce resources or
+warp time, that consume energy produced by nexus and lepidoptera each time
+they are used.
+
+This paper explains the basics of the game, provides mathematical models and a
+documentation of the mathematical background of the game which may later be
+used in finding optimal solutions, and tries to provide such solutions for selected
+problems.
+
+
+
+
+                                        ii
+Contents
+
+
+Abstract                                                                                                                        ii
+
+1 The Basics                                                                                                                     1
+  1.1 Larvae . . . . . . . . . . . . .    .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    1
+      1.1.1 Hatcheries . . . . . . .      .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    1
+      1.1.2 Expansions . . . . . .        .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    1
+      1.1.3 Larvae Growth . . . .         .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    1
+  1.2 Energy . . . . . . . . . . . . .    .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    2
+      1.2.1 Nexus . . . . . . . . .       .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    2
+      1.2.2 Nightbugs . . . . . . .       .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    3
+      1.2.3 Lepidoptera . . . . . .       .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    3
+      1.2.4 Bats . . . . . . . . . .      .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    4
+  1.3 Abilities . . . . . . . . . . . .   .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    4
+      1.3.1 Larva Rush . . . . . .        .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    4
+      1.3.2 Swarm Warp . . . . .          .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    5
+      1.3.3 Meat Rush . . . . . . .       .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    5
+      1.3.4 Territory Rush . . . .        .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    6
+      1.3.5 Clone Larvae . . . . .        .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    6
+  1.4 Mutations . . . . . . . . . . .     .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    6
+      1.4.1 Lepidoptera Mutation          .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    7
+      1.4.2 Mutation Frequency .          .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    7
+      1.4.3 Meat Mutation . . . .         .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    8
+      1.4.4 Territory Mutation . .        .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    8
+      1.4.5 Meta-mutation . . . .         .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    9
+      1.4.6 Rush Mutation . . . .         .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    9
+      1.4.7 Warp Mutation . . . .         .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .    9
+      1.4.8 Clone Mutation . . . .        .     .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   10
+
+
+
+                                          iii
+                                              Contents
+
+         1.4.9 Bat Mutation . . . . . . . . . . . . . . . . . . . . . .                                                    . . .       .   10
+         1.4.10 Hatchery Mutation . . . . . . . . . . . . . . . . . . .                                                    . . .       .   10
+   1.5   Ascension . . . . . . . . . . . . . . . . . . . . . . . . . . . .                                                 . . .       .   10
+         1.5.1 Energy Requirement for Ascension . . . . . . . . . .                                                        . . .       .   11
+         1.5.2 Number of Ascension from spent and required Energy                                                          left        .   11
+
+2 Optimization                                                                                                                             13
+  2.1 Ascension . . . . . . . . . . . . . . . . . . . . . . . . . .                                                .   .   .   .   .   .   13
+      2.1.1 Energy spent for quickest Ascension . . . . . . . .                                                    .   .   .   .   .   .   13
+      2.1.2 Energy requirement left for quickest Ascension . .                                                     .   .   .   .   .   .   14
+      2.1.3 Energy spent for quickest Ascension using Respec                                                       .   .   .   .   .   .   15
+  2.2 Nightbugs . . . . . . . . . . . . . . . . . . . . . . . . . .                                                .   .   .   .   .   .   16
+      2.2.1 Number of nightbugs for quickest Ascension . . .                                                       .   .   .   .   .   .   16
+      2.2.2 Number of nightbugs for large maximum energy .                                                         .   .   .   .   .   .   17
+      2.2.3 Number of nightbugs for multiple refills . . . . . .                                                   .   .   .   .   .   .   18
+  2.3 Bats . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                                               .   .   .   .   .   .   18
+      2.3.1 Number of bats for quickest Ascension . . . . . .                                                      .   .   .   .   .   .   19
+      2.3.2 Example 1 . . . . . . . . . . . . . . . . . . . . . .                                                  .   .   .   .   .   .   20
+      2.3.3 Example 2 . . . . . . . . . . . . . . . . . . . . . .                                                  .   .   .   .   .   .   21
+  2.4 Mutagen . . . . . . . . . . . . . . . . . . . . . . . . . . .                                                .   .   .   .   .   .   22
+      2.4.1 Larva Rush . . . . . . . . . . . . . . . . . . . . .                                                   .   .   .   .   .   .   22
+      2.4.2 Swarm Warp ↔ Bat Mutation . . . . . . . . . . .                                                        .   .   .   .   .   .   23
+
+3 Preparation for Advanced Optimization                                          25
+  3.1 Time . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+      3.1.1 Time to grow Energy with constant growth rate . . . . . . . 25
+      3.1.2 Time to grow Lepidoptera . . . . . . . . . . . . . . . . . . . 25
+
+4 Advanced Optimization                                                                                                                    27
+  4.1 Quickest Nexus 4 .      .   .   .   .   .   .   .    .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   27
+      4.1.1 Case A . . .      .   .   .   .   .   .   .    .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   28
+      4.1.2 Case B . . .      .   .   .   .   .   .   .    .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   28
+      4.1.3 Result . . .      .   .   .   .   .   .   .    .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   28
+  4.2 Quickest Nexus 5 .      .   .   .   .   .   .   .    .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   29
+      4.2.1 Case A . . .      .   .   .   .   .   .   .    .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   30
+
+
+
+                                                      iv
+                                   Contents
+
+      4.2.2 Case B . . . . . . . . . . . . . . . . . . . . . . . .    .   .   .   .   .   .   30
+      4.2.3 Result . . . . . . . . . . . . . . . . . . . . . . . .    .   .   .   .   .   .   30
+4.3   Lepidoptera before Nexus 5 with total Lepidoptera Goal          .   .   .   .   .   .   31
+      4.3.1 Cases A & B . . . . . . . . . . . . . . . . . . . .       .   .   .   .   .   .   32
+      4.3.2 Case C . . . . . . . . . . . . . . . . . . . . . . . .    .   .   .   .   .   .   33
+      4.3.3 Case D . . . . . . . . . . . . . . . . . . . . . . . .    .   .   .   .   .   .   34
+      4.3.4 Results . . . . . . . . . . . . . . . . . . . . . . . .   .   .   .   .   .   .   34
+      4.3.5 Total Time with Optimal Strategy . . . . . . . .          .   .   .   .   .   .   35
+      4.3.6 Elaborate Analysis for total 4000 Lepidoptera . .         .   .   .   .   .   .   37
+4.4   Number of Lepidoptera for quickest ascension . . . . . .        .   .   .   .   .   .   38
+4.5   Ideas for further Optimizations . . . . . . . . . . . . . .     .   .   .   .   .   .   41
+
+
+
+
+                                       v
+1 The Basics
+
+
+1.1 Larvae
+
+
+1.1.1 Hatcheries
+
+
+1.1.2 Expansions
+
+
+1.1.3 Larvae Growth
+
+
+Larvae growth ∆L
+               ∆t
+                  = λ depends on the number of hatcheries h, expansions e, the
+unspent active mutagen Mu , the amount of mutagen Mh invested in Hatchery
+Mutation, your achievement points ap and the number of Accomplished Ancestry
+upgrades aa (up to 5).
+
+
+
+                                                                      
+ ∆L                       Mu          e
+                                             ap aa                 Mh
+    = λ(h, e, Mu , Mh ) =    + h ∗ 1.1 · 1 +         · 1 + log10 1 +
+ ∆t                       10                 1000                    10
+
+
+
+
+                                      1
+                                  1 The Basics
+
+1.2 Energy
+
+
+Energy Growth
+
+
+The total energy growth depends on the number of nexus N , number of lepidoptera
+l and the amount of mutagen Ml invested in the Lepidoptera Mutation.
+              ∆E                         N 1000 + 2l 2000 + 2Ml
+                 (l, N, Ml ) = l,N,Ml =   ·        ·
+              ∆t                         10 1000 + l 2000 + Ml
+
+
+Maximum Energy
+
+
+The maximum energy growth depends on the number of nightbugs n and the
+amount of mutagen Ml invested in the Lepidoptera Mutation. It’s base value is
+50, 000.
+                                  1000 + 6n 2000 + 2Ml
+               Emax (n, Ml ) = 5e4 ·         ·
+                                   1000 + n 2000 + Ml
+                                                
+                                4         5000       2000 + 2Ml
+                            = 5e · 6 −             ·
+                                        1000 + n     2000 + Ml
+
+
+1.2.1 Nexus
+
+
+You can build up to 5 nexus and doing so should be one of the highest priorities.
+Nexus provide a base energy growth for your hive of 0.11/s each.
+
+ Nexus #    Energy Cost    Meat Cost   Larva Cost   Energy Gift
+ 1                0         3.33e12         0             2000
+ 2               625        3.33e15         0             4000
+ 3              2500        3.33e18      3.33e6           6000
+ 4             10000        3.33e21      3.33e7           8000
+ 5             36000        3.33e24      3.33e9          10000
+
+
+
+
+                                       2
+                                    1 The Basics
+
+1.2.2 Nightbugs
+
+
+Nightbugs increase your maximum energy by up to 500%. They are not crucial for
+the game and can be avoided if the player is online regularly. They are however
+very important for weekend gamers and allow earlier ascension in case the optimal
+energy requirement for ascension exceeds the energy storage without nightbug
+bonus.
+
+
+
+                                                            
+                                                       1
+                    Emax,n   = Emax,0 1 + 5 1 −
+                                                   1 + 1e−3 n
+                                                 
+                                        1000 + 6n
+                             = Emax,0
+                                        1000 + n
+                                                    
+                                              5000
+                             = Emax,0 6 −
+                                           1000 + n
+
+
+1.2.3 Lepidoptera
+
+
+Lepidoptera increase your energy growth by up to 100%. They are very important
+creatures and should be bought partially before and right after nexus 5, as an early
+increase in energy growth will benefit your overall energy production and lowers
+ascension time.
+
+
+
+                                                           
+                    ∆E                                1
+                       (l) = l = 0 1 + 1 1 −
+                    ∆t                            1 + 1e−3 l
+                                                
+                                       1000 + 2l
+                                = 0
+                                       1000 + l
+
+
+
+
+                                          3
+                                    1 The Basics
+
+1.2.4 Bats
+
+
+Bats give a bonus to all energy abilities by up to 60%. Easily neglected, they
+should not be forgotten, but restraint in buying them is advised due to their high
+price.
+
+The effect of bats on abilities can be interpreted as an energy bonus. If an ability
+has a 20% greater effect, it’s the same as spending 20% more energy on the ability
+without the bonus. Bats, in this sense, provide an energy bonus to energy spent
+on abilities. They are important creatures and should best be bought right after
+Lepidoptera and before the first use of an ability the latest.
+
+
+
+                                                       
+                                                  1
+                       Eb = E0 1 + 0.6 1 −
+                                              1 + 1e−3 b
+                                            
+                                 1000 + 1.6b
+                          = E0
+                                  1000 + b
+                                              
+                                         600
+                          = E0 1.6 −
+                                      1000 + b
+
+
+
+1.3 Abilities
+
+
+Each energy ability has its own Mutation Upgrade, in addition Bat Mutation gives
+an equal bonus to all abilities.
+
+
+
+1.3.1 Larva Rush
+
+
+The amount of larvae produced in one Larva Rush Lrush is 2400 seconds worth
+of larvae production per second λ (from hatcheries/expansions and unused active
+mutagen alike), increased by Larva Rush Mutation, Bat Mutation and Bats.
+
+
+
+
+                                         4
+                                 1 The Basics
+
+
+                                                                           
+                                        Mlr                    Mb       1000 + 1.6b
+Lrush = 2400s · λ · 1 + 3 · log10 1 +          · 1 + log10 1 +        ·
+                                        10                     100       1000 + b
+                                                                 
+                  Mu                    ap aa
+                                                               Mh
+      = 2400s ·        + h ∗ 1.1e · 1 +         · 1 + log10 1 +
+                   10                   1000                    10
+                              
+                            Mlr
+      · 1 + 3 · log10 1 +
+                            10
+                           
+                         Mb
+      · 1 + log10 1 +
+                        100
+                     
+          1000 + 1.6b
+      ·
+           1000 + b
+
+
+1.3.2 Swarm Warp
+
+
+Base warp time is 15 minutes, increased by Warp Mutation, Bat Mutation and
+Bats.
+
+
+
+                                                                     
+                                    Mw                   Mb       1000 + 1.6b
+twarp   = 15min · 1 + 2 · log10 1 +      · 1 + log10 1 +       ·
+                                    10                   100       1000 + b
+
+
+1.3.3 Meat Rush
+
+
+The amount of larvae produced in one Larva Rush mrush is 7200 seconds (= 2
+hours) worth of meat production per second µ, increased by Meat Rush Mutation,
+Bat Mutation and Bats.
+
+
+
+                                                                           
+                                         Mmr                   Mb       1000 + 1.6b
+mrush   = 7200s · µ · 1 + 13 · log10 1 +       · 1 + log10 1 +       ·
+                                          10                   100       1000 + b
+
+
+
+
+                                       5
+                                  1 The Basics
+
+1.3.4 Territory Rush
+
+
+The amount of territory produced in one Territory Rush Trush is 7200 seconds (=
+2 hours) worth of territory conquest per second τ , increased by Territory Rush
+Mutation, Bat Mutation and Bats.
+
+
+                                                                           
+                                         Mtr                   Mb       1000 + 1.6b
+Trush   = 7200s · τ · 1 + 13 · log10 1 +       · 1 + log10 1 +       ·
+                                         10                    100       1000 + b
+
+
+1.3.5 Clone Larvae
+
+
+The maximum clone amount of larvae Lclone is 100,000 seconds worth of larvae
+production λ (from hatcheries/expansions and unused active mutagen alike), in-
+creased by Clone Larva Mutation, Bat Mutation and Bats.
+
+
+                                                                                
+                                              Mc                    Mb       1000 + 1.6b
+Lclone = 100, 000s · λ · 1 + 1.5 · log10 1 +        · 1 + log10 1 +       ·
+                                               10                   100       1000 + b
+                                                                    
+                       Mu                    ap aa
+                                                                   Mh
+       = 100, 000s ·        + h ∗ 1.1e · 1 +        · 1 + log10 1 +
+                        10                   1000                   10
+                                 
+                               Mc
+       · 1 + 1.5 · log10 1 +
+                               10
+                            
+                           Mb
+       · 1 + log10 1 +
+                          100
+                      
+           1000 + 1.6b
+       ·
+            1000 + b
+
+
+
+1.4 Mutations
+
+
+Mutations give a bonus to energy abilities depending on the amount of Mutagen
+invested in them. Lepidoptera Mutation and Mutation Frequency are capped, but
+
+
+
+                                        6
+                                   1 The Basics
+
+all others continue to grow logarithmically.
+
+
+
+1.4.1 Lepidoptera Mutation
+
+
+Lepidoptera Mutation increases energy growth rate and maximum energy by up
+to 100% and the energy needed to be spent to lower the energy requirement for
+ascension by up to 60%. It does not depend on your number of Lepidoptera,
+although the effects of both on the energy growth rate stack.
+
+
+
+                                                           
+                                                       1
+                  Emax,M   = Emax,0 1 + 1 1 −
+                                                  1 + 5e−4 M
+                                                 
+                                      2000 + 2M
+                           = Emax,0
+                                       2000 + M
+                                                    
+                                             2000
+                           = Emax,0 2 −
+                                          2000 + M
+
+                                                        
+                 ∆E                                 1
+                    (M ) = M = 0 1 + 1 1 −
+                 ∆t                            1 + 5e−4 M
+                                              
+                                     2000 + 2M
+                              = 0
+                                      2000 + M
+
+                                                            
+                                                        1
+                ∆Easc,M    = ∆Easc,0 1 + 0.6 1 −
+                                                   1 + 5e−4 M
+                                                  
+                                       2000 + 1.6M
+                           = ∆Easc,0
+                                        2000 + M
+
+
+1.4.2 Mutation Frequency
+
+
+Mutation Frequency increases the probability of getting a mutagen reward for
+buying hatcheries and expansion from originally 20% to up to 60%.
+
+
+
+
+                                         7
+                                     1 The Basics
+
+
+                                                            
+                                                     1
+                          PM   = 0.2 + 0.4 1 −
+                                                1 + 1e−3 M
+                                                      
+                                                M
+                               = 0.2 + 0.4
+                                             1000 + M
+                                 200 + 0.6M
+                               =
+                                  1000 + M
+
+
+1.4.3 Meat Mutation
+
+
+The Meat Mutation increases the production rate of all meat units, drones the
+most, lower buy a factor of 0.85 for every unit higher up.
+
+
+                                                             
+                                                           M
+            PM,drones   = P0,drones 1 + 0.48 · log10 1 +
+                                                           100
+                                                                  
+                                                                 M
+            PM,queens   = P0,queens 1 + 0.85 · 0.48 · log10 1 +
+                                                                100
+                  ... = ...
+                                                                      
+                                                18                   M
+        PM,overmindV    = P0,overmindV 1 + 0.85 · 0.48 · log10 1 +
+                                                                    100
+                                                                       
+                                                 19                  M
+       PM,overmindV I   = P0,overmindV I 1 + 0.85 · 0.48 · log10 1 +
+                                                                     100
+                                                                              (1.1)
+
+
+
+1.4.4 Territory Mutation
+
+
+The Territory Mutation increases all territory created.
+
+
+                                                       
+                                                      M
+                         TM    = T0 1 + 5 · log10 1 +
+                                                      10
+
+
+                                           8
+                                    1 The Basics
+
+1.4.5 Meta-mutation
+
+
+Meta-mutation increases mutagen rewarded when buying hatcheries or expan-
+sions.
+
+
+
+                                                        
+                                                      M
+                    MM       = M0 1 + 0.5 · log10 1 +
+                                                      100
+
+
+1.4.6 Rush Mutation
+
+
+Rush Mutation increases the turnout of Meat, Larvae and Territory Rush.
+
+
+
+                                                              
+                                                            M
+                XM,larvae    = X0,larvae 1 + 3 · log10 1 +
+                                                            10
+                                                              
+                                                            M
+                 XM,meat     = X0,meat 1 + 13 · log10 1 +
+                                                             10
+                                                                 
+                                                                M
+              XM,territory   = X0,territory 1 + 13 · log10 1 +
+                                                                10
+
+
+1.4.7 Warp Mutation
+
+
+Warp Mutation increases the warp time of swarm warps.
+
+
+
+                                                           
+                                                          M
+                   tM,warp    = t0,warp 1 + 2 · log10 1 +
+                                                          10
+
+
+
+
+                                           9
+                                     1 The Basics
+
+1.4.8 Clone Mutation
+
+
+Clone Mutation increases the maximum larva amount for cloning.
+
+
+
+                                                                  
+                                                               M
+                  XM,clone = X0,clone 1 + 1.5 · log10       1+
+                                                               10
+
+
+1.4.9 Bat Mutation
+
+
+Bat Mutation increases the power of abilities. It does not depend on the number
+of bats, but the effects of both stack.
+
+
+
+                                                             
+                                                           M
+                   XM,ability   = X0,ability 1 + log10 1 +
+                                                           100
+
+
+1.4.10 Hatchery Mutation
+
+
+The Hatchery Mutation increases larvae production.
+
+
+
+                                                                
+                                                               M
+                 XM,hatchery = X0,hatchery       1 + log10 1 +
+                                                               10
+
+
+
+1.5 Ascension
+
+
+Quickest ascension was not a goal of mine in the first couple of ascenions, in fact
+I thought people who had the goal missed out on a lot of mutagen. In the later
+
+
+
+                                           10
+                                    1 The Basics
+
+ascensions (8+) it is definitely an important goal, though, since you’ll notice that
+your mutagen caps out days before you can reach the energy goal for ascension,
+days that would better be spent in the next ascenion with more mutagen.
+
+There is also this remaining suspicion that it might be a viable goal in the ear-
+lier ascensions, too, if only I knew better what I was doing and played more
+efficiently.
+
+I will use quickest ascension path here many times, for the simple reason that it
+provides a quantifiable goal and a basis for optimization where no other such goal
+exists.
+
+
+
+1.5.1 Energy Requirement for Ascension
+
+
+The energy requirement Ereq goes down as you spend energy Espent , this is depen-
+dent on your number of ascenions a, as the initial energy requirement increases
+with a and the amount of mutagen Ml in the Lepidoptera Mutation, as it increases
+the amount of energy necessary to lower ascension cost by up to 60%.
+
+
+
+                                                            E
+                                                           spent
+                                                        − 5e4·X
+                            Ereq = 5e6 · 1.12a · 2                  l
+
+
+
+
+where
+                                                               
+                                            2000 + 1.6Ml
+                              Xl =
+                                             2000 + Ml
+
+
+1.5.2 Number of Ascension from spent and required Energy left
+
+
+                                                       
+                                        Ereq E5e4·X
+                                               spent
+                      a = log1.12           ·2      l
+                                        5e6
+
+
+
+
+                                              11
+              1 The Basics
+                                           
+          1                Ereq E5e4·Xspent
+ a=               · log2         ·2       l
+     log2 (1.12)            5e6
+                 
+            Ereq               Espent
+ a = log2            ·
+             5e6       5e4 · log2 (1.12) · Xl
+                                          
+                  Espent              Ereq
+ a = 6.1163 ·              + log2
+                 5e4 · Xl              5e6
+...
+
+
+
+
+                     12
+2 Optimization
+
+
+2.1 Ascension
+
+
+2.1.1 Energy spent for quickest Ascension
+
+
+The last energy point to spend is the last that reduces the energy requirement by
+1 or more. From then on it is more efficient to start saving to reach the energy
+requirement.
+
+For that we need the amount of energy the energy requirement is reduced after an
+certain amount of total energy spent.
+                                                  Espent
+                                                           
+                                        a        − 5e4·X
+                      ∆Ereq = 5e6 · 1.12 · 1 − 2         l
+
+
+
+
+and then derive this equation by Espent to get the reduction rate of the energy
+requirement by energy spent.
+
+                  ∂(∆Ereq )                   E
+                                             − spent              1
+                            = 5e6 · 1.12a · 2 5e4·Xl · ln(2) ·
+                   ∂Espent                                     5e4 · Xl
+
+This is set to 1 the get the maximum total energy to spend for quickest ascension.
+
+                                   100 · 1.12a · ln(2)
+                                                      
+   Espent,max = 5e4 · Xl · log2
+                                           X
+                                          l 
+                                                    100 · 1.12a · ln(2) (2000 + Ml )
+                                                                                    
+                          2000 + 1.6Ml
+                = 5e4 ·                    · log2
+                            2000 + Ml                        2000 + 1.6Ml
+
+
+
+
+                                           13
+                                2 Optimization
+
+               optimum energy spent with
+                 Lepidoptera Mutation
+ # ascension   no mutagen    maxed out
+     0           305755       434962
+                               
+
+     1           313930       448042
+     2           322105       461122
+     3           330280       474202
+     4           338455       487282
+     5           346630       500361
+     6           354805       513441
+     7           362980       526521
+     8           371154       539601
+     9           379329       552681
+     10          387504       565761
+     11          395679       578841
+     12          403854       591921
+     13          412029       605001
+     14          420204       618081
+     15          428379       631160
+     16          436554       644240
+     17          444729       657320
+     18          452904       670400
+     19          461079       683480
+     20          469254       696560
+
+
+
+2.1.2 Energy requirement left for quickest Ascension
+
+
+If we put this optimal spent energy into the equation for the energy requirement
+left Ereq , we get:
+                                                      
+                                    5e4 2000 + 1.6Ml
+                        Ereq,asc =
+                                   ln(2)   2000 + Ml
+
+
+The energy requirement left for quickest ascension does not depend on the number
+of ascensions anymore, it depends only on the amount of Mutagen Ml in the
+
+
+
+                                       14
+                                   2 Optimization
+
+Lepidoptera Mutation. This optimal amount goes from 72134 energy for Ml = 0
+to 115415 for maxed out Lepidoptera Mutation.
+
+
+
+2.1.3 Energy spent for quickest Ascension using Respec
+
+
+This way you can earn and spend energy, therefore reduce the energy requirement
+for ascension with mutagen in the Lepidoptera Mutation, save the necessary energy,
+then respec and profit from the lowered energy requirement.
+
+                    Espent,respec = 5e4 · log2 (100 · 1.12a · ln(2))
+
+which is approximately
+
+                          Espent,respec = 305755 + 8175 · a
+
+
+The energy requirement left before ascension is:
+                                                               − X1
+                    Ereq = 5e6 · 1.12a · (100 · 1.12a · ln(2))    l
+
+
+
+
+For maxed out Lepidoptera Mutation that makes for number of ascensions a:
+                                                      3a
+                               Ereq = 353552 · 1.12 8
+
+
+After speccing out of Lepidoptera Mutation it is every time:
+                                         5e4
+                               Ereq =         = 72134
+                                        ln(2)
+
+Before respeccing save up this amount and buy 98 nightbugs to increase your
+maximum energy to the double amount 144270.
+
+
+
+
+                                          15
+                                 2 Optimization
+
+Example: maxed out Lepidoptera Mutation
+
+
+                                      energy requirement left
+ # ascension   optimal energy spent
+                                         before ascension
+     0              305754
+                      
+                                              353553
+                                               
+
+     1               313929                   368902
+     2               322104                   384917
+     3               330279                   401628
+     4               338454                   419065
+     5               346629                   437258
+     6               354804                   456241
+     7               362979                   476049
+     8               371154                   496716
+     9               379329                   518281
+     10              387504                   540781
+     11              395679                   564259
+     12              403854                   588756
+     13              412029                   614316
+     14              420204                   640986
+     15              428379                   668814
+     16              436553                   697850
+     17              444728                   728147
+     18              452903                   759759
+     19              461078                   792743
+     20              469253                   827159
+
+
+
+2.2 Nightbugs
+
+
+2.2.1 Number of nightbugs for quickest Ascension
+
+
+One of the things you can use nightbugs for is to reduce ascension time by allowing
+you to save and no longer spend past the optimum ascension energy requirement.
+
+
+
+
+                                         16
+                                        2 Optimization
+
+Set the maximum energy as a function of the number of nightbugs n and mutagen
+in the Lepidoptera Mutation Ml
+                                              1000 + 6n 2000 + 2Ml
+                     Emax (n, Ml ) = 5e4 ·             ·
+                                              1000 + n 2000 + Ml
+equal to the optimal required energy left for quickest ascension
+                                                        
+                                    5e4 2000 + 1.6Ml
+                        Ereq,asc =
+                                   ln(2)    2000 + Ml
+
+
+This leads to:
+                                                                            
+                                    2000(1 − ln(2)) + Ml (1.6 − 2ln(2))
+                 n = 1000 ·
+                                  12000 ln(2) − 2000 + Ml (12 ln(2) − 1.6)
+
+which is in crude approximation:
+
+                                                      1000
+                                    n = 32 + 66 ·
+                                                    1000 + Ml
+
+
+
+2.2.2 Number of nightbugs for large maximum energy
+
+
+If you are not playing every day, like only on the weekends, you can profit from
+storing a lot of energy. In this case the last nightbug you want to buy is the last
+that still increases maximum energy by its energy cost cn or more. For every one
+beyond that it is more efficient to spend the energy cost before saving.
+
+Begin with maximum energy
+                                              1000 + 6n 2000 + 2Ml
+                     Emax (n, Ml ) = 5e4 ·             ·
+                                              1000 + n 2000 + Ml
+
+
+and differentiate by number of nightbugs n:
+                     ∂Emax         2000 + 2Ml    5000
+                           = 5e4 ·            ·           = cn
+                      ∂n            2000 + Ml (1000 + n)2
+
+
+
+
+                                               17
+                                 2 Optimization
+                                                  
+                   2               25e7 2000 + 2Ml
+                 n + 2000n + 1e6 −     ·             =0
+                                    cn   2000 + Ml
+
+                          a=1
+                         b = 2000
+                                                      
+                                      25e7 2000 + 2Ml
+                         c = 1e6 −        ·
+                                       cn   2000 + Ml
+                                   √
+                             −b ± b2 − 4ac
+                      n1,2 =
+                                    2a
+                               r
+                                  10 2000 + 2Ml
+                      n = 5000       ·             − 1000
+                                  cn 2000 + Ml
+With an energy cost for nightbugs of cn = 10 this becomes
+                                 r
+                                    2000 + 2Ml
+                         n = 5000               − 1000
+                                     2000 + Ml
+which goes from 4000 nightbugs with no mutagen in the Lepidoptera Mutation to
+6071 nightbugs if it is maxed out.
+
+
+
+2.2.3 Number of nightbugs for multiple refills
+
+
+If the maximum energy is filled more than once, like say a run over multiple
+weekends between ascensions, the last nightbug has multiple times to pay itself
+back, in which case the above equation becomes with number of refills r
+                                r
+                                     2000 + 2Ml
+                        n = 5000 r ·            − 1000
+                                      2000 + Ml
+
+
+
+2.3 Bats
+
+
+The effect of bats, to increase the power of energy abilities, can be understood as
+a bonus to energy spent on abilities. Let’s say your bats make abilities 20% more
+powerful, it’s the same as spending 20% more energy on them without the bonus
+from bats.
+
+
+
+                                        18
+                                  2 Optimization
+
+2.3.1 Number of bats for quickest Ascension
+
+
+To have an estimate of how much energy you are going to spend on abilities
+you can take the optimal energy spent for quickest ascension, subtract energy for
+nexus, nightbugs, lepidoptera and a yet to be determined number of bats, apply
+the bonus from bats and see for which number of bats this effective energy for
+abilities becomes maximal.
+
+Total energy spent for quickest ascension:
+                                                                       
+                  2000 + 1.6Ml                     a          2000 + 1.6Ml
+    Emax = 5e4                    · log2 100 · 1.12 · ln(2)
+                   2000 + Ml                                   2000 + Ml
+The energy spent on all 5 nexus is EN = 49125.
+
+The energy spent on l lepidoptera each costing cl is El = cl l.
+
+The energy spent on the number of nightbugs needed for quickest ascension is:
+                                                   
+                                            1000
+                        En = cn 32 + 66 ·
+                                          1000 + Ml
+With the energy cost of a bat of cb the energy spent on the number of bats is
+Eb = cb b.
+
+The bonus from bats is
+                                                        
+                                                600
+                             Xb = 1.6 −
+                                              1000 + b
+For better readability the energy terms excluding energy cost of bats are combined
+to
+
+                          Ef ree = Emax − El − EN − En
+
+The energy left to spend on abilities with the bonus from bats applied is then
+                                        
+                                   600
+                 Eab = 1.6 −                · (Ef ree − bcb )
+                                1000 + b
+                                    600Ef ree                 600cb b
+                     = 1.6Ef ree −             − 1.6cb b +
+                                    1000 + b                1000 + b
+
+
+
+                                         19
+                                  2 Optimization
+
+Differentiate by b and set to 0
+                  ∂Eab       600Ef ree      6e5cb
+                       =0=             +            − 1.6cb
+                   ∂b      (1000 + b)2 (1000 + b)2
+                                        1e6cb − 600Ef ree
+                         = b2 + 2000b +
+                                              1.6cb
+
+
+                               A=1
+                              B = 2000
+                                    1e6cb − 600Ef ree
+                              C=
+                                          1.6cb
+                                           √
+                                    −B ± B 2 − 4AC
+                             b1,2 =
+                                            2A
+Which finally leads to the number of bats for maximum effective energy spent on
+abilities:
+                            s                    
+                                           Ef ree
+                        b = 375 1000 +              − 1000
+                                             cb
+
+
+
+2.3.2 Example 1
+
+
+Optimal number of bats for maxed out Lepidoptera Mutation and 4000 Lepi-
+doptera, 32 nightbugs, an energy cost of 10 for nightbugs and lepidoptera, 100 for
+bats and a total energy spent on nexus of 49125.
+
+      Ef ree = Emax − El − EN − En
+            = 5e4 · 1.6 · log2 (100 · 1.12a · ln(2) · 1.6) − 40000 − 49125 − 320
+            = 8e4 · log2 (160 · ln(2)) − 89445 + a · 8e4 · log2 (1.12)
+
+
+
+
+                                          20
+                                 2 Optimization
+
+ # ascension   # bats
+     0        441
+               
+     1         458
+     2         475
+     3         492
+     4         508
+     5         524
+     6         540
+     7         556
+     8         572
+     9         587
+     10        603
+     11        618
+     12        633
+     13        648
+     14        663
+     15        677
+     16        692
+     17        706
+     18        721
+     19        735
+     20        749
+
+
+
+2.3.3 Example 2
+
+
+Same example but no mutagen in the Lepidoptera Mutation, and also the 98
+nightbugs needed for quickest ascension in this case.
+
+          Ef ree = Emax − El − EN − En
+                = 5e4 · log2 (100 · 1.12a · ln(2)) − 40000 − 49125 − 980
+                = 5e4 · log2 (100 · ln(2)) − 90105 + a · 5e4 · log2 (1.12)
+
+
+
+
+                                         21
+                                2 Optimization
+
+ # ascension   # bats
+      0         88
+       1        102
+       2        116
+       3        129
+       4        143
+       5        156
+       6        169
+       7        182
+       8        195
+       9        208
+      10        221
+      11        233
+      12        246
+      13        258
+      14        270
+      15        282
+      16        294
+      17        306
+      18        317
+      19        329
+      20        340
+
+
+
+2.4 Mutagen
+
+
+2.4.1 Larva Rush
+
+
+Assume you have an total amount of Mutagen M , which is also your only source of
+larvae, how much of it would you have to spend on Rush Mutation Mr to maximize
+
+
+
+
+                                      22
+                                        2 Optimization
+
+the larvae turnout of Larva Rush.
+                                                                                 
+                                         Mr                        Mb         1000 + 1.6b
+Lrush = 2400s · λ · 1 + 3 · log10 1 +            · 1 + log10 1 +          ·
+                                         10                        100         1000 + b
+                                                                                   
+                Mu                         Mr                        Mb         1000 + 1.6b
+      = 2400s ·      · 1 + 3 · log10 1 +           · 1 + log10 1 +          ·
+                 10                         10                       100         1000 + b
+                                                     
+                    M − Mr                          Mr
+      = C(b, Mb ) ·           · 1 + 3 · log10 1 +
+                        10                          10
+                                                                        
+        ∂Lrush            ∂             M − Mr                         Mr
+                =0=         C(b, Mb ) ·           · 1 + 3 · log10 1 +
+         ∂Mr            ∂Mr                10                          10
+                                         
+                      1           10 + Mr          (M − Mr )
+                        + log10              =
+                      3              10         (10 + Mr ) ln(10)
+Assumption Mr >> 10:
+                                   2   (M − Mr )      M         1
+                 log10 (Mr ) −       =           =          −
+                                   3   Mr ln(10)   Mr ln(10) ln(10)
+             2            1
+Assumption   3
+                 and   ln(10)
+                                are negligible against the other terms:
+                                                         M
+                                    Mr log10 (Mr ) =
+                                                       ln(10)
+                     ln(M )
+using log10 (M ) =   ln(10)
+                            :
+
+                                        Mr ln(Mr ) = M
+Assumption ln(Mr ) ≈ ln(M ):
+                                          M             M
+                                 Mr ≈          ≈
+                                        ln(M )   2.3 · log10 (M )
+
+
+
+2.4.2 Swarm Warp ↔ Bat Mutation
+
+
+How would you have to split a total amount of Mutagen M between Bat Mutation
+Mb and Warp Mutation Mw = M − Mb to maximize warp time tw ?
+                                                  
+                        M − Mb                     Mb
+tw ∝ 1 + 2 · log10 1 +               1 + log10 1 +
+                           10                      100
+                                                                                 
+                    Mb                  M − Mb                   M − Mb             Mb
+   = 1 + log10 1 +        + 2 log10 1 +            + 2 log10 1 +          log10 1 +
+                    100                     10                     10               100
+
+
+
+                                               23
+                                  2 Optimization
+
+Assumption Mb >> 100 and M − Mb >> 10
+
+        ≈ 1 − log10 (Mb ) − 2 log10 (M − Mb ) + 2 log10 (M − Mb ) log10 (Mb )
+
+
+      ∂
+   0=     [1 − log10 (Mb ) − 2 · log10 (M − Mb ) + 2 · log10 (M − Mb ) log10 (Mb )]
+     ∂Mb
+           1                2               2 log10 (Mb )      2 log10 (M − Mb )
+    =−           −                      −                    +
+       ln(10)Mb ln(10)(M − Mb ) ln(10)(M − Mb )                    ln(10)Mb
+    = −M − Mb − 2Mb log10 (Mb ) + 2M log10 (M − Mb ) − 2Mb log10 (M − Mb )
+                           2 log10 (M − Mb ) − 1
+    → Mb = M ·
+                  2 log10 (Mb ) + 2 log10 (M − Mb ) + 1
+
+Assumption log10 (M − Mb ) ≈ log10 (Mb )
+
+                                        2 log10 (Mb ) − 1
+                            Mb ≈ M ·
+                                        4 log10 (Mb ) + 1
+
+Assumption log10 (Mb ) >> 1
+
+                                         M
+                                  Mb ≈     ≈ Mw
+                                         2
+
+
+
+
+                                         24
+3 Preparation for Advanced Optimization
+
+
+3.1 Time
+
+
+3.1.1 Time to grow Energy with constant growth rate
+
+
+              ∆E                         N 1000 + 2l 2000 + 2Ml
+                 (l, N, Ml ) = l,N,Ml =   ·        ·
+              ∆t                         10 1000 + l 2000 + Ml
+                        ∂t     10 1000 + l 2000 + Ml
+                     →       =     ·         ·
+                        ∂E     N 1000 + 2l 2000 + 2Ml
+Integrate from E1 to E2 :
+                      E2 − E1    10 1000 + l 2000 + Ml
+          tE1 →E2 =            =   ·        ·           · (E2 − E1 )
+                       l,N,Ml   N 1000 + 2l 2000 + 2Ml
+
+
+
+3.1.2 Time to grow Lepidoptera
+
+
+The energy growth rate, depending on number of nexus N , number of Lepidoptera
+l and amount of mutagen in the Lepidoptera Mutation Ml , can be written as
+                   ∆E               N 1000 + 2l 2000 + 2Ml
+                      (l, N, Ml ) =   ·        ·
+                   ∆t               10 1000 + l 2000 + Ml
+You can get the growth rate of Lepidoptera by substituting ∆E for the change in
+number of Lepidoptera times the energy cost of one Lepidoptera cl ∆l.
+                         ∆l    N 1000 + 2l      2000 + 2Ml
+                            =     ·           ·
+                         ∆t   10cl 1000 + l     2000 + Ml
+                         ∂t   10cl 1000 + l     2000 + Ml
+                       →    =     ·           ·
+                         ∂l    N 1000 + 2l      2000 + 2Ml
+
+
+
+                                       25
+                       3 Preparation for Advanced Optimization
+
+Because they are not needed here the terms with nexus, energy cost and mutagen
+are summed up in a constant C(cl , N, Ml )
+
+                                         10cl 2000 + Ml
+                         C(cl , N, Ml ) =      ·
+                                          N 2000 + 2Ml
+                                    ∂t                    1000 + l
+                                  →    = C(cl , N, Ml ) ·
+                                    ∂l                    1000 + 2l
+Integrate from one number of Lepidoptera l1 to another l2 to get the time this
+takes.
+                                               Z l2
+                                                    1000 + l
+                    tl1 →l2 = C(cl , N, Ml ) ·               dl
+                                                l1 1000 + 2l
+
+                                           dz
+Substitution z = 1000 + 2l → dl =           2
+                                                → z1 = 1000 + 2l1 , z2 = 1000 + 2l2
+                                                Z z2
+                                                      z + 1000 dz
+                   tl1 →l2   = C(cl , N, Ml ) ·
+                                                 z        2z    2
+                                                Z 1z2          
+                                                        1 250
+                             = C(cl , N, Ml ) ·           +        dz
+                                                 z1     4    z
+                                                hz                iz2=1000+2l2
+                             = C(cl , N, Ml ) ·     + 250 · ln(z)
+                                                 4                 z1 =1000+2l1
+
+And finally the time necessary to grow Lepidoptera from one number l1 to another
+number l2 :
+                                                                      
+                     10cl 2000 + Ml     l2 − l1              1000 + 2l2
+         tl1 →l2   =     ·          ·           + 250 · ln
+                      N 2000 + 2Ml         2                 1000 + 2l1
+
+
+
+
+                                                26
+4 Advanced Optimization
+
+
+4.1 Quickest Nexus 4
+
+
+How many Lepidoptera should one buy to have Nexus 4 as quickly as possible?
+
+The player starts with 3 nexus and the 6k energy gift, a initial number of Lepi-
+doptera l1 = 0. The total time is then comprised of (1) the time to grow Lepi-
+doptera to a number l2 and (2) save up for the energy cost cN 4 of nexus 4. The
+question is then the optimal number l2 so that the sum of those time spans becomes
+a minimum.
+
+                                         ttot = tl1 →l2 + tN 4
+
+Mathematically there are 2 different cases depending on whether the Lepidoptera
+cost more or less than the 6k energy gift for nexus 3.
+          
+          0                                                                      . . . l2 − l1 ≤ 6k
+                                                                                                  cl
+ tl1 →l2 = 10c 2000+M        h
+                               l2 −l1 −6k/cl
+                                                                        i
+           l·                                              1000+2l2                              6k
+            N3
+                         l
+                  2000+2Ml
+                           ·         2
+                                             + 250 · ln 1000+2·6k/c +2l1          . . . l2 − l1 > cl
+                                                                   l
+          
+           10 · 1000+l2 · 2000+Ml · (c − (6k − (l − l )c )) . . . l − l ≤ 6k
+                                             N4          2     1 l              2        1
+ tN 4    = N3 1000+2l2 2000+2Ml                                                               cl
+           10 · 1000+l2 · 2000+Ml · cN 4                                . . . l2 − l1 >     6k
+               N3    1000+2l2   2000+2Ml                                                       cl
+
+Differentiate by l2 :
+             
+ ∂tl1 →l2    0                              . . . l2 − l1 ≤ 6k cl
+           =
+    ∂l2       10cl · 2000+Ml · 1000+l2 . . . l2 − l1 > 6k
+                N     2000+2Ml 1000+2l2                         cl
+              3                                                                 
+                10    2000+Ml     1000+l2            1000(cN 4 −6k+l2 cl −l1 cl )                     6k
+ ∂tN 4            ·          ·            · c l −         (1000+2l2 )2
+                                                                                    . . . l2 − l1 ≤
+           = N3 2000+2Ml          1000+2l2                                                            cl
+  ∂l2        − 10 · 2000+Ml · 1000cN 4                                             . . . l2 − l1 >   6k
+                  N3 2000+2Ml (1000+2l2 )2                                                            cl
+
+
+
+
+                                                  27
+                                     4 Advanced Optimization
+                                        
+                                        l − l ≤       6k
+                                          2    1       cl
+                                                            . . . case A
+                                  cases
+                                        l2 − l1 >     6k
+                                                       cl
+                                                            . . . case B
+
+
+
+4.1.1 Case A
+
+
+
+                         0 = 2l22 + 2000l2 − 1000 (cN 4/cl − 6k/cl − l1 − 1000)
+
+                                   p
+                            l2 = 10 5cN 4/cl − 56k/cl − 5l1 − 2500 − 500
+
+A positive real solution requires that cN 4/cl ≥ 6k/cl +l1 +1000, which is not fulfilled.
+
+
+
+4.1.2 Case B
+
+
+
+                                 0 = 2l22 + 3000l2 + 1e6 − 1000cN 4/cl
+
+With   cN 4/c
+                l   = 1000 and 6k/cl = 600 this results in:
+
+                                                l2 = 0
+
+which contradicts the definition of Case B that l2 − l1 ≥ 6k/cl .
+
+
+
+4.1.3 Result
+
+
+With no useful solution in either case one shouldn’t buy any Lepidoptera before
+Nexus 4
+
+                                                l2 = 0
+
+
+
+
+                                                  28
+                                   4 Advanced Optimization
+
+4.2 Quickest Nexus 5
+
+
+How many Lepidoptera should one buy to have Nexus 5 as quickly as possible?
+Note that this is only in the case that you are not interested in owning any Lepi-
+doptera, otherwise skip this and read the next section.
+
+The player starts with 4 nexus and the 8k energy gift, a initial number of Lepi-
+doptera l1 = 0. The total time is then comprised of (1) the time to grow Lepi-
+doptera to a number l2 and (2) save up for the energy cost cN 5 of nexus 5. The
+question is then the optimal number l2 so that the sum of those time spans becomes
+a minimum.
+
+                                        ttot = tl1 →l2 + tN 5
+
+Mathematically there are 2 different cases depending on whether the Lepidoptera
+cost more or less than the 8k energy gift for nexus 4.
+          
+          0                                                                          . . . l2 − l1 ≤ 8k
+                                                                                                      cl
+ tl1 →l2 = 10c 2000+M        h
+                               l   −l   − 8k/c
+                                                                            i
+           l·                                                 1000+2l                                8k
+            N4
+                         l
+                  2000+2Ml
+                           ·     2    1
+                                        2
+                                              l
+                                                + 250 · ln 1000+2·8k/c 2+2l1          . . . l2 − l1 > cl
+                                                                      l
+          
+           10 · 1000+l2 · 2000+Ml · (c − (8k − (l − l )c )) . . . l − l ≤ 8k
+                                                N5          2     1 l               2        1
+ tN 5    = N4 1000+2l2 2000+2Ml                                                                   cl
+           10 · 1000+l2 · 2000+Ml · cN 5                                    . . . l2 − l1 >     8k
+               N4    1000+2l2   2000+2Ml                                                       cl
+
+
+Differentiate by l2 :
+             
+ ∂tl1 →l2    0                            . . . l2 − l1 ≤ 8k cl
+           =
+    ∂l2       10cl · 2000+Ml · 1000+l2 . . . l2 − l1 > 8k
+                N     2000+2Ml 1000+2l2                       cl
+              4                                                               
+                10    2000+Ml    1000+l2           1000(cN 5 −8k+l2 cl −l1 cl )                     8k
+ ∂tN 5            ·          · 1000+2l2 · cl −          (1000+2l2 )2
+                                                                                  . . . l2 − l1 ≤
+           = N4 2000+2Ml                                                                            cl
+  ∂l2        − 10 · 2000+Ml · 1000cN 5                                           . . . l2 − l1 >   8k
+                  N4 2000+2Ml (1000+2l2 )2                                                          cl
+
+
+                                      
+                                      l − l ≤         8k
+                                        2    1         cl
+                                                            . . . case A
+                                cases
+                                      l2 − l1 >       8k
+                                                       cl
+                                                            . . . case B
+
+
+
+
+                                                  29
+                                     4 Advanced Optimization
+
+4.2.1 Case A
+
+
+
+                          0 = l22 + 1000l2 − 500 (cN 5/cl − 8k/cl − l1 − 1000)
+
+                                   p
+                            l2 = 10 5cN 5/cl − 58k/cl − 5l1 − 2500 − 500
+
+With   cN 5/c
+                l   = 3600, 8k/cl = 800 and l1 = 0 this becomes:
+
+                                          l2 = 572.38 ≈ 572
+
+
+
+4.2.2 Case B
+
+
+
+                                0 = 2l22 + 3000l2 + 1e6 − 1000cN 5/cl
+
+                                           p
+                                    l2 = 10 5cN 5/cl + 625 − 750
+
+With   cN 5/c
+                l   = 3600 this results in:
+
+                                          l2 = 614.73 ≈ 614
+
+which contradicts the definition of Case B that l2 − l1 ≥ 8k/cl .
+
+
+
+4.2.3 Result
+
+
+With only Case A leading to useful results, the number of Lepidoptera one should
+buy to have Nexus 5 as quickly as possible is:
+
+                                               l2 ≈ 572
+
+
+
+
+                                                  30
+                                      4 Advanced Optimization
+
+4.3 Lepidoptera before Nexus 5 with total Lepidoptera Goal
+
+
+A problem that takes a little effort to optimize is the question how many Lep-
+idoptera one should buy before Nexus 5 to have Nexus 5 and total number of
+Lepidoptera in the shortest time possible.
+
+The player starts with 4 nexus and the 8k energy gift, a initial number of Lepi-
+doptera l1 = 0. The total time is then comprised of (1) the time to grow Lepi-
+doptera to a number l2 , (2) save up for the energy cost cN 5 of nexus 5 and (3) grow
+Lepidoptera to a final number l3 , using partially or in full the 10k energy gift for
+nexus 5. Then (4) a final time span to grow back the 10k energy. The question
+is then the optimal number l2 so that the sum of those time spans becomes a
+minimum.
+
+                                 ttot = tl1 →l2 + tN 5 + tl2 →l3 + tf inal
+
+As far as the maths goes, there are 4 different cases depending on whether the
+number of Lepidoptera grown is more or less than what can be bought with the
+energy gift for nexus 4 and 5, but those should not be confused with strategies
+used by players.
+
+
+             
+                                                                                                              8k
+             0                                                                             . . . l2 − l1 ≤   cl
+tl1 →l2 =                           h                                                i
+            10cl · 2000+Ml · l2 −l1 −8k/cl + 250 · ln              1000+2l2
+                                                                                           . . . l2 − l1 > 8k
+             N4     2000+2Ml              2                     1000+2·8k/cl +2l1                             cl
+           
+            10 · 1000+l2 · 2000+Ml · (c − (8k − (l − l )c )) . . . l − l ≤ 8k
+                                                 N5              2     1 l               2        1
+tN 5      = N4 1000+2l2 2000+2Ml                                                                        cl
+            10 · 1000+l2 · 2000+Ml · cN 5                                        . . . l2 − l1 > cl    8k
+             N     1000+2l2 2000+2Ml
+            4
+           0                                                                                 . . . l3 − l2 ≤ 10k cl
+tl2 →l3   = 10c 2000+M         h
+                                 l   −l   − 10k/c
+                                                                                   i
+            l·                                                      1000+2l                                     10k
+             N5
+                           l
+                    2000+2Ml
+                             ·     3    2
+                                          2
+                                                 l
+                                                    + 250 · ln 1000+2·10k/c3+2l2              . . . l3 − l2 > cl
+                                                                              l
+           
+            10 · 1000+l3 · 2000+Ml · (E                                                                    10k
+                                                   f inal − (10k − (l3 − l2 )cl )) . . . l3 − l2 ≤ cl
+tf inal   = N5 1000+2l3 2000+2Ml
+            10 · 1000+l3 · 2000+Ml · Ef inal                                            . . . l3 − l2 > 10k
+                N5    1000+2l3    2000+2Ml                                                                    cl
+
+
+
+
+                                                       31
+                                    4 Advanced Optimization
+
+Now differentiate all those equations by l2 .
+            
+ ∂tl1 →l2   0                                 . . . l2 − l1 ≤ 8k   cl
+          =
+   ∂l2        10cl      2000+M      1000+l
+                      · 2000+2Ml · 1000+2l2 . . . l2 − l1 > cl
+                                l           2                      8k
+               N
+             4                                                                    
+               10      2000+Ml        1000+l2          1000(cN 5 −8k+l2 cl −l1 cl )                     8k
+ ∂tN 5             ·             · 1000+2l2 · cl −           (1000+2l2 )2
+                                                                                      . . . l2 − l1 ≤
+          = N4 2000+2Ml                                                                                 cl
+  ∂l2       − 10 · 2000+Ml · 1000cN 5                                                . . . l2 − l1 >   8k
+                 N        2000+2Ml (1000+2l2 )2                                                         cl
+             4
+ ∂tl2 →l3   0                                              . . . l3 − l2 ≤ 10k cl
+          =
+   ∂l2      − 10cl · 2000+Ml · 1000+10k/cl +l2             . . . l3 − l2 > cl 10k
+                  N5       2000+2Ml 1000+2·10k/cl +2l2
+            
+ ∂tf inal   − 10cl · 2000+Ml · 1000+l3 . . . l − l ≤ 10k
+                  N5       2000+2Ml 1000+2l3             3     2        cl
+          =
+   ∂l2      0                                    . . . l3 − l2 >      10k
+                                                                      cl
+
+
+                                             
+                                              l − l ≤       10k
+                             
+                                          8k    3    2       cl
+                                                                    . . . case A
+                               l2 − l1 ≤
+                             
+                             
+                                          cl               10k
+                                                l3 − l2 >           . . . case B
+                             
+                             
+                                                              cl
+                             
+                             
+                             
+                     cases
+                             
+                                             
+                                              l − l ≤       10k
+                                                                    . . . case C
+                             
+                             
+                                          8k    3    2       cl
+                               l2 − l1 >
+                             
+                             
+                                          cl               10k
+                                                l3 − l2 >           . . . case D
+                             
+                             
+                                                              cl
+
+
+To find a local extremum, set the sum equal to 0.
+                             ∂tl1 →l2 ∂tN 5 ∂tl2 →l3 ∂tf inal
+                                     +     +        +         =0
+                               ∂l2     ∂l2    ∂l2     ∂l2
+
+
+4.3.1 Cases A & B
+
+
+To make very long story short and spare myself and the reader pages of useless
+calculations, there are complicated general solutions for those two cases, but none
+where 0 ≤ l2 ≤ 800 is a real number. So there is no local minimum for those
+cases.
+
+
+
+
+                                                   32
+                                    4 Advanced Optimization
+
+4.3.2 Case C
+
+
+                          1000 + l2    1000cN 5/cl     N4 1000 + l3
+                     0=             −              2
+                                                     −   ·
+                          1000 + 2l2 (1000 + 2l2 )     N5 1000 + 2l3
+
+For   N4/N5   = 0.8 and   cN 5/c
+                               l   = 3600 this becomes:
+
+                0 = l22 (l3 − 1500) + l2 (3500l3 − 2.5e5) − (7.5e6l3 + 4.25e9)
+
+                                         p
+                     2.5e5 − 3500l3 +     4.225e7l32 − 2.975e10l3 − 2.54375e13
+              l2 =
+                                             2l3 − 3000
+
+A useful solution requires that 0 ≤ l2 ≤ l3 and that the expression inside of the
+square root is greater than 0, which is met for:
+
+                                        l3 ≥ 2260.4 ≈ 2260
+
+This formula describes the optimum Lepidoptera bought before nexus 5 for a total
+amount of Lepidoptera above 2260, as long as the amount bought after nexus 5 is
+less than 1000.
+
+                                                                 l3 − l2 ≤ 1000
+                              p
+             2.5e5 − 3500l3 + 4.225e7l32 − 2.975e10l3 − 2.54375e13
+        l3 −                                                             ≤ 1000
+                                   2l3 − 3000
+                         4l34 − 6000l33 − 2.9e7l32 + 2.15e10l3 + 3.3e13 ≤ 0
+
+
+                                       l3 ≤ 3012.59 ≈ 3013
+
+Which makes the formula applicable for a total amount of Lepidoptera in the
+range:
+
+                                         2260 ≤ l3 ≤ 3013
+
+A linear approximation with acceptable error for this unhandy equation is:
+
+                                                        l3
+                                         l2 ≈ 3001 −
+                                                       3.05
+
+
+
+                                                33
+                                         4 Advanced Optimization
+
+4.3.3 Case D
+
+
+                     1000 + l2   1000cN 5/cl   N4   1000 + 10k/cl + l2
+               0=              −             −    ·
+                    1000 + 2l2 (1000 + 2l2 )2 N5 1000 + 2 · 10k/cl + 2l2
+
+For   N4/N5   = 0.8,   cN 5/c
+                                l   = 3600 and   10k/c
+                                                         l   = 1000 this becomes:
+
+                                    0 = l23 + 3000l22 − 4.25e6l2 − 1.175e10
+
+
+                                           l2 = 2012.58594 ≈ 2013
+
+This number does not directly depend on any, other than constant, factors, but it
+is only true for case D, meaning that the number bought before nexus 5 is greater
+than 800 (duh!) and the number bought after nexus 5 is greater than 1000. So
+this is the optimum for any total number of Lepidoptera above or equal to 3013.
+
+
+
+4.3.4 Results
+
+
+If you combine those results, the optimal number of Lepidoptera to buy before
+Nexus 5, in order to reach Nexus 5 and a given total number of Lepidoptera in the
+shortest time is the full amount for a total number of less or equal to 2260, then
+it goes down as described in case C until a total amount of 3013, after which the
+optimum is constant 2013.
+
+
+
+
+                                                             34
+                           4 Advanced Optimization
+
+
+
+
+   final amount of Lepidoptera l3           0-2260 2260-3013         ≥ 3013
+                                                             l3
+ optimum bought before Nexus 5 l2              l3  ≈ 3001 − 3.05      2013
+
+
+
+4.3.5 Total Time with Optimal Strategy
+
+
+One thing worth noting is that even with this more elaborate approach the total
+time is a minimum for l2 = l3 = 572 Lepidoptera. Buying less than that will
+increase the waiting time for Nexus 5, even if you’re not interested in owning any
+Lepidoptera.
+
+The following graph shows an example for maxed out Lepidoptera Mutation.
+
+
+
+
+                                       35
+                            4 Advanced Optimization
+
+
+
+
+As you can also see, the total time to grow Nexus 5 and all Lepidoptera is approx-
+imately linear above l3 ≈ 2000.
+                                 2000 + Ml
+                     tl1 →l3 ≈              · 10.5 · (5116 + l3 )
+                                 2000 + 2Ml
+
+
+
+
+                                           36
+                           4 Advanced Optimization
+
+4.3.6 Elaborate Analysis for total 4000 Lepidoptera
+
+
+
+
+Most of the time the total number of Lepidoptera will be around 4000. This image
+shows that with a total Lepidoptera goal of 4000, it’s best to buy 2013 before
+building Nexus 5. It also shows that you can stray from that quite a bit before it
+has significant effects, you can buy as little as 1384 or as much as 2863 and lose
+only 5 minutes.
+
+If you buy only 500 Lepidoptera before Nexus 5, you lose less than an hour.
+
+If you buy more than 3000 before Nexus 5 and therefor less than 1000 afterwards,
+the time penalty grows faster because you’re not taking advantage of the energy
+gift for Nexus 5.
+
+
+
+
+                                       37
+                                4 Advanced Optimization
+
+4.4 Number of Lepidoptera for quickest ascension
+
+
+A problem that bugged me for a long time was how many Lepidoptera one should
+buy in total. One possible solution is to look at the energy left to spend after
+buying Lepidoptera and maximize that left over amount divided by the total time
+between ascensions. This metric still seems a bit weird to me, but in the absence
+of any other ideas it will have to do. An interpretation is that at one point you
+should stop buying Lepidoptera because it wastes energy more than it decreases
+ascension time.
+
+The relevant energy is the energy spent for quickest ascension plus the remaining
+energy requirement minus the energy spent on Nexus and Lepidoptera.
+
+                         E = Espend,asc + Ereq,asc − cN 1−5 − cl l3
+                         E = Ef ree − cl l3
+
+The relevant time is the time to grow Lepidoptera before Nexus 5, the time to wait
+for Nexus 5, the time to grow the total amount of Lepidoptera, the time to grow
+the remaining optimal energy to spend for quickest ascension and the remaining
+required energy with a constant energy growth rate.
+
+                            t = tl1 →l2 + tN 5 + tl2 →l3 + tl3 →asc
+
+I am going to make it easy for myself and assume the final number of Lepidoptera
+l3 is higher than ≈ 2000, which means the total time to grow Lepidoptera and
+Nexus 5 can be approximated as a linear function
+                           2000 + Ml
+               tl1 →l3 ≈              · 10.5 · (5116 + l3 )
+                           2000 + 2Ml
+                           10 2000 + Ml 1000 + l3
+              tl3 →asc   =    ·             ·             · (Ef ree − cl l3 )
+                           N5 2000 + 2Ml 1000 + 2l3
+
+     t = tl1 →l3 + tl3 →asc
+                                                                            
+          2000 + Ml                           2000 + 2l3
+       =                  10.5 (5116 + l3 ) +            · (Ef ree − cl l3 )
+         2000 + 2Ml                           1000 + 2l3
+          2000 + Ml 10.5(5116 + l3 )(1000 + 2l3 ) + (2000 + 2l3 )(Ef ree − cl l3 )
+       =
+         2000 + 2Ml                             1000 + 2l3
+
+
+
+                                              38
+                               4 Advanced Optimization
+
+     E   2000 + 2Ml                 (1000 + 2l3 )(Ef ree − cl l3 )
+       =
+     t    2000 + Ml 10.5(5116 + l3 )(1000 + 2l3 ) + (2000 + 2l3 )(Ef ree − cl l3 )
+
+
+                                       ∂ E/t
+                                             =0→
+                                       ∂l3
+
+
+        q
+         210Ef3ree + 1.284e7Ef2ree + 1.127e11Ef ree + 2.687e14 − 2.05e3Ef ree − 5.372e7
+ l3 =
+                                      2.1Ef ree + 9.744e4
+
+where
+
+Ef ree = Espend,asc + Ereq,asc − cN 1−5
+                                                                               
+               2000 + 1.6Ml                     a           2000 + Ml         1
+       = 5e4 ·                   log2 100 · 1.12 · ln(2) ·                +         − 49125
+                2000 + Ml                                  2000 + 1.6Ml     ln(2)
+
+
+
+
+                                           39
+                          4 Advanced Optimization
+
+              Total Lepidoptera l3 with
+               Lepidoptera Mutation
+# ascension   no mutagen maxed out
+    0            3109          3797
+                                
+                                 
+     1           3156          3861
+    2            3202          3924
+    3            3248          3987
+    4            3293          4049
+    5            3338          4110
+    6            3383          4170
+    7            3427          4230
+    8            3470          4289
+    9            3513          4348
+    10           3556          4405
+    11           3598          4463
+    12           3640          4519
+    13           3682          4575
+    14           3723          4631
+    15           3764          4686
+    16           3804          4740
+    17           3845          4794
+    18           3884          4848
+    19           3924          4901
+    20           3963          4953
+
+
+
+
+                                          40
+                          4 Advanced Optimization
+
+4.5 Ideas for further Optimizations
+
+
+  • Optimal Mutagen spent on some more Mutations and combinations
+
+  • comparison of continuous and discrete Lepidoptera growth to get an idea of
+    how well the cont. approach works
+
+  • the last lepidoptera to pay itself back before ascension
+
+
+
+
+                                      41
+
