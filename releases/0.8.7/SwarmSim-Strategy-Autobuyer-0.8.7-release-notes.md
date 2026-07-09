@@ -6,11 +6,26 @@ Date: 2026-07-09
 
 0.8.7 is a narrow hotfix on top of 0.8.5.
 
-It keeps the Twin Unlock post-upgrade rebuild buffer guard, but adds a conservative opportunity-cost bypass for buyable, target-path twin upgrades when rebuild is the only blocker and the lost production is negligible versus the current child-resource bank.
+Because main was still 0.8.5, this release includes both:
+
+- missing 0.8.6 Twin Threshold Reachability Fix behavior (safe prep below near-threshold ratio)
+- 0.8.7 Twin Upgrade Opportunity Cost Bypass behavior
+
+It keeps the Twin Unlock post-upgrade rebuild buffer guard while allowing reachability prep and conservative opportunity-cost buy decisions in the requested twin states.
 
 Safe defaults are unchanged.
 
 ## What changed
+
+### Included 0.8.6 reachability behavior
+
+Twin unlock planning no longer stops at `threshold not near enough` when concrete threshold prep is reachable.
+
+If current threshold resource is below `twinUnlockNearThresholdRatio` (for example 522/1000), the planner now still evaluates twin threshold prep safety and will BUY prep when safe.
+
+Reason text now identifies this path explicitly as:
+
+- `threshold reachability prep below near-threshold ratio (...)`
 
 ### Twin unlock opportunity-cost bypass
 

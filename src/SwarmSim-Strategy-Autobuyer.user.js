@@ -4680,28 +4680,14 @@ function getDisplayName(item) {
         }
         return { actionTaken: true, bought: didTwinBuy ? 1 : 0, summary: didTwinBuy ? `Twin unlock ${twinUpgradeName}` : "Twin unlock buy failed" };
       }
-    } else if (!twinNearEnough) {
-      recordTwinUnlockPlannerState({
-        candidate: twinUpgradeName,
-        decision: "HOLD",
-        reason: "threshold not near enough",
-        target: twinDecisionTarget,
-        upgrade: twinUpgradeName,
-        costResource: twinCostUnitName,
-        current: formatSwarmNumber(twinCurrentRaw),
-        required: formatSwarmNumber(twinRequiredRaw),
-        missing: formatSwarmNumber(twinMissing),
-        prepCandidate: twinPrepCandidateName,
-        reserveRatio: NaN,
-        paybackBypassed: false,
-        postUpgradeRebuildRatio: NaN,
-        rebuildSafe: false,
-      });
     } else if (!twinCostUnit?.isVisible?.() || !twinCostUnit?.isBuyable?.()) {
+      const reason = !twinNearEnough
+        ? `threshold reachability prep below near-threshold ratio (${trimNumber(twinThresholdRatio * 100)}% < required ${trimNumber(twinNearRatioRequired * 100)}%); twin prep resource ${twinCostUnitName} is not buyable yet`
+        : `twin prep resource ${twinCostUnitName} is not buyable yet`;
       recordTwinUnlockPlannerState({
         candidate: twinUpgradeName,
         decision: "HOLD",
-        reason: `twin prep resource ${twinCostUnitName} is not buyable yet`,
+        reason,
         target: twinDecisionTarget,
         upgrade: twinUpgradeName,
         costResource: twinCostUnitName,
@@ -4761,9 +4747,12 @@ function getDisplayName(item) {
         const guard = getMeatChainPurchaseAnalysis(twinCostUnit, prepNum);
         const reserveRatio = rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
         const requiredRatio = Number(config.twinUnlockMinReserveRatio || DEFAULT_CONFIG.twinUnlockMinReserveRatio);
+        const reachabilityPrefix = !twinNearEnough
+          ? `threshold reachability prep below near-threshold ratio (${trimNumber(twinThresholdRatio * 100)}% < required ${trimNumber(twinNearRatioRequired * 100)}%)`
+          : "threshold prep";
         let decision = "BUY";
         let paybackBypassed = false;
-        let reason = `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}`;
+        let reason = `${reachabilityPrefix} for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}`;
 
         if (guard && !guard.ok) {
           if (
@@ -4773,11 +4762,11 @@ function getDisplayName(item) {
             reserveRatio >= requiredRatio
           ) {
             paybackBypassed = true;
-            reason = `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}; reserve after buy ${trimNumber(reserveRatio)}x >= required ${trimNumber(requiredRatio)}x; payback bypassed for twin threshold value`;
+            reason = `${reachabilityPrefix} for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}; reserve after buy ${trimNumber(reserveRatio)}x >= required ${trimNumber(requiredRatio)}x; payback bypassed for twin threshold value`;
           } else {
             decision = "HOLD";
             reason = guard.type === "reserve" || (Number.isFinite(reserveRatio) && reserveRatio < requiredRatio)
-              ? `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; HOLD because reserve after ${twinCostUnitName} prep is below required threshold`
+              ? `${reachabilityPrefix} for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; HOLD because reserve after ${twinCostUnitName} prep is below required threshold`
               : `threshold prep blocked: ${guard.reason}`;
           }
         }
