@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.7
-// @description  Conservative smart advisor/autobuyer with twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
+// @version      0.8.8
+// @description  Conservative smart advisor/autobuyer with multi-lane coordination, territory starvation protection, twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
 // @match        https://swarmsim.com/*
@@ -69,6 +69,10 @@
     territoryRoiMode: true,
     territoryMinEtaImprovementSeconds: 2,
     territoryMinEtaImprovementRatio: 0.001,
+    territoryPrepPlanner: true,
+    territoryPrepChunkPercent: 5,
+    territoryStarvationRunThreshold: 12,
+    territoryArmySeedWhenEmpty: true,
     smartUnitBuyPercent: 0.25,
     meatChainCascade: true,
     meatChainTwinPrep: true,
@@ -187,6 +191,10 @@
       territoryRoiMode: true,
       territoryMinEtaImprovementSeconds: 2,
       territoryMinEtaImprovementRatio: 0.001,
+      territoryPrepPlanner: true,
+      territoryPrepChunkPercent: 5,
+      territoryStarvationRunThreshold: 12,
+      territoryArmySeedWhenEmpty: true,
       runEverySeconds: 5,
       purchaseOrder: "upgrades-first",
       unitBuyPercent: 0.85,
@@ -387,6 +395,11 @@
 
   const CLONE_BUFFER_RECOVERY_COMPLETE_PERCENT = 99.9;
   const CLONE_BUFFER_RECOVERY_COMPLETE_DEBT_RATIO = 0.001;
+  const HOUSE_OF_MIRRORS_ARMY_TIERS = [
+    { key: "culicimorph v", label: "Culicimorph V" },
+    { key: "arachnomorph v", label: "Arachnomorph V" },
+    { key: "stinger v", label: "Stinger V" },
+  ];
 
   let config = loadConfig();
   let lastStatus = "Laddar...";
@@ -406,6 +419,8 @@
   let cloneBufferPostCloneTargetSnapshotRaw = null;
   let cloneBufferPreviousMode = "none";
   let abilityPrepPlannerState = null;
+  let territoryPrepPlannerState = null;
+  let laneCoordinatorState = null;
   let panel = null;
   let strategyBar = null;
   let logPanel = null;
@@ -586,6 +601,10 @@
     c.clonePrepCooldownSeconds = Math.round(clampNumber(c.clonePrepCooldownSeconds, 0, 86400, DEFAULT_CONFIG.clonePrepCooldownSeconds));
     c.territoryMinEtaImprovementSeconds = clampNumber(c.territoryMinEtaImprovementSeconds, 0, 31536000, DEFAULT_CONFIG.territoryMinEtaImprovementSeconds);
     c.territoryMinEtaImprovementRatio = clampNumber(c.territoryMinEtaImprovementRatio, 0, 1, DEFAULT_CONFIG.territoryMinEtaImprovementRatio);
+    c.territoryPrepPlanner = c.territoryPrepPlanner !== false;
+    c.territoryPrepChunkPercent = clampNumber(c.territoryPrepChunkPercent, 0.1, 25, DEFAULT_CONFIG.territoryPrepChunkPercent);
+    c.territoryStarvationRunThreshold = Math.round(clampNumber(c.territoryStarvationRunThreshold, 1, 100, DEFAULT_CONFIG.territoryStarvationRunThreshold));
+    c.territoryArmySeedWhenEmpty = c.territoryArmySeedWhenEmpty !== false;
     c.smartUnitBuyPercent = clampNumber(c.smartUnitBuyPercent, 0.001, 1, DEFAULT_CONFIG.smartUnitBuyPercent);
     c.meatChainCascade = !!c.meatChainCascade;
     c.meatChainTwinPrep = !!c.meatChainTwinPrep;
@@ -1013,6 +1032,44 @@ function getDisplayName(item) {
   function clearRunHistory() {
     runHistory = [];
     liveDiagnostics = buildLiveDiagnostics(runHistory);
+  }
+
+  function latestAdvisorRow(decisions = ["BUY", "SIDE", "HOLD", "PLAN", "NEXT"]) {
+    return advisorLog.find((row) => decisions.includes(row?.decision)) || null;
+  }
+
+  function formatAdvisorReason(row) {
+    if (!row) return "No strong buy/hold reason in the current run.";
+    return `${row.decision} ${row.title || "Decision"}: ${row.reason || row.decision}`;
+  }
+
+  function normalizeLabelKey(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  }
+
+  function getLaneActionAge(lane, history = runHistory) {
+    const recent = history || [];
+
+    for (let age = 0, i = recent.length - 1; i >= 0; i--, age++) {
+      const selected = recent[i]?.selectedLaneActions || [];
+      if (selected.some((action) => action?.lane === lane)) return age;
+    }
+
+    return recent.length;
+  }
+
+  function getTerritoryStarvationCount(history = runHistory) {
+    const recent = history || [];
+    let count = 0;
+
+    for (let i = recent.length - 1; i >= 0; i--) {
+      const run = recent[i];
+      if (!run?.territoryPrepCandidate || run.territoryPrepCandidate === "none") break;
+      if ((run.selectedLaneActions || []).some((action) => action?.lane === "Territory")) break;
+      count++;
+    }
+
+    return count;
   }
 
   function normalizeLaneDecision(decision) {
@@ -1500,13 +1557,12 @@ function getDisplayName(item) {
     return "OBSERVE";
   }
 
-  function getPrimaryReasonFromAdvisor() {
-    const preferred = advisorLog.find((row) => ["BUY", "HOLD", "PLAN", "NEXT"].includes(row.decision));
-    if (!preferred) return "No strong buy/hold reason in the current run.";
+  function getPrimaryReasonFromAdvisor(mainActions = 0) {
+    if (Number(mainActions || 0) > 0 && laneCoordinatorState?.primaryActionReason) {
+      return laneCoordinatorState.primaryActionReason;
+    }
 
-    const title = preferred.title || "Decision";
-    const reason = preferred.reason || preferred.decision;
-    return `${preferred.decision} ${title}: ${reason}`;
+    return formatAdvisorReason(latestAdvisorRow(["BUY", "HOLD", "PLAN", "NEXT"]));
   }
 
   function getCurrentStrategyPhase(game, engine) {
@@ -1939,6 +1995,20 @@ function getDisplayName(item) {
       abilityPrepRequiresCloneBuffer: inspector.abilityPrepRequiresCloneBuffer,
       houseOfMirrorsArmyValue: inspector.houseOfMirrorsArmyValue,
       houseOfMirrorsMissingUnits: inspector.houseOfMirrorsMissingUnits,
+      laneCoordinatorDecision: inspector.laneCoordinatorDecision,
+      selectedLaneActions: inspector.laneCoordinatorSelectedActions,
+      territoryStarvationCount: inspector.territoryStarvationCount,
+      lastTerritoryActionAge: inspector.lastTerritoryActionAge,
+      territoryPrepCandidate: inspector.territoryPrepCandidate,
+      territoryPrepDecision: inspector.territoryPrepDecision,
+      territoryPrepReason: inspector.territoryPrepReason,
+      territoryPrepUnit: inspector.territoryPrepUnit,
+      territoryPrepAmount: inspector.territoryPrepAmount,
+      territoryPrepExpansionEtaBefore: inspector.territoryPrepExpansionEtaBefore,
+      territoryPrepExpansionEtaAfter: inspector.territoryPrepExpansionEtaAfter,
+      territoryPrepArmySeed: inspector.territoryPrepArmySeed,
+      territoryDidNotBuyReason: inspector.territoryDidNotBuyReason,
+      armyPrepMissingUnits: inspector.armyPrepMissingUnits,
       configSummary: compactConfigSummary(),
       // Legacy names kept for log consumers written against 0.7.3.
       bestAllowedCandidate: inspector.bestAllowedCandidate,
@@ -1968,7 +2038,7 @@ function getDisplayName(item) {
     const mothCount = getLepidopteraCount(game);
     const mothBoost = getLepidopteraBoostPercent(game);
     const decision = getDecisionModeFromAdvisor();
-    const reason = getPrimaryReasonFromAdvisor();
+    const reason = getPrimaryReasonFromAdvisor(mainActions);
     const settings = getSettingsInfluencingDecision(protectedResources);
     const candidateSummary = summarizeLaneCandidates();
     const meatActionState = meatActionUnitPaybackBypassState || getCurrentMeatActionUnitPaybackState(game);
@@ -1978,6 +2048,8 @@ function getDisplayName(item) {
     const twinUnlockState = twinUnlockPlannerState || null;
     const cloneBufferState = cloneBufferPlannerState || null;
     const abilityPrepState = abilityPrepPlannerState || null;
+    const territoryPrepState = territoryPrepPlannerState || null;
+    const coordinatorState = laneCoordinatorState || null;
     const bestAllowedMain = candidateSummary.bestAllowedMainCandidate;
     const bestAllowedSide = candidateSummary.bestAllowedSideCandidate;
     const bestRejectedStrategic = candidateSummary.bestRejectedStrategicCandidate;
@@ -2005,6 +2077,9 @@ function getDisplayName(item) {
       actions: `${mainActions || 0} main, ${sideActions || 0} side`,
       mainActions: Number(mainActions || 0),
       sideActions: Number(sideActions || 0),
+      laneCoordinatorDecision: coordinatorState?.coordinatorDecision || mainLaneDecisionLabel(mainActions, sideActions),
+      laneCoordinatorSelectedActions: coordinatorState?.selectedLaneActions || [],
+      laneCoordinatorSelectedSummary: coordinatorState?.selectedLaneSummary || "none",
       summaries: summaries?.length ? summaries.slice(0, 4).join("; ") : "none",
       whyWaiting: getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries),
       lanes: summarizeDecisionLanes(laneCandidates),
@@ -2118,8 +2193,20 @@ function getDisplayName(item) {
       abilityPrepRequiresCloneBuffer: abilityPrepState?.abilityPrepRequiresCloneBuffer || "no",
       houseOfMirrorsArmyValue: abilityPrepState?.houseOfMirrorsArmyValue || "n/a",
       houseOfMirrorsMissingUnits: abilityPrepState?.houseOfMirrorsMissingUnits || "none",
+      territoryStarvationCount: coordinatorState?.territoryStarvationCount ?? getTerritoryStarvationCount(),
+      lastTerritoryActionAge: coordinatorState?.territoryActionAge ?? getLaneActionAge("Territory"),
+      territoryPrepCandidate: territoryPrepState?.territoryPrepCandidate || "none",
+      territoryPrepDecision: territoryPrepState?.territoryPrepDecision || "none",
+      territoryPrepReason: territoryPrepState?.territoryPrepReason || "none",
+      territoryPrepUnit: territoryPrepState?.territoryPrepUnit || "none",
+      territoryPrepAmount: territoryPrepState?.territoryPrepAmount || "0",
+      territoryPrepExpansionEtaBefore: territoryPrepState?.territoryPrepExpansionEtaBefore || "n/a",
+      territoryPrepExpansionEtaAfter: territoryPrepState?.territoryPrepExpansionEtaAfter || "n/a",
+      territoryPrepArmySeed: territoryPrepState?.territoryPrepArmySeed || "no",
+      territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
+      armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.7 keeps twin unlock threshold planner and adds a narrow opportunity-cost bypass only when rebuild is unsafe but production loss is negligible versus bank; auto-cast and auto-ascend remain conservative/off by default.",
+      futurePlanners: "0.8.8 adds a narrow multi-lane coordinator and conservative territory prep lane while keeping auto-cast and auto-ascend off by default.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2160,6 +2247,8 @@ function getDisplayName(item) {
       ["Nexus", strategyInspector.nexus],
       ["Lepidoptera", strategyInspector.lepidoptera],
       ["Actions", strategyInspector.actions],
+      ["Coordinator", strategyInspector.laneCoordinatorDecision || "none"],
+      ["Selected lanes", strategyInspector.laneCoordinatorSelectedSummary || "none"],
       ["Changed", strategyInspector.summaries],
       ["Strategic target", strategyInspector.meatFallbackStrategicTarget || "none"],
       ["Blocked strategic", strategyInspector.meatFallbackBlockedCandidate || "none"],
@@ -2232,6 +2321,18 @@ function getDisplayName(item) {
       ["Requires clone buffer", strategyInspector.abilityPrepRequiresCloneBuffer || "no"],
       ["House of Mirrors value", strategyInspector.houseOfMirrorsArmyValue || "n/a"],
       ["House of Mirrors missing", strategyInspector.houseOfMirrorsMissingUnits || "none"],
+      ["Territory starvation", String(strategyInspector.territoryStarvationCount ?? 0)],
+      ["Last territory action age", String(strategyInspector.lastTerritoryActionAge ?? 0)],
+      ["Territory prep candidate", strategyInspector.territoryPrepCandidate || "none"],
+      ["Territory prep decision", strategyInspector.territoryPrepDecision || "none"],
+      ["Territory prep reason", strategyInspector.territoryPrepReason || "none"],
+      ["Territory prep unit", strategyInspector.territoryPrepUnit || "none"],
+      ["Territory prep amount", strategyInspector.territoryPrepAmount || "0"],
+      ["Territory ETA before", strategyInspector.territoryPrepExpansionEtaBefore || "n/a"],
+      ["Territory ETA after", strategyInspector.territoryPrepExpansionEtaAfter || "n/a"],
+      ["Territory army seed", strategyInspector.territoryPrepArmySeed || "no"],
+      ["Army prep missing units", strategyInspector.armyPrepMissingUnits || "none"],
+      ["Why territory did not buy", strategyInspector.territoryDidNotBuyReason || "none"],
       ["Settings now", strategyInspector.settings.join(" · ")],
       ["Recommended", strategyInspector.recommendedSmart],
       ["Future", strategyInspector.futurePlanners],
@@ -2348,11 +2449,13 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.7",
+      scriptVersion: "0.8.8",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
       liveDiagnostics: diagnostics,
+      laneCoordinatorDecision: strategyInspector?.laneCoordinatorDecision || laneCoordinatorState?.coordinatorDecision || "none",
+      selectedLaneActions: strategyInspector?.laneCoordinatorSelectedActions || laneCoordinatorState?.selectedLaneActions || [],
       decisionLanes: strategyInspector?.lanes || summarizeDecisionLanes(),
       laneCandidates: strategyInspector?.laneCandidates || summary.laneCandidates,
       bestAllowedMainCandidate: strategyInspector?.bestAllowedMainCandidate || summary.bestAllowedMainCandidate,
@@ -2453,6 +2556,18 @@ function getDisplayName(item) {
       abilityPrepRequiresCloneBuffer: strategyInspector?.abilityPrepRequiresCloneBuffer || abilityPrepPlannerState?.abilityPrepRequiresCloneBuffer || "no",
       houseOfMirrorsArmyValue: strategyInspector?.houseOfMirrorsArmyValue || abilityPrepPlannerState?.houseOfMirrorsArmyValue || "n/a",
       houseOfMirrorsMissingUnits: strategyInspector?.houseOfMirrorsMissingUnits || abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "none",
+      territoryStarvationCount: strategyInspector?.territoryStarvationCount ?? laneCoordinatorState?.territoryStarvationCount ?? getTerritoryStarvationCount(),
+      lastTerritoryActionAge: strategyInspector?.lastTerritoryActionAge ?? laneCoordinatorState?.territoryActionAge ?? getLaneActionAge("Territory"),
+      territoryPrepCandidate: strategyInspector?.territoryPrepCandidate || territoryPrepPlannerState?.territoryPrepCandidate || "none",
+      territoryPrepDecision: strategyInspector?.territoryPrepDecision || territoryPrepPlannerState?.territoryPrepDecision || "none",
+      territoryPrepReason: strategyInspector?.territoryPrepReason || territoryPrepPlannerState?.territoryPrepReason || "none",
+      territoryPrepUnit: strategyInspector?.territoryPrepUnit || territoryPrepPlannerState?.territoryPrepUnit || "none",
+      territoryPrepAmount: strategyInspector?.territoryPrepAmount || territoryPrepPlannerState?.territoryPrepAmount || "0",
+      territoryPrepExpansionEtaBefore: strategyInspector?.territoryPrepExpansionEtaBefore || territoryPrepPlannerState?.territoryPrepExpansionEtaBefore || "n/a",
+      territoryPrepExpansionEtaAfter: strategyInspector?.territoryPrepExpansionEtaAfter || territoryPrepPlannerState?.territoryPrepExpansionEtaAfter || "n/a",
+      territoryPrepArmySeed: strategyInspector?.territoryPrepArmySeed || territoryPrepPlannerState?.territoryPrepArmySeed || "no",
+      territoryDidNotBuyReason: strategyInspector?.territoryDidNotBuyReason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
+      armyPrepMissingUnits: strategyInspector?.armyPrepMissingUnits || territoryPrepPlannerState?.armyPrepMissingUnits || abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "none",
       advisorLog: advisorLog.slice(),
       purchaseLog: purchaseLog.slice(),
       configSummary: cfg,
@@ -5515,6 +5630,212 @@ function getDisplayName(item) {
     };
   }
 
+  function getArmyPrepMissingUnitLabels() {
+    const raw = String(abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "").trim();
+    if (!raw || raw === "none") return [];
+    return raw.split(",").map((part) => part.trim()).filter(Boolean);
+  }
+
+  function unitMatchesArmyPrepLabel(unit, label) {
+    const labelKey = normalizeLabelKey(label);
+    if (!labelKey) return false;
+    const text = normalizeLabelKey(`${unit?.name || ""} ${getDisplayName(unit)}`);
+    return text.includes(labelKey);
+  }
+
+  function getTerritoryPrepBuyNum(unit, forceSingle = false) {
+    const max = safe(`Territory prep max ${unit?.name}`, () => unit?.maxCostMet?.(config.unitBuyPercent)) || newDecimal(0);
+    if (!isPositive(max)) return newDecimal(0);
+    if (forceSingle) return newDecimal(1);
+
+    const percent = clampNumber(config.territoryPrepChunkPercent, 0.1, 25, DEFAULT_CONFIG.territoryPrepChunkPercent);
+    const chunk = decimalFrom(max).times(percent).dividedBy(100).floor();
+    if (isPositive(chunk)) return chunk;
+    return newDecimal(1);
+  }
+
+  function buildTerritoryPrepProposal(game, engine, protectedResources) {
+    const missingLabels = getArmyPrepMissingUnitLabels();
+    const expansionEtaBefore = Number.isFinite(engine?.expansionEta) ? formatDuration(engine.expansionEta) : "n/a";
+
+    if (!config.territoryPrepPlanner) {
+      return recordTerritoryPrepPlannerState({
+        territoryPrepCandidate: "none",
+        territoryPrepDecision: "OBSERVE",
+        territoryPrepReason: "territory prep planner disabled",
+        territoryPrepExpansionEtaBefore: expansionEtaBefore,
+        territoryPrepExpansionEtaAfter: "n/a",
+        territoryPrepBlockedBy: "planner disabled",
+        armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+      });
+    }
+
+    const visibleUnits = (game.unitlist?.() || []).filter((unit) => unit?.isVisible?.() && getTabName(unit) === "territory");
+    const visibleFightingUnits = visibleUnits.filter((unit) => {
+      const producesTerritory = isPositive(productionPerUnit(unit, "territory"));
+      return producesTerritory || HOUSE_OF_MIRRORS_ARMY_TIERS.some((tier) => unitMatchesArmyPrepLabel(unit, tier.label));
+    });
+
+    if (!visibleFightingUnits.length) {
+      addLaneCandidate({
+        lane: "Territory",
+        decision: "HOLD",
+        candidate: "Territory prep",
+        reason: "no visible fighting units",
+        blockers: ["no visible fighting units"],
+        score: 0,
+        target: "Expansion",
+        resource: "territory",
+      });
+      return recordTerritoryPrepPlannerState({
+        territoryPrepCandidate: "none",
+        territoryPrepDecision: "HOLD",
+        territoryPrepReason: "no visible fighting units",
+        territoryPrepExpansionEtaBefore: expansionEtaBefore,
+        territoryPrepExpansionEtaAfter: "n/a",
+        territoryPrepBlockedBy: "no visible fighting units",
+        armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+      });
+    }
+
+    const buyableUnits = visibleFightingUnits.filter((unit) => unit?.isBuyable?.());
+    if (!buyableUnits.length) {
+      addLaneCandidate({
+        lane: "Territory",
+        decision: "HOLD",
+        candidate: "Territory prep",
+        reason: "no buyable fighting units",
+        blockers: ["no buyable fighting units"],
+        score: 0,
+        target: "Expansion",
+        resource: "territory",
+      });
+      return recordTerritoryPrepPlannerState({
+        territoryPrepCandidate: "none",
+        territoryPrepDecision: "HOLD",
+        territoryPrepReason: "no buyable fighting units",
+        territoryPrepExpansionEtaBefore: expansionEtaBefore,
+        territoryPrepExpansionEtaAfter: "n/a",
+        territoryPrepBlockedBy: "no buyable fighting units",
+        armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+      });
+    }
+
+    let best = null;
+    let blockedReason = "ROI below minimum";
+    let sawZeroTerritoryProduction = false;
+
+    for (const unit of buyableUnits) {
+      const matchingMissing = missingLabels.find((label) => unitMatchesArmyPrepLabel(unit, label)) || "";
+      const zeroCount = !isPositive(decimalFrom(unit?.count?.() || 0));
+      const forceSingle = !!matchingMissing && zeroCount;
+      const num = getTerritoryPrepBuyNum(unit, forceSingle);
+
+      if (!isPositive(num)) {
+        blockedReason = "no safe territory prep amount";
+        continue;
+      }
+
+      const territory = scoreTerritoryCandidate(game, unit, num, engine);
+      if (!territory) sawZeroTerritoryProduction = true;
+
+      const armySeedAllowed = !!(config.territoryArmySeedWhenEmpty && matchingMissing && zeroCount);
+      let candidate = {
+        unit,
+        num,
+        score: territory?.score || unitCostScore(unit),
+        reason: territory?.reason || "eachProduction().territory missing/zero",
+        guardReason: territory?.guardReason || "eachProduction().territory missing/zero",
+        raw: territory?.raw || null,
+        etaImprovement: territory?.etaImprovement || 0,
+        etaBeforeSeconds: territory?.etaBeforeSeconds,
+        etaAfterSeconds: territory?.etaAfterSeconds,
+        meetsMinimum: territory?.meetsMinimum ?? false,
+        armySeed: false,
+        matchingMissing,
+      };
+
+      let block = getUnitCandidateBlock(candidate, num, protectedResources, "territory prep guard");
+      if (block && !(armySeedAllowed && block.type === "territory-roi")) {
+        blockedReason = block.reason || blockedReason;
+        continue;
+      }
+
+      if (!territory && !armySeedAllowed) {
+        blockedReason = "eachProduction().territory missing/zero";
+        continue;
+      }
+
+      candidate.armySeed = !!(armySeedAllowed && (!territory || !territory.meetsMinimum));
+      candidate.reason = candidate.armySeed
+        ? `army seed: ${matchingMissing} is empty; safe small territory chunk for House of Mirrors prep`
+        : matchingMissing
+          ? `${territory.reason}; supports House of Mirrors prep (${matchingMissing})`
+          : territory.reason;
+      candidate.score += matchingMissing ? 8000 : 0;
+      candidate.score += zeroCount ? 2000 : 0;
+      candidate.score += candidate.armySeed ? 12000 : 0;
+
+      if (!best || candidate.score > best.score) best = candidate;
+    }
+
+    if (!best) {
+      const reason = sawZeroTerritoryProduction && blockedReason === "ROI below minimum"
+        ? "eachProduction().territory missing/zero"
+        : blockedReason;
+      addLaneCandidate({
+        lane: "Territory",
+        decision: "HOLD",
+        candidate: "Territory prep",
+        reason,
+        blockers: [reason],
+        score: 0,
+        target: "Expansion",
+        resource: "territory",
+      });
+      return recordTerritoryPrepPlannerState({
+        territoryPrepCandidate: "none",
+        territoryPrepDecision: "HOLD",
+        territoryPrepReason: reason,
+        territoryPrepExpansionEtaBefore: expansionEtaBefore,
+        territoryPrepExpansionEtaAfter: "n/a",
+        territoryPrepBlockedBy: reason,
+        armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+      });
+    }
+
+    const etaAfter = Number.isFinite(best.etaAfterSeconds) ? formatDuration(best.etaAfterSeconds) : "n/a";
+    addLaneCandidate({
+      lane: "Territory",
+      decision: "BUY",
+      candidate: getDisplayName(best.unit),
+      reason: best.reason,
+      score: best.score,
+      wouldBuyAmount: formatSwarmNumber(best.num),
+      etaBefore: expansionEtaBefore,
+      etaAfter,
+      target: best.armySeed ? "House of Mirrors prep" : "Expansion",
+      resource: "territory",
+      observations: missingLabels.length ? [`army prep missing: ${missingLabels.join(", ")}`] : [],
+      raw: best.raw,
+    });
+
+    return recordTerritoryPrepPlannerState({
+      territoryPrepCandidate: getDisplayName(best.unit),
+      territoryPrepDecision: "BUY",
+      territoryPrepReason: best.reason,
+      territoryPrepUnit: getDisplayName(best.unit),
+      territoryPrepAmount: formatSwarmNumber(best.num),
+      territoryPrepExpansionEtaBefore: expansionEtaBefore,
+      territoryPrepExpansionEtaAfter: etaAfter,
+      territoryPrepArmySeed: best.armySeed,
+      territoryPrepSafeCandidate: true,
+      territoryPrepBlockedBy: "none",
+      armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+      proposal: best,
+    });
+  }
+
   function scoreMeatCandidate(unit, num) {
     const tab = getTabName(unit);
     if (tab !== "meat") return null;
@@ -5950,6 +6271,40 @@ function getDisplayName(item) {
     };
 
     return abilityPrepPlannerState;
+  }
+
+  function recordTerritoryPrepPlannerState(fields = {}) {
+    territoryPrepPlannerState = {
+      territoryPrepCandidate: fields.territoryPrepCandidate || territoryPrepPlannerState?.territoryPrepCandidate || "none",
+      territoryPrepDecision: fields.territoryPrepDecision || territoryPrepPlannerState?.territoryPrepDecision || "none",
+      territoryPrepReason: fields.territoryPrepReason || territoryPrepPlannerState?.territoryPrepReason || "none",
+      territoryPrepUnit: fields.territoryPrepUnit || territoryPrepPlannerState?.territoryPrepUnit || "none",
+      territoryPrepAmount: fields.territoryPrepAmount || territoryPrepPlannerState?.territoryPrepAmount || "0",
+      territoryPrepExpansionEtaBefore: fields.territoryPrepExpansionEtaBefore || territoryPrepPlannerState?.territoryPrepExpansionEtaBefore || "n/a",
+      territoryPrepExpansionEtaAfter: fields.territoryPrepExpansionEtaAfter || territoryPrepPlannerState?.territoryPrepExpansionEtaAfter || "n/a",
+      territoryPrepArmySeed: fields.territoryPrepArmySeed ? "yes" : "no",
+      territoryPrepSafeCandidate: fields.territoryPrepSafeCandidate ? "yes" : "no",
+      territoryPrepBlockedBy: fields.territoryPrepBlockedBy || territoryPrepPlannerState?.territoryPrepBlockedBy || "none",
+      armyPrepMissingUnits: fields.armyPrepMissingUnits || territoryPrepPlannerState?.armyPrepMissingUnits || "none",
+      proposal: fields.proposal || territoryPrepPlannerState?.proposal || null,
+    };
+
+    return territoryPrepPlannerState;
+  }
+
+  function recordLaneCoordinatorState(fields = {}) {
+    laneCoordinatorState = {
+      coordinatorDecision: fields.coordinatorDecision || laneCoordinatorState?.coordinatorDecision || "HOLD",
+      selectedLaneActions: fields.selectedLaneActions || laneCoordinatorState?.selectedLaneActions || [],
+      selectedLaneLabels: fields.selectedLaneLabels || laneCoordinatorState?.selectedLaneLabels || [],
+      selectedLaneSummary: fields.selectedLaneSummary || laneCoordinatorState?.selectedLaneSummary || "none",
+      primaryActionReason: fields.primaryActionReason || laneCoordinatorState?.primaryActionReason || "",
+      territoryActionAge: Number.isFinite(Number(fields.territoryActionAge)) ? Number(fields.territoryActionAge) : (laneCoordinatorState?.territoryActionAge ?? getLaneActionAge("Territory")),
+      territoryStarvationCount: Number.isFinite(Number(fields.territoryStarvationCount)) ? Number(fields.territoryStarvationCount) : (laneCoordinatorState?.territoryStarvationCount ?? getTerritoryStarvationCount()),
+      territoryDidNotBuyReason: fields.territoryDidNotBuyReason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
+    };
+
+    return laneCoordinatorState;
   }
 
   function getCurrentMeatActionUnitPaybackState(game) {
@@ -7303,7 +7658,7 @@ function getDisplayName(item) {
     return { bought, didPrep: true };
   }
 
-  function buySmartUnits(game, commands, engine, protectedResources) {
+  function buySmartUnits(game, commands, engine, protectedResources, remainingActions = 1) {
     if (shouldPauseUnitsForAscension(game)) {
       recordAdvisor("HOLD", "Units", "near ascension");
       addLaneCandidate({
@@ -7317,13 +7672,126 @@ function getDisplayName(item) {
       return "paused-ascension";
     }
 
+    const maxUnitActions = Math.max(1, Number(remainingActions || 1));
+    let boughtCount = 0;
+    const selectedLaneActions = (laneCoordinatorState?.selectedLaneActions || []).slice();
+
+    function markSelectedLane(lane, candidate, reason, amount = "") {
+      const action = {
+        lane,
+        candidate: candidate || "unknown",
+        reason: reason || "executed",
+        amount: amount || "",
+      };
+      selectedLaneActions.push(action);
+      recordLaneCoordinatorState({
+        coordinatorDecision: "BUY",
+        selectedLaneActions,
+        selectedLaneLabels: selectedLaneActions.map((item) => `${item.lane}: ${item.candidate}`),
+        selectedLaneSummary: selectedLaneActions.map((item) => `${item.lane}: ${item.candidate}`).join(" · "),
+        primaryActionReason: laneCoordinatorState?.primaryActionReason || `${lane} BUY ${candidate}: ${reason}`,
+      });
+    }
+
+    function syncCoordinatorHold(reason) {
+      recordLaneCoordinatorState({
+        coordinatorDecision: selectedLaneActions.length ? "BUY" : "HOLD",
+        selectedLaneActions,
+        selectedLaneLabels: selectedLaneActions.map((item) => `${item.lane}: ${item.candidate}`),
+        selectedLaneSummary: selectedLaneActions.length
+          ? selectedLaneActions.map((item) => `${item.lane}: ${item.candidate}`).join(" · ")
+          : "none",
+        territoryDidNotBuyReason: reason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
+      });
+    }
+
+    function executeTerritoryPrep(trigger) {
+      const state = territoryPrepPlannerState || buildTerritoryPrepProposal(game, engine, protectedResources);
+      const proposal = state?.proposal;
+      const territoryAge = getLaneActionAge("Territory");
+      const starvationCount = getTerritoryStarvationCount();
+      const threshold = Math.max(1, Number(config.territoryStarvationRunThreshold || DEFAULT_CONFIG.territoryStarvationRunThreshold));
+      const shouldForce = territoryAge >= threshold || starvationCount >= threshold;
+
+      recordLaneCoordinatorState({
+        territoryActionAge: territoryAge,
+        territoryStarvationCount: starvationCount,
+      });
+
+      if (!proposal) {
+        syncCoordinatorHold(state?.territoryPrepReason || "no territory proposal this run");
+        return false;
+      }
+
+      if (boughtCount >= maxUnitActions) {
+        syncCoordinatorHold(`not selected by coordinator: ${state.territoryPrepCandidate} stayed pending because main action slots were full`);
+        return false;
+      }
+
+      if (trigger !== "post-meat" && !shouldForce) {
+        syncCoordinatorHold(`not selected by coordinator: territory starvation age ${territoryAge}/${threshold}`);
+        return false;
+      }
+
+      recordAdvisor("BUY", getDisplayName(proposal.unit), proposal.reason);
+      addLaneCandidate({
+        lane: "Territory",
+        decision: "BUY",
+        candidate: getDisplayName(proposal.unit),
+        reason: proposal.reason,
+        score: proposal.score,
+        wouldBuyAmount: formatSwarmNumber(proposal.num),
+        etaBefore: territoryPrepPlannerState?.territoryPrepExpansionEtaBefore || "n/a",
+        etaAfter: territoryPrepPlannerState?.territoryPrepExpansionEtaAfter || "n/a",
+        target: proposal.armySeed ? "House of Mirrors prep" : "Expansion",
+        resource: "territory",
+        raw: proposal.raw || null,
+      });
+
+      if (config.advisorOnly || !config.autoBuySafeDecisions) {
+        markSelectedLane("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num));
+        boughtCount++;
+        return true;
+      }
+
+      const bought = safe(`Territory prep ${getDisplayName(proposal.unit)}`, () =>
+        buyUnitAmount(commands, proposal.unit, proposal.num, proposal.armySeed ? "Army Seed" : "Territory Prep")
+      );
+
+      if (bought) {
+        markSelectedLane("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num));
+        boughtCount++;
+        recordTerritoryPrepPlannerState({
+          ...territoryPrepPlannerState,
+          territoryPrepDecision: "BUY",
+          territoryPrepReason: proposal.reason,
+        });
+        return true;
+      }
+
+      syncCoordinatorHold(`territory prep buy failed: ${getDisplayName(proposal.unit)}`);
+      return false;
+    }
+
     const plannerResult = handleMeatGoalPlanner(game, commands, protectedResources);
     if (plannerResult.actionTaken && Number(plannerResult.bought || 0) > 0) {
-      return plannerResult.bought || 0;
+      boughtCount += Number(plannerResult.bought || 0);
+      const row = latestAdvisorRow(["BUY"]);
+      markSelectedLane("Meat", row?.title || plannerResult.summary || "Meat planner", formatAdvisorReason(row), "");
+
+      buildTerritoryPrepProposal(game, engine, protectedResources);
+      if (boughtCount < maxUnitActions) {
+        executeTerritoryPrep("post-meat");
+      } else {
+        syncCoordinatorHold(`not selected by coordinator: meat planner consumed the remaining unit action budget`);
+      }
+
+      return boughtCount;
     }
 
     if (plannerResult.actionTaken && plannerResult.stopFurtherUnitBuys) {
-      return plannerResult.bought || 0;
+      syncCoordinatorHold("meat goal planner held further unit buys this run");
+      return boughtCount;
     }
 
     if (plannerResult.actionTaken) {
@@ -7332,6 +7800,12 @@ function getDisplayName(item) {
         "Planner fallback",
         "meat goal planner held without buying; checking ranked safe unit queue this run"
       );
+    }
+
+    buildTerritoryPrepProposal(game, engine, protectedResources);
+
+    if (executeTerritoryPrep("pre-queue") && boughtCount >= maxUnitActions) {
+      return boughtCount;
     }
 
     const strategicPlan = safe("Meat fallback strategic plan", () => buildMeatGoalPlan(game));
@@ -7349,7 +7823,6 @@ function getDisplayName(item) {
     const canStallBreak = canActivateMeatStallBreaker(engine, protectedResources);
     let topMeatBlockedBy = "";
     let topMeatBlockReason = "";
-    let boughtCount = 0;
     const skipped = [];
 
     for (const candidate of candidates) {
@@ -7506,7 +7979,9 @@ function getDisplayName(item) {
       });
 
       if (config.advisorOnly || !config.autoBuySafeDecisions) {
+        markSelectedLane(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num));
         recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(num)} ${getDisplayName(unit)}${isFallbackMeat ? " — meat fallback" : ""}`);
+        boughtCount++;
         return boughtCount;
       }
 
@@ -7516,7 +7991,13 @@ function getDisplayName(item) {
       );
 
       if (bought) {
+        markSelectedLane(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num));
         boughtCount++;
+
+        if (tab !== "territory" && boughtCount < maxUnitActions) {
+          executeTerritoryPrep("post-meat");
+        }
+
         return boughtCount;
       }
     }
@@ -7557,6 +8038,12 @@ function getDisplayName(item) {
       });
     }
 
+    syncCoordinatorHold(
+      territoryPrepPlannerState?.territoryPrepCandidate && territoryPrepPlannerState?.territoryPrepCandidate !== "none"
+        ? "not selected by coordinator"
+        : (territoryPrepPlannerState?.territoryPrepReason || "no territory proposal this run")
+    );
+
     return boughtCount;
   }
 
@@ -7577,6 +8064,17 @@ function getDisplayName(item) {
     twinUnlockPlannerState = null;
     cloneBufferPlannerState = null;
     abilityPrepPlannerState = null;
+    territoryPrepPlannerState = null;
+    laneCoordinatorState = recordLaneCoordinatorState({
+      coordinatorDecision: "HOLD",
+      selectedLaneActions: [],
+      selectedLaneLabels: [],
+      selectedLaneSummary: "none",
+      primaryActionReason: "",
+      territoryActionAge: getLaneActionAge("Territory"),
+      territoryStarvationCount: getTerritoryStarvationCount(),
+      territoryDidNotBuyReason: "no territory proposal this run",
+    });
 
     const game = getGame();
     const commands = getCommands();
@@ -7586,6 +8084,16 @@ function getDisplayName(item) {
     let sideActions = 0;
     let upgrades = 0;
     let units = 0;
+
+    function laneFromMainLabel(label) {
+      return {
+        "Larva engine": "Engine",
+        "Critical upgrades": "Upgrade",
+        "Energy": "Energy",
+        "Clone buffer": "Clone Prep",
+        "Unlock planner": "Meat",
+      }[label] || label;
+    }
 
     function resultActionCount(result) {
       if (!result?.actionTaken) return 0;
@@ -7599,6 +8107,23 @@ function getDisplayName(item) {
 
       mainActions += count;
       summaries.push(result.summary || label);
+
+      const row = latestAdvisorRow(["BUY", "SIDE", "PLAN", "NEXT", "HOLD"]);
+      const selectedLaneActions = (laneCoordinatorState?.selectedLaneActions || []).slice();
+      selectedLaneActions.push({
+        lane: laneFromMainLabel(label),
+        candidate: row?.title || result.summary || label,
+        reason: formatAdvisorReason(row),
+        amount: "",
+      });
+      recordLaneCoordinatorState({
+        coordinatorDecision: "BUY",
+        selectedLaneActions,
+        selectedLaneLabels: selectedLaneActions.map((item) => `${item.lane}: ${item.candidate}`),
+        selectedLaneSummary: selectedLaneActions.map((item) => `${item.lane}: ${item.candidate}`).join(" · "),
+        primaryActionReason: laneCoordinatorState?.primaryActionReason || formatAdvisorReason(row),
+      });
+
       return true;
     }
 
@@ -7712,7 +8237,7 @@ function getDisplayName(item) {
     }
 
     if (config.buyUnits && canDoMoreMainActions()) {
-      units = safe("Smart units", () => buySmartUnits(game, commands, engine, protectedResources)) || 0;
+      units = safe("Smart units", () => buySmartUnits(game, commands, engine, protectedResources, Math.max(1, maxActions - mainActions))) || 0;
       if (units === "paused-ascension") {
         summaries.push("units paused near ascension");
       } else if (units > 0) {
@@ -8129,7 +8654,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.7 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.8 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -8137,7 +8662,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.7. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.8. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -8238,7 +8763,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.7. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.8. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
