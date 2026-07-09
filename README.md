@@ -2,7 +2,7 @@
 
 Conservative Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current baseline: **0.8.5 — Twin Unlock Cost Resource Detection Fix**.
+Current baseline: **0.8.7 — Twin Upgrade Opportunity Cost Bypass**.
 
 ## Repository layout
 
@@ -17,6 +17,7 @@ releases/
   0.8.3/                                    # archived release documentation
   0.8.4/                                    # archived release documentation
   0.8.5/                                    # archived release documentation
+  0.8.7/                                    # archived release documentation
 docs/
   SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt
   release-notes/
@@ -46,6 +47,7 @@ The baseline keeps conservative Smart Mode defaults:
 - no auto-ascend
 - no Nightbug/Bat auto-buy
 - no aggressive `buyMaxUnit` in Smart Mode meat-chain planning
+- twin unlock rebuild buffer still enforced by default, with narrow opportunity-cost bypass only when lost production is negligible versus current child-resource bank
 
 ## Validation
 

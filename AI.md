@@ -1,6 +1,6 @@
 # AI.md — SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-script-0.8.5-indexed
+Version: 2026-07-09-script-0.8.7-indexed
 Status: Project source map for ChatGPT/Codex/AI agents.
 
 ## Syfte
@@ -91,6 +91,7 @@ Tekniska fakta:
 - 0.8.3 parent-step conversion hotfix
 - 0.8.4 twin unlock threshold planner hotfix
 - 0.8.5 twin unlock cost resource detection hotfix
+- 0.8.7 twin upgrade opportunity-cost bypass hotfix
 
 ## Nytt i 0.8.0
 
@@ -139,6 +140,13 @@ twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade
 - Twin unlock planner läser nu uppgraderingskostnadens resurs/amount robustare för twin-upgrades där kostresursen inte är active action unit.
 - För Twin Neural Clusters detekteras tröskeln korrekt som Hive Network 1000, med current/missing från faktisk Hive Network-count.
 - Reason-texter skiljer nu på: "could not read twin upgrade cost resource", "invalid twin upgrade threshold amount" och "twin cost resource <name> not on target path <path>".
+
+0.8.7 är en hotfix ovanpå 0.8.5. Den ändrar inte säkra defaults och breddar inte strategin, men lägger till en smal möjlighet att köpa target-path twin-upgrade när enda blockern är rebuild-buffer och opportunity cost är praktiskt försumbar:
+
+- Twin unlock planner kan nu tillåta buyable twin-upgrade trots rebuild-buffer HOLD när tappad child-resource-produktion per timme är under en konservativ andel av aktuell child-resource-bank.
+- Bypassen gäller bara för target-path relevant twin-upgrade med läsbar threshold-kostresurs, utan protected resource-kost.
+- Rebuild-buffern finns kvar och bypass nekas fortsatt när förlorad produktion inte är försumbar.
+- Inspector/export visar nu opportunity-cost bypass-status, reason, lost production per second/hour, bank-ratio per hour, ratio limit och om BUY tilläts trots rebuild-unsafe.
 
 Exempel för live-scenariot:
 
