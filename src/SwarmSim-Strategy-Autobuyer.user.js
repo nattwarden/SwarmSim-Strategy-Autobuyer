@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.1
+// @version      0.8.2
 // @description  Conservative smart advisor/autobuyer with unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -361,6 +361,9 @@
     "Novg",
   ];
 
+  const CLONE_BUFFER_RECOVERY_COMPLETE_PERCENT = 99.9;
+  const CLONE_BUFFER_RECOVERY_COMPLETE_DEBT_RATIO = 0.001;
+
   let config = loadConfig();
   let lastStatus = "Laddar...";
   let purchaseLog = [];
@@ -374,6 +377,8 @@
   let targetAwareUpgradeState = null;
   let unlockPlannerState = null;
   let cloneBufferPlannerState = null;
+  let cloneBufferPostCloneTargetSnapshotRaw = null;
+  let cloneBufferPreviousMode = "none";
   let abilityPrepPlannerState = null;
   let panel = null;
   let strategyBar = null;
@@ -1832,6 +1837,10 @@ function getDisplayName(item) {
       cloneBufferDebt: inspector.cloneBufferDebt,
       cloneBufferSpendableLarvae: inspector.cloneBufferSpendableLarvae,
       cloneBufferLarvaeProtected: inspector.cloneBufferLarvaeProtected,
+      cloneBufferTargetSource: inspector.cloneBufferTargetSource,
+      cloneBufferHardLockActive: inspector.cloneBufferHardLockActive,
+      cloneBufferRecoveryComplete: inspector.cloneBufferRecoveryComplete,
+      cloneBufferCompletionThreshold: inspector.cloneBufferCompletionThreshold,
       cloneBufferReason: inspector.cloneBufferReason,
       abilityPrepCandidate: inspector.abilityPrepCandidate,
       abilityPrepDecision: inspector.abilityPrepDecision,
@@ -1975,6 +1984,10 @@ function getDisplayName(item) {
       cloneBufferDebt: cloneBufferState?.cloneBufferDebt || "0",
       cloneBufferSpendableLarvae: cloneBufferState?.cloneBufferSpendableLarvae || "0",
       cloneBufferLarvaeProtected: cloneBufferState?.cloneBufferLarvaeProtected || "0",
+      cloneBufferTargetSource: cloneBufferState?.cloneBufferTargetSource || "none",
+      cloneBufferHardLockActive: cloneBufferState?.cloneBufferHardLockActive ? "yes" : "no",
+      cloneBufferRecoveryComplete: cloneBufferState?.cloneBufferRecoveryComplete ? "yes" : "no",
+      cloneBufferCompletionThreshold: cloneBufferState?.cloneBufferCompletionThreshold || "n/a",
       cloneBufferReason: cloneBufferState?.cloneBufferReason || "none",
       abilityPrepCandidate: abilityPrepState?.abilityPrepCandidate || "none",
       abilityPrepDecision: abilityPrepState?.abilityPrepDecision || "none",
@@ -1986,7 +1999,7 @@ function getDisplayName(item) {
       houseOfMirrorsArmyValue: abilityPrepState?.houseOfMirrorsArmyValue || "n/a",
       houseOfMirrorsMissingUnits: abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.0 adds Unlock Planner, Clone Buffer Planner and Ability Prep advisor logic; auto-cast and auto-ascend remain conservative/off by default.",
+      futurePlanners: "0.8.2 keeps Unlock Planner, Clone Buffer Planner and Ability Prep advisor logic; auto-cast and auto-ascend remain conservative/off by default.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2058,6 +2071,10 @@ function getDisplayName(item) {
       ["Clone debt", strategyInspector.cloneBufferDebt || "0"],
       ["Spendable larvae", strategyInspector.cloneBufferSpendableLarvae || "0"],
       ["Protected larvae", strategyInspector.cloneBufferLarvaeProtected || "0"],
+      ["Clone target source", strategyInspector.cloneBufferTargetSource || "none"],
+      ["Clone hard lock", strategyInspector.cloneBufferHardLockActive || "no"],
+      ["Clone recovery complete", strategyInspector.cloneBufferRecoveryComplete || "no"],
+      ["Clone completion threshold", strategyInspector.cloneBufferCompletionThreshold || "n/a"],
       ["Clone buffer reason", strategyInspector.cloneBufferReason || "none"],
       ["Ability prep", `${strategyInspector.abilityPrepDecision || "none"} ${strategyInspector.abilityPrepCandidate || "none"}`],
       ["Ability prep reason", strategyInspector.abilityPrepReason || "none"],
@@ -2183,7 +2200,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.1",
+      scriptVersion: "0.8.2",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2244,6 +2261,10 @@ function getDisplayName(item) {
       cloneBufferDebt: strategyInspector?.cloneBufferDebt || cloneBufferPlannerState?.cloneBufferDebt || "0",
       cloneBufferSpendableLarvae: strategyInspector?.cloneBufferSpendableLarvae || cloneBufferPlannerState?.cloneBufferSpendableLarvae || "0",
       cloneBufferLarvaeProtected: strategyInspector?.cloneBufferLarvaeProtected || cloneBufferPlannerState?.cloneBufferLarvaeProtected || "0",
+      cloneBufferTargetSource: strategyInspector?.cloneBufferTargetSource || cloneBufferPlannerState?.cloneBufferTargetSource || "none",
+      cloneBufferHardLockActive: strategyInspector?.cloneBufferHardLockActive || (cloneBufferPlannerState?.cloneBufferHardLockActive ? "yes" : "no"),
+      cloneBufferRecoveryComplete: strategyInspector?.cloneBufferRecoveryComplete || (cloneBufferPlannerState?.cloneBufferRecoveryComplete ? "yes" : "no"),
+      cloneBufferCompletionThreshold: strategyInspector?.cloneBufferCompletionThreshold || cloneBufferPlannerState?.cloneBufferCompletionThreshold || "n/a",
       cloneBufferReason: strategyInspector?.cloneBufferReason || cloneBufferPlannerState?.cloneBufferReason || "none",
       abilityPrepCandidate: strategyInspector?.abilityPrepCandidate || abilityPrepPlannerState?.abilityPrepCandidate || "none",
       abilityPrepDecision: strategyInspector?.abilityPrepDecision || abilityPrepPlannerState?.abilityPrepDecision || "none",
@@ -2340,6 +2361,10 @@ function getDisplayName(item) {
       `- Clone buffer debt: ${payload.cloneBufferDebt || "0"}`,
       `- Clone buffer spendable larvae: ${payload.cloneBufferSpendableLarvae || "0"}`,
       `- Clone buffer larvae protected: ${payload.cloneBufferLarvaeProtected || "0"}`,
+      `- Clone buffer target source: ${payload.cloneBufferTargetSource || "none"}`,
+      `- Clone buffer hard lock: ${payload.cloneBufferHardLockActive || "no"}`,
+      `- Clone buffer recovery complete: ${payload.cloneBufferRecoveryComplete || "no"}`,
+      `- Clone buffer completion threshold: ${payload.cloneBufferCompletionThreshold || "n/a"}`,
       `- Clone buffer reason: ${payload.cloneBufferReason || "none"}`,
       `- Ability prep candidate: ${payload.abilityPrepCandidate || "none"}`,
       `- Ability prep decision: ${payload.abilityPrepDecision || "none"}`,
@@ -3437,16 +3462,48 @@ function getDisplayName(item) {
     return formatDuration(etaSeconds);
   }
 
-  function resolveCloneBufferTarget({ mode, cap, bank }) {
+  function getCloneBufferCompletionThresholdText(absoluteDebtThreshold) {
+    const absoluteText = formatSwarmNumber(absoluteDebtThreshold || 0);
+    return `>= ${trimNumber(CLONE_BUFFER_RECOVERY_COMPLETE_PERCENT)}% or debt/target <= ${trimNumber(CLONE_BUFFER_RECOVERY_COMPLETE_DEBT_RATIO * 100)}% or debt <= ${absoluteText}`;
+  }
+
+  function isCloneBufferRecoveryComplete({ target, cocoons, debt, percent, absoluteDebtThreshold }) {
+    const targetAmount = decimalFrom(target || 0);
+    const cocoonAmount = decimalFrom(cocoons || 0);
+    const debtAmount = decimalFrom(debt || 0);
+    const absoluteThreshold = decimalFrom(absoluteDebtThreshold || 0);
+
+    if (!isPositive(targetAmount)) return true;
+    if (!isPositive(debtAmount)) return true;
+    if (Number.isFinite(percent) && percent >= CLONE_BUFFER_RECOVERY_COMPLETE_PERCENT) return true;
+    if (cocoonAmount.greaterThanOrEqualTo(targetAmount.times(CLONE_BUFFER_RECOVERY_COMPLETE_PERCENT / 100))) return true;
+    if (debtAmount.lessThanOrEqualTo(targetAmount.times(CLONE_BUFFER_RECOVERY_COMPLETE_DEBT_RATIO))) return true;
+    if (isPositive(absoluteThreshold) && debtAmount.lessThanOrEqualTo(absoluteThreshold)) return true;
+
+    return false;
+  }
+
+  function resolveCloneBufferTarget({ mode, cap, bank, snapshotTarget }) {
     const capTarget = decimalFrom(cap || 0);
     const actualBank = decimalFrom(bank || 0);
+    const snapshotBank = decimalFrom(snapshotTarget || 0);
 
     if (mode === "POST_CLONE_LOCK") {
+      if (isPositive(snapshotBank)) {
+        return {
+          target: snapshotBank,
+          source: "actual clone bank/debt snapshot",
+          hardLockActive: true,
+          usingSnapshot: true,
+        };
+      }
+
       if (isPositive(actualBank)) {
         return {
           target: actualBank,
-          source: "actual clone bank/debt",
+          source: "actual clone bank/debt snapshot",
           hardLockActive: true,
+          usingSnapshot: true,
         };
       }
 
@@ -3458,6 +3515,7 @@ function getDisplayName(item) {
         target: capTarget.times(fallbackRatio),
         source: `bounded fallback because actual clone bank unavailable (${trimNumber(fallbackRatio * 100)}% cap reference)`,
         hardLockActive: false,
+        usingSnapshot: false,
       };
     }
 
@@ -3465,11 +3523,14 @@ function getDisplayName(item) {
       target: capTarget,
       source: mode === "BUILDUP" ? "cap reference for buildup" : "cap reference for mature buffer",
       hardLockActive: false,
+      usingSnapshot: false,
     };
   }
 
   function runCloneBufferPlanner(game, commands) {
     if (!config.cloneBufferPlanner || !config.manageCloneLarvaeCocoons) {
+      cloneBufferPostCloneTargetSnapshotRaw = null;
+      cloneBufferPreviousMode = "OFF";
       recordCloneBufferPlannerState({
         cloneBufferMode: "OFF",
         cloneBufferTarget: "0",
@@ -3478,6 +3539,10 @@ function getDisplayName(item) {
         cloneBufferDebt: "0",
         cloneBufferSpendableLarvae: "0",
         cloneBufferLarvaeProtected: "0",
+        cloneBufferTargetSource: "none",
+        cloneBufferRecoveryComplete: true,
+        cloneBufferCompletionThreshold: getCloneBufferCompletionThresholdText(0),
+        cloneBufferHardLockActive: false,
         cloneBufferReason: "clone buffer planner disabled",
         cloneBufferProtectLarvae: false,
         postCloneLockActive: false,
@@ -3490,6 +3555,8 @@ function getDisplayName(item) {
     const larva = getGameUnit(game, "larva");
 
     if (!cloneAbility?.isVisible?.() || !cocoon || !larva) {
+      cloneBufferPostCloneTargetSnapshotRaw = null;
+      cloneBufferPreviousMode = "WAIT";
       recordCloneBufferPlannerState({
         cloneBufferMode: "WAIT",
         cloneBufferTarget: "0",
@@ -3498,6 +3565,10 @@ function getDisplayName(item) {
         cloneBufferDebt: "0",
         cloneBufferSpendableLarvae: formatSwarmNumber(larva?.count?.() || 0),
         cloneBufferLarvaeProtected: "0",
+        cloneBufferTargetSource: "none",
+        cloneBufferRecoveryComplete: true,
+        cloneBufferCompletionThreshold: getCloneBufferCompletionThresholdText(0),
+        cloneBufferHardLockActive: false,
         cloneBufferReason: "Clone Larvae not visible yet",
         cloneBufferProtectLarvae: false,
         postCloneLockActive: false,
@@ -3514,27 +3585,71 @@ function getDisplayName(item) {
     const mode = resolveCloneBufferMode({ cap, bank, larvae, larvaVelocity });
     const protectRatio = getCloneBufferProtectionRatio(mode);
 
-    const targetResolution = resolveCloneBufferTarget({ mode, cap: cap.times(protectRatio), bank });
+    if (mode !== "POST_CLONE_LOCK") {
+      cloneBufferPostCloneTargetSnapshotRaw = null;
+    } else {
+      const enteringPostCloneLock = cloneBufferPreviousMode !== "POST_CLONE_LOCK";
+      if ((enteringPostCloneLock || !isPositive(cloneBufferPostCloneTargetSnapshotRaw)) && isPositive(bank)) {
+        cloneBufferPostCloneTargetSnapshotRaw = decimalFrom(bank);
+      }
+    }
+
+    const targetResolution = resolveCloneBufferTarget({
+      mode,
+      cap: cap.times(protectRatio),
+      bank,
+      snapshotTarget: cloneBufferPostCloneTargetSnapshotRaw,
+    });
+
+    if (mode === "POST_CLONE_LOCK" && targetResolution.usingSnapshot && isPositive(targetResolution.target)) {
+      cloneBufferPostCloneTargetSnapshotRaw = decimalFrom(targetResolution.target);
+    }
+
     const target = targetResolution.target;
     const rawDebt = target.minus(cocoons);
     const debt = rawDebt.greaterThan(0) ? rawDebt : newDecimal(0);
+    const runSeconds = Math.max(1, Number(config.runEverySeconds || DEFAULT_CONFIG.runEverySeconds || 1));
+    const recentLarvaChunk = larvaVelocity.times(runSeconds);
+    const recentCocoonChunk = cocoonVelocity.times(runSeconds);
+    let absoluteDebtThreshold = recentLarvaChunk.greaterThan(recentCocoonChunk) ? recentLarvaChunk : recentCocoonChunk;
+    const thresholdCap = target.times(0.005);
+
+    if (!isPositive(absoluteDebtThreshold)) {
+      absoluteDebtThreshold = newDecimal(1);
+    } else if (isPositive(thresholdCap) && absoluteDebtThreshold.greaterThan(thresholdCap)) {
+      absoluteDebtThreshold = thresholdCap;
+    }
+
+    const percent = isPositive(target) ? decimalToNumber(cocoons.dividedBy(target).times(100), 0) : 100;
+    const recoveryComplete = mode === "POST_CLONE_LOCK"
+      ? isCloneBufferRecoveryComplete({
+        target,
+        cocoons,
+        debt,
+        percent,
+        absoluteDebtThreshold,
+      })
+      : !isPositive(debt);
+    const effectiveDebt = mode === "POST_CLONE_LOCK" && recoveryComplete ? newDecimal(0) : debt;
+    const completionThresholdText = getCloneBufferCompletionThresholdText(absoluteDebtThreshold);
     let larvaeProtected;
     if (mode === "BUILDUP") {
       const maxBuildupProtection = larvae.times(protectRatio);
-      larvaeProtected = decimalMin(debt, maxBuildupProtection);
+      larvaeProtected = decimalMin(effectiveDebt, maxBuildupProtection);
     } else {
-      const desiredProtected = debt.times(protectRatio);
+      const desiredProtected = effectiveDebt.times(protectRatio);
       larvaeProtected = decimalMin(larvae, desiredProtected);
     }
     const rawSpendable = larvae.minus(larvaeProtected);
     const spendableLarvae = rawSpendable.greaterThan(0) ? rawSpendable : newDecimal(0);
-    const percent = isPositive(target) ? decimalToNumber(cocoons.dividedBy(target).times(100), 0) : 100;
-    const hardLockActive = !!targetResolution.hardLockActive && isPositive(debt);
+    const hardLockActive = !!targetResolution.hardLockActive && isPositive(effectiveDebt) && !recoveryComplete;
     const recoveryEta = estimateCloneBufferRecoveryEta(target, cocoons, cocoonVelocity);
 
     const modeReason = mode === "POST_CLONE_LOCK"
       ? hardLockActive
-        ? `post-clone lock active; protecting actual Clone Larvae bank/debt (${formatSwarmNumber(target)} target, ${trimNumber(percent)}% recovered)`
+        ? `post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (${formatSwarmNumber(target)} target, ${trimNumber(percent)}% recovered)`
+        : recoveryComplete
+          ? `post-clone lock complete; recovery threshold met (${trimNumber(percent)}% recovered, debt ${formatSwarmNumber(debt)}); releasing hard lock`
         : `post-clone lock fallback; actual Clone Larvae bank unavailable, using ${targetResolution.source}`
       : mode === "BUILDUP"
         ? "cocoon target is large relative to current larva production; protect partial larvae for cocoons, allow larva-engine/unlock buys"
@@ -3551,13 +3666,15 @@ function getDisplayName(item) {
       cloneBufferSpendableLarvae: formatSwarmNumber(spendableLarvae),
       cloneBufferLarvaeProtected: formatSwarmNumber(larvaeProtected),
       cloneBufferTargetSource: targetResolution.source,
+      cloneBufferRecoveryComplete: recoveryComplete,
+      cloneBufferCompletionThreshold: completionThresholdText,
       cloneBufferRecoveryEta: recoveryEta,
       cloneBufferHardLockActive: hardLockActive,
       cloneBufferReason: modeReason,
       cloneBufferDebtRaw: debt,
       cloneBufferSpendableLarvaeRaw: spendableLarvae,
       cloneBufferLarvaeProtectedRaw: larvaeProtected,
-      cloneBufferProtectLarvae: config.cloneBufferProtectLarvae && (mode !== "BUILDUP" || isPositive(debt)),
+      cloneBufferProtectLarvae: config.cloneBufferProtectLarvae && (mode !== "BUILDUP" || isPositive(effectiveDebt)),
       postCloneLockActive: hardLockActive,
     });
 
@@ -3580,17 +3697,20 @@ function getDisplayName(item) {
     });
 
     if (!hardLockActive) {
+      cloneBufferPreviousMode = mode;
       return { actionTaken: false, bought: 0 };
     }
 
     if (!cocoon?.isVisible?.() || !cocoon?.isBuyable?.()) {
+      cloneBufferPreviousMode = mode;
       recordAdvisor("HOLD", "Clone Buffer", `post-clone lock active but cocoons are not buyable; ${modeReason}`);
       return { actionTaken: false, bought: 0 };
     }
 
     const maxChunk = larvae.floor ? larvae.floor() : larvae;
-    const buyNum = decimalMin(debt, maxChunk);
+    const buyNum = decimalMin(effectiveDebt, maxChunk);
     if (!isPositive(buyNum)) {
+      cloneBufferPreviousMode = mode;
       recordAdvisor("HOLD", "Clone Buffer", "post-clone lock active; no larvae available for cocoon recovery");
       return { actionTaken: false, bought: 0 };
     }
@@ -3609,11 +3729,13 @@ function getDisplayName(item) {
     });
 
     if (config.advisorOnly || !config.autoBuySafeDecisions) {
+      cloneBufferPreviousMode = mode;
       recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(buyNum)} ${getDisplayName(cocoon)} — post-clone lock recovery`);
       return { actionTaken: true, bought: 0, summary: "Would recover clone buffer" };
     }
 
     const didBuy = safe("Clone buffer recovery", () => buyUnitAmount(commands, cocoon, buyNum, "Clone Buffer"));
+    cloneBufferPreviousMode = mode;
     return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed" };
   }
 
@@ -4653,6 +4775,10 @@ function getDisplayName(item) {
       cloneBufferSpendableLarvae: fields.cloneBufferSpendableLarvae || cloneBufferPlannerState?.cloneBufferSpendableLarvae || "0",
       cloneBufferLarvaeProtected: fields.cloneBufferLarvaeProtected || cloneBufferPlannerState?.cloneBufferLarvaeProtected || "0",
       cloneBufferTargetSource: fields.cloneBufferTargetSource || cloneBufferPlannerState?.cloneBufferTargetSource || "none",
+      cloneBufferRecoveryComplete: fields.cloneBufferRecoveryComplete !== undefined
+        ? !!fields.cloneBufferRecoveryComplete
+        : !!cloneBufferPlannerState?.cloneBufferRecoveryComplete,
+      cloneBufferCompletionThreshold: fields.cloneBufferCompletionThreshold || cloneBufferPlannerState?.cloneBufferCompletionThreshold || "n/a",
       cloneBufferRecoveryEta: fields.cloneBufferRecoveryEta || cloneBufferPlannerState?.cloneBufferRecoveryEta || "n/a",
       cloneBufferHardLockActive: !!fields.cloneBufferHardLockActive,
       cloneBufferReason: fields.cloneBufferReason || cloneBufferPlannerState?.cloneBufferReason || "none",
@@ -6788,7 +6914,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.0 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.2 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -6796,7 +6922,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.0. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.2. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -6897,7 +7023,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.0. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.2. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
@@ -7122,7 +7248,7 @@ function getDisplayName(item) {
 
         <label title="Ability-casts är avstängda som standard. Rush-abilities är oftast dåliga här.">
           <input id="kbc-auto-cast-abilities" type="checkbox">
-          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. 0.8.0 planerar abilities i advisor-läge men castar aldrig Clone Larvae eller House of Mirrors automatiskt när detta är av.")}
+          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. 0.8.2 planerar abilities i advisor-läge men castar aldrig Clone Larvae eller House of Mirrors automatiskt när detta är av.")}
         </label>
       </div>
 
@@ -7143,7 +7269,7 @@ function getDisplayName(item) {
 
         <label title="Låt botten ascenda automatiskt när det är möjligt. Lämna normalt avstängt.">
           <input id="kbc-auto-asc" type="checkbox">
-          Auto-ascend (risk / off by default) ${helpIcon("Riskabelt. 0.8.0 ändrar inte ascension automatiskt när detta är av.")}
+          Auto-ascend (risk / off by default) ${helpIcon("Riskabelt. 0.8.2 ändrar inte ascension automatiskt när detta är av.")}
         </label>
 
         <label title="Skriv mer teknisk information i webbläsarens console.">

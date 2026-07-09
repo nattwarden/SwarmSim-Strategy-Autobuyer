@@ -18,4 +18,7 @@ Expected baseline:
 0.8.1/
   README.md
   SwarmSim-Strategy-Autobuyer-0.8.1-release-notes.md
+0.8.2/
+  README.md
+  SwarmSim-Strategy-Autobuyer-0.8.2-release-notes.md
 ```

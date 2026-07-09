@@ -1,6 +1,6 @@
 # AI.md — SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-script-0.8.1-indexed
+Version: 2026-07-09-script-0.8.2-indexed
 Status: Project source map for ChatGPT/Codex/AI agents.
 
 ## Syfte
@@ -50,7 +50,7 @@ Policy från 0.8.0 och framåt:
 Tekniska fakta:
 
 - Script: SwarmSim Strategy Autobuyer
-- Version: 0.8.1
+- Version: 0.8.2
 - Körs på `swarmsim.com`, `www.swarmsim.com`, `swarmsim.github.io`
 - Exponerar botten som `window.kbcSwarmBot`
 - Använder Angular-services: `game`, `commands`, `$rootScope`
@@ -87,6 +87,7 @@ Tekniska fakta:
 - 0.8.0 ability prep planner (advisor-only)
 - 0.8.1 clone buffer target-source hotfix
 - 0.8.1 unlock candidate hotfix
+- 0.8.2 clone buffer post-clone release-threshold hotfix
 
 ## Nytt i 0.8.0
 
@@ -107,6 +108,13 @@ twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade
 
 - Clone Buffer POST_CLONE_LOCK använder faktisk Clone Larvae-bank/debt när den finns, i stället för att falla tillbaka till full cap.
 - Unlock Planner använder aktuell action-enhet som kandidat och rapporterar bottleneck-resursen korrekt.
+
+0.8.2 är en hotfix ovanpå 0.8.1. Den ändrar inte strategin och ändrar inte säkra defaults, men rättar post-clone tail-chasing i Clone Buffer Planner:
+
+- POST_CLONE_LOCK har nu tydlig completion-condition (percent/debt-ratio/absolut liten skuld).
+- Hard lock släpps när återhämtning är effektivt klar i stället för att hårdlåsa vid avrundat 100%.
+- POST_CLONE_LOCK använder snapshotad actual clone bank/debt target-källa för att undvika rörlig måljakt varje tick.
+- Inspector/export visar nu recovery complete, completion threshold, target source och hard lock status.
 
 Exempel för live-scenariot:
 
