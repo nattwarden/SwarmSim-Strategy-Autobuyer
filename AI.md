@@ -206,6 +206,10 @@ Do not introduce as default automation:
   adapter boundary and keep behavior parity unless explicitly changing strategy.
 - For engine lane execution work, use `executeEngineGuardAction(...)` as the
   adapter boundary and keep behavior parity unless explicitly changing strategy.
+- For energy lane execution work, use `executeEnergyGuardAction(...)` as the
+  adapter boundary and keep behavior parity unless explicitly changing strategy.
+- For clone lane execution work, use `executeCloneGuardAction(...)` as the
+  adapter boundary and keep behavior parity unless explicitly changing strategy.
 
 ## Validation
 

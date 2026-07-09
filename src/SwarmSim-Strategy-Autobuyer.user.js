@@ -8107,6 +8107,16 @@ function getDisplayName(item) {
     return handleLarvaEnginePriority(game, commands, engine);
   }
 
+  // Phase 3 extraction: dedicated execution adapter boundary for energy lane.
+  function executeEnergyGuardAction({ game, commands, protectedResources }) {
+    return handleEnergyStrategy(game, commands, protectedResources);
+  }
+
+  // Phase 3 extraction: dedicated execution adapter boundary for clone lane.
+  function executeCloneGuardAction({ game, commands }) {
+    return runCloneBufferPlanner(game, commands);
+  }
+
   function smartRunOnce() {
     if (!config.enabled) {
       lastStatus = "Pausad";
@@ -8224,15 +8234,15 @@ function getDisplayName(item) {
     }
 
     if (canDoMoreMainActions()) {
-      const energyAction = handleEnergyStrategy(game, commands, protectedResources);
+      const energyAction = executeEnergyGuardAction({ game, commands, protectedResources });
       addMainResult("Energy", energyAction);
     }
 
     if (canDoMoreMainActions()) {
-      const cloneBufferAction = runCloneBufferPlanner(game, commands);
+      const cloneBufferAction = executeCloneGuardAction({ game, commands });
       addMainResult("Clone buffer", cloneBufferAction);
     } else {
-      runCloneBufferPlanner(game, commands);
+      executeCloneGuardAction({ game, commands });
     }
 
     if (canDoMoreMainActions()) {
