@@ -89,7 +89,7 @@ Do not use old dated game-model files as active truth.
 Current script version in `src/`:
 
 ```text
-0.8.8
+0.8.9
 ```
 
 Last live-verified baseline documented in release notes:
@@ -98,19 +98,21 @@ Last live-verified baseline documented in release notes:
 0.8.7 - Twin Upgrade Opportunity Cost Bypass
 ```
 
-Current 0.8.8 focus:
+Current 0.8.9 focus:
 
 ```text
-Multi-Lane Coordinator / Territory Starvation Fix
+Methodical Lane Follow-through / Visible Progress Fix
 ```
 
 Reason:
 
-- Meat-chain planning can dominate every run.
-- Territory/Army can remain stuck at OBSERVE while buyable fighting units exist.
-- Ability Prep can report House of Mirrors army prep missing, but no safe army
-  seed action is selected.
-- This is a lane coordination/starvation problem, not a broad meat-chain rewrite.
+- Keep the multi-lane coordinator narrow, but make follow-through more visible in
+  live runs.
+- Territory/Army should produce a bounded main or side action when ROI or army
+  seed logic says the move is correct.
+- Energy/Nexus diagnostics should stay protected without surfacing false active
+  blockers before unlock.
+- Top-level inspector reason should match the action that actually ran.
 
 ## Current live/mechanics findings
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.8
+// @version      0.8.9
 // @description  Methodical smart advisor/autobuyer with multi-lane coordination, territory starvation protection, twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -1558,11 +1558,24 @@ function getDisplayName(item) {
   }
 
   function getPrimaryReasonFromAdvisor(mainActions = 0) {
-    if (Number(mainActions || 0) > 0 && laneCoordinatorState?.primaryActionReason) {
-      return laneCoordinatorState.primaryActionReason;
+    if (Number(mainActions || 0) > 0) {
+      const selectedMainAction = laneCoordinatorState?.selectedLaneActions?.[0] || null;
+      if (selectedMainAction?.reason) {
+        return `${selectedMainAction.lane} BUY ${selectedMainAction.candidate}: ${selectedMainAction.reason}`;
+      }
+
+      if (laneCoordinatorState?.primaryActionReason) {
+        return laneCoordinatorState.primaryActionReason;
+      }
     }
 
     return formatAdvisorReason(latestAdvisorRow(["BUY", "HOLD", "PLAN", "NEXT"]));
+  }
+
+  function getSelectedLaneActionReason(index) {
+    const action = laneCoordinatorState?.selectedLaneActions?.[index] || null;
+    if (!action?.reason) return "none";
+    return `${action.lane} BUY ${action.candidate}: ${action.reason}`;
   }
 
   function getCurrentStrategyPhase(game, engine) {
@@ -2050,6 +2063,7 @@ function getDisplayName(item) {
     const abilityPrepState = abilityPrepPlannerState || null;
     const territoryPrepState = territoryPrepPlannerState || null;
     const coordinatorState = laneCoordinatorState || null;
+    const selectedSideAction = coordinatorState?.selectedLaneActions?.[1] || null;
     const bestAllowedMain = candidateSummary.bestAllowedMainCandidate;
     const bestAllowedSide = candidateSummary.bestAllowedSideCandidate;
     const bestRejectedStrategic = candidateSummary.bestRejectedStrategicCandidate;
@@ -2066,9 +2080,11 @@ function getDisplayName(item) {
       goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
       decision,
       mainDecision: mainLaneDecisionLabel(mainActions, sideActions),
-      sideDecision: Number(sideActions || 0) > 0 ? "Clone Prep" : "none",
+      sideDecision: selectedSideAction ? `${selectedSideAction.lane} BUY` : (Number(sideActions || 0) > 0 ? "Clone Prep" : "none"),
       compactStatus,
       reason,
+      mainReason: getSelectedLaneActionReason(0),
+      sideReason: getSelectedLaneActionReason(1),
       protectedResources: inspectProtectedResources(protectedResources),
       waits: getWaitSignals(game, engine, protectedResources),
       smartFocus: smartFocus || "unknown",
@@ -2206,8 +2222,8 @@ function getDisplayName(item) {
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.8 adds a narrow multi-lane coordinator and conservative territory prep lane while keeping auto-cast and auto-ascend off by default.",
-      recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, Nexus protection on, auto-cast off, auto-ascend off.`,
+      futurePlanners: "0.8.9 keeps the narrow multi-lane coordinator and adds methodical territory follow-through, locked-lane Energy diagnostics, and selected-action reasons while keeping auto-cast and auto-ascend off by default.",
+      recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
 
@@ -2229,6 +2245,8 @@ function getDisplayName(item) {
       ["Side", strategyInspector.sideDecision || "none"],
       ["Status", strategyInspector.compactStatus || "n/a"],
       ["Reason", strategyInspector.reason],
+      ["Main reason", strategyInspector.mainReason || "none"],
+      ["Side reason", strategyInspector.sideReason || "none"],
       ["Best allowed", strategyInspector.bestAllowedAction || "none"],
       ["Best allowed main", strategyInspector.bestAllowedMainAction || "none"],
       ["Best allowed side", strategyInspector.bestAllowedSideAction || "none"],
@@ -2449,7 +2467,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.8",
+      scriptVersion: "0.8.9",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2604,6 +2622,8 @@ function getDisplayName(item) {
       `- Side: ${inspector.sideDecision || "none"}`,
       `- Status: ${inspector.compactStatus || "n/a"}`,
       `- Reason: ${inspector.reason || "n/a"}`,
+      `- Main reason: ${inspector.mainReason || "none"}`,
+      `- Side reason: ${inspector.sideReason || "none"}`,
       `- Best allowed main: ${rankingLine(payload.bestAllowedMainCandidate)}`,
       `- Best allowed side: ${rankingLine(payload.bestAllowedSideCandidate)}`,
       `- Best rejected strategic: ${rankingLine(payload.bestRejectedStrategicCandidate)}`,
@@ -3627,9 +3647,21 @@ function getDisplayName(item) {
     return null;
   }
 
+  function isEnergyLaneUnlockedOrVisible(game) {
+    if (decimalToNumber(getNexusCount(game), 0) > 0) return true;
+    if (getNextNexusUpgrade(game)?.isVisible?.()) return true;
+    if (getGameUnit(game, "energy")?.isVisible?.()) return true;
+    if (getGameUnit(game, "moth")?.isVisible?.()) return true;
+    return false;
+  }
+
   function getEnergyProtectedResources(game) {
     const protectedResources = new Set();
     if (!config.energyStrategy || !config.saveEnergyForNexus) return protectedResources;
+
+    if (!isEnergyLaneUnlockedOrVisible(game)) {
+      return protectedResources;
+    }
 
     const nexusCount = decimalToNumber(getNexusCount(game), 0);
     if (nexusCount < config.nexusTarget) {
@@ -5307,6 +5339,20 @@ function getDisplayName(item) {
 
     const nexusCount = decimalToNumber(getNexusCount(game), 0);
     const nextNexus = getNextNexusUpgrade(game);
+
+    if (nexusCount < config.nexusTarget && !isEnergyLaneUnlockedOrVisible(game)) {
+      addLaneCandidate({
+        lane: "Energy",
+        decision: "OBSERVE",
+        candidate: "Nexus",
+        reason: "locked/unavailable until Energy/Nexus is visible",
+        blockers: ["locked/unavailable"],
+        score: 0,
+        target: `Nexus ${Math.floor(nexusCount) + 1}`,
+        resource: "energy",
+      });
+      return { actionTaken: false, bought: 0, summary: "Energy/Nexus locked" };
+    }
 
     if (nexusCount < config.nexusTarget && nextNexus?.isBuyable?.()) {
       recordAdvisor("BUY", getDisplayName(nextNexus), `Nexus priority: ${Math.floor(nexusCount)} / ${config.nexusTarget}`);
@@ -7690,6 +7736,13 @@ function getDisplayName(item) {
     const starvationCount = getTerritoryStarvationCount();
     const threshold = Math.max(1, Number(config.territoryStarvationRunThreshold || DEFAULT_CONFIG.territoryStarvationRunThreshold));
     const shouldForce = territoryAge >= threshold || starvationCount >= threshold;
+    const territoryRelevant = !!(
+      proposal && (
+        proposal.armySeed ||
+        proposal.meetsMinimum ||
+        (state?.armyPrepMissingUnits && state.armyPrepMissingUnits !== "none")
+      )
+    );
   
     recordLaneCoordinatorState({
       territoryActionAge: territoryAge,
@@ -7706,7 +7759,7 @@ function getDisplayName(item) {
       return { executed: false, bought: 0 };
     }
   
-    if (trigger !== "post-meat" && !shouldForce) {
+    if (trigger !== "post-meat" && !shouldForce && !territoryRelevant) {
       syncCoordinatorHold(`not selected by coordinator: territory starvation age ${territoryAge}/${threshold}`);
       return { executed: false, bought: 0 };
     }
@@ -7927,7 +7980,7 @@ function getDisplayName(item) {
       let actionPaybackBypassNote = "";
 
       if (isMeat && !isFallbackMeat) {
-        // Normal top candidate behavior keeps the existing conservative chain prep.
+        // Normal top candidate behavior keeps the existing methodical chain prep.
         prep = performMeatChainPrep(game, commands, unit, protectedResources);
         boughtCount += prep.bought || 0;
         if (boughtCount > 0) return boughtCount;
@@ -8730,7 +8783,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.8 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.9 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -8738,7 +8791,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.8. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.9. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -8839,7 +8892,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.8. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.9. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 

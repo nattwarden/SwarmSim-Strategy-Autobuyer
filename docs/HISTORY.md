@@ -29,8 +29,8 @@ docs/release-notes/
 - 0.8.5: follow-up planner hardening documented in release notes.
 - 0.8.7: Twin Threshold Reachability Fix plus Twin Upgrade Opportunity Cost
   Bypass on top of the 0.8.5 main baseline.
-- 0.8.8: current script version and current focus for Multi-Lane Coordinator /
-  Territory Starvation Fix.
+- 0.8.8: Multi-Lane Coordinator / Territory Starvation Fix baseline.
+- 0.8.9: Methodical Lane Follow-through / Visible Progress Fix.
 
 ## Documentation posture note
 

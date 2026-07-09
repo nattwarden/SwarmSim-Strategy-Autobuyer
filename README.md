@@ -1,12 +1,12 @@
 # SwarmSim Strategy Autobuyer
 
-Conservative Tampermonkey smart advisor/autobuyer for Swarm Simulator.
+Methodical Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current script version in `src/`: **0.8.8**.
+Current script version in `src/`: **0.8.9**.
 
 Last live-verified baseline: **0.8.7 - Twin Upgrade Opportunity Cost Bypass**.
 
-Current focus: **0.8.8 - Multi-Lane Coordinator / Territory Starvation Fix**.
+Current focus: **0.8.9 - Methodical Lane Follow-through / Visible Progress Fix**.
 
 ## Repository layout
 
@@ -125,7 +125,7 @@ Equivalent explicit steps:
 
 This keeps guardrails strict while still allowing fast app development when needed.
 
-## Current 0.8.8 work
+## Current 0.8.9 work
 
 See:
 
