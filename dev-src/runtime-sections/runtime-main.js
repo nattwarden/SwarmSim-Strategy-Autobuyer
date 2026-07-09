@@ -382,6 +382,7 @@
 
   const CLONE_BUFFER_RECOVERY_COMPLETE_PERCENT = 99.9;
   const CLONE_BUFFER_RECOVERY_COMPLETE_DEBT_RATIO = 0.001;
+  const TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT = 5;
   const HOUSE_OF_MIRRORS_ARMY_TIERS = [
     { key: "culicimorph v", label: "Culicimorph V" },
     { key: "arachnomorph v", label: "Arachnomorph V" },
@@ -398,6 +399,7 @@
   let liveDiagnostics = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
+  let actionUnitRefillState = null;
   let targetAwareUpgradeState = null;
   let unlockPlannerState = null;
   let parentStepPlannerState = null;
@@ -1953,6 +1955,21 @@ function getDisplayName(item) {
       parentStepReserveRatio: inspector.parentStepReserveRatio,
       parentStepPaybackBypassed: inspector.parentStepPaybackBypassed,
       parentStepSupportsActionUnit: inspector.parentStepSupportsActionUnit,
+      parentStepConsumedActionUnit: inspector.parentStepConsumedActionUnit,
+      parentStepConsumedUnit: inspector.parentStepConsumedUnit,
+      actionUnitRefillCandidate: inspector.actionUnitRefillCandidate,
+      actionUnitRefillDecision: inspector.actionUnitRefillDecision,
+      actionUnitRefillReason: inspector.actionUnitRefillReason,
+      actionUnitRefillBlockedBy: inspector.actionUnitRefillBlockedBy,
+      actionUnitRefillReserveRatio: inspector.actionUnitRefillReserveRatio,
+      actionUnitRefillPayback: inspector.actionUnitRefillPayback,
+      actionUnitRefillPaybackBypassed: inspector.actionUnitRefillPaybackBypassed,
+      actionBudgetRemainingAfterParentStep: inspector.actionBudgetRemainingAfterParentStep,
+      followUpActionSelected: inspector.followUpActionSelected,
+      whyNoFollowUpAction: inspector.whyNoFollowUpAction,
+      antiPingpongGuardActive: inspector.antiPingpongGuardActive,
+      antiPingpongGuardAllowedRefill: inspector.antiPingpongGuardAllowedRefill,
+      coordinatorRemainingBudgetReason: inspector.coordinatorRemainingBudgetReason,
       twinUnlockCandidate: inspector.twinUnlockCandidate,
       twinUnlockDecision: inspector.twinUnlockDecision,
       twinUnlockReason: inspector.twinUnlockReason,
@@ -2056,6 +2073,7 @@ function getDisplayName(item) {
     const cloneBufferState = cloneBufferPlannerState || null;
     const abilityPrepState = abilityPrepPlannerState || null;
     const territoryPrepState = territoryPrepPlannerState || null;
+    const refillState = actionUnitRefillState || null;
     const coordinatorState = laneCoordinatorState || null;
     const selectedMainAction = coordinatorState?.selectedLaneActions?.[0] || null;
     const selectedSideAction = coordinatorState?.selectedLaneActions?.[1] || null;
@@ -2064,9 +2082,16 @@ function getDisplayName(item) {
     const bestRejectedStrategic = candidateSummary.bestRejectedStrategicCandidate;
     const noSideReason = selectedSideAction?.reason
       ? selectedSideAction.reason
+      : (refillState?.decision === "HOLD" && refillState?.whyNoFollowUpAction && refillState.whyNoFollowUpAction !== "none"
+        ? `action-unit refill held: ${refillState.whyNoFollowUpAction}`
       : (coordinatorState?.territoryDidNotBuyReason && coordinatorState.territoryDidNotBuyReason !== "none"
         ? coordinatorState.territoryDidNotBuyReason
-        : (bestAllowedSide ? "not selected by coordinator" : (bestRejectedStrategic ? candidateReason(bestRejectedStrategic) : "no side-capable proposal")));
+        : (bestAllowedSide ? "not selected by coordinator" : (bestRejectedStrategic ? candidateReason(bestRejectedStrategic) : "no side-capable proposal"))));
+    const parentStepRefillPreserved = parentStepState?.executed
+      ? (refillState?.followUpActionSelected ? "yes" : "no")
+      : parentStepState?.decision === "BUY"
+        ? "path ready"
+        : "n/a";
     const compactStatus = Number(mainActions || 0) === 0 && Number(sideActions || 0) > 0
       ? "Main lanes held; side-task allowed."
       : Number(mainActions || 0) > 0
@@ -2103,6 +2128,7 @@ function getDisplayName(item) {
       laneCoordinatorDecision: coordinatorState?.coordinatorDecision || mainLaneDecisionLabel(mainActions, sideActions),
       laneCoordinatorSelectedActions: coordinatorState?.selectedLaneActions || [],
       laneCoordinatorSelectedSummary: coordinatorState?.selectedLaneSummary || "none",
+      coordinatorRemainingBudgetReason: coordinatorState?.coordinatorRemainingBudgetReason || refillState?.coordinatorRemainingBudgetReason || "none",
       summaries: summaries?.length ? summaries.slice(0, 4).join("; ") : "none",
       whyWaiting: getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries),
       lanes: summarizeDecisionLanes(laneCandidates),
@@ -2174,6 +2200,20 @@ function getDisplayName(item) {
       parentStepReserveRatio: parentStepState?.reserveRatioText || "n/a",
       parentStepPaybackBypassed: !!parentStepState?.paybackBypassed,
       parentStepSupportsActionUnit: parentStepState?.supportsActionUnit ? "yes" : "no",
+      parentStepConsumedActionUnit: parentStepState?.consumedActionUnit ? "yes" : "no",
+      parentStepConsumedUnit: parentStepState?.consumedUnit || "none",
+      actionUnitRefillCandidate: refillState?.candidate || "none",
+      actionUnitRefillDecision: refillState?.decision || "OBSERVE",
+      actionUnitRefillReason: refillState?.reason || "none",
+      actionUnitRefillBlockedBy: refillState?.blockedBy || "none",
+      actionUnitRefillReserveRatio: refillState?.reserveRatioText || "n/a",
+      actionUnitRefillPayback: refillState?.paybackText || "n/a",
+      actionUnitRefillPaybackBypassed: refillState?.paybackBypassed ? "yes" : "no",
+      actionBudgetRemainingAfterParentStep: String(refillState?.actionBudgetRemainingAfterParentStep ?? 0),
+      followUpActionSelected: refillState?.followUpActionSelected ? "yes" : "no",
+      whyNoFollowUpAction: refillState?.whyNoFollowUpAction || "none",
+      antiPingpongGuardActive: refillState?.antiPingpongGuardActive ? "yes" : "no",
+      antiPingpongGuardAllowedRefill: refillState?.antiPingpongGuardAllowedRefill ? "yes" : "no",
       twinUnlockCandidate: twinUnlockState?.candidate || "none",
       twinUnlockDecision: twinUnlockState?.decision || "none",
       twinUnlockReason: twinUnlockState?.reason || "none",
@@ -2183,7 +2223,11 @@ function getDisplayName(item) {
       twinUnlockCurrent: twinUnlockState?.current || "0",
       twinUnlockRequired: twinUnlockState?.required || "0",
       twinUnlockMissing: twinUnlockState?.missing || "0",
+      twinUnlockRatio: twinUnlockState?.thresholdRatioText || "n/a",
+      twinUnlockNearThresholdRatio: twinUnlockState?.nearThresholdRatioText || "n/a",
       twinUnlockPrepCandidate: twinUnlockState?.prepCandidate || "none",
+      twinUnlockPrepChunk: twinUnlockState?.prepChunk || "0",
+      twinUnlockPrepDecision: twinUnlockState?.prepDecision || twinUnlockState?.decision || "none",
       twinUnlockReserveRatio: twinUnlockState?.reserveRatioText || "n/a",
       twinUnlockPaybackBypassed: !!twinUnlockState?.paybackBypassed,
       twinUnlockPostUpgradeRebuildRatio: twinUnlockState?.postUpgradeRebuildRatioText || "n/a",
@@ -2198,10 +2242,12 @@ function getDisplayName(item) {
       twinUnlockPrepMeaningful: twinUnlockState?.prepMeaningful ? "yes" : "no",
       twinUnlockPrepProgressGainPercent: twinUnlockState?.prepProgressGainPercentText || "n/a",
       twinUnlockPrepProgressGainRequiredPercent: twinUnlockState?.prepProgressGainRequiredPercentText || "n/a",
+      twinUnlockPrepDeferredReason: twinUnlockState?.prepDeferredReason || "none",
       twinUnlockDeferredByParentStep: twinUnlockState?.deferredByParentStep ? "yes" : "no",
       twinUnlockParentStepPreferred: twinUnlockState?.parentStepPreferred ? "yes" : "no",
       twinUnlockWhyParentStepWon: twinUnlockState?.whyParentStepWon || "none",
       twinUnlockWhyPrepDidNotWin: twinUnlockState?.whyTwinPrepDidNotWin || "none",
+      parentStepRefillPreserved,
       cloneBufferMode: cloneBufferState?.cloneBufferMode || "none",
       cloneBufferTarget: cloneBufferState?.cloneBufferTarget || "0",
       cloneBufferCurrent: cloneBufferState?.cloneBufferCurrent || "0",
@@ -2240,7 +2286,7 @@ function getDisplayName(item) {
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.11 keeps the narrow multi-lane coordinator and adds a meaningful Twin Prep gate so tiny prep no longer steals budget from a buyable parent-step path.",
+      futurePlanners: "0.8.13 keeps parent-step refill intact and restores a strict Twin Prep meaningful gate so tiny below-threshold prep chunks stay HOLD/OBSERVE.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2327,6 +2373,21 @@ function getDisplayName(item) {
       ["Parent step reserve", strategyInspector.parentStepReserveRatio || "n/a"],
       ["Parent step bypass", strategyInspector.parentStepPaybackBypassed ? "yes" : "no"],
       ["Parent supports action", strategyInspector.parentStepSupportsActionUnit || "no"],
+      ["Parent consumed action", strategyInspector.parentStepConsumedActionUnit || "no"],
+      ["Parent consumed unit", strategyInspector.parentStepConsumedUnit || "none"],
+      ["Refill candidate", strategyInspector.actionUnitRefillCandidate || "none"],
+      ["Refill decision", strategyInspector.actionUnitRefillDecision || "OBSERVE"],
+      ["Refill reason", strategyInspector.actionUnitRefillReason || "none"],
+      ["Refill blocked by", strategyInspector.actionUnitRefillBlockedBy || "none"],
+      ["Refill reserve", strategyInspector.actionUnitRefillReserveRatio || "n/a"],
+      ["Refill payback", strategyInspector.actionUnitRefillPayback || "n/a"],
+      ["Refill bypass", strategyInspector.actionUnitRefillPaybackBypassed || "no"],
+      ["Budget after parent", strategyInspector.actionBudgetRemainingAfterParentStep || "0"],
+      ["Follow-up selected", strategyInspector.followUpActionSelected || "no"],
+      ["Why no follow-up", strategyInspector.whyNoFollowUpAction || "none"],
+      ["Anti-pingpong active", strategyInspector.antiPingpongGuardActive || "no"],
+      ["Anti-pingpong allows refill", strategyInspector.antiPingpongGuardAllowedRefill || "no"],
+      ["Coordinator remaining-budget reason", strategyInspector.coordinatorRemainingBudgetReason || "none"],
       ["Twin unlock candidate", strategyInspector.twinUnlockCandidate || "none"],
       ["Twin unlock decision", strategyInspector.twinUnlockDecision || "none"],
       ["Twin unlock reason", strategyInspector.twinUnlockReason || "none"],
@@ -2334,7 +2395,11 @@ function getDisplayName(item) {
       ["Twin upgrade", strategyInspector.twinUnlockUpgrade || "none"],
       ["Twin cost resource", strategyInspector.twinUnlockCostResource || "none"],
       ["Twin threshold", `${strategyInspector.twinUnlockCurrent || "0"} / ${strategyInspector.twinUnlockRequired || "0"} (missing ${strategyInspector.twinUnlockMissing || "0"})`],
+      ["Twin ratio", strategyInspector.twinUnlockRatio || "n/a"],
+      ["Twin near-threshold", strategyInspector.twinUnlockNearThresholdRatio || "n/a"],
       ["Twin prep candidate", strategyInspector.twinUnlockPrepCandidate || "none"],
+      ["Twin prep chunk", strategyInspector.twinUnlockPrepChunk || "0"],
+      ["Twin prep decision", strategyInspector.twinUnlockPrepDecision || "none"],
       ["Twin reserve", strategyInspector.twinUnlockReserveRatio || "n/a"],
       ["Twin bypass", strategyInspector.twinUnlockPaybackBypassed ? "yes" : "no"],
       ["Twin rebuild ratio", strategyInspector.twinUnlockPostUpgradeRebuildRatio || "n/a"],
@@ -2349,10 +2414,12 @@ function getDisplayName(item) {
       ["Twin prep meaningful", strategyInspector.twinUnlockPrepMeaningful || "no"],
       ["Twin prep gain", strategyInspector.twinUnlockPrepProgressGainPercent || "n/a"],
       ["Twin prep meaningful gate", strategyInspector.twinUnlockPrepProgressGainRequiredPercent || "n/a"],
+      ["Twin prep deferred reason", strategyInspector.twinUnlockPrepDeferredReason || "none"],
       ["Twin deferred by parent", strategyInspector.twinUnlockDeferredByParentStep || "no"],
       ["Parent preferred over twin", strategyInspector.twinUnlockParentStepPreferred || "no"],
       ["Why parent-step won", strategyInspector.twinUnlockWhyParentStepWon || "none"],
       ["Why twin prep did not win", strategyInspector.twinUnlockWhyPrepDidNotWin || "none"],
+      ["Parent/refill preserved", strategyInspector.parentStepRefillPreserved || "n/a"],
       ["Clone buffer mode", strategyInspector.cloneBufferMode || "none"],
       ["Clone buffer", `${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"})`],
       ["Clone debt", strategyInspector.cloneBufferDebt || "0"],
@@ -2516,7 +2583,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.11",
+      scriptVersion: "0.8.13",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2581,6 +2648,21 @@ function getDisplayName(item) {
       parentStepReserveRatio: strategyInspector?.parentStepReserveRatio || parentStepPlannerState?.reserveRatioText || "n/a",
       parentStepPaybackBypassed: !!(strategyInspector?.parentStepPaybackBypassed || parentStepPlannerState?.paybackBypassed),
       parentStepSupportsActionUnit: strategyInspector?.parentStepSupportsActionUnit || (parentStepPlannerState?.supportsActionUnit ? "yes" : "no"),
+      parentStepConsumedActionUnit: strategyInspector?.parentStepConsumedActionUnit || (parentStepPlannerState?.consumedActionUnit ? "yes" : "no"),
+      parentStepConsumedUnit: strategyInspector?.parentStepConsumedUnit || parentStepPlannerState?.consumedUnit || "none",
+      actionUnitRefillCandidate: strategyInspector?.actionUnitRefillCandidate || actionUnitRefillState?.candidate || "none",
+      actionUnitRefillDecision: strategyInspector?.actionUnitRefillDecision || actionUnitRefillState?.decision || "OBSERVE",
+      actionUnitRefillReason: strategyInspector?.actionUnitRefillReason || actionUnitRefillState?.reason || "none",
+      actionUnitRefillBlockedBy: strategyInspector?.actionUnitRefillBlockedBy || actionUnitRefillState?.blockedBy || "none",
+      actionUnitRefillReserveRatio: strategyInspector?.actionUnitRefillReserveRatio || actionUnitRefillState?.reserveRatioText || "n/a",
+      actionUnitRefillPayback: strategyInspector?.actionUnitRefillPayback || actionUnitRefillState?.paybackText || "n/a",
+      actionUnitRefillPaybackBypassed: strategyInspector?.actionUnitRefillPaybackBypassed || (actionUnitRefillState?.paybackBypassed ? "yes" : "no"),
+      actionBudgetRemainingAfterParentStep: strategyInspector?.actionBudgetRemainingAfterParentStep || String(actionUnitRefillState?.actionBudgetRemainingAfterParentStep ?? 0),
+      followUpActionSelected: strategyInspector?.followUpActionSelected || (actionUnitRefillState?.followUpActionSelected ? "yes" : "no"),
+      whyNoFollowUpAction: strategyInspector?.whyNoFollowUpAction || actionUnitRefillState?.whyNoFollowUpAction || "none",
+      antiPingpongGuardActive: strategyInspector?.antiPingpongGuardActive || (actionUnitRefillState?.antiPingpongGuardActive ? "yes" : "no"),
+      antiPingpongGuardAllowedRefill: strategyInspector?.antiPingpongGuardAllowedRefill || (actionUnitRefillState?.antiPingpongGuardAllowedRefill ? "yes" : "no"),
+      coordinatorRemainingBudgetReason: strategyInspector?.coordinatorRemainingBudgetReason || laneCoordinatorState?.coordinatorRemainingBudgetReason || actionUnitRefillState?.coordinatorRemainingBudgetReason || "none",
       twinUnlockCandidate: strategyInspector?.twinUnlockCandidate || twinUnlockPlannerState?.candidate || "none",
       twinUnlockDecision: strategyInspector?.twinUnlockDecision || twinUnlockPlannerState?.decision || "none",
       twinUnlockReason: strategyInspector?.twinUnlockReason || twinUnlockPlannerState?.reason || "none",
@@ -2590,7 +2672,11 @@ function getDisplayName(item) {
       twinUnlockCurrent: strategyInspector?.twinUnlockCurrent || twinUnlockPlannerState?.current || "0",
       twinUnlockRequired: strategyInspector?.twinUnlockRequired || twinUnlockPlannerState?.required || "0",
       twinUnlockMissing: strategyInspector?.twinUnlockMissing || twinUnlockPlannerState?.missing || "0",
+      twinUnlockRatio: strategyInspector?.twinUnlockRatio || twinUnlockPlannerState?.thresholdRatioText || "n/a",
+      twinUnlockNearThresholdRatio: strategyInspector?.twinUnlockNearThresholdRatio || twinUnlockPlannerState?.nearThresholdRatioText || "n/a",
       twinUnlockPrepCandidate: strategyInspector?.twinUnlockPrepCandidate || twinUnlockPlannerState?.prepCandidate || "none",
+      twinUnlockPrepChunk: strategyInspector?.twinUnlockPrepChunk || twinUnlockPlannerState?.prepChunk || "0",
+      twinUnlockPrepDecision: strategyInspector?.twinUnlockPrepDecision || twinUnlockPlannerState?.prepDecision || twinUnlockPlannerState?.decision || "none",
       twinUnlockReserveRatio: strategyInspector?.twinUnlockReserveRatio || twinUnlockPlannerState?.reserveRatioText || "n/a",
       twinUnlockPaybackBypassed: !!(strategyInspector?.twinUnlockPaybackBypassed || twinUnlockPlannerState?.paybackBypassed),
       twinUnlockPostUpgradeRebuildRatio: strategyInspector?.twinUnlockPostUpgradeRebuildRatio || twinUnlockPlannerState?.postUpgradeRebuildRatioText || "n/a",
@@ -2605,10 +2691,12 @@ function getDisplayName(item) {
       twinUnlockPrepMeaningful: strategyInspector?.twinUnlockPrepMeaningful || (twinUnlockPlannerState?.prepMeaningful ? "yes" : "no"),
       twinUnlockPrepProgressGainPercent: strategyInspector?.twinUnlockPrepProgressGainPercent || twinUnlockPlannerState?.prepProgressGainPercentText || "n/a",
       twinUnlockPrepProgressGainRequiredPercent: strategyInspector?.twinUnlockPrepProgressGainRequiredPercent || twinUnlockPlannerState?.prepProgressGainRequiredPercentText || "n/a",
+      twinUnlockPrepDeferredReason: strategyInspector?.twinUnlockPrepDeferredReason || twinUnlockPlannerState?.prepDeferredReason || "none",
       twinUnlockDeferredByParentStep: strategyInspector?.twinUnlockDeferredByParentStep || (twinUnlockPlannerState?.deferredByParentStep ? "yes" : "no"),
       twinUnlockParentStepPreferred: strategyInspector?.twinUnlockParentStepPreferred || (twinUnlockPlannerState?.parentStepPreferred ? "yes" : "no"),
       twinUnlockWhyParentStepWon: strategyInspector?.twinUnlockWhyParentStepWon || twinUnlockPlannerState?.whyParentStepWon || "none",
       twinUnlockWhyPrepDidNotWin: strategyInspector?.twinUnlockWhyPrepDidNotWin || twinUnlockPlannerState?.whyTwinPrepDidNotWin || "none",
+      parentStepRefillPreserved: strategyInspector?.parentStepRefillPreserved || "n/a",
       cloneBufferMode: strategyInspector?.cloneBufferMode || cloneBufferPlannerState?.cloneBufferMode || "none",
       cloneBufferTarget: strategyInspector?.cloneBufferTarget || cloneBufferPlannerState?.cloneBufferTarget || "0",
       cloneBufferCurrent: strategyInspector?.cloneBufferCurrent || cloneBufferPlannerState?.cloneBufferCurrent || "0",
@@ -2737,6 +2825,21 @@ function getDisplayName(item) {
       `- Parent step reserve ratio: ${payload.parentStepReserveRatio || "n/a"}`,
       `- Parent step payback bypassed: ${payload.parentStepPaybackBypassed ? "yes" : "no"}`,
       `- Parent step supports action unit: ${payload.parentStepSupportsActionUnit || "no"}`,
+      `- Parent step consumed action unit: ${payload.parentStepConsumedActionUnit || "no"}`,
+      `- Parent step consumed unit: ${payload.parentStepConsumedUnit || "none"}`,
+      `- Action-unit refill candidate: ${payload.actionUnitRefillCandidate || "none"}`,
+      `- Action-unit refill decision: ${payload.actionUnitRefillDecision || "OBSERVE"}`,
+      `- Action-unit refill reason: ${payload.actionUnitRefillReason || "none"}`,
+      `- Action-unit refill blocked by: ${payload.actionUnitRefillBlockedBy || "none"}`,
+      `- Action-unit refill reserve ratio: ${payload.actionUnitRefillReserveRatio || "n/a"}`,
+      `- Action-unit refill payback: ${payload.actionUnitRefillPayback || "n/a"}`,
+      `- Action-unit refill payback bypassed: ${payload.actionUnitRefillPaybackBypassed || "no"}`,
+      `- Action budget remaining after parent-step: ${payload.actionBudgetRemainingAfterParentStep || "0"}`,
+      `- Follow-up action selected: ${payload.followUpActionSelected || "no"}`,
+      `- Why no follow-up action: ${payload.whyNoFollowUpAction || "none"}`,
+      `- Anti-pingpong guard active: ${payload.antiPingpongGuardActive || "no"}`,
+      `- Anti-pingpong guard allowed refill: ${payload.antiPingpongGuardAllowedRefill || "no"}`,
+      `- Coordinator remaining-budget reason: ${payload.coordinatorRemainingBudgetReason || "none"}`,
       `- Twin unlock candidate: ${payload.twinUnlockCandidate || "none"}`,
       `- Twin unlock decision: ${payload.twinUnlockDecision || "none"}`,
       `- Twin unlock reason: ${payload.twinUnlockReason || "none"}`,
@@ -2744,7 +2847,11 @@ function getDisplayName(item) {
       `- Twin unlock upgrade: ${payload.twinUnlockUpgrade || "none"}`,
       `- Twin unlock cost resource: ${payload.twinUnlockCostResource || "none"}`,
       `- Twin unlock threshold: ${payload.twinUnlockCurrent || "0"} / ${payload.twinUnlockRequired || "0"} (missing ${payload.twinUnlockMissing || "0"})`,
+      `- Twin unlock ratio: ${payload.twinUnlockRatio || "n/a"}`,
+      `- Twin unlock near-threshold ratio: ${payload.twinUnlockNearThresholdRatio || "n/a"}`,
       `- Twin unlock prep candidate: ${payload.twinUnlockPrepCandidate || "none"}`,
+      `- Twin unlock prep chunk: ${payload.twinUnlockPrepChunk || "0"}`,
+      `- Twin unlock prep decision: ${payload.twinUnlockPrepDecision || "none"}`,
       `- Twin unlock reserve ratio: ${payload.twinUnlockReserveRatio || "n/a"}`,
       `- Twin unlock payback bypassed: ${payload.twinUnlockPaybackBypassed ? "yes" : "no"}`,
       `- Twin unlock post-upgrade rebuild ratio: ${payload.twinUnlockPostUpgradeRebuildRatio || "n/a"}`,
@@ -2759,10 +2866,12 @@ function getDisplayName(item) {
       `- Twin prep meaningful: ${payload.twinUnlockPrepMeaningful || "no"}`,
       `- Twin prep progress gain: ${payload.twinUnlockPrepProgressGainPercent || "n/a"}`,
       `- Twin prep meaningful gate: ${payload.twinUnlockPrepProgressGainRequiredPercent || "n/a"}`,
+      `- Twin prep deferred reason: ${payload.twinUnlockPrepDeferredReason || "none"}`,
       `- Twin deferred by parent step: ${payload.twinUnlockDeferredByParentStep || "no"}`,
       `- Parent step preferred over twin prep: ${payload.twinUnlockParentStepPreferred || "no"}`,
       `- Why parent step won: ${payload.twinUnlockWhyParentStepWon || "none"}`,
       `- Why twin prep did not win: ${payload.twinUnlockWhyPrepDidNotWin || "none"}`,
+      `- Parent-step/refill preserved: ${payload.parentStepRefillPreserved || "n/a"}`,
       `- Clone buffer mode: ${payload.cloneBufferMode || "none"}`,
       `- Clone buffer current/target: ${payload.cloneBufferCurrent || "0"} / ${payload.cloneBufferTarget || "0"}`,
       `- Clone buffer percent: ${payload.cloneBufferPercent || "n/a"}`,
@@ -4925,8 +5034,19 @@ function getDisplayName(item) {
       const prepGainPercent = isPositive(twinRequiredRaw)
         ? decimalToNumber(decimalFrom(prepNum).dividedBy(twinRequiredRaw).times(100), 0)
         : 0;
+      const thresholdRatioText = `${trimNumber(twinThresholdRatio * 100)}%`;
+      const nearThresholdRatioText = `${trimNumber(twinNearRatioRequired * 100)}%`;
+      const prepChunkText = formatSwarmNumber(prepNum);
+      const prepReachesThreshold = isPositive(twinRequiredRaw)
+        ? decimalFrom(twinCurrentRaw).plus(prepNum).greaterThanOrEqualTo(twinRequiredRaw)
+        : false;
+      const prepGainMeaningful = prepGainPercent >= TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT;
       const parentStepPreferred = !!(parentChoice && parentSupportsActionUnit && parentChoice.decision === "BUY");
-      const twinPrepMeaningful = twinNearEnough || prepGainPercent >= 5 || decimalFrom(prepNum).greaterThanOrEqualTo(twinMissing) || !parentStepPreferred;
+      const twinPrepMeaningful = twinNearEnough || prepReachesThreshold || prepGainMeaningful;
+      const twinPrepTooFarReason = `Twin prep HOLD: threshold too far (${thresholdRatioText} < ${nearThresholdRatioText}); chunk +${prepChunkText} ${twinCostUnitName} advances only ${trimNumber(prepGainPercent)}% of required threshold and is not meaningful yet`;
+      const twinPrepDeferredReason = parentStepPreferred
+        ? `${twinPrepTooFarReason}; parent-step target path is available: ${parentChoice.reason}`
+        : `${twinPrepTooFarReason}; parent-step/refill not currently available, so budget stays unused until a meaningful target-path action appears`;
 
       if (protectedPrepCost) {
         recordTwinUnlockPlannerState({
@@ -4939,18 +5059,23 @@ function getDisplayName(item) {
           current: formatSwarmNumber(twinCurrentRaw),
           required: formatSwarmNumber(twinRequiredRaw),
           missing: formatSwarmNumber(twinMissing),
+          thresholdRatio: twinThresholdRatio,
+          nearThresholdRatio: twinNearRatioRequired,
           prepCandidate: twinPrepCandidateName,
+          prepChunk: prepChunkText,
+          prepDecision: "HOLD",
           reserveRatio: NaN,
           paybackBypassed: false,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
           prepMeaningful: false,
           prepProgressGainPercent: prepGainPercent,
-          prepProgressGainRequiredPercent: 5,
+          prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
+          prepDeferredReason: "protected resource",
           deferredByParentStep: parentStepPreferred,
           parentStepPreferred,
           whyParentStepWon: parentStepPreferred ? parentChoice.reason : "none",
-          whyTwinPrepDidNotWin: parentStepPreferred ? `deferred: threshold too far and parent-step target path is buyable; prep gain ${trimNumber(prepGainPercent)}% of required is below 5% meaningful gate` : "none",
+          whyTwinPrepDidNotWin: parentStepPreferred ? twinPrepDeferredReason : "protected resource",
         });
       } else if (!isPositive(prepNum)) {
         recordTwinUnlockPlannerState({
@@ -4963,21 +5088,26 @@ function getDisplayName(item) {
           current: formatSwarmNumber(twinCurrentRaw),
           required: formatSwarmNumber(twinRequiredRaw),
           missing: formatSwarmNumber(twinMissing),
+          thresholdRatio: twinThresholdRatio,
+          nearThresholdRatio: twinNearRatioRequired,
           prepCandidate: twinPrepCandidateName,
+          prepChunk: prepChunkText,
+          prepDecision: "HOLD",
           reserveRatio: NaN,
           paybackBypassed: false,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
           prepMeaningful: false,
           prepProgressGainPercent: prepGainPercent,
-          prepProgressGainRequiredPercent: 5,
+          prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
+          prepDeferredReason: "threshold prep has no safe chunk this run",
           deferredByParentStep: parentStepPreferred,
           parentStepPreferred,
           whyParentStepWon: parentStepPreferred ? parentChoice.reason : "none",
-          whyTwinPrepDidNotWin: parentStepPreferred ? `deferred: threshold too far and parent-step target path is buyable; prep gain ${trimNumber(prepGainPercent)}% of required is below 5% meaningful gate` : "no safe chunk this run",
+          whyTwinPrepDidNotWin: parentStepPreferred ? twinPrepDeferredReason : "no safe chunk this run",
         });
-      } else if (parentStepPreferred && !twinPrepMeaningful) {
-        const reason = `deferred: threshold too far and parent-step target path is buyable; prep gain ${trimNumber(prepGainPercent)}% of required is below 5% meaningful gate; prefer ${parentUnitName} for ${targetName}`;
+      } else if (!twinPrepMeaningful) {
+        const reason = twinPrepDeferredReason;
         recordTwinUnlockPlannerState({
           candidate: twinUpgradeName,
           decision: "HOLD",
@@ -4988,17 +5118,22 @@ function getDisplayName(item) {
           current: formatSwarmNumber(twinCurrentRaw),
           required: formatSwarmNumber(twinRequiredRaw),
           missing: formatSwarmNumber(twinMissing),
+          thresholdRatio: twinThresholdRatio,
+          nearThresholdRatio: twinNearRatioRequired,
           prepCandidate: twinPrepCandidateName,
+          prepChunk: prepChunkText,
+          prepDecision: "HOLD",
           reserveRatio: NaN,
           paybackBypassed: false,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
           prepMeaningful: false,
           prepProgressGainPercent: prepGainPercent,
-          prepProgressGainRequiredPercent: 5,
-          deferredByParentStep: true,
-          parentStepPreferred: true,
-          whyParentStepWon: parentChoice.reason,
+          prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
+          prepDeferredReason: reason,
+          deferredByParentStep: parentStepPreferred,
+          parentStepPreferred,
+          whyParentStepWon: parentStepPreferred ? parentChoice.reason : "none",
           whyTwinPrepDidNotWin: reason,
         });
         recordAdvisor("HOLD", twinUpgradeName, reason);
@@ -5007,10 +5142,12 @@ function getDisplayName(item) {
           decision: "HOLD",
           candidate: twinUpgradeName,
           reason,
-          blockers: ["parent-step preferred", "twin prep too small"],
+          blockers: parentStepPreferred ? ["parent-step preferred", "twin prep too small"] : ["threshold too far", "twin prep too small"],
           observations: [
+            `ratio ${thresholdRatioText} vs near-threshold ${nearThresholdRatioText}`,
             `prep gain ${trimNumber(prepGainPercent)}% of required`,
-            `parent step ready: ${parentUnitName}`,
+            `prep chunk +${prepChunkText} ${twinCostUnitName}`,
+            parentStepPreferred ? `parent step ready: ${parentUnitName}` : `parent step unavailable: ${parentStepPlannerState?.reason || "none"}`,
           ],
           score: unitCostScore(twinUpgrade) + 7800,
           target: twinDecisionTarget,
@@ -5021,7 +5158,7 @@ function getDisplayName(item) {
         const reserveRatio = rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
         const requiredRatio = Number(config.twinUnlockMinReserveRatio || DEFAULT_CONFIG.twinUnlockMinReserveRatio);
         const reachabilityPrefix = !twinNearEnough
-          ? `threshold reachability prep below near-threshold ratio (${trimNumber(twinThresholdRatio * 100)}% < required ${trimNumber(twinNearRatioRequired * 100)}%)`
+          ? `Twin prep near-threshold not reached yet (${thresholdRatioText} < required ${nearThresholdRatioText}), but chunk is meaningful`
           : "threshold prep";
         let decision = "BUY";
         let paybackBypassed = false;
@@ -5054,14 +5191,19 @@ function getDisplayName(item) {
           current: formatSwarmNumber(twinCurrentRaw),
           required: formatSwarmNumber(twinRequiredRaw),
           missing: formatSwarmNumber(twinMissing),
+          thresholdRatio: twinThresholdRatio,
+          nearThresholdRatio: twinNearRatioRequired,
           prepCandidate: twinPrepCandidateName,
+          prepChunk: prepChunkText,
+          prepDecision: decision,
           reserveRatio,
           paybackBypassed,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
           prepMeaningful: twinPrepMeaningful,
           prepProgressGainPercent: prepGainPercent,
-          prepProgressGainRequiredPercent: 5,
+          prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
+          prepDeferredReason: decision === "HOLD" ? reason : "none",
           deferredByParentStep: false,
           parentStepPreferred,
           whyParentStepWon: parentStepPreferred ? parentChoice.reason : "none",
@@ -5099,14 +5241,19 @@ function getDisplayName(item) {
               current: formatSwarmNumber(twinCurrentRaw),
               required: formatSwarmNumber(twinRequiredRaw),
               missing: formatSwarmNumber(twinMissing),
+              thresholdRatio: twinThresholdRatio,
+              nearThresholdRatio: twinNearRatioRequired,
               prepCandidate: twinPrepCandidateName,
+              prepChunk: prepChunkText,
+              prepDecision: "BUY",
               reserveRatio,
               paybackBypassed,
               postUpgradeRebuildRatio: NaN,
               rebuildSafe: false,
               prepMeaningful: twinPrepMeaningful,
               prepProgressGainPercent: prepGainPercent,
-              prepProgressGainRequiredPercent: 5,
+              prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
+              prepDeferredReason: "none",
               deferredByParentStep: false,
               parentStepPreferred,
               whyParentStepWon: parentChoice?.reason || "none",
@@ -5264,6 +5411,7 @@ function getDisplayName(item) {
 
     const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, num, parentChoice ? "Parent Step" : "Unlock Step"));
     if (didBuy && parentChoice) {
+      const consumedActionUnit = !!parentSupportsActionUnit && String(bottleneckResource || "") === String(actionUnitName || "");
       recordParentStepPlannerState({
         candidate: candidateName,
         decision: "BUY",
@@ -5274,6 +5422,8 @@ function getDisplayName(item) {
         reserveRatio,
         paybackBypassed,
         supportsActionUnit: parentSupportsActionUnit,
+        consumedActionUnit,
+        consumedUnit: consumedActionUnit ? actionUnitName : "none",
         executed: true,
       });
     }
@@ -6099,8 +6249,8 @@ function getDisplayName(item) {
   }
   
   // Phase 3 extraction: dedicated execution adapter boundary for meat lane.
-  function executeMeatGuardAction({ game, commands, protectedResources }) {
-    return handleMeatGoalPlanner(game, commands, protectedResources);
+  function executeMeatGuardAction({ game, commands, protectedResources, remainingActions = 0 }) {
+    return handleMeatGoalPlanner(game, commands, protectedResources, remainingActions);
   }
   // <build:section:adapter-territory-meat:end>
 
@@ -6446,6 +6596,8 @@ function getDisplayName(item) {
       reserveRatioText: Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a",
       paybackBypassed: !!fields.paybackBypassed,
       supportsActionUnit: !!fields.supportsActionUnit,
+      consumedActionUnit: !!fields.consumedActionUnit,
+      consumedUnit: fields.consumedUnit || (fields.consumedActionUnit ? (fields.actionUnit || "none") : "none"),
       executed: !!fields.executed,
     };
 
@@ -6470,7 +6622,13 @@ function getDisplayName(item) {
       current: fields.current || twinUnlockPlannerState?.current || "0",
       required: fields.required || twinUnlockPlannerState?.required || "0",
       missing: fields.missing || twinUnlockPlannerState?.missing || "0",
+      thresholdRatio: Number.isFinite(Number(fields.thresholdRatio)) ? Number(fields.thresholdRatio) : (twinUnlockPlannerState?.thresholdRatio ?? null),
+      thresholdRatioText: Number.isFinite(Number(fields.thresholdRatio)) ? `${trimNumber(Number(fields.thresholdRatio) * 100)}%` : (twinUnlockPlannerState?.thresholdRatioText || "n/a"),
+      nearThresholdRatio: Number.isFinite(Number(fields.nearThresholdRatio)) ? Number(fields.nearThresholdRatio) : (twinUnlockPlannerState?.nearThresholdRatio ?? null),
+      nearThresholdRatioText: Number.isFinite(Number(fields.nearThresholdRatio)) ? `${trimNumber(Number(fields.nearThresholdRatio) * 100)}%` : (twinUnlockPlannerState?.nearThresholdRatioText || "n/a"),
       prepCandidate: fields.prepCandidate || twinUnlockPlannerState?.prepCandidate || "none",
+      prepChunk: fields.prepChunk || twinUnlockPlannerState?.prepChunk || "0",
+      prepDecision: fields.prepDecision || fields.decision || twinUnlockPlannerState?.prepDecision || twinUnlockPlannerState?.decision || "OBSERVE",
       reserveRatio: Number.isFinite(reserveRatio) ? reserveRatio : null,
       reserveRatioText: Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a",
       paybackBypassed: !!fields.paybackBypassed,
@@ -6493,6 +6651,7 @@ function getDisplayName(item) {
       prepProgressGainPercentText: Number.isFinite(prepProgressGainPercent) ? `${trimNumber(prepProgressGainPercent)}%` : "n/a",
       prepProgressGainRequiredPercent: Number.isFinite(prepProgressGainRequiredPercent) ? prepProgressGainRequiredPercent : null,
       prepProgressGainRequiredPercentText: Number.isFinite(prepProgressGainRequiredPercent) ? `${trimNumber(prepProgressGainRequiredPercent)}%` : "n/a",
+      prepDeferredReason: fields.prepDeferredReason || twinUnlockPlannerState?.prepDeferredReason || "none",
       deferredByParentStep: !!fields.deferredByParentStep,
       parentStepPreferred: !!fields.parentStepPreferred,
       whyParentStepWon: fields.whyParentStepWon || twinUnlockPlannerState?.whyParentStepWon || "none",
@@ -6582,12 +6741,41 @@ function getDisplayName(item) {
       selectedLaneLabels: fields.selectedLaneLabels || laneCoordinatorState?.selectedLaneLabels || [],
       selectedLaneSummary: fields.selectedLaneSummary || laneCoordinatorState?.selectedLaneSummary || "none",
       primaryActionReason: fields.primaryActionReason || laneCoordinatorState?.primaryActionReason || "",
+      coordinatorRemainingBudgetReason: fields.coordinatorRemainingBudgetReason || laneCoordinatorState?.coordinatorRemainingBudgetReason || "none",
       territoryActionAge: Number.isFinite(Number(fields.territoryActionAge)) ? Number(fields.territoryActionAge) : (laneCoordinatorState?.territoryActionAge ?? getLaneActionAge("Territory")),
       territoryStarvationCount: Number.isFinite(Number(fields.territoryStarvationCount)) ? Number(fields.territoryStarvationCount) : (laneCoordinatorState?.territoryStarvationCount ?? getTerritoryStarvationCount()),
       territoryDidNotBuyReason: fields.territoryDidNotBuyReason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
     };
 
     return laneCoordinatorState;
+  }
+
+  function recordActionUnitRefillState(fields = {}) {
+    const reserveRatio = Number(fields.reserveRatio);
+    const paybackSeconds = Number(fields.paybackSeconds);
+    const budgetRemaining = Number(fields.actionBudgetRemainingAfterParentStep);
+
+    actionUnitRefillState = {
+      candidate: fields.candidate || actionUnitRefillState?.candidate || "none",
+      decision: fields.decision || actionUnitRefillState?.decision || "OBSERVE",
+      reason: fields.reason || actionUnitRefillState?.reason || "none",
+      blockedBy: fields.blockedBy || actionUnitRefillState?.blockedBy || "none",
+      reserveRatio: Number.isFinite(reserveRatio) ? reserveRatio : null,
+      reserveRatioText: Number.isFinite(reserveRatio) ? `${trimNumber(reserveRatio)}x` : "n/a",
+      paybackSeconds: Number.isFinite(paybackSeconds) ? paybackSeconds : null,
+      paybackText: Number.isFinite(paybackSeconds) ? formatDuration(paybackSeconds) : "n/a",
+      paybackBypassed: !!fields.paybackBypassed,
+      parentStepConsumedActionUnit: !!fields.parentStepConsumedActionUnit,
+      parentStepConsumedUnit: fields.parentStepConsumedUnit || actionUnitRefillState?.parentStepConsumedUnit || "none",
+      actionBudgetRemainingAfterParentStep: Number.isFinite(budgetRemaining) ? Math.max(0, budgetRemaining) : (actionUnitRefillState?.actionBudgetRemainingAfterParentStep ?? 0),
+      followUpActionSelected: !!fields.followUpActionSelected,
+      whyNoFollowUpAction: fields.whyNoFollowUpAction || actionUnitRefillState?.whyNoFollowUpAction || "none",
+      antiPingpongGuardActive: !!fields.antiPingpongGuardActive,
+      antiPingpongGuardAllowedRefill: !!fields.antiPingpongGuardAllowedRefill,
+      coordinatorRemainingBudgetReason: fields.coordinatorRemainingBudgetReason || actionUnitRefillState?.coordinatorRemainingBudgetReason || "none",
+    };
+
+    return actionUnitRefillState;
   }
 
   function getCurrentMeatActionUnitPaybackState(game) {
@@ -7664,7 +7852,327 @@ function getDisplayName(item) {
     return didBuy ? 1 : 0;
   }
 
-  function handleMeatGoalPlanner(game, commands, protectedResources) {
+  function parentStepRefillBlockedByProtectedResource(resourceName) {
+    const resource = String(resourceName || "").toLowerCase();
+    if (resource === "meat") return "blocked by Hatchery save-window";
+    if (resource === "territory") return "blocked by Expansion save-window";
+    if (resource === "larva" && cloneBufferPlannerState?.cloneBufferHardLockActive) return "blocked by clone buffer";
+    if (resource === "larva") return "blocked by larva reserve";
+    if (resource === "energy") return "blocked by reserve";
+    return "blocked by reserve";
+  }
+
+  function runParentStepActionUnitRefillPass(game, commands, plan, protectedResources, remainingActions = 0) {
+    const targetLabel = getDisplayName(plan?.target);
+    const actionUnit = plan?.actionUnit;
+    const actionLabel = getDisplayName(actionUnit);
+    const parentName = parentStepPlannerState?.candidate || "parent step";
+    const budgetRemaining = Math.max(0, Number(remainingActions || 0));
+    const antiPingpongGuardActive = !!parentStepPlannerState?.executed;
+    const consumedActionUnit = !!parentStepPlannerState?.consumedActionUnit;
+    const consumedUnit = parentStepPlannerState?.consumedUnit || "none";
+    const actionOnPath = isUnitOnPlanPath(plan, actionUnit);
+    const antiPingpongAllowsRefill = antiPingpongGuardActive && consumedActionUnit && actionOnPath;
+
+    recordActionUnitRefillState({
+      candidate: actionLabel,
+      decision: "OBSERVE",
+      reason: "evaluating parent-step refill pass",
+      blockedBy: "none",
+      reserveRatio: NaN,
+      paybackSeconds: NaN,
+      paybackBypassed: false,
+      parentStepConsumedActionUnit: consumedActionUnit,
+      parentStepConsumedUnit: consumedUnit,
+      actionBudgetRemainingAfterParentStep: budgetRemaining,
+      followUpActionSelected: false,
+      whyNoFollowUpAction: "none",
+      antiPingpongGuardActive,
+      antiPingpongGuardAllowedRefill: antiPingpongAllowsRefill,
+      coordinatorRemainingBudgetReason: "none",
+    });
+
+    if (budgetRemaining < 1) {
+      const reason = "blocked by coordinator single-main limit";
+      recordAdvisor("HOLD", actionLabel, reason);
+      addLaneCandidate({
+        lane: "Meat",
+        decision: "HOLD",
+        candidate: actionLabel,
+        reason,
+        blockers: ["coordinator single-main limit"],
+        score: unitCostScore(actionUnit),
+        target: targetLabel,
+        resource: actionLabel,
+      });
+      recordActionUnitRefillState({
+        candidate: actionLabel,
+        decision: "HOLD",
+        reason,
+        blockedBy: reason,
+        reserveRatio: NaN,
+        paybackSeconds: NaN,
+        paybackBypassed: false,
+        parentStepConsumedActionUnit: consumedActionUnit,
+        parentStepConsumedUnit: consumedUnit,
+        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        followUpActionSelected: false,
+        whyNoFollowUpAction: reason,
+        antiPingpongGuardActive,
+        antiPingpongGuardAllowedRefill: antiPingpongAllowsRefill,
+        coordinatorRemainingBudgetReason: reason,
+      });
+      return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Parent step conversion ${parentName}`, noFollowUpReason: reason };
+    }
+
+    if (!antiPingpongAllowsRefill) {
+      const reason = "blocked by anti-pingpong because refill would undo parent-step without target gain";
+      recordAdvisor("HOLD", actionLabel, reason);
+      addLaneCandidate({
+        lane: "Meat",
+        decision: "HOLD",
+        candidate: actionLabel,
+        reason,
+        blockers: ["anti-pingpong"],
+        score: unitCostScore(actionUnit),
+        target: targetLabel,
+        resource: actionLabel,
+      });
+      recordActionUnitRefillState({
+        candidate: actionLabel,
+        decision: "HOLD",
+        reason,
+        blockedBy: reason,
+        reserveRatio: NaN,
+        paybackSeconds: NaN,
+        paybackBypassed: false,
+        parentStepConsumedActionUnit: consumedActionUnit,
+        parentStepConsumedUnit: consumedUnit,
+        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        followUpActionSelected: false,
+        whyNoFollowUpAction: reason,
+        antiPingpongGuardActive,
+        antiPingpongGuardAllowedRefill: false,
+        coordinatorRemainingBudgetReason: reason,
+      });
+      return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Parent step conversion ${parentName}`, noFollowUpReason: reason };
+    }
+
+    if (!canPlannerBuyUnit(actionUnit)) {
+      const reason = `${actionLabel} is not buyable yet`;
+      const blockedBy = "blocked by no safe chunk";
+      recordAdvisor("HOLD", actionLabel, reason);
+      addLaneCandidate({
+        lane: "Meat",
+        decision: "HOLD",
+        candidate: actionLabel,
+        reason,
+        blockers: ["no safe chunk"],
+        score: unitCostScore(actionUnit),
+        target: targetLabel,
+        resource: actionLabel,
+      });
+      recordActionUnitRefillState({
+        candidate: actionLabel,
+        decision: "HOLD",
+        reason,
+        blockedBy,
+        reserveRatio: NaN,
+        paybackSeconds: NaN,
+        paybackBypassed: false,
+        parentStepConsumedActionUnit: true,
+        parentStepConsumedUnit: consumedUnit,
+        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        followUpActionSelected: false,
+        whyNoFollowUpAction: blockedBy,
+        antiPingpongGuardActive,
+        antiPingpongGuardAllowedRefill: true,
+        coordinatorRemainingBudgetReason: blockedBy,
+      });
+      return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Parent step conversion ${parentName}`, noFollowUpReason: blockedBy };
+    }
+
+    const refillNum = getPlannerUnitBuyNum(actionUnit);
+    if (!isPositive(refillNum)) {
+      const blockedBy = "blocked by no safe chunk";
+      const reason = `${actionLabel} has no safe refill chunk this run`;
+      recordAdvisor("HOLD", actionLabel, reason);
+      addLaneCandidate({
+        lane: "Meat",
+        decision: "HOLD",
+        candidate: actionLabel,
+        reason,
+        blockers: ["no safe chunk"],
+        score: unitCostScore(actionUnit),
+        target: targetLabel,
+        resource: actionLabel,
+      });
+      recordActionUnitRefillState({
+        candidate: actionLabel,
+        decision: "HOLD",
+        reason,
+        blockedBy,
+        reserveRatio: NaN,
+        paybackSeconds: NaN,
+        paybackBypassed: false,
+        parentStepConsumedActionUnit: true,
+        parentStepConsumedUnit: consumedUnit,
+        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        followUpActionSelected: false,
+        whyNoFollowUpAction: blockedBy,
+        antiPingpongGuardActive,
+        antiPingpongGuardAllowedRefill: true,
+        coordinatorRemainingBudgetReason: blockedBy,
+      });
+      return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Parent step conversion ${parentName}`, noFollowUpReason: blockedBy };
+    }
+
+    const protectedCost = shouldAvoidProtectedCost(actionUnit, protectedResources || new Set());
+    if (protectedCost) {
+      const blockedBy = parentStepRefillBlockedByProtectedResource(protectedCost);
+      const reason = `action-unit refill blocked: ${protectedResourceHoldReason(protectedCost)}`;
+      recordAdvisor("HOLD", actionLabel, reason);
+      addLaneCandidate({
+        lane: "Meat",
+        decision: "HOLD",
+        candidate: actionLabel,
+        reason,
+        blockers: [protectedResourceBlocker(protectedCost), "cost uses protected resource"],
+        score: unitCostScore(actionUnit),
+        target: targetLabel,
+        resource: protectedCost,
+      });
+      recordActionUnitRefillState({
+        candidate: actionLabel,
+        decision: "HOLD",
+        reason,
+        blockedBy,
+        reserveRatio: NaN,
+        paybackSeconds: NaN,
+        paybackBypassed: false,
+        parentStepConsumedActionUnit: true,
+        parentStepConsumedUnit: consumedUnit,
+        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        followUpActionSelected: false,
+        whyNoFollowUpAction: blockedBy,
+        antiPingpongGuardActive,
+        antiPingpongGuardAllowedRefill: true,
+        coordinatorRemainingBudgetReason: blockedBy,
+      });
+      return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Parent step conversion ${parentName}`, noFollowUpReason: blockedBy };
+    }
+
+    const guard = getMeatChainPurchaseAnalysis(actionUnit, refillNum);
+    const reserveRatio = rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
+    const paybackSeconds = rawMetricNumber(guard?.raw || {}, "paybackSeconds", NaN);
+    const bypass = assessStrategicActionPaybackBypass(actionUnit, guard && !guard.ok ? guard : null, plan, protectedResources);
+    const paybackBypassed = !!(guard && !guard.ok && bypass.allowed);
+
+    if (guard && !guard.ok && !bypass.allowed) {
+      const blockedBy = guard.type === "payback" ? "blocked by payback" : "blocked by reserve";
+      const reason = guard.type === "payback"
+        ? `action-unit refill hold after parent-step ${parentName}; payback too high and bypass not allowed; ${bypass.reason || guard.reason}`
+        : `action-unit refill hold after parent-step ${parentName}; ${guard.reason}`;
+      recordAdvisor("HOLD", actionLabel, reason);
+      addLaneCandidate({
+        lane: "Meat",
+        decision: "HOLD",
+        candidate: actionLabel,
+        reason,
+        blockers: [guard.type === "payback" ? "payback guard" : "reserve guard"],
+        score: unitCostScore(actionUnit),
+        wouldBuyAmount: formatSwarmNumber(refillNum),
+        target: targetLabel,
+        resource: actionLabel,
+        raw: guard.raw || null,
+      });
+      recordActionUnitRefillState({
+        candidate: actionLabel,
+        decision: "HOLD",
+        reason,
+        blockedBy,
+        reserveRatio,
+        paybackSeconds,
+        paybackBypassed: false,
+        parentStepConsumedActionUnit: true,
+        parentStepConsumedUnit: consumedUnit,
+        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        followUpActionSelected: false,
+        whyNoFollowUpAction: blockedBy,
+        antiPingpongGuardActive,
+        antiPingpongGuardAllowedRefill: true,
+        coordinatorRemainingBudgetReason: blockedBy,
+      });
+      return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Parent step conversion ${parentName}`, noFollowUpReason: blockedBy };
+    }
+
+    const reason = `action-unit refill after parent-step ${parentName}; buy ${formatSwarmNumber(refillNum)} ${actionLabel} for target path ${targetLabel}${paybackBypassed ? `; ${bypass.reason}` : "; payback/reserve guard ok"}`;
+    recordAdvisor("BUY", actionLabel, reason);
+    addLaneCandidate({
+      lane: "Meat",
+      decision: "BUY",
+      candidate: actionLabel,
+      reason,
+      score: unitCostScore(actionUnit),
+      wouldBuyAmount: formatSwarmNumber(refillNum),
+      target: targetLabel,
+      resource: actionLabel,
+      raw: guard?.raw || null,
+    });
+
+    if (config.advisorOnly || !config.autoBuySafeDecisions) {
+      recordActionUnitRefillState({
+        candidate: actionLabel,
+        decision: "BUY",
+        reason,
+        blockedBy: "none",
+        reserveRatio,
+        paybackSeconds,
+        paybackBypassed,
+        parentStepConsumedActionUnit: true,
+        parentStepConsumedUnit: consumedUnit,
+        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        followUpActionSelected: true,
+        whyNoFollowUpAction: "none",
+        antiPingpongGuardActive,
+        antiPingpongGuardAllowedRefill: true,
+        coordinatorRemainingBudgetReason: "none",
+      });
+      return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Would refill ${actionLabel} after parent-step` };
+    }
+
+    const didBuy = safe(`Parent-step refill ${actionLabel}`, () =>
+      buyUnitAmount(commands, actionUnit, refillNum, "Parent Refill")
+    );
+
+    recordActionUnitRefillState({
+      candidate: actionLabel,
+      decision: didBuy ? "BUY" : "HOLD",
+      reason: didBuy ? reason : `action-unit refill buy failed for ${actionLabel}`,
+      blockedBy: didBuy ? "none" : "blocked by no safe chunk",
+      reserveRatio,
+      paybackSeconds,
+      paybackBypassed,
+      parentStepConsumedActionUnit: true,
+      parentStepConsumedUnit: consumedUnit,
+      actionBudgetRemainingAfterParentStep: budgetRemaining,
+      followUpActionSelected: !!didBuy,
+      whyNoFollowUpAction: didBuy ? "none" : "blocked by no safe chunk",
+      antiPingpongGuardActive,
+      antiPingpongGuardAllowedRefill: true,
+      coordinatorRemainingBudgetReason: didBuy ? "none" : "blocked by no safe chunk",
+    });
+
+    return {
+      actionTaken: true,
+      bought: didBuy ? 1 : 0,
+      stopFurtherUnitBuys: true,
+      summary: didBuy ? `Parent-step refill ${actionLabel}` : `Parent-step refill failed ${actionLabel}`,
+      noFollowUpReason: didBuy ? "none" : "blocked by no safe chunk",
+    };
+  }
+
+  function handleMeatGoalPlanner(game, commands, protectedResources, remainingActions = 0) {
     if (!config.meatGoalPlanner) return { actionTaken: false, bought: 0 };
 
     const plan = buildMeatGoalPlan(game);
@@ -7703,20 +8211,7 @@ function getDisplayName(item) {
       !!twinUnlockPlannerState?.prepMeaningful;
 
     if (parentStepExecuted) {
-      const parentName = parentStepPlannerState?.candidate || "parent step";
-      const reason = `parent-step conversion already executed this run (${parentName}); skip immediate lower action-unit filler ${actionLabel}`;
-      recordAdvisor("HOLD", actionLabel, reason);
-      addLaneCandidate({
-        lane: "Meat",
-        decision: "HOLD",
-        candidate: actionLabel,
-        reason,
-        blockers: ["parent-step conversion just executed"],
-        score: unitCostScore(plan.actionUnit),
-        target: targetLabel,
-        resource: bottleneckLabel,
-      });
-      return { actionTaken: true, bought: 0, summary: `Parent step conversion ${parentName}`, stopFurtherUnitBuys: true };
+      return runParentStepActionUnitRefillPass(game, commands, plan, protectedResources, remainingActions);
     }
 
     if (twinUnlockExecuted) {
@@ -8072,11 +8567,12 @@ function getDisplayName(item) {
         selectedLaneSummary: selectedLaneActions.length
           ? selectedLaneActions.map((item) => `${item.lane}: ${item.candidate}`).join(" · ")
           : "none",
+        coordinatorRemainingBudgetReason: reason || laneCoordinatorState?.coordinatorRemainingBudgetReason || "none",
         territoryDidNotBuyReason: reason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
       });
     }
 
-    const plannerResult = executeMeatGuardAction({ game, commands, protectedResources });
+    const plannerResult = executeMeatGuardAction({ game, commands, protectedResources, remainingActions: Math.max(0, maxUnitActions - boughtCount) });
     if (plannerResult.actionTaken && Number(plannerResult.bought || 0) > 0) {
       boughtCount += Number(plannerResult.bought || 0);
       const row = latestAdvisorRow(["BUY"]);
@@ -8104,7 +8600,8 @@ function getDisplayName(item) {
     }
 
     if (plannerResult.actionTaken && plannerResult.stopFurtherUnitBuys) {
-      syncCoordinatorHold("meat goal planner held further unit buys this run");
+      const holdReason = plannerResult.noFollowUpReason || plannerResult.summary || "meat goal planner held further unit buys this run";
+      syncCoordinatorHold(holdReason);
       return boughtCount;
     }
 
@@ -8413,6 +8910,7 @@ function getDisplayName(item) {
     clearLaneCandidates();
     meatFallbackState = null;
     meatActionUnitPaybackBypassState = null;
+    actionUnitRefillState = null;
     targetAwareUpgradeState = null;
     unlockPlannerState = null;
     parentStepPlannerState = null;
@@ -8426,6 +8924,7 @@ function getDisplayName(item) {
       selectedLaneLabels: [],
       selectedLaneSummary: "none",
       primaryActionReason: "",
+      coordinatorRemainingBudgetReason: "none",
       territoryActionAge: getLaneActionAge("Territory"),
       territoryStarvationCount: getTerritoryStarvationCount(),
       territoryDidNotBuyReason: "no territory proposal this run",
@@ -9009,7 +9508,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.11 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.13 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -9017,7 +9516,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.11. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.13. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -9118,7 +9617,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.11. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.13. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 

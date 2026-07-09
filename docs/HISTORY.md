@@ -31,6 +31,10 @@ docs/release-notes/
   Bypass on top of the 0.8.5 main baseline.
 - 0.8.8: Multi-Lane Coordinator / Territory Starvation Fix baseline.
 - 0.8.9: Methodical Lane Follow-through / Visible Progress Fix.
+- 0.8.10: Territory Scanner + Guard Bar / Overseer UI.
+- 0.8.11: Twin Prep Priority / Parent-Step Throughput Fix.
+- 0.8.12: Parent-Step Refill / Action Budget Fix.
+- 0.8.13: Twin Prep Meaningful Gate Regression Fix.
 
 ## Documentation posture note
 
