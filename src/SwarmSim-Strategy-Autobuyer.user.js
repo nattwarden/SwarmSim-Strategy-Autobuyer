@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.4
+// @version      0.8.5
 // @description  Conservative smart advisor/autobuyer with twin unlock threshold, parent-step conversion, unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -2091,7 +2091,7 @@ function getDisplayName(item) {
       houseOfMirrorsArmyValue: abilityPrepState?.houseOfMirrorsArmyValue || "n/a",
       houseOfMirrorsMissingUnits: abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.4 keeps twin unlock threshold planner, parent-step conversion, Unlock Planner, Clone Buffer Planner and Ability Prep advisor logic; auto-cast and auto-ascend remain conservative/off by default.",
+      futurePlanners: "0.8.5 keeps twin unlock threshold planner, parent-step conversion, Unlock Planner, Clone Buffer Planner and Ability Prep advisor logic; auto-cast and auto-ascend remain conservative/off by default.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2313,7 +2313,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.4",
+      scriptVersion: "0.8.5",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2858,6 +2858,95 @@ function getDisplayName(item) {
   function getCostForResource(item, resourceName) {
     const cost = getCostList(item).find((entry) => entry?.unit?.name === resourceName);
     return cost?.val || newDecimal(0);
+  }
+
+  function getUpgradeCostList(upgrade) {
+    if (!upgrade) return [];
+
+    const rows = [];
+    const addRows = (list) => {
+      for (const row of list || []) {
+        if (!row?.unit || !isPositive(row.val)) continue;
+        if (rows.some((existing) => isSameGameItem(existing.unit, row.unit) && decimalFrom(existing.val).eq(decimalFrom(row.val)))) continue;
+        rows.push(row);
+      }
+    };
+
+    addRows(getCostList(upgrade));
+    if (!rows.length && upgrade?.next) addRows(getCostList(upgrade.next));
+    if (!rows.length && Array.isArray(upgrade?.cost)) addRows(upgrade.cost);
+
+    return rows;
+  }
+
+  function formatPlanPath(plan) {
+    const names = (plan?.path || []).map((step) => getDisplayName(step?.unit)).filter(Boolean);
+    return names.length ? names.join(" -> ") : "unknown";
+  }
+
+  function getTwinUpgradeThresholdInfo(game, twinUpgrade, strategicPlan) {
+    if (!twinUpgrade) {
+      return {
+        costResourceUnit: null,
+        costResourceName: "none",
+        requiredAmount: newDecimal(0),
+        currentAmount: newDecimal(0),
+        missingAmount: newDecimal(0),
+        costResourceOnPath: false,
+        pathLabel: formatPlanPath(strategicPlan),
+        error: "no-upgrade",
+      };
+    }
+
+    const rows = getUpgradeCostList(twinUpgrade)
+      .filter((cost) => cost?.unit && isPositive(cost.val) && isMeatChainUnit(cost.unit));
+
+    if (!rows.length) {
+      return {
+        costResourceUnit: null,
+        costResourceName: "none",
+        requiredAmount: newDecimal(0),
+        currentAmount: newDecimal(0),
+        missingAmount: newDecimal(0),
+        costResourceOnPath: false,
+        pathLabel: formatPlanPath(strategicPlan),
+        error: "cost-resource-unreadable",
+      };
+    }
+
+    const preferred = rows.find((row) => isUnitOnPlanPath(strategicPlan, row.unit)) || rows[0];
+    const costResourceUnit = preferred?.unit || null;
+    const requiredAmount = decimalFrom(preferred?.val || 0);
+
+    if (!costResourceUnit) {
+      return {
+        costResourceUnit: null,
+        costResourceName: "none",
+        requiredAmount,
+        currentAmount: newDecimal(0),
+        missingAmount: requiredAmount.greaterThan(0) ? requiredAmount : newDecimal(0),
+        costResourceOnPath: false,
+        pathLabel: formatPlanPath(strategicPlan),
+        error: "cost-resource-unreadable",
+      };
+    }
+
+    const currentAmount = decimalFrom(costResourceUnit.count?.() || 0);
+    const rawMissing = requiredAmount.minus(currentAmount);
+    const missingAmount = rawMissing.greaterThan(0) ? rawMissing : newDecimal(0);
+    const costResourceOnPath = isUnitOnPlanPath(strategicPlan, costResourceUnit);
+    const error = !isPositive(requiredAmount) ? "invalid-threshold" : null;
+
+    return {
+      costResourceUnit,
+      costResourceName: getDisplayName(costResourceUnit),
+      requiredAmount,
+      currentAmount,
+      missingAmount,
+      costResourceOnPath,
+      pathLabel: formatPlanPath(strategicPlan),
+      error,
+    };
   }
 
   function getCurrentResource(game, resourceName) {
@@ -4141,19 +4230,16 @@ function getDisplayName(item) {
 
     const twinUpgrade = directParentUnit ? getGameUpgrade(game, `${directParentUnit.name}twin`) : null;
     const twinUpgradeName = twinUpgrade ? getDisplayName(twinUpgrade) : "none";
-    const twinCostRow = twinUpgrade
-      ? getCostList(twinUpgrade).find((cost) => cost?.unit && isPositive(cost.val) && isSameGameItem(cost.unit, actionUnit))
-      : null;
-    const twinCostUnit = twinCostRow?.unit || null;
-    const twinCostUnitName = twinCostUnit ? getDisplayName(twinCostUnit) : "none";
-    const twinRequiredRaw = decimalFrom(twinCostRow?.val || 0);
-    const twinCurrentRaw = twinCostUnit ? decimalFrom(twinCostUnit.count?.() || 0) : newDecimal(0);
-    const twinMissingRaw = twinRequiredRaw.minus(twinCurrentRaw);
-    const twinMissing = twinMissingRaw.greaterThan(0) ? twinMissingRaw : newDecimal(0);
+    const twinThresholdInfo = getTwinUpgradeThresholdInfo(game, twinUpgrade, plan);
+    const twinCostUnit = twinThresholdInfo.costResourceUnit;
+    const twinCostUnitName = twinThresholdInfo.costResourceName;
+    const twinRequiredRaw = twinThresholdInfo.requiredAmount;
+    const twinCurrentRaw = twinThresholdInfo.currentAmount;
+    const twinMissing = twinThresholdInfo.missingAmount;
     const twinThresholdRatio = isPositive(twinRequiredRaw) ? decimalToNumber(twinCurrentRaw.dividedBy(twinRequiredRaw), 0) : 0;
     const twinNearRatioRequired = Number(config.twinUnlockNearThresholdRatio || DEFAULT_CONFIG.twinUnlockNearThresholdRatio);
     const twinNearEnough = isPositive(twinRequiredRaw) && twinThresholdRatio >= twinNearRatioRequired;
-    const twinSupportsPath = !!twinUpgrade && !!directParentUnit && isUnitOnPlanPath(plan, directParentUnit) && !!twinCostUnit && isUnitOnPlanPath(plan, twinCostUnit);
+    const twinSupportsPath = !!twinUpgrade && !!directParentUnit && isUnitOnPlanPath(plan, directParentUnit) && !!twinCostUnit && twinThresholdInfo.costResourceOnPath;
     const twinDecisionTarget = targetName;
     const twinPrepCandidateName = twinCostUnitName;
 
@@ -4174,12 +4260,62 @@ function getDisplayName(item) {
         postUpgradeRebuildRatio: NaN,
         rebuildSafe: false,
       });
-    } else if (!twinUpgrade || !twinSupportsPath || !isPositive(twinRequiredRaw)) {
-      const reason = !twinUpgrade
-        ? "no relevant target-path twin threshold"
-        : !twinSupportsPath
-          ? "prep resource not on target path"
-          : "no relevant target-path twin threshold";
+    } else if (!twinUpgrade) {
+      const reason = "no relevant target-path twin threshold";
+      recordTwinUnlockPlannerState({
+        candidate: twinUpgradeName,
+        decision: "HOLD",
+        reason,
+        target: twinDecisionTarget,
+        upgrade: twinUpgradeName,
+        costResource: twinCostUnitName,
+        current: formatSwarmNumber(twinCurrentRaw),
+        required: formatSwarmNumber(twinRequiredRaw),
+        missing: formatSwarmNumber(twinMissing),
+        prepCandidate: twinPrepCandidateName,
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        postUpgradeRebuildRatio: NaN,
+        rebuildSafe: false,
+      });
+    } else if (twinThresholdInfo.error === "cost-resource-unreadable") {
+      const reason = "could not read twin upgrade cost resource";
+      recordTwinUnlockPlannerState({
+        candidate: twinUpgradeName,
+        decision: "HOLD",
+        reason,
+        target: twinDecisionTarget,
+        upgrade: twinUpgradeName,
+        costResource: "none",
+        current: "0",
+        required: "0",
+        missing: "0",
+        prepCandidate: "none",
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        postUpgradeRebuildRatio: NaN,
+        rebuildSafe: false,
+      });
+    } else if (twinThresholdInfo.error === "invalid-threshold") {
+      const reason = "invalid twin upgrade threshold amount";
+      recordTwinUnlockPlannerState({
+        candidate: twinUpgradeName,
+        decision: "HOLD",
+        reason,
+        target: twinDecisionTarget,
+        upgrade: twinUpgradeName,
+        costResource: twinCostUnitName,
+        current: formatSwarmNumber(twinCurrentRaw),
+        required: formatSwarmNumber(twinRequiredRaw),
+        missing: formatSwarmNumber(twinMissing),
+        prepCandidate: twinPrepCandidateName,
+        reserveRatio: NaN,
+        paybackBypassed: false,
+        postUpgradeRebuildRatio: NaN,
+        rebuildSafe: false,
+      });
+    } else if (!twinSupportsPath) {
+      const reason = `twin cost resource ${twinCostUnitName} not on target path ${twinThresholdInfo.pathLabel}`;
       recordTwinUnlockPlannerState({
         candidate: twinUpgradeName,
         decision: "HOLD",
@@ -4344,7 +4480,7 @@ function getDisplayName(item) {
       recordTwinUnlockPlannerState({
         candidate: twinUpgradeName,
         decision: "HOLD",
-        reason: "prep resource not on target path",
+        reason: `twin prep resource ${twinCostUnitName} is not buyable yet`,
         target: twinDecisionTarget,
         upgrade: twinUpgradeName,
         costResource: twinCostUnitName,
@@ -4406,7 +4542,7 @@ function getDisplayName(item) {
         const requiredRatio = Number(config.twinUnlockMinReserveRatio || DEFAULT_CONFIG.twinUnlockMinReserveRatio);
         let decision = "BUY";
         let paybackBypassed = false;
-        let reason = `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}`;
+        let reason = `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}`;
 
         if (guard && !guard.ok) {
           if (
@@ -4416,14 +4552,12 @@ function getDisplayName(item) {
             reserveRatio >= requiredRatio
           ) {
             paybackBypassed = true;
-            reason = `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}; reserve after buy ${trimNumber(reserveRatio)}x >= required ${trimNumber(requiredRatio)}x; payback bypassed for twin threshold value`;
+            reason = `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}; reserve after buy ${trimNumber(reserveRatio)}x >= required ${trimNumber(requiredRatio)}x; payback bypassed for twin threshold value`;
           } else {
             decision = "HOLD";
-            reason = guard.type === "reserve"
-              ? "reserve too low"
-              : Number.isFinite(reserveRatio) && reserveRatio < requiredRatio
-                ? "reserve too low"
-                : `threshold prep blocked: ${guard.reason}`;
+            reason = guard.type === "reserve" || (Number.isFinite(reserveRatio) && reserveRatio < requiredRatio)
+              ? `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; HOLD because reserve after ${twinCostUnitName} prep is below required threshold`
+              : `threshold prep blocked: ${guard.reason}`;
           }
         }
 
@@ -7772,7 +7906,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.4 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.5 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -7780,7 +7914,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.4. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.5. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -7881,7 +8015,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.4. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.5. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 

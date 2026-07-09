@@ -2,7 +2,7 @@
 
 Conservative Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current baseline: **0.8.4 — Twin Unlock Threshold Planner**.
+Current baseline: **0.8.5 — Twin Unlock Cost Resource Detection Fix**.
 
 ## Repository layout
 
@@ -16,6 +16,7 @@ releases/
   0.8.2/                                    # archived release documentation
   0.8.3/                                    # archived release documentation
   0.8.4/                                    # archived release documentation
+  0.8.5/                                    # archived release documentation
 docs/
   SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt
   release-notes/
