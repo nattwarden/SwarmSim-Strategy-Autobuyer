@@ -2781,9 +2781,17 @@ function getDisplayName(item) {
 
   function getCloneBufferProtectionIssue(item, num = newDecimal(1)) {
     if (!config.cloneBufferPlanner || !config.cloneBufferProtectLarvae) return null;
-    if (!cloneBufferPlannerState?.cloneBufferLarvaeProtectedRaw) return null;
+    if (!cloneBufferPlannerState) return null;
+    if (!cloneBufferPlannerState.cloneBufferProtectLarvae) return null;
     if (!item || String(item?.name || "").toLowerCase() === "cocoon") return null;
     if (!costUsesResource(item, "larva")) return null;
+
+    const protectedRaw = decimalFrom(cloneBufferPlannerState.cloneBufferLarvaeProtectedRaw || 0);
+    const debtRaw = decimalFrom(cloneBufferPlannerState.cloneBufferDebtRaw || 0);
+    const postCloneLockActive = !!cloneBufferPlannerState.postCloneLockActive;
+
+    if (!isPositive(protectedRaw)) return null;
+    if (!isPositive(debtRaw) && !postCloneLockActive) return null;
 
     const larvaCost = decimalFrom(getCostForResource(item, "larva")).times(decimalFrom(num || 1));
     if (!isPositive(larvaCost)) return null;
