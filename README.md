@@ -97,10 +97,28 @@ Commands:
 ```bash
 npm run build:check
 npm run build
+npm run sync:from-canonical
 npm run verify
 ```
 
 `npm run verify` runs build check plus guardrails validation.
+
+## Dev Workflow (Fast + Safe)
+
+Normal work:
+
+1. Edit `dev-src/runtime-sections/runtime-main.js`
+2. Run `npm run build`
+3. Run `npm run verify`
+
+Emergency hotfix directly in canonical script:
+
+1. Edit `src/SwarmSim-Strategy-Autobuyer.user.js`
+2. Run `npm run sync:from-canonical` to sync runtime back to `dev-src/`
+3. Run `npm run build`
+4. Run `npm run verify`
+
+This keeps guardrails strict while still allowing fast app development when needed.
 
 ## Current 0.8.8 work
 

@@ -127,6 +127,15 @@ Always run:
 node scripts/validate-repo-guardrails.js
 ```
 
+If an urgent fix is made directly in `src/SwarmSim-Strategy-Autobuyer.user.js`,
+immediately sync and validate before PR:
+
+```bash
+npm run sync:from-canonical
+npm run build
+npm run verify
+```
+
 The validation script runs the Tampermonkey syntax check and guards against
 unsafe defaults and duplicate script artifacts.
 

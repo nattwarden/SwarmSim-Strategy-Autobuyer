@@ -224,6 +224,7 @@ Build/check commands (Phase 4 bootstrap):
 ```bash
 npm run build:check
 npm run build
+npm run sync:from-canonical
 npm run verify
 ```
 
@@ -249,6 +250,11 @@ dev-src/runtime-sections/runtime-main.js
 
 Canonical userscript remains executable source of truth in `src/`, but runtime
 content is now produced through the configured build pipeline.
+
+To avoid blocking app development during urgent fixes, direct edits in
+`src/SwarmSim-Strategy-Autobuyer.user.js` are allowed when necessary if they are
+immediately followed by `npm run sync:from-canonical`, `npm run build`, and
+`npm run verify`.
 
 This includes:
 
