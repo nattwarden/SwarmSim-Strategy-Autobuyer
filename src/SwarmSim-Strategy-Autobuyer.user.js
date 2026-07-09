@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.8.5
-// @description  Conservative smart advisor/autobuyer with twin unlock threshold, parent-step conversion, unlock, clone buffer and ability prep planners
+// @version      0.8.7
+// @description  Conservative smart advisor/autobuyer with twin unlock opportunity-cost bypass, parent-step conversion, unlock, clone buffer and ability prep planners
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
 // @match        https://swarmsim.com/*
@@ -100,6 +100,8 @@
     twinUnlockMaxPrepChunkPercent: 25,
     twinUnlockNearThresholdRatio: 0.6,
     twinUnlockPostUpgradeRebuildRatio: 0.5,
+    twinUpgradeOpportunityCostBypass: true,
+    twinUpgradeMaxLostProductionBankRatioPerHour: 0.001,
 
     cloneBufferPlanner: true,
     cloneBufferMode: "auto",
@@ -220,6 +222,8 @@
       twinUnlockMaxPrepChunkPercent: 25,
       twinUnlockNearThresholdRatio: 0.6,
       twinUnlockPostUpgradeRebuildRatio: 0.5,
+      twinUpgradeOpportunityCostBypass: true,
+      twinUpgradeMaxLostProductionBankRatioPerHour: 0.001,
       cloneBufferPlanner: true,
       cloneBufferMode: "auto",
       cloneBufferEarlyProtectRatio: 0.5,
@@ -613,6 +617,13 @@
     c.twinUnlockMaxPrepChunkPercent = clampNumber(c.twinUnlockMaxPrepChunkPercent, 0.1, 100, DEFAULT_CONFIG.twinUnlockMaxPrepChunkPercent);
     c.twinUnlockNearThresholdRatio = clampNumber(c.twinUnlockNearThresholdRatio, 0, 1, DEFAULT_CONFIG.twinUnlockNearThresholdRatio);
     c.twinUnlockPostUpgradeRebuildRatio = clampNumber(c.twinUnlockPostUpgradeRebuildRatio, 0, 10, DEFAULT_CONFIG.twinUnlockPostUpgradeRebuildRatio);
+    c.twinUpgradeOpportunityCostBypass = c.twinUpgradeOpportunityCostBypass !== false;
+    c.twinUpgradeMaxLostProductionBankRatioPerHour = clampNumber(
+      c.twinUpgradeMaxLostProductionBankRatioPerHour,
+      0,
+      1,
+      DEFAULT_CONFIG.twinUpgradeMaxLostProductionBankRatioPerHour
+    );
     c.cloneBufferPlanner = c.cloneBufferPlanner !== false;
     c.cloneBufferMode = ["auto", "buildup", "mature", "post-clone-lock"].includes(String(c.cloneBufferMode || "").toLowerCase())
       ? String(c.cloneBufferMode || "auto").toLowerCase()
@@ -1596,6 +1607,7 @@ function getDisplayName(item) {
     if (config.meatUnlockPlanner) settings.push(`unlock planner ${config.meatUnlockPaybackBypass ? "payback bypass on" : "payback bypass off"} (min ${trimNumber(config.meatUnlockMinReserveRatio)}x)`);
     if (config.meatParentStepPlanner) settings.push(`parent-step planner ${config.meatParentStepPaybackBypass ? "payback bypass on" : "payback bypass off"} (min ${trimNumber(config.meatParentStepMinReserveRatio)}x)`);
     if (config.twinUnlockPlanner) settings.push(`twin unlock planner ${config.twinUnlockPaybackBypass ? "payback bypass on" : "payback bypass off"} (near ${trimNumber(config.twinUnlockNearThresholdRatio * 100)}%, min ${trimNumber(config.twinUnlockMinReserveRatio)}x)`);
+    if (config.twinUnlockPlanner) settings.push(`twin opportunity-cost bypass ${config.twinUpgradeOpportunityCostBypass ? "on" : "off"} (${trimNumber(config.twinUpgradeMaxLostProductionBankRatioPerHour * 100)}%/h bank limit)`);
     if (config.meatFallbackDoNotDropBelowActionUnit) settings.push("fallback floor at planner action unit");
     if (config.meatChainTwinPrep) settings.push(`twin buffer ${trimNumber(config.twinRecoveryBufferMultiplier)}x`);
     if (config.manageCloneLarvaeCocoons) settings.push("Clone Prep cocoons only");
@@ -1655,6 +1667,8 @@ function getDisplayName(item) {
       twinUnlockMaxPrepChunkPercent: config.twinUnlockMaxPrepChunkPercent,
       twinUnlockNearThresholdRatio: config.twinUnlockNearThresholdRatio,
       twinUnlockPostUpgradeRebuildRatio: config.twinUnlockPostUpgradeRebuildRatio,
+      twinUpgradeOpportunityCostBypass: config.twinUpgradeOpportunityCostBypass,
+      twinUpgradeMaxLostProductionBankRatioPerHour: config.twinUpgradeMaxLostProductionBankRatioPerHour,
       twinRecoveryBufferMultiplier: config.twinRecoveryBufferMultiplier,
       manageCloneLarvaeCocoons: config.manageCloneLarvaeCocoons,
       cloneCocoonTargetPercent: config.cloneCocoonTargetPercent,
@@ -1897,6 +1911,13 @@ function getDisplayName(item) {
       twinUnlockPaybackBypassed: inspector.twinUnlockPaybackBypassed,
       twinUnlockPostUpgradeRebuildRatio: inspector.twinUnlockPostUpgradeRebuildRatio,
       twinUnlockRebuildSafe: inspector.twinUnlockRebuildSafe,
+      twinUnlockOpportunityCostBypass: inspector.twinUnlockOpportunityCostBypass,
+      twinUnlockOpportunityCostReason: inspector.twinUnlockOpportunityCostReason,
+      twinUnlockLostProductionPerSecond: inspector.twinUnlockLostProductionPerSecond,
+      twinUnlockLostProductionPerHour: inspector.twinUnlockLostProductionPerHour,
+      twinUnlockLostProductionBankRatioPerHour: inspector.twinUnlockLostProductionBankRatioPerHour,
+      twinUnlockLostProductionBankRatioLimit: inspector.twinUnlockLostProductionBankRatioLimit,
+      twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe: inspector.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe,
       cloneBufferMode: inspector.cloneBufferMode,
       cloneBufferTarget: inspector.cloneBufferTarget,
       cloneBufferCurrent: inspector.cloneBufferCurrent,
@@ -2069,6 +2090,13 @@ function getDisplayName(item) {
       twinUnlockPaybackBypassed: !!twinUnlockState?.paybackBypassed,
       twinUnlockPostUpgradeRebuildRatio: twinUnlockState?.postUpgradeRebuildRatioText || "n/a",
       twinUnlockRebuildSafe: twinUnlockState?.rebuildSafe ? "yes" : "no",
+      twinUnlockOpportunityCostBypass: twinUnlockState?.opportunityCostBypass ? "yes" : "no",
+      twinUnlockOpportunityCostReason: twinUnlockState?.opportunityCostReason || "not evaluated",
+      twinUnlockLostProductionPerSecond: twinUnlockState?.lostProductionPerSecondText || "n/a",
+      twinUnlockLostProductionPerHour: twinUnlockState?.lostProductionPerHourText || "n/a",
+      twinUnlockLostProductionBankRatioPerHour: twinUnlockState?.lostProductionBankRatioPerHourText || "n/a",
+      twinUnlockLostProductionBankRatioLimit: twinUnlockState?.lostProductionBankRatioLimitText || "n/a",
+      twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe: twinUnlockState?.upgradeBuyAllowedDespiteRebuildUnsafe ? "yes" : "no",
       cloneBufferMode: cloneBufferState?.cloneBufferMode || "none",
       cloneBufferTarget: cloneBufferState?.cloneBufferTarget || "0",
       cloneBufferCurrent: cloneBufferState?.cloneBufferCurrent || "0",
@@ -2091,7 +2119,7 @@ function getDisplayName(item) {
       houseOfMirrorsArmyValue: abilityPrepState?.houseOfMirrorsArmyValue || "n/a",
       houseOfMirrorsMissingUnits: abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.8.5 keeps twin unlock threshold planner, parent-step conversion, Unlock Planner, Clone Buffer Planner and Ability Prep advisor logic; auto-cast and auto-ascend remain conservative/off by default.",
+      futurePlanners: "0.8.7 keeps twin unlock threshold planner and adds a narrow opportunity-cost bypass only when rebuild is unsafe but production loss is negligible versus bank; auto-cast and auto-ascend remain conservative/off by default.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2179,6 +2207,13 @@ function getDisplayName(item) {
       ["Twin bypass", strategyInspector.twinUnlockPaybackBypassed ? "yes" : "no"],
       ["Twin rebuild ratio", strategyInspector.twinUnlockPostUpgradeRebuildRatio || "n/a"],
       ["Twin rebuild safe", strategyInspector.twinUnlockRebuildSafe || "no"],
+      ["Twin opportunity bypass", strategyInspector.twinUnlockOpportunityCostBypass || "no"],
+      ["Twin opportunity reason", strategyInspector.twinUnlockOpportunityCostReason || "not evaluated"],
+      ["Twin lost prod /s", strategyInspector.twinUnlockLostProductionPerSecond || "n/a"],
+      ["Twin lost prod /h", strategyInspector.twinUnlockLostProductionPerHour || "n/a"],
+      ["Twin lost prod bank ratio /h", strategyInspector.twinUnlockLostProductionBankRatioPerHour || "n/a"],
+      ["Twin lost prod bank ratio limit", strategyInspector.twinUnlockLostProductionBankRatioLimit || "n/a"],
+      ["Twin BUY despite rebuild unsafe", strategyInspector.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || "no"],
       ["Clone buffer mode", strategyInspector.cloneBufferMode || "none"],
       ["Clone buffer", `${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"})`],
       ["Clone debt", strategyInspector.cloneBufferDebt || "0"],
@@ -2313,7 +2348,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.8.5",
+      scriptVersion: "0.8.7",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -2390,6 +2425,13 @@ function getDisplayName(item) {
       twinUnlockPaybackBypassed: !!(strategyInspector?.twinUnlockPaybackBypassed || twinUnlockPlannerState?.paybackBypassed),
       twinUnlockPostUpgradeRebuildRatio: strategyInspector?.twinUnlockPostUpgradeRebuildRatio || twinUnlockPlannerState?.postUpgradeRebuildRatioText || "n/a",
       twinUnlockRebuildSafe: strategyInspector?.twinUnlockRebuildSafe || (twinUnlockPlannerState?.rebuildSafe ? "yes" : "no"),
+      twinUnlockOpportunityCostBypass: strategyInspector?.twinUnlockOpportunityCostBypass || (twinUnlockPlannerState?.opportunityCostBypass ? "yes" : "no"),
+      twinUnlockOpportunityCostReason: strategyInspector?.twinUnlockOpportunityCostReason || twinUnlockPlannerState?.opportunityCostReason || "not evaluated",
+      twinUnlockLostProductionPerSecond: strategyInspector?.twinUnlockLostProductionPerSecond || twinUnlockPlannerState?.lostProductionPerSecondText || "n/a",
+      twinUnlockLostProductionPerHour: strategyInspector?.twinUnlockLostProductionPerHour || twinUnlockPlannerState?.lostProductionPerHourText || "n/a",
+      twinUnlockLostProductionBankRatioPerHour: strategyInspector?.twinUnlockLostProductionBankRatioPerHour || twinUnlockPlannerState?.lostProductionBankRatioPerHourText || "n/a",
+      twinUnlockLostProductionBankRatioLimit: strategyInspector?.twinUnlockLostProductionBankRatioLimit || twinUnlockPlannerState?.lostProductionBankRatioLimitText || "n/a",
+      twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe: strategyInspector?.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || (twinUnlockPlannerState?.upgradeBuyAllowedDespiteRebuildUnsafe ? "yes" : "no"),
       cloneBufferMode: strategyInspector?.cloneBufferMode || cloneBufferPlannerState?.cloneBufferMode || "none",
       cloneBufferTarget: strategyInspector?.cloneBufferTarget || cloneBufferPlannerState?.cloneBufferTarget || "0",
       cloneBufferCurrent: strategyInspector?.cloneBufferCurrent || cloneBufferPlannerState?.cloneBufferCurrent || "0",
@@ -2512,6 +2554,13 @@ function getDisplayName(item) {
       `- Twin unlock payback bypassed: ${payload.twinUnlockPaybackBypassed ? "yes" : "no"}`,
       `- Twin unlock post-upgrade rebuild ratio: ${payload.twinUnlockPostUpgradeRebuildRatio || "n/a"}`,
       `- Twin unlock rebuild safe: ${payload.twinUnlockRebuildSafe || "no"}`,
+      `- Twin unlock opportunity bypass: ${payload.twinUnlockOpportunityCostBypass || "no"}`,
+      `- Twin unlock opportunity reason: ${payload.twinUnlockOpportunityCostReason || "not evaluated"}`,
+      `- Twin unlock lost production /s: ${payload.twinUnlockLostProductionPerSecond || "n/a"}`,
+      `- Twin unlock lost production /h: ${payload.twinUnlockLostProductionPerHour || "n/a"}`,
+      `- Twin unlock lost production bank ratio /h: ${payload.twinUnlockLostProductionBankRatioPerHour || "n/a"}`,
+      `- Twin unlock lost production bank ratio limit: ${payload.twinUnlockLostProductionBankRatioLimit || "n/a"}`,
+      `- Twin unlock BUY despite rebuild unsafe: ${payload.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || "no"}`,
       `- Clone buffer mode: ${payload.cloneBufferMode || "none"}`,
       `- Clone buffer current/target: ${payload.cloneBufferCurrent || "0"} / ${payload.cloneBufferTarget || "0"}`,
       `- Clone buffer percent: ${payload.cloneBufferPercent || "n/a"}`,
@@ -2946,6 +2995,68 @@ function getDisplayName(item) {
       costResourceOnPath,
       pathLabel: formatPlanPath(strategicPlan),
       error,
+    };
+  }
+
+  function evaluateTwinUpgradeOpportunityCostBypass({
+    game,
+    targetName,
+    twinUpgradeName,
+    twinCostUnitName,
+    twinRequiredRaw,
+    twinCurrentRaw,
+    directParentUnit,
+  }) {
+    const bypassEnabled = !!config.twinUpgradeOpportunityCostBypass;
+    const rawLimit = Number(config.twinUpgradeMaxLostProductionBankRatioPerHour || DEFAULT_CONFIG.twinUpgradeMaxLostProductionBankRatioPerHour);
+    const limit = Number.isFinite(rawLimit) ? Math.max(0, rawLimit) : DEFAULT_CONFIG.twinUpgradeMaxLostProductionBankRatioPerHour;
+
+    const costCurrent = decimalFrom(twinCurrentRaw || 0);
+    const costSpend = decimalMin(decimalFrom(twinRequiredRaw || 0), costCurrent);
+    const spendRatio = isPositive(costCurrent)
+      ? decimalToNumber(costSpend.dividedBy(costCurrent), 0)
+      : 0;
+
+    const producedChildName = directParentUnit ? getDisplayName(directParentUnit) : "none";
+    const producedChildBank = decimalFrom(directParentUnit?.count?.() || 0);
+    const producedChildVelocity = directParentUnit ? decimalFrom(getVelocity(game, directParentUnit.name)) : newDecimal(0);
+    const lostProductionPerSecond = producedChildVelocity.times(spendRatio);
+    const lostProductionPerHour = lostProductionPerSecond.times(3600);
+
+    let lostProductionBankRatioPerHour = Infinity;
+    if (isPositive(producedChildBank)) {
+      lostProductionBankRatioPerHour = decimalToNumber(lostProductionPerHour.dividedBy(producedChildBank), Infinity);
+    } else if (!isPositive(lostProductionPerHour)) {
+      lostProductionBankRatioPerHour = 0;
+    }
+
+    const opportunityCostBypass = bypassEnabled
+      && isPositive(costSpend)
+      && Number.isFinite(lostProductionBankRatioPerHour)
+      && lostProductionBankRatioPerHour <= limit;
+
+    let opportunityCostReason = "not evaluated";
+    if (!bypassEnabled) {
+      opportunityCostReason = "opportunity-cost bypass disabled";
+    } else if (!isPositive(costSpend)) {
+      opportunityCostReason = `opportunity-cost bypass denied: no spendable ${twinCostUnitName} amount detected`;
+    } else if (!Number.isFinite(lostProductionBankRatioPerHour)) {
+      opportunityCostReason = `opportunity-cost bypass denied: cannot compute lost production ratio against current ${producedChildName} bank`;
+    } else if (opportunityCostBypass) {
+      opportunityCostReason = `upgrade buyable for ${twinUpgradeName}; post-upgrade rebuild buffer unsafe, but opportunity-cost bypass allowed for ${targetName}: spending ${formatSwarmNumber(costSpend)} ${twinCostUnitName} loses about ${formatSwarmNumber(lostProductionPerSecond)}/s and ${formatSwarmNumber(lostProductionPerHour)}/h ${producedChildName}, which is ${trimNumber(lostProductionBankRatioPerHour * 100)}%/h of current ${producedChildName} bank (limit ${trimNumber(limit * 100)}%/h)`;
+    } else {
+      opportunityCostReason = `opportunity-cost bypass denied: estimated lost ${producedChildName} production ${trimNumber(lostProductionBankRatioPerHour * 100)}%/h exceeds limit ${trimNumber(limit * 100)}%/h`;
+    }
+
+    return {
+      opportunityCostBypass,
+      opportunityCostReason,
+      lostProductionPerSecond,
+      lostProductionPerHour,
+      lostProductionBankRatioPerHour,
+      lostProductionBankRatioLimit: limit,
+      upgradeBuyAllowedDespiteRebuildUnsafe: opportunityCostBypass,
+      producedChildName,
     };
   }
 
@@ -4374,12 +4485,101 @@ function getDisplayName(item) {
           paybackBypassed: false,
           postUpgradeRebuildRatio: rebuildRatio,
           rebuildSafe: false,
+          opportunityCostBypass: false,
+          opportunityCostReason: "opportunity-cost bypass not evaluated because protected resources are in use",
+          lostProductionPerSecond: newDecimal(0),
+          lostProductionPerHour: newDecimal(0),
+          lostProductionBankRatioPerHour: Infinity,
+          lostProductionBankRatioLimit: Number(config.twinUpgradeMaxLostProductionBankRatioPerHour || DEFAULT_CONFIG.twinUpgradeMaxLostProductionBankRatioPerHour),
+          upgradeBuyAllowedDespiteRebuildUnsafe: false,
         });
       } else if (!rebuildSafe) {
+        const opportunityCost = evaluateTwinUpgradeOpportunityCostBypass({
+          game,
+          targetName,
+          twinUpgradeName,
+          twinCostUnitName,
+          twinRequiredRaw,
+          twinCurrentRaw,
+          directParentUnit,
+        });
+
+        if (opportunityCost.opportunityCostBypass) {
+          const reason = `${rebuildReason || "upgrade buyable but post-upgrade rebuild buffer unsafe"}; opportunity-cost bypass allowed because lost production is negligible (${formatSwarmNumber(opportunityCost.lostProductionPerSecond)}/s, ${formatSwarmNumber(opportunityCost.lostProductionPerHour)}/h, ${trimNumber(opportunityCost.lostProductionBankRatioPerHour * 100)}%/h <= ${trimNumber(opportunityCost.lostProductionBankRatioLimit * 100)}%/h of current ${opportunityCost.producedChildName} bank)`;
+          recordTwinUnlockPlannerState({
+            candidate: twinUpgradeName,
+            decision: "BUY",
+            reason,
+            target: twinDecisionTarget,
+            upgrade: twinUpgradeName,
+            costResource: twinCostUnitName,
+            current: formatSwarmNumber(twinCurrentRaw),
+            required: formatSwarmNumber(twinRequiredRaw),
+            missing: formatSwarmNumber(twinMissing),
+            prepCandidate: twinPrepCandidateName,
+            reserveRatio: NaN,
+            paybackBypassed: false,
+            postUpgradeRebuildRatio: rebuildRatio,
+            rebuildSafe: false,
+            opportunityCostBypass: true,
+            opportunityCostReason: opportunityCost.opportunityCostReason,
+            lostProductionPerSecond: opportunityCost.lostProductionPerSecond,
+            lostProductionPerHour: opportunityCost.lostProductionPerHour,
+            lostProductionBankRatioPerHour: opportunityCost.lostProductionBankRatioPerHour,
+            lostProductionBankRatioLimit: opportunityCost.lostProductionBankRatioLimit,
+            upgradeBuyAllowedDespiteRebuildUnsafe: true,
+          });
+          recordAdvisor("BUY", twinUpgradeName, reason);
+          addLaneCandidate({
+            lane: "Twin",
+            decision: "BUY",
+            candidate: twinUpgradeName,
+            reason,
+            score: unitCostScore(twinUpgrade) + 8600,
+            target: twinDecisionTarget,
+            resource: twinCostUnitName,
+          });
+
+          if (config.advisorOnly || !config.autoBuySafeDecisions) {
+            recordMessage(`Advisor: WOULD BUY ${twinUpgradeName} — twin unlock threshold (opportunity-cost bypass)`);
+            return { actionTaken: true, bought: 0, summary: "Would buy twin unlock upgrade" };
+          }
+
+          const didTwinBuy = safe(`Twin unlock threshold ${twinUpgradeName}`, () => buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Twin Unlock"));
+          if (didTwinBuy) {
+            recordTwinUnlockPlannerState({
+              candidate: twinUpgradeName,
+              decision: "BUY",
+              reason,
+              target: twinDecisionTarget,
+              upgrade: twinUpgradeName,
+              costResource: twinCostUnitName,
+              current: formatSwarmNumber(twinCurrentRaw),
+              required: formatSwarmNumber(twinRequiredRaw),
+              missing: formatSwarmNumber(twinMissing),
+              prepCandidate: twinPrepCandidateName,
+              reserveRatio: NaN,
+              paybackBypassed: false,
+              postUpgradeRebuildRatio: rebuildRatio,
+              rebuildSafe: false,
+              opportunityCostBypass: true,
+              opportunityCostReason: opportunityCost.opportunityCostReason,
+              lostProductionPerSecond: opportunityCost.lostProductionPerSecond,
+              lostProductionPerHour: opportunityCost.lostProductionPerHour,
+              lostProductionBankRatioPerHour: opportunityCost.lostProductionBankRatioPerHour,
+              lostProductionBankRatioLimit: opportunityCost.lostProductionBankRatioLimit,
+              upgradeBuyAllowedDespiteRebuildUnsafe: true,
+              executed: true,
+            });
+          }
+          return { actionTaken: true, bought: didTwinBuy ? 1 : 0, summary: didTwinBuy ? `Twin unlock ${twinUpgradeName}` : "Twin unlock buy failed" };
+        }
+
+        const deniedReason = `${rebuildReason || "upgrade buyable but post-upgrade rebuild buffer unsafe"}; ${opportunityCost.opportunityCostReason}; lost production ${formatSwarmNumber(opportunityCost.lostProductionPerSecond)}/s, ${formatSwarmNumber(opportunityCost.lostProductionPerHour)}/h, ${Number.isFinite(opportunityCost.lostProductionBankRatioPerHour) ? `${trimNumber(opportunityCost.lostProductionBankRatioPerHour * 100)}%/h` : "n/a"} (limit ${trimNumber(opportunityCost.lostProductionBankRatioLimit * 100)}%/h)`;
         recordTwinUnlockPlannerState({
           candidate: twinUpgradeName,
           decision: "HOLD",
-          reason: rebuildReason || "upgrade buyable but post-upgrade rebuild buffer unsafe",
+          reason: deniedReason,
           target: twinDecisionTarget,
           upgrade: twinUpgradeName,
           costResource: twinCostUnitName,
@@ -4391,13 +4591,20 @@ function getDisplayName(item) {
           paybackBypassed: false,
           postUpgradeRebuildRatio: rebuildRatio,
           rebuildSafe: false,
+          opportunityCostBypass: false,
+          opportunityCostReason: opportunityCost.opportunityCostReason,
+          lostProductionPerSecond: opportunityCost.lostProductionPerSecond,
+          lostProductionPerHour: opportunityCost.lostProductionPerHour,
+          lostProductionBankRatioPerHour: opportunityCost.lostProductionBankRatioPerHour,
+          lostProductionBankRatioLimit: opportunityCost.lostProductionBankRatioLimit,
+          upgradeBuyAllowedDespiteRebuildUnsafe: false,
         });
-        recordAdvisor("HOLD", twinUpgradeName, rebuildReason || "upgrade buyable but post-upgrade rebuild buffer unsafe");
+        recordAdvisor("HOLD", twinUpgradeName, deniedReason);
         addLaneCandidate({
           lane: "Twin",
           decision: "HOLD",
           candidate: twinUpgradeName,
-          reason: rebuildReason || "upgrade buyable but post-upgrade rebuild buffer unsafe",
+          reason: deniedReason,
           blockers: ["post-upgrade rebuild buffer"],
           score: unitCostScore(twinUpgrade) + 7800,
           target: twinDecisionTarget,
@@ -4420,6 +4627,13 @@ function getDisplayName(item) {
           paybackBypassed: false,
           postUpgradeRebuildRatio: rebuildRatio,
           rebuildSafe: true,
+          opportunityCostBypass: false,
+          opportunityCostReason: "opportunity-cost bypass not needed because rebuild buffer is already safe",
+          lostProductionPerSecond: newDecimal(0),
+          lostProductionPerHour: newDecimal(0),
+          lostProductionBankRatioPerHour: 0,
+          lostProductionBankRatioLimit: Number(config.twinUpgradeMaxLostProductionBankRatioPerHour || DEFAULT_CONFIG.twinUpgradeMaxLostProductionBankRatioPerHour),
+          upgradeBuyAllowedDespiteRebuildUnsafe: false,
         });
         recordAdvisor("BUY", twinUpgradeName, reason);
         addLaneCandidate({
@@ -4454,33 +4668,26 @@ function getDisplayName(item) {
             paybackBypassed: false,
             postUpgradeRebuildRatio: rebuildRatio,
             rebuildSafe: true,
+            opportunityCostBypass: false,
+            opportunityCostReason: "opportunity-cost bypass not needed because rebuild buffer is already safe",
+            lostProductionPerSecond: newDecimal(0),
+            lostProductionPerHour: newDecimal(0),
+            lostProductionBankRatioPerHour: 0,
+            lostProductionBankRatioLimit: Number(config.twinUpgradeMaxLostProductionBankRatioPerHour || DEFAULT_CONFIG.twinUpgradeMaxLostProductionBankRatioPerHour),
+            upgradeBuyAllowedDespiteRebuildUnsafe: false,
             executed: true,
           });
         }
         return { actionTaken: true, bought: didTwinBuy ? 1 : 0, summary: didTwinBuy ? `Twin unlock ${twinUpgradeName}` : "Twin unlock buy failed" };
       }
-    } else if (!twinNearEnough) {
-      recordTwinUnlockPlannerState({
-        candidate: twinUpgradeName,
-        decision: "HOLD",
-        reason: "threshold not near enough",
-        target: twinDecisionTarget,
-        upgrade: twinUpgradeName,
-        costResource: twinCostUnitName,
-        current: formatSwarmNumber(twinCurrentRaw),
-        required: formatSwarmNumber(twinRequiredRaw),
-        missing: formatSwarmNumber(twinMissing),
-        prepCandidate: twinPrepCandidateName,
-        reserveRatio: NaN,
-        paybackBypassed: false,
-        postUpgradeRebuildRatio: NaN,
-        rebuildSafe: false,
-      });
     } else if (!twinCostUnit?.isVisible?.() || !twinCostUnit?.isBuyable?.()) {
+      const reason = !twinNearEnough
+        ? `threshold reachability prep below near-threshold ratio (${trimNumber(twinThresholdRatio * 100)}% < required ${trimNumber(twinNearRatioRequired * 100)}%); twin prep resource ${twinCostUnitName} is not buyable yet`
+        : `twin prep resource ${twinCostUnitName} is not buyable yet`;
       recordTwinUnlockPlannerState({
         candidate: twinUpgradeName,
         decision: "HOLD",
-        reason: `twin prep resource ${twinCostUnitName} is not buyable yet`,
+        reason,
         target: twinDecisionTarget,
         upgrade: twinUpgradeName,
         costResource: twinCostUnitName,
@@ -4540,9 +4747,12 @@ function getDisplayName(item) {
         const guard = getMeatChainPurchaseAnalysis(twinCostUnit, prepNum);
         const reserveRatio = rawMetricNumber(guard?.raw || {}, "reserveRatio", NaN);
         const requiredRatio = Number(config.twinUnlockMinReserveRatio || DEFAULT_CONFIG.twinUnlockMinReserveRatio);
+        const reachabilityPrefix = !twinNearEnough
+          ? `threshold reachability prep below near-threshold ratio (${trimNumber(twinThresholdRatio * 100)}% < required ${trimNumber(twinNearRatioRequired * 100)}%)`
+          : "threshold prep";
         let decision = "BUY";
         let paybackBypassed = false;
-        let reason = `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}`;
+        let reason = `${reachabilityPrefix} for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}`;
 
         if (guard && !guard.ok) {
           if (
@@ -4552,11 +4762,11 @@ function getDisplayName(item) {
             reserveRatio >= requiredRatio
           ) {
             paybackBypassed = true;
-            reason = `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}; reserve after buy ${trimNumber(reserveRatio)}x >= required ${trimNumber(requiredRatio)}x; payback bypassed for twin threshold value`;
+            reason = `${reachabilityPrefix} for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; buying ${twinCostUnitName} advances concrete twin threshold for ${targetName}; reserve after buy ${trimNumber(reserveRatio)}x >= required ${trimNumber(requiredRatio)}x; payback bypassed for twin threshold value`;
           } else {
             decision = "HOLD";
             reason = guard.type === "reserve" || (Number.isFinite(reserveRatio) && reserveRatio < requiredRatio)
-              ? `threshold prep for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; HOLD because reserve after ${twinCostUnitName} prep is below required threshold`
+              ? `${reachabilityPrefix} for ${twinUpgradeName}; need ${formatSwarmNumber(twinRequiredRaw)} ${twinCostUnitName}; current ${formatSwarmNumber(twinCurrentRaw)}; missing ${formatSwarmNumber(twinMissing)}; HOLD because reserve after ${twinCostUnitName} prep is below required threshold`
               : `threshold prep blocked: ${guard.reason}`;
           }
         }
@@ -5656,6 +5866,8 @@ function getDisplayName(item) {
   function recordTwinUnlockPlannerState(fields = {}) {
     const reserveRatio = Number(fields.reserveRatio);
     const postUpgradeRebuildRatio = Number(fields.postUpgradeRebuildRatio);
+    const lostProductionBankRatioPerHour = Number(fields.lostProductionBankRatioPerHour);
+    const lostProductionBankRatioLimit = Number(fields.lostProductionBankRatioLimit);
 
     twinUnlockPlannerState = {
       candidate: fields.candidate || twinUnlockPlannerState?.candidate || "none",
@@ -5674,6 +5886,17 @@ function getDisplayName(item) {
       postUpgradeRebuildRatio: Number.isFinite(postUpgradeRebuildRatio) ? postUpgradeRebuildRatio : null,
       postUpgradeRebuildRatioText: Number.isFinite(postUpgradeRebuildRatio) ? `${trimNumber(postUpgradeRebuildRatio)}x` : "n/a",
       rebuildSafe: !!fields.rebuildSafe,
+      opportunityCostBypass: !!fields.opportunityCostBypass,
+      opportunityCostReason: fields.opportunityCostReason || "not evaluated",
+      lostProductionPerSecond: fields.lostProductionPerSecond || newDecimal(0),
+      lostProductionPerSecondText: fields.lostProductionPerSecond ? `${formatSwarmNumber(fields.lostProductionPerSecond)}` : "n/a",
+      lostProductionPerHour: fields.lostProductionPerHour || newDecimal(0),
+      lostProductionPerHourText: fields.lostProductionPerHour ? `${formatSwarmNumber(fields.lostProductionPerHour)}` : "n/a",
+      lostProductionBankRatioPerHour: Number.isFinite(lostProductionBankRatioPerHour) ? lostProductionBankRatioPerHour : null,
+      lostProductionBankRatioPerHourText: Number.isFinite(lostProductionBankRatioPerHour) ? `${trimNumber(lostProductionBankRatioPerHour * 100)}%/h` : "n/a",
+      lostProductionBankRatioLimit: Number.isFinite(lostProductionBankRatioLimit) ? lostProductionBankRatioLimit : null,
+      lostProductionBankRatioLimitText: Number.isFinite(lostProductionBankRatioLimit) ? `${trimNumber(lostProductionBankRatioLimit * 100)}%/h` : "n/a",
+      upgradeBuyAllowedDespiteRebuildUnsafe: !!fields.upgradeBuyAllowedDespiteRebuildUnsafe,
       executed: !!fields.executed,
     };
 
@@ -7906,7 +8129,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.5 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.8.7 <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -7914,7 +8137,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.5. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.8.7. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -8015,7 +8238,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.5. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.8.7. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
