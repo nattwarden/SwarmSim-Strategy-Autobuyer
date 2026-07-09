@@ -32,6 +32,13 @@ docs/release-notes/
 - 0.8.8: current script version and current focus for Multi-Lane Coordinator /
   Territory Starvation Fix.
 
+## Documentation posture note
+
+2026-07-09: active agent/docs language was reframed from “conservative bot” to
+“methodical optimizer/advisor with hard safety defaults”. The change is a
+mental-model and documentation shift, not a gameplay logic change. Hard safety
+boundaries remain separate from ordinary progression optimization.
+
 ## Cleanup decision
 
 Removed from the working tree:
