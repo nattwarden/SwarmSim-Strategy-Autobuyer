@@ -11,6 +11,12 @@ The user's visible Chrome tab was already far into a run, so the clean-start
 capture used a temporary browser profile with no prior Swarm Simulator
 localStorage.
 
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Direct clean-start observation plus upstream game data cross-reference in this file.
+> Supports: Clean start has only meat, larvae, drones, and base upgrades visible; future lanes such as Energy/Nexus should not be treated as active blockers before unlock.
+> Script implication: Diagnostics should distinguish locked/unavailable lanes from protected active lanes. This is observability cleanup, not permission to broaden buying.
+
 ## Captured artifacts
 
 - Game-only clean start:
@@ -45,6 +51,12 @@ The upstream game fixture confirms the persisted initial baseline as
 `invisiblehatchery = 1`, `meat = 35`, and `larva = 10`. The browser observation
 showed `14 larvae` because several seconds elapsed before capture and the
 invisible hatchery produces larvae at `+1/sec`.
+
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Browser observation and upstream fixture cross-reference in this section.
+> Supports: Initial resource and hidden hatchery assumptions are stable for clean-start planning.
+> Script implication: Early-game planner should not assume Territory, Energy, Nexus, or abilities are already active.
 
 ## Upstream Game Code Cross-Reference
 
@@ -109,6 +121,12 @@ The hatchery estimate is internally consistent with the observed state:
 `300 meat` target minus `36 meat` current at `+1 meat/sec` gives roughly
 `264 seconds`, or about `4m 24s` to `4m 26s` depending on tick timing.
 
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Observed bot state and ETA calculation in this section.
+> Supports: Hatchery save-window math is internally consistent in the clean-start capture.
+> Script implication: Keeping early Hatchery protection is justified; the premature Nexus/Energy blocker text is diagnostics noise unless later behavior proves it affects purchases.
+
 ## Findings
 
 1. The bot successfully recognizes the clean-start page and can act from a
@@ -134,6 +152,12 @@ The hatchery estimate is internally consistent with the observed state:
    only meat, larvae, drones, and base upgrades are visible. Early-game
    documentation should therefore avoid assuming territory, energy, Nexus, or
    abilities are active before their unlock points.
+
+> **Verification note — 2026-07-09**
+> Status: CONFIRMED
+> Evidence: Findings in this file plus `docs/SWARMSIM_GAME_MODEL.md` lane diagnostics notes.
+> Supports: Locked lane vs active blocker distinction is a verified observability need.
+> Script implication: Next script review should fix misleading diagnostics before changing early-game buying aggressiveness.
 
 ## Implications For Autobuyer Work
 
@@ -165,4 +189,3 @@ Capture these in order before changing opening strategy:
 9. First Nexus unlock and the first point where Energy becomes visible.
 10. Later ability unlocks, especially Cocooning and Clone Larvae, with defaults
     still disabled unless explicitly enabled by the user.
-
