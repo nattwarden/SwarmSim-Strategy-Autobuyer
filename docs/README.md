@@ -2,7 +2,14 @@
 
 Project documentation, prompts, release notes, game model notes, and live logs.
 
-Expected structure:
+## Active files
+
+```text
+SWARMSIM_GAME_MODEL.md                    # canonical active game model
+prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md
+```
+
+## Structure
 
 ```text
 release-notes/
@@ -10,8 +17,8 @@ prompts/
 live-logs/
 ```
 
-The integrated game model should be added here when uploading the baseline files:
+## Source-of-truth note
 
-```text
-SWARMSIM_GAME_MODEL-2026-07-08-reference-integrated.txt
-```
+Use `docs/SWARMSIM_GAME_MODEL.md` as the only active game model.
+
+Older dated game model files were transitional snapshots. They should not be used as current strategy truth.
