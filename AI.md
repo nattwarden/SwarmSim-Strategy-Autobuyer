@@ -241,6 +241,15 @@ Runtime adapter extraction in practice uses build marker sections in
 `src/SwarmSim-Strategy-Autobuyer.user.js` and syncs from
 `dev-src/runtime-sections/` via `scripts/canonical-build.config.json`.
 
+Current Phase 4 practical assembly source for full runtime:
+
+```text
+dev-src/runtime-sections/runtime-main.js
+```
+
+Canonical userscript remains executable source of truth in `src/`, but runtime
+content is now produced through the configured build pipeline.
+
 This includes:
 
 - `node --check src/SwarmSim-Strategy-Autobuyer.user.js`

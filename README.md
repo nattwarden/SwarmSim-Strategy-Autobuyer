@@ -15,7 +15,7 @@ src/
   SwarmSim-Strategy-Autobuyer.user.js       # current installable Tampermonkey source
 dev-src/
   guards/                                   # modular lane guard scaffolds (non-executable)
-  runtime-sections/                         # build-synced runtime sections for canonical script
+  runtime-sections/                         # build sources for canonical runtime (runtime-main.js)
   overseer/                                 # modular coordinator scaffold (non-executable)
   contracts/                                # shared proposal contract scaffold
 docs/

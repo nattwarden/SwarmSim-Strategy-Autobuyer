@@ -1,6 +1,6 @@
 # Modularization Plan (Phase 1 start)
 
-Status: Started 2026-07-09, Phase 3 done; Phase 4 in progress
+Status: Started 2026-07-09, Phase 4 done (practical split active)
 
 Goal:
 
@@ -29,7 +29,7 @@ Migration phases:
 1. Phase 1 (done): scaffold contracts and module entry points; no runtime wiring.
 2. Phase 2 (done): territory/army lane execution extracted behind a runtime adapter boundary in the canonical userscript.
 3. Phase 3 (done): territory/army proposal generation plus meat, engine, energy and clone execution routed through dedicated runtime adapter boundaries.
-4. Phase 4 (in progress): config-driven build/check assembly with marker-synced runtime sections is active; next step is moving larger lane bodies into runtime section sources incrementally.
+4. Phase 4 (done): config-driven build/check assembly is active with full runtime sourced from `dev-src/runtime-sections/runtime-main.js` and emitted to canonical userscript.
 
 Validation required after each phase:
 
