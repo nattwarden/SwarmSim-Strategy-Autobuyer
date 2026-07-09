@@ -131,6 +131,12 @@ If an urgent fix is made directly in `src/SwarmSim-Strategy-Autobuyer.user.js`,
 immediately sync and validate before PR:
 
 ```bash
+npm run hotfix:canonical
+```
+
+Equivalent explicit steps:
+
+```bash
 npm run sync:from-canonical
 npm run build
 npm run verify

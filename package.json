@@ -8,6 +8,7 @@
     "build": "node scripts/build-canonical-userscript.js --write",
     "build:check": "node scripts/build-canonical-userscript.js --check",
     "sync:from-canonical": "node scripts/extract-runtime-source.js",
+    "hotfix:canonical": "npm run sync:from-canonical && npm run build && npm run verify",
     "validate:guardrails": "node scripts/validate-repo-guardrails.js",
     "verify": "node scripts/build-canonical-userscript.js --check && node scripts/validate-repo-guardrails.js"
   }

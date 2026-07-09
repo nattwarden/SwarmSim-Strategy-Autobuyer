@@ -98,6 +98,7 @@ Commands:
 npm run build:check
 npm run build
 npm run sync:from-canonical
+npm run hotfix:canonical
 npm run verify
 ```
 
@@ -114,9 +115,13 @@ Normal work:
 Emergency hotfix directly in canonical script:
 
 1. Edit `src/SwarmSim-Strategy-Autobuyer.user.js`
-2. Run `npm run sync:from-canonical` to sync runtime back to `dev-src/`
-3. Run `npm run build`
-4. Run `npm run verify`
+2. Run `npm run hotfix:canonical`
+
+Equivalent explicit steps:
+
+1. `npm run sync:from-canonical` to sync runtime back to `dev-src/`
+2. `npm run build`
+3. `npm run verify`
 
 This keeps guardrails strict while still allowing fast app development when needed.
 
