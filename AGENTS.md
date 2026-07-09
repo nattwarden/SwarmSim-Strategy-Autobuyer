@@ -112,6 +112,13 @@ If a PR branch was squash-merged:
 - delete the old feature branch locally
 - do not press Sync Changes on the old feature branch
 
+Commit/push cadence for AI agents:
+
+- keep changes scoped and checkpoint often
+- create small commits per completed sub-task
+- push after each completed sub-task so work is not mixed together
+- do not batch unrelated changes into one large commit
+
 ## Validation
 
 Always run:

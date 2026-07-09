@@ -186,6 +186,8 @@ Do not introduce as default automation:
   model shows desired behavior.
 - Preserve conservative defaults.
 - Prefer narrow hotfixes over broad strategy rewrites.
+- Keep commits small and scoped to one completed sub-task.
+- Push after each completed sub-task to avoid mixing unrelated changes.
 - Risky planners should start as advisor/observability or be tightly
   config-gated.
 - Smart Mode should use safe chunks, not buyMax.
