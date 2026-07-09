@@ -204,6 +204,8 @@ Do not introduce as default automation:
   behavior parity unless explicitly changing strategy.
 - For meat lane execution work, use `executeMeatGuardAction(...)` as the
   adapter boundary and keep behavior parity unless explicitly changing strategy.
+- For engine lane execution work, use `executeEngineGuardAction(...)` as the
+  adapter boundary and keep behavior parity unless explicitly changing strategy.
 
 ## Validation
 

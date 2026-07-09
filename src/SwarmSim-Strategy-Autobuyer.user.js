@@ -8102,6 +8102,11 @@ function getDisplayName(item) {
     return boughtCount;
   }
 
+  // Phase 3 extraction: dedicated execution adapter boundary for engine lane.
+  function executeEngineGuardAction({ game, commands, engine }) {
+    return handleLarvaEnginePriority(game, commands, engine);
+  }
+
   function smartRunOnce() {
     if (!config.enabled) {
       lastStatus = "Pausad";
@@ -8204,7 +8209,7 @@ function getDisplayName(item) {
     let protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
 
     if (canDoMoreMainActions()) {
-      const engineAction = handleLarvaEnginePriority(game, commands, engine);
+      const engineAction = executeEngineGuardAction({ game, commands, engine });
       addMainResult("Larva engine", engineAction);
 
       if (engineAction.actionTaken) {
