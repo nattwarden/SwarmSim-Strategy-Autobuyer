@@ -1,6 +1,6 @@
 # AI.md — SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-script-0.8.3-indexed
+Version: 2026-07-09-script-0.8.4-indexed
 Status: Project source map for ChatGPT/Codex/AI agents.
 
 ## Syfte
@@ -50,7 +50,7 @@ Policy från 0.8.0 och framåt:
 Tekniska fakta:
 
 - Script: SwarmSim Strategy Autobuyer
-- Version: 0.8.3
+- Version: 0.8.4
 - Körs på `swarmsim.com`, `www.swarmsim.com`, `swarmsim.github.io`
 - Exponerar botten som `window.kbcSwarmBot`
 - Använder Angular-services: `game`, `commands`, `$rootScope`
@@ -89,6 +89,7 @@ Tekniska fakta:
 - 0.8.1 unlock candidate hotfix
 - 0.8.2 clone buffer post-clone release-threshold hotfix
 - 0.8.3 parent-step conversion hotfix
+- 0.8.4 twin unlock threshold planner hotfix
 
 ## Nytt i 0.8.0
 
@@ -123,6 +124,14 @@ twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade
 - Parent-step payback bypass är konservativ och begränsad till direkt parent-step conversion med tydlig reserve-tröskel.
 - Parent-step conversion körs före generell action-unit filler och fallback i samma run.
 - Inspector/export visar parent-step candidate/decision/reason/target/action/cost/reserve/bypass/supports-action.
+
+0.8.4 är en hotfix ovanpå 0.8.3. Den ändrar inte säkra defaults och breddar inte strategin, men lägger till en smal Twin Unlock Threshold Planner:
+
+- Plannern kan förbereda en konkret twin-tröskel (t.ex. Twin Neural Clusters vid 1000 Hive Networks) med konservativ payback-bypass när reserve är trygg.
+- Plannern kräver target-path-relevans för twin-upgrade och kostnadsresurs.
+- När twinnen blir buyable krävs post-upgrade rebuild-buffer, annars HOLD med tydlig reason.
+- Same-run guard hindrar omedelbar lower filler efter twin-threshold prep eller twin-köp.
+- Inspector/export visar twin unlock candidate/decision/reason/target/upgrade/cost/current/required/missing/prep/reserve/bypass/rebuild.
 
 Exempel för live-scenariot:
 
