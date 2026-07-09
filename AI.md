@@ -1,16 +1,40 @@
 # AI.md - SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-agent-guardrails
-Status: Source map and repo policy for ChatGPT/Codex/Copilot/AI agents.
+Version: 2026-07-09-methodical-optimizer-posture
+Status: Source map, optimization posture, and repo policy for ChatGPT/Codex/Copilot/AI agents.
 
 ## Purpose
 
 This file tells AI agents which project files to trust, in what order to read
-them, and which safety rules must not be violated.
+them, which safety rules must not be violated, and how to reason about the
+project's intended behavior.
 
 The goal is to prevent work from old uploaded scripts, stale release copies,
 transitional game-model snapshots, or broad strategy rewrites when a narrow fix
 was requested.
+
+## Optimization posture
+
+SwarmSim Strategy Autobuyer is not conservative by identity. It is a methodical,
+evidence-based optimizer/advisor.
+
+Default automation avoids irreversible or high-risk actions, but ordinary
+progression should be optimized logically within the selected user mode. Do not
+confuse hard safety defaults with passivity.
+
+Use this framing:
+
+- Advisor Mode: explains opportunities, risks, and timing so the user can play
+  more manually.
+- Methodical Optimizer: default Smart behavior; goal-driven, rebuild/payback
+  aware, and willing to buy when the evidence says the action is correct.
+- High-Tempo Optimizer: future explicit user-selected mode; may push progression
+  harder, while still preserving observability and hard safety defaults unless
+  the user explicitly changes those defaults.
+
+If a future prompt says the bot should be more forceful, interpret that as
+"optimize harder inside the chosen risk mode", not as permission to auto-cast
+abilities, auto-ascend, buyMax blindly, or ignore confirmed blockers.
 
 ## Canonical sources
 
@@ -138,7 +162,7 @@ For modularization:
 - Extract one lane at a time and keep observability parity in Strategy Inspector/export.
 - Use `dev-src/contracts/lane-proposal.js` proposal shape for lane module boundaries.
 
-## Safety defaults
+## Hard safety defaults
 
 These must not change unless explicitly requested:
 
@@ -179,18 +203,22 @@ Do not introduce as default automation:
 - Aggressive buyMax in Smart Mode.
 - Blind highest-unit buying.
 
+These are hard safety boundaries, not a directive to under-optimize reversible
+normal purchases. If the math says a normal action is correct and all hard
+blockers pass, the bot should be allowed to act within the selected mode.
+
 ## Work rules for AI agents
 
 - Build against `src/SwarmSim-Strategy-Autobuyer.user.js` only.
 - Keep strategy and implementation separate: code shows actual behavior; the game
   model shows desired behavior.
-- Preserve conservative defaults.
-- Prefer narrow hotfixes over broad strategy rewrites.
+- Preserve hard safety defaults and selected-mode semantics.
+- Prefer narrow fixes over broad rewrites.
 - Keep commits small and scoped to one completed sub-task.
 - Push after each completed sub-task to avoid mixing unrelated changes.
 - Risky planners should start as advisor/observability or be tightly
   config-gated.
-- Smart Mode should use safe chunks, not buyMax.
+- Smart Mode should use scored chunks, not buyMax by default.
 - Every changed behavior needs Strategy Inspector/export observability.
 - Do not mix repo hygiene changes with gameplay strategy changes unless the user
   explicitly asks for both.
