@@ -141,21 +141,18 @@ Ran:
 
 ```bash
 node --check src/SwarmSim-Strategy-Autobuyer.user.js
-node --check releases/0.8.0/SwarmSim-Strategy-Autobuyer-0.8.0-unlock-clone-buffer-ability-prep.user.js
 ```
 
 Static checks performed:
 
 - no remaining `SwarmBot v0.7.9` UI title
 - safety defaults preserved
-- release `.user.js` and `.txt` are byte-identical
-- source and release files are byte-identical for 0.8.0
+- canonical source validated in `src/SwarmSim-Strategy-Autobuyer.user.js`
+- release history tracked through Git commits/tags
 
 ## Files
 
 - `src/SwarmSim-Strategy-Autobuyer.user.js`
-- `releases/0.8.0/SwarmSim-Strategy-Autobuyer-0.8.0-unlock-clone-buffer-ability-prep.user.js`
-- `releases/0.8.0/SwarmSim-Strategy-Autobuyer-0.8.0-unlock-clone-buffer-ability-prep.txt`
 - `releases/0.8.0/SwarmSim-Strategy-Autobuyer-0.8.0-release-notes.md`
 - `docs/release-notes/SwarmSim-Strategy-Autobuyer-0.8.0-release-notes.md`
 - `AI-2026-07-09-script-0.8.0-indexed.md`

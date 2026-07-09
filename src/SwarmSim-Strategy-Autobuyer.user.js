@@ -3461,9 +3461,12 @@ function getDisplayName(item) {
     const protectRatio = getCloneBufferProtectionRatio(mode);
 
     const target = cap.times(protectRatio);
-    const debt = decimalFrom(Math.max(0, decimalToNumber(target.minus(cocoons), 0)));
-    const larvaeProtected = decimalFrom(Math.min(decimalToNumber(larvae, 0), decimalToNumber(debt.times(protectRatio), 0)));
-    const spendableLarvae = decimalFrom(Math.max(0, decimalToNumber(larvae.minus(larvaeProtected), 0)));
+    const rawDebt = target.minus(cocoons);
+    const debt = rawDebt.greaterThan(0) ? rawDebt : newDecimal(0);
+    const desiredProtected = debt.times(protectRatio);
+    const larvaeProtected = decimalMin(larvae, desiredProtected);
+    const rawSpendable = larvae.minus(larvaeProtected);
+    const spendableLarvae = rawSpendable.greaterThan(0) ? rawSpendable : newDecimal(0);
     const percent = isPositive(target) ? decimalToNumber(cocoons.dividedBy(target).times(100), 0) : 100;
 
     const modeReason = mode === "POST_CLONE_LOCK"

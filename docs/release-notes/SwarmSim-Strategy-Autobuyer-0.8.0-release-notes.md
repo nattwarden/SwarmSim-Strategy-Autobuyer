@@ -33,7 +33,7 @@ Still preserved:
 
 ```bash
 node --check src/SwarmSim-Strategy-Autobuyer.user.js
-node --check releases/0.8.0/SwarmSim-Strategy-Autobuyer-0.8.0-unlock-clone-buffer-ability-prep.user.js
 ```
 
-0.8.0 release `.txt` and `.user.js` are byte-identical.
+Canonical install source is `src/SwarmSim-Strategy-Autobuyer.user.js` at the tagged commit.
+Release history is tracked via Git commits/tags.

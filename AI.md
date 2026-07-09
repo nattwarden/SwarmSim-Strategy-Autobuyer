@@ -13,13 +13,13 @@ Målet är att undvika att agenten gissar, bygger mot fel version eller blandar 
 
 1. `AI.md`
 2. `docs/SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt`
-3. `releases/0.8.0/SwarmSim-Strategy-Autobuyer-0.8.0-unlock-clone-buffer-ability-prep.txt`
+3. `src/SwarmSim-Strategy-Autobuyer.user.js`
 4. Relevanta referenser vid behov:
    - `reference/REFERENCE_SwarmSim_ichbinsisyphos_2015.txt`
    - `reference/REFERENCE_SwarmSim_featherwinglove_reddit_strategy_2015.txt`
    - `reference/REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned.txt`
 
-Om det finns både `.txt` och `.user.js` för samma scriptversion ska `.txt` behandlas som copy/paste-source. För 0.8.0 ska `.txt` och `.user.js` vara byte-identiska.
+Från och med 0.8.0 är `src/SwarmSim-Strategy-Autobuyer.user.js` den enda kanoniska scriptsourcen.
 
 ## Source-of-truth hierarchy
 
@@ -31,9 +31,21 @@ Detta styr önskat beteende för Smart Mode, Advisor, Energy/Nexus, Meat-chain, 
 
 ### 2. Faktisk kodbas
 
-`releases/0.8.0/SwarmSim-Strategy-Autobuyer-0.8.0-unlock-clone-buffer-ability-prep.txt`
+`src/SwarmSim-Strategy-Autobuyer.user.js`
 
-Aktuell Tampermonkey-source.
+Aktuell Tampermonkey-source (kanonisk och enda körbara scriptsource).
+
+### 3. Dokumentation och releasehistorik
+
+- Dokumentation finns i `.md`-filer.
+- `releases/` innehåller dokumentation (README/release notes), inte scriptkopior.
+- Versionerad releasehistorik hanteras via Git commits/tags.
+
+Policy från 0.8.0 och framåt:
+
+- Ingen `.txt` script-mirror.
+- Ingen duplicerad `.user.js` i `releases/`.
+- Installationskälla för Tampermonkey är alltid `src/SwarmSim-Strategy-Autobuyer.user.js` vid rätt tag/commit.
 
 Tekniska fakta:
 
