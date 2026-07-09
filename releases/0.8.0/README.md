@@ -1,11 +1,13 @@
-# 0.8.0 — planned
+# 0.8.0 — Unlock / Clone Buffer / Ability Prep Planner
 
-Planned next release folder.
+Released planner-focused conservative update.
 
-Working title:
+Contained files:
 
 ```text
-Unlock / Clone Buffer / Ability Prep Planner
+SwarmSim-Strategy-Autobuyer-0.8.0-unlock-clone-buffer-ability-prep.user.js
+SwarmSim-Strategy-Autobuyer-0.8.0-unlock-clone-buffer-ability-prep.txt
+SwarmSim-Strategy-Autobuyer-0.8.0-release-notes.md
 ```
 
-Do not add generated 0.8.0 files until the implementation has been built and validated.
+The `.txt` and `.user.js` files are byte-identical.

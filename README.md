@@ -2,7 +2,7 @@
 
 Conservative Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current baseline: **0.7.9 — Target-aware Upgrade / Twin Planner**.
+Current baseline: **0.8.0 — Unlock / Clone Buffer / Ability Prep Planner**.
 
 ## Repository layout
 
@@ -11,8 +11,9 @@ src/
   SwarmSim-Strategy-Autobuyer.user.js       # current installable Tampermonkey source
 releases/
   0.7.9/                                    # archived 0.7.9 release files
+  0.8.0/                                    # archived 0.8.0 release files
 docs/
-  SWARMSIM_GAME_MODEL-2026-07-08-reference-integrated.txt
+  SWARMSIM_GAME_MODEL-2026-07-09-github-first.txt
   release-notes/
   prompts/
   live-logs/
