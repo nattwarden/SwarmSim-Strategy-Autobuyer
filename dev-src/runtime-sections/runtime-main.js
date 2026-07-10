@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const SCRIPT_VERSION = "0.10.1";
+  const SCRIPT_VERSION = "0.11.0";
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
@@ -47,6 +47,14 @@
     maxLepidopteraPerRun: 5,
     postNexusEnergyReserveSeconds: 30,
     postNexusLepidopteraMinBoostGainPercent: 0.01,
+    energySupportBroker: true,
+    energySupportBrokerAdvisorOnly: true,
+    energySupportBrokerAllowAutoCast: false,
+    energySupportCloneLarvaeAdvisor: true,
+    energySupportHouseOfMirrorsAdvisor: true,
+    energySupportLepidopteraAdvisor: true,
+    energySupportMinMeaningfulBenefit: 0.05,
+    energySupportPreferSafeBackgroundLepidoptera: true,
     offlineMode: false,
     nightbugStorageMode: false,
     abilityPlanner: false,
@@ -178,6 +186,14 @@
       maxLepidopteraPerRun: 5,
       postNexusEnergyReserveSeconds: 30,
       postNexusLepidopteraMinBoostGainPercent: 0.01,
+      energySupportBroker: true,
+      energySupportBrokerAdvisorOnly: true,
+      energySupportBrokerAllowAutoCast: false,
+      energySupportCloneLarvaeAdvisor: true,
+      energySupportHouseOfMirrorsAdvisor: true,
+      energySupportLepidopteraAdvisor: true,
+      energySupportMinMeaningfulBenefit: 0.05,
+      energySupportPreferSafeBackgroundLepidoptera: true,
       offlineMode: false,
       nightbugStorageMode: false,
       abilityPlanner: false,
@@ -607,6 +623,19 @@
       10,
       DEFAULT_CONFIG.postNexusLepidopteraMinBoostGainPercent
     );
+    c.energySupportBroker = c.energySupportBroker !== false;
+    c.energySupportBrokerAdvisorOnly = c.energySupportBrokerAdvisorOnly !== false;
+    c.energySupportBrokerAllowAutoCast = !!c.energySupportBrokerAllowAutoCast;
+    c.energySupportCloneLarvaeAdvisor = c.energySupportCloneLarvaeAdvisor !== false;
+    c.energySupportHouseOfMirrorsAdvisor = c.energySupportHouseOfMirrorsAdvisor !== false;
+    c.energySupportLepidopteraAdvisor = c.energySupportLepidopteraAdvisor !== false;
+    c.energySupportMinMeaningfulBenefit = clampNumber(
+      c.energySupportMinMeaningfulBenefit,
+      0,
+      1,
+      DEFAULT_CONFIG.energySupportMinMeaningfulBenefit
+    );
+    c.energySupportPreferSafeBackgroundLepidoptera = c.energySupportPreferSafeBackgroundLepidoptera !== false;
     c.offlineMode = !!c.offlineMode;
     c.nightbugStorageMode = !!c.nightbugStorageMode;
     c.abilityPlanner = !!c.abilityPlanner;
@@ -1703,6 +1732,8 @@ function getDisplayName(item) {
     if (config.energyStrategy) settings.push(`Nexus target ${config.nexusTarget}`);
     if (config.saveEnergyForNexus) settings.push("energy protected for Nexus");
     if (config.lepidopteraRoiMode) settings.push(`Lepidoptera ROI +${trimNumber(config.lepidopteraStopAtBoostPercent)}% stop`);
+    if (config.energySupportBroker) settings.push(`energy support broker ${config.energySupportBrokerAdvisorOnly ? "advisor-first" : "active"}`);
+    settings.push(`energy support auto-cast ${config.energySupportBrokerAllowAutoCast ? "ON (risk)" : "off"}`);
     if (config.meatGoalPlanner) settings.push(`meat planner depth ${config.meatPlannerDepth}`);
     if (config.targetAwareUpgradePlanner) settings.push("target-aware upgrade/twin planner");
     if (config.meatChainPaybackGuard) settings.push(`reserve ${trimNumber(config.meatChainReserveMultiplier)}x / payback ${formatDuration(config.meatChainMaxPaybackSeconds)}`);
@@ -1752,6 +1783,14 @@ function getDisplayName(item) {
       maxLepidopteraPerRun: config.maxLepidopteraPerRun,
       postNexusEnergyReserveSeconds: config.postNexusEnergyReserveSeconds,
       postNexusLepidopteraMinBoostGainPercent: config.postNexusLepidopteraMinBoostGainPercent,
+      energySupportBroker: config.energySupportBroker,
+      energySupportBrokerAdvisorOnly: config.energySupportBrokerAdvisorOnly,
+      energySupportBrokerAllowAutoCast: config.energySupportBrokerAllowAutoCast,
+      energySupportCloneLarvaeAdvisor: config.energySupportCloneLarvaeAdvisor,
+      energySupportHouseOfMirrorsAdvisor: config.energySupportHouseOfMirrorsAdvisor,
+      energySupportLepidopteraAdvisor: config.energySupportLepidopteraAdvisor,
+      energySupportMinMeaningfulBenefit: config.energySupportMinMeaningfulBenefit,
+      energySupportPreferSafeBackgroundLepidoptera: config.energySupportPreferSafeBackgroundLepidoptera,
       targetAwareUpgradePlanner: config.targetAwareUpgradePlanner,
       meatGoalPlanner: config.meatGoalPlanner,
       meatPlannerDepth: config.meatPlannerDepth,
@@ -2174,7 +2213,21 @@ function getDisplayName(item) {
     };
     const councilWinningLane = selectedMainAction?.lane || "none";
     const councilWinningCandidate = selectedMainAction?.candidate || "none";
-    const activeCouncilSpeaker = councilSpeakerByLane[councilWinningLane] || "none";
+    const energySupport = buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction);
+    const waitingSummary = getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries);
+    const upcomingMilestone = getNextLikelyBuy(game, engine, protectedResources, candidateSummary);
+    const momentum = buildMomentumSnapshot({
+      smartFocus,
+      selectedMainAction,
+      selectedSideAction,
+      sideActions,
+      mainActions,
+      energySupport,
+      nextLikelyBuy: upcomingMilestone,
+      whyWaiting: waitingSummary,
+      bestRejectedStrategic,
+    });
+    const activeCouncilSpeaker = momentum.momentumPrimaryAdvisor || councilSpeakerByLane[councilWinningLane] || "none";
     const councilFocusBubble = selectedMainAction?.reason || noSideReason || "No lane has a safe bounded action yet.";
     const rawRemainingBudgetReason = coordinatorState?.coordinatorRemainingBudgetReason || refillState?.coordinatorRemainingBudgetReason || "none";
     const firstBlockerReason = (items, label) => {
@@ -2240,7 +2293,7 @@ function getDisplayName(item) {
       laneCoordinatorSelectedSummary: coordinatorState?.selectedLaneSummary || "none",
       coordinatorRemainingBudgetReason,
       summaries: summaries?.length ? summaries.slice(0, 4).join("; ") : "none",
-      whyWaiting: getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries),
+      whyWaiting: momentum.momentumWhyWaitingIsBest,
       lanes: summarizeDecisionLanes(laneCandidates),
       laneCandidates: candidateSummary.laneCandidates,
       laneBestByName: candidateSummary.laneBestByName,
@@ -2266,7 +2319,9 @@ function getDisplayName(item) {
       blockedByEnergyPlan: candidateSummary.blockedByEnergyPlan,
       blockedByAbilityDisabled: candidateSummary.blockedByAbilityDisabled,
       blockedBySummary: candidateSummary.blockedBySummary,
-      nextLikelyBuy: getNextLikelyBuy(game, engine, protectedResources, candidateSummary),
+      nextLikelyBuy: momentum.momentumNextMilestone || upcomingMilestone,
+      ...energySupport,
+      ...momentum,
       settings,
       meatFallbackEnabled: !!config.meatFallbackEnabled,
       meatFallbackCandidate: meatFallbackState?.candidate || "none",
@@ -2421,7 +2476,7 @@ function getDisplayName(item) {
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.10.1 keeps Expansion-aware Army Seed planning and clarifies Companion vs side-task wording while preserving Parent Refill, Twin meaningful gate, clone safety, and no auto-cast defaults.",
+      futurePlanners: "0.11.0 adds Energy Support Broker + Council momentum clarity in advisor-first mode while preserving Parent Refill, Twin meaningful gate, clone safety, and no auto-cast defaults.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2478,6 +2533,16 @@ function getDisplayName(item) {
       ["Post-Nexus energy boost", `${strategyInspector.postNexusEnergyBoostBefore || "n/a"} -> ${strategyInspector.postNexusEnergyBoostAfter || "n/a"} (${strategyInspector.postNexusEnergyBoostGain || "n/a"})`],
       ["Post-Nexus energy reserve", strategyInspector.postNexusEnergyReserve || "0"],
       ["Post-Nexus energy blocked by", strategyInspector.postNexusEnergyBlockedBy || "none"],
+      ["Energy support best use", `${strategyInspector.energySupportBestUse || "none"} (${strategyInspector.energySupportBestUseDecision || "HOLD"})`],
+      ["Energy support reason", strategyInspector.energySupportBestUseReason || "none"],
+      ["Energy support blocked by", strategyInspector.energySupportBestUseBlockedBy || "none"],
+      ["Clone support", `${strategyInspector.energySupportCloneDecision || "HOLD"} ${strategyInspector.energySupportCloneCandidate || "none"}`],
+      ["Mirror support", `${strategyInspector.energySupportMirrorDecision || "HOLD"} ${strategyInspector.energySupportMirrorCandidate || "none"}`],
+      ["Lepidoptera support role", `${strategyInspector.energySupportLepidopteraRole || "wait"} (${strategyInspector.energySupportLepidopteraDecision || "WAIT"})`],
+      ["Momentum primary focus", strategyInspector.momentumPrimaryFocus || "Methodical progression"],
+      ["Momentum primary advisor", strategyInspector.momentumPrimaryAdvisor || "none"],
+      ["Momentum best step", `${strategyInspector.momentumBestStep || "Wait"} (${strategyInspector.momentumBestStepDecision || "WAIT"})`],
+      ["Momentum why waiting is best", strategyInspector.momentumWhyWaitingIsBest || "none"],
       ["Actions", strategyInspector.actions],
       ["Coordinator", strategyInspector.laneCoordinatorDecision || "none"],
       ["Selected lanes", strategyInspector.laneCoordinatorSelectedSummary || "none"],
@@ -2691,13 +2756,335 @@ function getDisplayName(item) {
     });
   }
 
+  function buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction) {
+    if (!config.energySupportBroker) {
+      return {
+        energySupportBestUse: "none",
+        energySupportBestUseDecision: "HOLD",
+        energySupportBestUseHelpsAdvisor: "none",
+        energySupportBestUseReason: "energy support broker disabled",
+        energySupportBestUsePlayerInstruction: "none",
+        energySupportBestUseAutobuyerInstruction: "none",
+        energySupportBestUseBlockedBy: "broker disabled",
+        energySupportBackgroundAction: "none",
+        energySupportCloneCandidate: "none",
+        energySupportCloneDecision: "HOLD",
+        energySupportCloneReason: "clone advisor disabled",
+        energySupportCloneLarvaeGain: "n/a",
+        energySupportCloneBufferSafe: "no",
+        energySupportCloneCocoonReady: "no",
+        energySupportCloneHelpsTarget: "no",
+        energySupportCloneBlockedBy: "advisor disabled",
+        energySupportMirrorCandidate: "none",
+        energySupportMirrorDecision: "HOLD",
+        energySupportMirrorReason: "mirror advisor disabled",
+        energySupportMirrorArmyValue: "n/a",
+        energySupportMirrorTerritoryPerSecondBefore: "0",
+        energySupportMirrorTerritoryPerSecondAfter: "0",
+        energySupportMirrorExpansionEtaBefore: "n/a",
+        energySupportMirrorExpansionEtaAfter: "n/a",
+        energySupportMirrorEtaGainSeconds: "0",
+        energySupportMirrorBlockedBy: "advisor disabled",
+        energySupportMirrorPreferredUnitsMissing: "none",
+        energySupportMirrorTerritoryArmyExists: "no",
+        energySupportLepidopteraDecision: "WAIT",
+        energySupportLepidopteraRole: "wait",
+        energySupportLepidopteraReason: "broker disabled",
+        energySupportLepidopteraSuggestedChunk: "0",
+        energySupportLepidopteraBoostBefore: "n/a",
+        energySupportLepidopteraBoostAfter: "n/a",
+        energySupportLepidopteraBoostGain: "n/a",
+        energySupportLepidopteraReserveAfter: "0",
+      };
+    }
+
+    const minMeaningfulBenefit = Number(config.energySupportMinMeaningfulBenefit || 0);
+    const energy = decimalFrom(getCurrentResource(game, "energy"));
+    const larvaPerSecond = decimalFrom(getVelocity(game, "larva"));
+    const larvaBank = decimalFrom(getCurrentResource(game, "larva"));
+    const cloneAbility = getGameUpgrade(game, "clonelarvae");
+    const mirrorAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const moth = getGameUnit(game, "moth");
+
+    const cloneCost = cloneAbility?.isVisible?.() ? decimalFrom(getCostForResource(cloneAbility, "energy")) : newDecimal(0);
+    const cloneCandidate = cloneAbility?.isVisible?.() ? "Clone Larvae" : "none";
+    const cloneReadyEnergy = cloneAbility?.isVisible?.() ? decimalAtLeast(energy, cloneCost) : false;
+    const cloneCocoonReady = cloneBufferPlannerState?.cloneBufferRecoveryComplete && !cloneBufferPlannerState?.cloneBufferHardLockActive;
+    const cloneBufferSafe = !!cloneCocoonReady;
+    const cloneHelpsTarget = /meat|save-meat/i.test(String(smartFocus || "")) || /Meat|Clone Prep/i.test(String(selectedMainAction?.lane || ""));
+    const cloneGainRaw = decimalFrom(getCurrentResource(game, "clone") || 0).times(0.1);
+    const cloneGain = isPositive(cloneGainRaw) ? cloneGainRaw : larvaPerSecond.times(5);
+    const cloneGainRatio = isPositive(larvaBank) ? decimalToNumber(cloneGain.dividedBy(larvaBank), 0) : 0;
+    const cloneReady = !!cloneCandidate && cloneReadyEnergy && cloneBufferSafe && cloneHelpsTarget && cloneGainRatio >= minMeaningfulBenefit;
+    const cloneBlocked = [];
+    if (!cloneCandidate) cloneBlocked.push("clone larvae locked/unavailable");
+    if (cloneCandidate && !cloneReadyEnergy) cloneBlocked.push("not enough energy");
+    if (cloneCandidate && !cloneCocoonReady) cloneBlocked.push("cocoon buffer not ready");
+    if (cloneCandidate && !cloneBufferSafe) cloneBlocked.push("clone buffer safety check failed");
+    if (cloneCandidate && !cloneHelpsTarget) cloneBlocked.push("does not help current target");
+    if (cloneCandidate && cloneGainRatio < minMeaningfulBenefit) cloneBlocked.push("benefit below meaningful threshold");
+    const cloneDecision = cloneReady
+      ? (config.energySupportBrokerAdvisorOnly || !config.energySupportBrokerAllowAutoCast ? "ADVISE" : "READY")
+      : "HOLD";
+    const cloneReason = cloneReady
+      ? "Clone Larvae is the best energy support: it can feed the meat chain now, but auto-cast stays off by default."
+      : (cloneBlocked[0] || "Clone Larvae is not meaningful right now.");
+
+    const mirrorCost = mirrorAbility?.isVisible?.() ? decimalFrom(getCostForResource(mirrorAbility, "energy")) : newDecimal(0);
+    const mirrorCandidate = mirrorAbility?.isVisible?.() ? "House of Mirrors" : "none";
+    let mirrorArmyValueRaw = newDecimal(0);
+    const missingMirrorUnits = [];
+    for (const tier of HOUSE_OF_MIRRORS_ARMY_TIERS) {
+      const count = unitCountByNameLike(game, tier.key);
+      mirrorArmyValueRaw = mirrorArmyValueRaw.plus(count);
+      if (!isPositive(count)) missingMirrorUnits.push(tier.label);
+    }
+    let territoryArmyRaw = newDecimal(0);
+    for (const unit of game.unitlist?.() || []) {
+      if (getTabName(unit) !== "territory") continue;
+      territoryArmyRaw = territoryArmyRaw.plus(decimalFrom(unit?.count?.() || 0));
+    }
+    const mirrorTerritoryArmyExists = isPositive(territoryArmyRaw);
+    const mirrorReadyEnergy = mirrorAbility?.isVisible?.() ? decimalAtLeast(energy, mirrorCost) : false;
+    const mirrorPreferredQuality = Math.max(0, (HOUSE_OF_MIRRORS_ARMY_TIERS.length - missingMirrorUnits.length) / HOUSE_OF_MIRRORS_ARMY_TIERS.length);
+    const mirrorArmyScale = Math.max(0, Math.min(0.35, decimalLog10(mirrorArmyValueRaw.plus(1)) * 0.05));
+    const mirrorBoostRatio = mirrorTerritoryArmyExists ? mirrorPreferredQuality * mirrorArmyScale : 0;
+    const mirrorTpsBeforeRaw = decimalFrom(getVelocity(game, "territory"));
+    const mirrorTpsAfterRaw = mirrorTpsBeforeRaw.times(1 + mirrorBoostRatio);
+    const mirrorEtaBeforeSeconds = Number.isFinite(engine?.expansionEta) ? Math.max(0, Number(engine.expansionEta)) : Infinity;
+    const mirrorEtaAfterSeconds = Number.isFinite(mirrorEtaBeforeSeconds) && mirrorBoostRatio > 0 ? Math.max(0, mirrorEtaBeforeSeconds / (1 + mirrorBoostRatio)) : mirrorEtaBeforeSeconds;
+    const mirrorEtaGainSeconds = Number.isFinite(mirrorEtaBeforeSeconds) && Number.isFinite(mirrorEtaAfterSeconds)
+      ? Math.max(0, mirrorEtaBeforeSeconds - mirrorEtaAfterSeconds)
+      : 0;
+    const mirrorHelpsTarget = /territory|save-territory/i.test(String(smartFocus || "")) || /Territory|Engine/i.test(String(selectedMainAction?.lane || ""));
+    const mirrorMeaningful = mirrorBoostRatio >= minMeaningfulBenefit || mirrorEtaGainSeconds >= 30;
+    const mirrorReady = !!mirrorCandidate && mirrorReadyEnergy && mirrorTerritoryArmyExists && !missingMirrorUnits.length && mirrorHelpsTarget && mirrorMeaningful;
+    const mirrorBlocked = [];
+    if (!mirrorCandidate) mirrorBlocked.push("mirror ritual locked/unavailable");
+    if (mirrorCandidate && !mirrorReadyEnergy) mirrorBlocked.push("not enough energy");
+    if (mirrorCandidate && !mirrorTerritoryArmyExists) mirrorBlocked.push("no territory army exists");
+    if (mirrorCandidate && missingMirrorUnits.length) mirrorBlocked.push(`mirror-preferred units missing: ${missingMirrorUnits.join(", ")}`);
+    if (mirrorCandidate && !mirrorHelpsTarget) mirrorBlocked.push("does not help current target");
+    if (mirrorCandidate && !mirrorMeaningful) mirrorBlocked.push("no clear territory/Expansion payoff yet");
+    const mirrorDecision = mirrorReady
+      ? (config.energySupportBrokerAdvisorOnly || !config.energySupportBrokerAllowAutoCast ? "ADVISE" : "READY")
+      : "HOLD";
+    const mirrorReason = mirrorReady
+      ? "Mirror the army would help General Mandible now, but default mode keeps auto-cast off."
+      : (mirrorBlocked[0] || "Mirror ritual is not worth it yet.");
+
+    const lepidopteraPlan = postNexusEnergyPlannerState || {};
+    const lepiVisible = moth?.isVisible?.() && moth?.isBuyable?.();
+    const lepiDecisionBase = normalizeCouncilDecision(lepidopteraPlan.postNexusEnergyDecision || "HOLD", "HOLD");
+    let lepiRole = "wait";
+    if (lepiDecisionBase === "BUY") {
+      lepiRole = (/energy/i.test(String(smartFocus || "")) || (!cloneReady && !mirrorReady)) ? "primary" : "background";
+    } else if (lepiVisible) {
+      lepiRole = String(lepidopteraPlan.postNexusEnergyBlockedBy || "").includes("stop threshold") ? "hold" : "wait";
+    }
+    if (config.energySupportPreferSafeBackgroundLepidoptera && lepiRole === "primary" && (cloneReady || mirrorReady)) {
+      lepiRole = "background";
+    }
+    const lepiDecision = lepiRole === "primary"
+      ? "ADVISE"
+      : (lepiRole === "background" ? "BACKGROUND" : (lepiRole === "hold" ? "HOLD" : "WAIT"));
+    const lepiReason = lepidopteraPlan.postNexusEnergyReason
+      || (lepiRole === "background"
+        ? "Safe energy growth, but Expansion/meat momentum is the current focus."
+        : "Save energy for a stronger support action.");
+    const lepiChunk = lepidopteraPlan.postNexusEnergyAmount || (lepiVisible ? formatSwarmNumber(getSafeLepidopteraBuyNum(game)) : "0");
+
+    const clonePriorityScore = cloneReady ? 3 : 0;
+    const mirrorPriorityScore = mirrorReady ? 2 : 0;
+    const lepiPriorityScore = lepiRole === "primary" ? 1.5 : (lepiRole === "background" ? 1 : 0);
+
+    let bestUse = "wait";
+    let bestDecision = "WAIT";
+    let bestReason = "Save energy for a stronger support action.";
+    let helpsAdvisor = "none";
+    let blockedBy = "none";
+    let playerInstruction = "Wait for a more meaningful support window.";
+    let autobuyerInstruction = "No support cast should run.";
+    let backgroundAction = "none";
+
+    if (clonePriorityScore >= mirrorPriorityScore && clonePriorityScore >= lepiPriorityScore && cloneCandidate !== "none") {
+      bestUse = "clone-larvae";
+      bestDecision = cloneDecision;
+      bestReason = cloneReason;
+      helpsAdvisor = "Larva Steward / Flesh Smith";
+      blockedBy = cloneBlocked.length ? cloneBlocked.join("; ") : "none";
+      playerInstruction = cloneReady
+        ? "Cast Clone Larvae only if cocoon buffer is safe."
+        : "Prepare cocoons and clone buffer before Clone Larvae.";
+      autobuyerInstruction = "Auto-cast disabled; do not cast.";
+      if (lepiRole === "background") backgroundAction = `Lepidoptera +${lepiChunk} in background`;
+    } else if (mirrorPriorityScore >= lepiPriorityScore && mirrorCandidate !== "none") {
+      bestUse = "house-of-mirrors";
+      bestDecision = mirrorDecision;
+      bestReason = mirrorReason;
+      helpsAdvisor = "General Mandible";
+      blockedBy = mirrorBlocked.length ? mirrorBlocked.join("; ") : "none";
+      playerInstruction = mirrorReady
+        ? "Mirror the army if you accept manual casting risk."
+        : "Do not cast House of Mirrors until army/payoff gates are met.";
+      autobuyerInstruction = "Auto-cast disabled; do not cast.";
+      if (lepiRole === "background") backgroundAction = `Lepidoptera +${lepiChunk} in background`;
+    } else if (lepiRole === "primary" || lepiRole === "background") {
+      bestUse = "lepidoptera";
+      bestDecision = lepiDecision;
+      bestReason = lepiReason;
+      helpsAdvisor = "Beetle Magus";
+      blockedBy = lepidopteraPlan.postNexusEnergyBlockedBy || "none";
+      playerInstruction = lepiRole === "background"
+        ? "Use Lepidoptera as maintenance while main momentum stays elsewhere."
+        : "Energy growth is the best safe move right now.";
+      autobuyerInstruction = lepiRole === "background"
+        ? "Treat Lepidoptera as background work."
+        : "Allow bounded Lepidoptera chunking only.";
+      backgroundAction = lepiRole === "background" ? `Lepidoptera +${lepiChunk}` : "none";
+    }
+
+    return {
+      energySupportBestUse: bestUse,
+      energySupportBestUseDecision: bestDecision,
+      energySupportBestUseHelpsAdvisor: helpsAdvisor,
+      energySupportBestUseReason: bestReason,
+      energySupportBestUsePlayerInstruction: playerInstruction,
+      energySupportBestUseAutobuyerInstruction: autobuyerInstruction,
+      energySupportBestUseBlockedBy: blockedBy,
+      energySupportBackgroundAction: backgroundAction,
+      energySupportCloneCandidate: cloneCandidate,
+      energySupportCloneDecision: cloneDecision,
+      energySupportCloneReason: cloneReason,
+      energySupportCloneLarvaeGain: isPositive(cloneGain) ? formatSwarmNumber(cloneGain) : "n/a",
+      energySupportCloneBufferSafe: cloneBufferSafe ? "yes" : "no",
+      energySupportCloneCocoonReady: cloneCocoonReady ? "yes" : "no",
+      energySupportCloneHelpsTarget: cloneHelpsTarget ? "yes" : "no",
+      energySupportCloneBlockedBy: cloneBlocked.length ? cloneBlocked.join("; ") : "none",
+      energySupportMirrorCandidate: mirrorCandidate,
+      energySupportMirrorDecision: mirrorDecision,
+      energySupportMirrorReason: mirrorReason,
+      energySupportMirrorArmyValue: formatSwarmNumber(mirrorArmyValueRaw),
+      energySupportMirrorTerritoryPerSecondBefore: formatSwarmNumber(mirrorTpsBeforeRaw),
+      energySupportMirrorTerritoryPerSecondAfter: formatSwarmNumber(mirrorTpsAfterRaw),
+      energySupportMirrorExpansionEtaBefore: Number.isFinite(mirrorEtaBeforeSeconds) ? formatDuration(mirrorEtaBeforeSeconds) : "n/a",
+      energySupportMirrorExpansionEtaAfter: Number.isFinite(mirrorEtaAfterSeconds) ? formatDuration(mirrorEtaAfterSeconds) : "n/a",
+      energySupportMirrorEtaGainSeconds: Number.isFinite(mirrorEtaGainSeconds) ? trimNumber(mirrorEtaGainSeconds) : "0",
+      energySupportMirrorBlockedBy: mirrorBlocked.length ? mirrorBlocked.join("; ") : "none",
+      energySupportMirrorPreferredUnitsMissing: missingMirrorUnits.length ? missingMirrorUnits.join(", ") : "none",
+      energySupportMirrorTerritoryArmyExists: mirrorTerritoryArmyExists ? "yes" : "no",
+      energySupportLepidopteraDecision: lepiDecision,
+      energySupportLepidopteraRole: lepiRole,
+      energySupportLepidopteraReason: lepiReason,
+      energySupportLepidopteraSuggestedChunk: lepiChunk || "0",
+      energySupportLepidopteraBoostBefore: lepidopteraPlan.postNexusEnergyBoostBefore || "n/a",
+      energySupportLepidopteraBoostAfter: lepidopteraPlan.postNexusEnergyBoostAfter || "n/a",
+      energySupportLepidopteraBoostGain: lepidopteraPlan.postNexusEnergyBoostGain || "n/a",
+      energySupportLepidopteraReserveAfter: lepidopteraPlan.postNexusEnergyReserve || "0",
+    };
+  }
+
+  function buildMomentumSnapshot(strategyInput) {
+    const {
+      smartFocus,
+      selectedMainAction,
+      selectedSideAction,
+      sideActions,
+      mainActions,
+      energySupport,
+      nextLikelyBuy,
+      whyWaiting,
+      bestRejectedStrategic,
+    } = strategyInput;
+
+    let primaryFocus = "Methodical progression";
+    let primaryAdvisor = "Flesh Smith";
+    let bestStep = selectedMainAction ? `${selectedMainAction.lane}: ${selectedMainAction.candidate}` : "Wait";
+    let bestStepDecision = mainActions > 0 ? "BUY" : "WAIT";
+    let bestStepReason = selectedMainAction?.reason || whyWaiting || "No safe bounded action yet.";
+    let nextMilestone = nextLikelyBuy || "unknown";
+    const nextMilestoneEta = "n/a";
+    let playerInstruction = "Follow the active advisor and keep reserves safe.";
+    let autobuyerInstruction = "Keep bounded smart actions only.";
+    const background = [];
+    const companion = [];
+    const sideTasks = [];
+    const topBlockedOpportunity = bestRejectedStrategic ? `${bestRejectedStrategic.lane}: ${bestRejectedStrategic.candidate}` : "none";
+    let whyWaitBest = mainActions > 0 ? "none" : (whyWaiting || "No safe lane candidate beat current guardrails.");
+
+    if (/save-territory/i.test(String(smartFocus || ""))) {
+      primaryFocus = "Save territory for Expansion";
+      primaryAdvisor = "Brood Architect";
+      bestStep = "Wait for Expansion";
+      bestStepDecision = "WAIT";
+      bestStepReason = "Expansion is close, and spending territory now would delay the larva engine.";
+      playerInstruction = "Do not buy territory-costing army right now.";
+      autobuyerInstruction = "Hold territory spend; keep only safe background tasks.";
+      nextMilestone = "Expansion";
+    } else if (/territory/i.test(String(smartFocus || "")) || /Territory/.test(String(selectedMainAction?.lane || ""))) {
+      primaryFocus = "Army seed toward Expansion";
+      primaryAdvisor = "General Mandible";
+      playerInstruction = "Build bounded army chunks that improve Expansion ETA.";
+      nextMilestone = "Expansion";
+    } else if (/meat|save-meat/i.test(String(smartFocus || "")) || /Meat/.test(String(selectedMainAction?.lane || ""))) {
+      primaryFocus = "Meat-chain progression";
+      primaryAdvisor = "Flesh Smith";
+      playerInstruction = "Build the next meat-chain step, then refill the parent cost.";
+      nextMilestone = "Lesser Hive Mind path";
+    }
+
+    if (energySupport.energySupportBestUse === "clone-larvae") {
+      primaryAdvisor = "Larva Steward";
+      if (energySupport.energySupportBestUseDecision === "ADVISE") {
+        companion.push("Energy support: Clone Larvae advisor-only");
+      }
+    }
+
+    if (energySupport.energySupportBackgroundAction && energySupport.energySupportBackgroundAction !== "none") {
+      background.push(energySupport.energySupportBackgroundAction);
+    }
+
+    if (selectedSideAction) {
+      companion.push(`${selectedSideAction.lane}: ${selectedSideAction.candidate}`);
+    }
+
+    if (Number(sideActions || 0) > 0) {
+      sideTasks.push("Clone prep / cocoon maintenance");
+    }
+
+    if (energySupport.energySupportBestUse === "wait") {
+      whyWaitBest = energySupport.energySupportBestUseReason || whyWaitBest;
+      bestStepDecision = bestStepDecision === "BUY" ? "BACKGROUND" : bestStepDecision;
+    }
+
+    return {
+      momentumPrimaryFocus: primaryFocus,
+      momentumPrimaryAdvisor: primaryAdvisor,
+      momentumBestStep: bestStep,
+      momentumBestStepDecision: bestStepDecision,
+      momentumBestStepReason: bestStepReason,
+      momentumNextMilestone: nextMilestone,
+      momentumNextMilestoneEta: nextMilestoneEta,
+      momentumPlayerInstruction: playerInstruction,
+      momentumAutobuyerInstruction: autobuyerInstruction,
+      momentumBackgroundActions: background.length ? background.join("; ") : "none",
+      momentumCompanionActions: companion.length ? companion.join("; ") : "none",
+      momentumSideTasks: sideTasks.length ? sideTasks.join("; ") : "none",
+      momentumTopBlockedOpportunity: topBlockedOpportunity,
+      momentumWhyWaitingIsBest: whyWaitBest,
+    };
+  }
+
   function normalizeCouncilDecision(value, fallback = "OBSERVE") {
     const text = String(value || "").toUpperCase();
     if (text.includes("BUY") || text.includes("WOULD BUY")) return "BUY";
+    if (text.includes("READY")) return "READY";
+    if (text.includes("ADVISE")) return "ADVISE";
+    if (text.includes("BACKGROUND")) return "BACKGROUND";
     if (text.includes("SIDE")) return "PLAN";
     if (text.includes("PLAN")) return "PLAN";
     if (text.includes("HOLD")) return "HOLD";
-    if (text.includes("WAIT")) return "HOLD";
+    if (text.includes("WAIT")) return "WAIT";
     if (text.includes("OBSERVE")) return "OBSERVE";
     return fallback;
   }
@@ -2760,40 +3147,13 @@ function getDisplayName(item) {
 
     const items = [];
 
-    if (normalizeCouncilDecision(strategyInspector.mainDecision) === "BUY") {
-      items.push(`Main action active: ${strategyInspector.overseerMainSelected || strategyInspector.bestAllowedMainAction || "safe buy selected"}.`);
-    } else if (strategyInspector.whyWaiting) {
-      items.push(`Main lanes are holding: ${strategyInspector.whyWaiting}`);
+    items.push(`Primary focus: ${strategyInspector.momentumPrimaryFocus || "Methodical progression"}.`);
+    items.push(`Best step: ${strategyInspector.momentumBestStep || "Wait"} (${strategyInspector.momentumBestStepDecision || "WAIT"}).`);
+    if (usefulCouncilText(strategyInspector.energySupportBestUseReason)) {
+      items.push(`Energy support: ${strategyInspector.energySupportBestUse || "wait"} - ${strategyInspector.energySupportBestUseReason}.`);
     }
-
-    if (usefulCouncilText(strategyInspector.meatActionUnitName)) {
-      items.push(`Meat-chain focus: ${strategyInspector.meatActionUnitName}${usefulCouncilText(strategyInspector.meatActionUnitTarget) ? ` toward ${strategyInspector.meatActionUnitTarget}` : ""}.`);
-    }
-
-    if (usefulCouncilText(strategyInspector.twinUnlockPrepDeferredReason)) {
-      items.push(`Twin prep is waiting: ${strategyInspector.twinUnlockPrepDeferredReason}`);
-    } else if (strategyInspector.twinUnlockPrepMeaningful === "yes") {
-      items.push(`Twin prep is meaningful: ${strategyInspector.twinUnlockPrepCandidate || "threshold prep"} is close enough to matter.`);
-    }
-
-    if (strategyInspector.cloneBufferHardLockActive === "yes") {
-      items.push(`Clone buffer is protecting larvae: ${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"}.`);
-    } else if (strategyInspector.cloneBufferRecoveryComplete === "yes") {
-      items.push("Clone buffer is safe.");
-    }
-
-    if (strategyInspector.abilityPrepDecision) {
-      items.push(`Energy abilities are ${config.autoCastAbilities ? "enabled by user setting" : "advisor-only"}: ${strategyInspector.abilityPrepDecision} ${strategyInspector.abilityPrepCandidate || "abilities"}.`);
-    }
-
-    if (normalizeCouncilDecision(strategyInspector.postNexusEnergyDecision) === "BUY") {
-      items.push(`Post-Nexus energy can grow now: ${strategyInspector.postNexusEnergyAmount || "0"} ${strategyInspector.postNexusEnergyCandidate || "Lepidoptera"}.`);
-    } else if (usefulCouncilText(strategyInspector.postNexusEnergyBlockedBy)) {
-      items.push(`Post-Nexus energy is holding: ${strategyInspector.postNexusEnergyBlockedBy}.`);
-    }
-
-    if (usefulCouncilText(strategyInspector.territoryDidNotBuyReason)) {
-      items.push(`Territory lane: ${strategyInspector.territoryDidNotBuyReason}`);
+    if (usefulCouncilText(strategyInspector.momentumBackgroundActions) && strategyInspector.momentumBackgroundActions !== "none") {
+      items.push(`Background: ${strategyInspector.momentumBackgroundActions}.`);
     }
 
     if (!items.length) {
@@ -2807,10 +3167,10 @@ function getDisplayName(item) {
     const lane = String(strategyInspector?.councilWinningLane || "none");
     const candidate = String(strategyInspector?.councilWinningCandidate || "none");
     const fallback = {
-      speaker: strategyInspector?.activeCouncilSpeaker || "The Council",
+      speaker: strategyInspector?.momentumPrimaryAdvisor || strategyInspector?.activeCouncilSpeaker || "The Council",
       lane,
       candidate,
-      bubble: strategyInspector?.councilFocusBubble || "Observe the next run.",
+      bubble: strategyInspector?.momentumBestStepReason || strategyInspector?.councilFocusBubble || "Observe the next run.",
     };
 
     if (lane === "Territory") {
@@ -2872,6 +3232,24 @@ function getDisplayName(item) {
     return fallback;
   }
 
+  function buildCouncilDoThisNowState() {
+    if (!strategyInspector) {
+      return {
+        doThisNow: "Wait for first Smart run",
+        why: "The Council needs one run of data.",
+        botIsDoing: "Observing lanes.",
+        playerShouldAvoid: "No immediate manual action needed.",
+      };
+    }
+
+    return {
+      doThisNow: strategyInspector.momentumBestStep || "Wait",
+      why: strategyInspector.momentumBestStepReason || strategyInspector.energySupportBestUseReason || "No safe bounded action yet.",
+      botIsDoing: strategyInspector.momentumAutobuyerInstruction || "Bounded Smart actions only.",
+      playerShouldAvoid: strategyInspector.momentumPlayerInstruction || "Avoid risky spend while guardrails are active.",
+    };
+  }
+
   function councilCardHtml(card, activeSpeaker) {
     const decision = normalizeCouncilDecision(card.decision);
     const relevantClass = card.relevant ? "is-relevant" : "is-muted";
@@ -2886,8 +3264,9 @@ function getDisplayName(item) {
           </div>
           ${councilBadgeHtml(decision)}
         </div>
-        <div class="kbc-council-action">${escapeHtml(card.spoken || "Observing this lane.")}</div>
-        <p class="kbc-council-why">${escapeHtml(card.why || "No clear reason reported this run.")}</p>
+        <div class="kbc-council-action"><strong>I want:</strong> ${escapeHtml(card.want || card.spoken || "Observing this lane.")}</div>
+        <p class="kbc-council-why"><strong>Because:</strong> ${escapeHtml(card.because || card.why || "No clear reason reported this run.")}</p>
+        <p class="kbc-council-status"><strong>Status:</strong> ${escapeHtml(card.status || "Observing")}</p>
         ${councilBlockersHtml(card.blockers)}
         <details class="kbc-council-technical">
           <summary>Technical details</summary>
@@ -2912,17 +3291,20 @@ function getDisplayName(item) {
         name: "General Mandible",
         role: "Territory & Army",
         decision: selectedLaneDecision("Territory", strategyInspector.territoryPrepDecision || territoryLane?.decision),
-        spoken: normalizeCouncilDecision(strategyInspector.expansionArmySeedDecision || strategyInspector.territoryPrepDecision || territoryLane?.decision) === "BUY"
+        want: normalizeCouncilDecision(strategyInspector.expansionArmySeedDecision || strategyInspector.territoryPrepDecision || territoryLane?.decision) === "BUY"
           ? "Raise the army to claim territory faster."
           : (strategyInspector.expansionArmySeedInsideSaveWindow === "yes"
             ? "Hold territory. Expansion is close."
             : "No army move would speed Expansion enough yet."),
-        why: firstCouncilText(
+        because: firstCouncilText(
           strategyInspector.expansionArmySeedReason,
           strategyInspector.territoryPrepReason,
           strategyInspector.territoryDidNotBuyReason,
           territoryLane?.reason
         ),
+        status: normalizeCouncilDecision(strategyInspector.expansionArmySeedDecision || strategyInspector.territoryPrepDecision || territoryLane?.decision) === "BUY"
+          ? "Ready / doing this now"
+          : (strategyInspector.expansionArmySeedInsideSaveWindow === "yes" ? "Blocked by save-window" : "Blocked"),
         technical: firstCouncilText(
           strategyInspector.expansionArmySeedReason,
           strategyInspector.territoryPrepReason,
@@ -2940,17 +3322,27 @@ function getDisplayName(item) {
         icon: "🪲",
         name: "Beetle Magus",
         role: "Energy & Abilities",
-        decision: selectedLaneDecision("Energy", strategyInspector.postNexusEnergyDecision || strategyInspector.abilityPrepDecision || energyLane?.decision || abilityLane?.decision),
-        spoken: normalizeCouncilDecision(strategyInspector.postNexusEnergyDecision) === "BUY"
-          ? "Grow energy carefully with a small Lepidoptera step."
-          : "Rituals stay sealed. Auto-cast is off.",
-        why: normalizeCouncilDecision(strategyInspector.postNexusEnergyDecision) === "BUY"
-          ? "Energy growth is still below the configured stop line."
-          : (strategyInspector.postNexusEnergyBlockedBy || "Energy growth has reached a hold condition."),
-        technical: firstCouncilText(strategyInspector.postNexusEnergyReason, strategyInspector.abilityPrepReason, energyLane?.reason, abilityLane?.reason, strategyInspector.lepidoptera),
+        decision: normalizeCouncilDecision(strategyInspector.energySupportBestUseDecision || strategyInspector.postNexusEnergyDecision || energyLane?.decision || abilityLane?.decision),
+        want: strategyInspector.energySupportBestUse === "clone-larvae"
+          ? "Help Larva Steward with Clone Larvae."
+          : (strategyInspector.energySupportLepidopteraRole === "background"
+            ? "Grow energy in the background."
+            : "Keep rituals advisor-only until payoff is clear."),
+        because: firstCouncilText(
+          strategyInspector.energySupportBestUseReason,
+          strategyInspector.energySupportLepidopteraReason,
+          strategyInspector.postNexusEnergyReason,
+          strategyInspector.abilityPrepReason,
+          energyLane?.reason,
+          abilityLane?.reason
+        ),
+        status: strategyInspector.energySupportBestUseDecision === "ADVISE"
+          ? "Advisor only. Auto-cast is off."
+          : (strategyInspector.energySupportBestUseDecision === "BACKGROUND" ? "Background chore" : "Not yet"),
+        technical: firstCouncilText(strategyInspector.energySupportBestUseReason, strategyInspector.energySupportCloneReason, strategyInspector.energySupportMirrorReason, strategyInspector.postNexusEnergyReason),
         blockers: [
           config.autoCastAbilities ? "" : "auto-cast disabled",
-          usefulCouncilText(strategyInspector.postNexusEnergyBlockedBy) ? strategyInspector.postNexusEnergyBlockedBy : "",
+          usefulCouncilText(strategyInspector.energySupportBestUseBlockedBy) ? strategyInspector.energySupportBestUseBlockedBy : "",
           strategyInspector.abilityPrepRequiresArmyPrep === "yes" ? "army prep required" : "",
           strategyInspector.abilityPrepRequiresCloneBuffer === "yes" ? "clone buffer required" : "",
         ],
@@ -2960,14 +3352,17 @@ function getDisplayName(item) {
         icon: "🐛",
         name: "Larva Steward",
         role: "Larvae & Clone Buffer",
-        decision: strategyInspector.cloneBufferHardLockActive === "yes" ? "HOLD" : normalizeCouncilDecision(cloneLane?.decision, "OBSERVE"),
-        spoken: strategyInspector.cloneBufferHardLockActive === "yes"
+        decision: normalizeCouncilDecision(strategyInspector.energySupportCloneDecision || (strategyInspector.cloneBufferHardLockActive === "yes" ? "HOLD" : cloneLane?.decision), "OBSERVE"),
+        want: strategyInspector.cloneBufferHardLockActive === "yes"
           ? "Protect larvae until the clone debt is rebuilt."
           : (strategyInspector.cloneBufferRecoveryComplete === "yes"
             ? "The clone buffer is safe again."
             : "Add cocoons so Clone Larvae can be absorbed later."),
-        why: `Buffer ${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"}).`,
-        technical: firstCouncilText(strategyInspector.cloneBufferReason, cloneLane?.reason, `spendable larvae ${strategyInspector.cloneBufferSpendableLarvae || "0"}`),
+        because: strategyInspector.energySupportCloneReason || `Buffer ${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"}).`,
+        status: strategyInspector.energySupportCloneDecision === "ADVISE"
+          ? "Advisor only. Auto-cast is off."
+          : (strategyInspector.cloneBufferHardLockActive === "yes" ? "Buffer check" : "Not yet"),
+        technical: firstCouncilText(strategyInspector.cloneBufferReason, cloneLane?.reason, strategyInspector.energySupportCloneBlockedBy, `spendable larvae ${strategyInspector.cloneBufferSpendableLarvae || "0"}`),
         blockers: [
           strategyInspector.cloneBufferHardLockActive === "yes" ? "clone hard lock" : "",
           usefulCouncilText(strategyInspector.cloneBufferLarvaeProtected) ? `protected ${strategyInspector.cloneBufferLarvaeProtected}` : "",
@@ -2980,12 +3375,15 @@ function getDisplayName(item) {
         name: "Flesh Smith",
         role: "Meat Chain",
         decision: selectedLaneDecision("Meat", strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision),
-        spoken: normalizeCouncilDecision(strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision) === "BUY"
+        want: normalizeCouncilDecision(strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision) === "BUY"
           ? "Convert hive neurons into neural clusters for the target path."
           : "The meat chain waits for a safer step.",
-        why: normalizeCouncilDecision(strategyInspector.actionUnitRefillDecision) === "BUY"
+        because: normalizeCouncilDecision(strategyInspector.actionUnitRefillDecision) === "BUY"
           ? "Refill the hive neurons spent on the parent step."
           : "Reserve and payback guards still apply.",
+        status: normalizeCouncilDecision(strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision) === "BUY"
+          ? "Ready / doing this now"
+          : "Blocked",
         technical: firstCouncilText(
           strategyInspector.parentStepReason,
           strategyInspector.actionUnitRefillReason,
@@ -3006,12 +3404,13 @@ function getDisplayName(item) {
         name: "Twin Oracle",
         role: "Upgrades & Thresholds",
         decision: selectedLaneDecision("Twin|Upgrade", strategyInspector.twinUnlockPrepDecision || strategyInspector.twinUnlockDecision || twinLane?.decision),
-        spoken: strategyInspector.twinUnlockPrepMeaningful === "yes"
+        want: strategyInspector.twinUnlockPrepMeaningful === "yes"
           ? "Twin threshold is close enough. Prepare the missing chain."
           : "Too early for Twin Prep. The chunk is too small to matter.",
-        why: strategyInspector.twinUnlockPrepMeaningful === "yes"
+        because: strategyInspector.twinUnlockPrepMeaningful === "yes"
           ? "The threshold gate says this prep is meaningful now."
           : "Waiting for better threshold proximity.",
+        status: strategyInspector.twinUnlockPrepMeaningful === "yes" ? "Ready" : "Not yet",
         technical: firstCouncilText(
           strategyInspector.twinUnlockPrepDeferredReason,
           strategyInspector.twinUnlockReason,
@@ -3030,12 +3429,13 @@ function getDisplayName(item) {
         name: "Brood Architect",
         role: "Hatchery & Expansion",
         decision: selectedLaneDecision("Engine", engineLane?.decision || strategyInspector.mainDecision),
-        spoken: strategyInspector.protectedResources?.includes("territory")
+        want: strategyInspector.protectedResources?.includes("territory")
           ? "Save territory. Expansion is near."
           : "Expansion is the next larva engine milestone.",
-        why: strategyInspector.protectedResources?.includes("territory")
+        because: strategyInspector.protectedResources?.includes("territory")
           ? "Not buyable yet, but territory must be held for the save window."
           : "Not buyable yet.",
+        status: strategyInspector.protectedResources?.includes("territory") ? "Do not spend territory" : "Watching milestone",
         technical: firstCouncilText(engineLane?.reason, strategyInspector.waits, strategyInspector.protectedResources),
         blockers: [
           strategyInspector.protectedResources,
@@ -3071,6 +3471,7 @@ function getDisplayName(item) {
     ) || "none";
     const focusItems = buildCouncilFocusItems();
     const activeSpeaker = buildCouncilSpeakerState();
+    const nowState = buildCouncilDoThisNowState();
 
     return `
       <div class="kbc-council-shell">
@@ -3083,13 +3484,19 @@ function getDisplayName(item) {
         </div>
         <div class="kbc-council-summary">
           ${councilSummaryTile("Phase", strategyInspector.phase || "n/a")}
-          ${councilSummaryTile("Goal", strategyInspector.goal || "n/a")}
+          ${councilSummaryTile("Primary", strategyInspector.momentumPrimaryFocus || "n/a")}
+          ${councilSummaryTile("Advisor", strategyInspector.momentumPrimaryAdvisor || activeSpeaker.speaker || "none")}
           ${councilSummaryTile("Main", strategyInspector.overseerMainSelected || "none")}
-          ${councilSummaryTile("Companion", strategyInspector.overseerSideSelected || "none")}
-          ${councilSummaryTile("Actions", strategyInspector.overseerActionsUsed || strategyInspector.actions || "0/?")}
-          ${councilSummaryTile("Next", strategyInspector.nextLikelyBuy || "unknown")}
+          ${councilSummaryTile("Companion", strategyInspector.momentumCompanionActions || "none")}
+          ${councilSummaryTile("Background", strategyInspector.momentumBackgroundActions || "none")}
           ${councilSummaryTile("Blocker", importantBlocker, importantBlocker === "none" ? "" : "warn")}
         </div>
+        <section class="kbc-council-now" aria-label="Do this now">
+          <div><strong>Do this now:</strong> <span>${escapeHtml(nowState.doThisNow)}</span></div>
+          <div><strong>Why:</strong> <span>${escapeHtml(nowState.why)}</span></div>
+          <div><strong>Bot is doing:</strong> <span>${escapeHtml(nowState.botIsDoing)}</span></div>
+          <div><strong>Player should avoid:</strong> <span>${escapeHtml(nowState.playerShouldAvoid)}</span></div>
+        </section>
         <section class="kbc-council-focus" aria-label="Focus now">
           <strong>Focus now</strong>
           <ul>${focusItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
@@ -3097,7 +3504,7 @@ function getDisplayName(item) {
         <section class="kbc-council-speaker" aria-label="Active speaker">
           <strong>${escapeHtml(activeSpeaker.speaker || "The Council")}</strong>
           <div class="kbc-council-bubble">${escapeHtml(activeSpeaker.bubble || "Observe the next run.")}</div>
-          <small>Winning lane: ${escapeHtml(activeSpeaker.lane || "none")} · Candidate: ${escapeHtml(activeSpeaker.candidate || "none")}</small>
+          <small>Winning lane: ${escapeHtml(activeSpeaker.lane || "none")} | Candidate: ${escapeHtml(activeSpeaker.candidate || "none")}</small>
         </section>
         <div class="kbc-council-grid">
           ${buildCouncilCards().map((card) => councilCardHtml(card, activeSpeaker)).join("")}
@@ -3161,7 +3568,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.10.1",
+      scriptVersion: "0.11.0",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -3341,6 +3748,56 @@ function getDisplayName(item) {
       councilWinningLane: strategyInspector?.councilWinningLane || "none",
       councilWinningCandidate: strategyInspector?.councilWinningCandidate || "none",
       councilFocusBubble: strategyInspector?.councilFocusBubble || "none",
+      energySupportBestUse: strategyInspector?.energySupportBestUse || "none",
+      energySupportBestUseDecision: strategyInspector?.energySupportBestUseDecision || "HOLD",
+      energySupportBestUseHelpsAdvisor: strategyInspector?.energySupportBestUseHelpsAdvisor || "none",
+      energySupportBestUseReason: strategyInspector?.energySupportBestUseReason || "none",
+      energySupportBestUsePlayerInstruction: strategyInspector?.energySupportBestUsePlayerInstruction || "none",
+      energySupportBestUseAutobuyerInstruction: strategyInspector?.energySupportBestUseAutobuyerInstruction || "none",
+      energySupportBestUseBlockedBy: strategyInspector?.energySupportBestUseBlockedBy || "none",
+      energySupportBackgroundAction: strategyInspector?.energySupportBackgroundAction || "none",
+      energySupportCloneCandidate: strategyInspector?.energySupportCloneCandidate || "none",
+      energySupportCloneDecision: strategyInspector?.energySupportCloneDecision || "HOLD",
+      energySupportCloneReason: strategyInspector?.energySupportCloneReason || "none",
+      energySupportCloneLarvaeGain: strategyInspector?.energySupportCloneLarvaeGain || "n/a",
+      energySupportCloneBufferSafe: strategyInspector?.energySupportCloneBufferSafe || "no",
+      energySupportCloneCocoonReady: strategyInspector?.energySupportCloneCocoonReady || "no",
+      energySupportCloneHelpsTarget: strategyInspector?.energySupportCloneHelpsTarget || "no",
+      energySupportCloneBlockedBy: strategyInspector?.energySupportCloneBlockedBy || "none",
+      energySupportMirrorCandidate: strategyInspector?.energySupportMirrorCandidate || "none",
+      energySupportMirrorDecision: strategyInspector?.energySupportMirrorDecision || "HOLD",
+      energySupportMirrorReason: strategyInspector?.energySupportMirrorReason || "none",
+      energySupportMirrorArmyValue: strategyInspector?.energySupportMirrorArmyValue || "n/a",
+      energySupportMirrorTerritoryPerSecondBefore: strategyInspector?.energySupportMirrorTerritoryPerSecondBefore || "0",
+      energySupportMirrorTerritoryPerSecondAfter: strategyInspector?.energySupportMirrorTerritoryPerSecondAfter || "0",
+      energySupportMirrorExpansionEtaBefore: strategyInspector?.energySupportMirrorExpansionEtaBefore || "n/a",
+      energySupportMirrorExpansionEtaAfter: strategyInspector?.energySupportMirrorExpansionEtaAfter || "n/a",
+      energySupportMirrorEtaGainSeconds: strategyInspector?.energySupportMirrorEtaGainSeconds || "0",
+      energySupportMirrorBlockedBy: strategyInspector?.energySupportMirrorBlockedBy || "none",
+      energySupportMirrorPreferredUnitsMissing: strategyInspector?.energySupportMirrorPreferredUnitsMissing || "none",
+      energySupportMirrorTerritoryArmyExists: strategyInspector?.energySupportMirrorTerritoryArmyExists || "no",
+      energySupportLepidopteraDecision: strategyInspector?.energySupportLepidopteraDecision || "WAIT",
+      energySupportLepidopteraRole: strategyInspector?.energySupportLepidopteraRole || "wait",
+      energySupportLepidopteraReason: strategyInspector?.energySupportLepidopteraReason || "none",
+      energySupportLepidopteraSuggestedChunk: strategyInspector?.energySupportLepidopteraSuggestedChunk || "0",
+      energySupportLepidopteraBoostBefore: strategyInspector?.energySupportLepidopteraBoostBefore || "n/a",
+      energySupportLepidopteraBoostAfter: strategyInspector?.energySupportLepidopteraBoostAfter || "n/a",
+      energySupportLepidopteraBoostGain: strategyInspector?.energySupportLepidopteraBoostGain || "n/a",
+      energySupportLepidopteraReserveAfter: strategyInspector?.energySupportLepidopteraReserveAfter || "0",
+      momentumPrimaryFocus: strategyInspector?.momentumPrimaryFocus || "Methodical progression",
+      momentumPrimaryAdvisor: strategyInspector?.momentumPrimaryAdvisor || "none",
+      momentumBestStep: strategyInspector?.momentumBestStep || "Wait",
+      momentumBestStepDecision: strategyInspector?.momentumBestStepDecision || "WAIT",
+      momentumBestStepReason: strategyInspector?.momentumBestStepReason || "none",
+      momentumNextMilestone: strategyInspector?.momentumNextMilestone || "unknown",
+      momentumNextMilestoneEta: strategyInspector?.momentumNextMilestoneEta || "n/a",
+      momentumPlayerInstruction: strategyInspector?.momentumPlayerInstruction || "none",
+      momentumAutobuyerInstruction: strategyInspector?.momentumAutobuyerInstruction || "none",
+      momentumBackgroundActions: strategyInspector?.momentumBackgroundActions || "none",
+      momentumCompanionActions: strategyInspector?.momentumCompanionActions || "none",
+      momentumSideTasks: strategyInspector?.momentumSideTasks || "none",
+      momentumTopBlockedOpportunity: strategyInspector?.momentumTopBlockedOpportunity || "none",
+      momentumWhyWaitingIsBest: strategyInspector?.momentumWhyWaitingIsBest || "none",
       advisorLog: advisorLog.slice(),
       purchaseLog: purchaseLog.slice(),
       configSummary: cfg,
@@ -3400,6 +3857,26 @@ function getDisplayName(item) {
       `- Post-Nexus energy boost: ${payload.postNexusEnergyBoostBefore || "n/a"} -> ${payload.postNexusEnergyBoostAfter || "n/a"} (${payload.postNexusEnergyBoostGain || "n/a"})`,
       `- Post-Nexus energy reserve: ${payload.postNexusEnergyReserve || "0"}`,
       `- Post-Nexus energy blocked by: ${payload.postNexusEnergyBlockedBy || "none"}`,
+      `- Energy support best use: ${payload.energySupportBestUse || "none"}`,
+      `- Energy support decision: ${payload.energySupportBestUseDecision || "HOLD"}`,
+      `- Energy support helps advisor: ${payload.energySupportBestUseHelpsAdvisor || "none"}`,
+      `- Energy support reason: ${payload.energySupportBestUseReason || "none"}`,
+      `- Energy support player instruction: ${payload.energySupportBestUsePlayerInstruction || "none"}`,
+      `- Energy support autobuyer instruction: ${payload.energySupportBestUseAutobuyerInstruction || "none"}`,
+      `- Energy support blocked by: ${payload.energySupportBestUseBlockedBy || "none"}`,
+      `- Energy support background action: ${payload.energySupportBackgroundAction || "none"}`,
+      `- Clone support: ${payload.energySupportCloneDecision || "HOLD"} ${payload.energySupportCloneCandidate || "none"} (${payload.energySupportCloneReason || "none"})`,
+      `- Mirror support: ${payload.energySupportMirrorDecision || "HOLD"} ${payload.energySupportMirrorCandidate || "none"} (${payload.energySupportMirrorReason || "none"})`,
+      `- Lepidoptera support role: ${payload.energySupportLepidopteraRole || "wait"} (${payload.energySupportLepidopteraDecision || "WAIT"})`,
+      `- Momentum primary focus: ${payload.momentumPrimaryFocus || "Methodical progression"}`,
+      `- Momentum advisor: ${payload.momentumPrimaryAdvisor || "none"}`,
+      `- Momentum best step: ${payload.momentumBestStep || "Wait"} (${payload.momentumBestStepDecision || "WAIT"})`,
+      `- Momentum best-step reason: ${payload.momentumBestStepReason || "none"}`,
+      `- Momentum companion actions: ${payload.momentumCompanionActions || "none"}`,
+      `- Momentum background actions: ${payload.momentumBackgroundActions || "none"}`,
+      `- Momentum side tasks: ${payload.momentumSideTasks || "none"}`,
+      `- Momentum top blocked opportunity: ${payload.momentumTopBlockedOpportunity || "none"}`,
+      `- Momentum why waiting is best: ${payload.momentumWhyWaitingIsBest || "none"}`,
       `- Actions: ${inspector.actions || "n/a"}`,
       `- Changed: ${inspector.summaries || "n/a"}`,
       `- Meat fallback enabled: ${payload.meatFallbackEnabled ? "true" : "false"}`,
@@ -10707,7 +11184,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.10.1. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.11.0. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
@@ -11221,6 +11698,24 @@ function getDisplayName(item) {
         background: rgba(124, 227, 139, 0.09);
       }
 
+      .kbc-council-now {
+        display: grid;
+        gap: 4px;
+        padding: 7px 8px;
+        border: 1px solid rgba(159, 199, 255, 0.42);
+        border-radius: 6px;
+        background: rgba(159, 199, 255, 0.12);
+      }
+
+      .kbc-council-now div {
+        line-height: 1.25;
+      }
+
+      .kbc-council-now strong {
+        color: rgba(255,255,255,0.88);
+        margin-right: 4px;
+      }
+
       .kbc-council-focus strong {
         display: block;
         margin-bottom: 4px;
@@ -11351,6 +11846,26 @@ function getDisplayName(item) {
         background: rgba(216, 180, 255, 0.2);
       }
 
+      .kbc-council-ready {
+        border-color: rgba(124, 227, 139, 0.9);
+        background: rgba(124, 227, 139, 0.32);
+      }
+
+      .kbc-council-advise {
+        border-color: rgba(159, 199, 255, 0.85);
+        background: rgba(159, 199, 255, 0.28);
+      }
+
+      .kbc-council-background {
+        border-color: rgba(255, 211, 106, 0.8);
+        background: rgba(255, 211, 106, 0.2);
+      }
+
+      .kbc-council-wait {
+        border-color: rgba(255,255,255,0.4);
+        background: rgba(255,255,255,0.12);
+      }
+
       .kbc-council-action {
         margin-top: 6px;
         font-weight: 700;
@@ -11367,6 +11882,11 @@ function getDisplayName(item) {
       .kbc-council-why {
         margin: 4px 0 0 0;
         color: rgba(255,255,255,0.82);
+      }
+
+      .kbc-council-status {
+        margin: 4px 0 0 0;
+        color: rgba(255,255,255,0.9);
       }
 
       .kbc-council-blockers {

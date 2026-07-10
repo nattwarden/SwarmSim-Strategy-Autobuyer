@@ -41,6 +41,11 @@ docs/release-notes/
 - 0.10.0: Expansion-aware Army Seed Planner with bounded ETA-gain gating,
   active Council speaker bubble, clearer companion wording, and stronger
   territory/army observability.
+- 0.10.1: Version badge and export scriptVersion alignment fix, plus
+  Companion/side-task wording cleanup; no strategy logic changes.
+- 0.11.0: Energy Support Broker advisor/observability layer plus Quest Council
+  momentum framing (Do this now, I want/Because/Status), while preserving
+  no-auto-cast safety defaults.
 
 ## Documentation posture note
 
