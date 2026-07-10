@@ -3488,7 +3488,7 @@ function getDisplayName(item) {
     const lepiDecisionBase = normalizeCouncilDecision(lepidopteraPlan.postNexusEnergyDecision || "HOLD", "HOLD");
     let lepiRole = "wait";
     if (lepiDecisionBase === "BUY") {
-      lepiRole = /energy/i.test(String(smartFocus || "")) ? "primary" : "background";
+      lepiRole = (/energy/i.test(String(smartFocus || "")) || (!cloneReady && !mirrorReady)) ? "primary" : "background";
     } else if (lepiVisible) {
       lepiRole = String(lepidopteraPlan.postNexusEnergyBlockedBy || "").includes("stop threshold") ? "hold" : "wait";
     }
@@ -3756,7 +3756,9 @@ function getDisplayName(item) {
       }
     }
 
-    const lepidopteraIsPrimary = energySupport.energySupportLepidopteraRole === "primary" && energySupport.energySupportBestUse === "lepidoptera";
+    const lepidopteraIsPrimary = energySupport.energySupportLepidopteraRole === "primary"
+      && energySupport.energySupportBestUse === "lepidoptera"
+      && /energy/i.test(String(smartFocus || ""));
     if (!expansionSaveWindowPriority && lepidopteraIsPrimary) {
       primaryFocus = "Energy growth via Lepidoptera";
       primaryAdvisor = "Beetle Magus";
@@ -5430,14 +5432,31 @@ function getDisplayName(item) {
     return { ok: true };
   }
 
-  function laboratoryDecimalString(value) {
-    const dec = decimalFrom(value);
+  function laboratoryDecimalIsFiniteValue(value) {
+    if (value === null || value === undefined || value === "") return false;
+    let dec;
     try {
+      dec = decimalFrom(value);
+    } catch {
+      return false;
+    }
+    if (!dec) return false;
+    try {
+      if (typeof dec.isNaN === "function" && dec.isNaN()) return false;
+      if (typeof dec.isFinite === "function") return dec.isFinite();
+      const text = dec?.toString?.() ?? String(value);
+      return !!text && !/^(?:Infinity|-Infinity|NaN)$/i.test(text);
+    } catch {
+      return false;
+    }
+  }
+
+  function laboratoryDecimalString(value) {
+    try {
+      if (!laboratoryDecimalIsFiniteValue(value)) return null;
+      const dec = decimalFrom(value);
       const text = dec?.toString?.() ?? String(value ?? "0");
-      if (!text || /^(?:Infinity|-Infinity|NaN)$/i.test(text)) return null;
-      const numeric = decimalToNumber(dec, NaN);
-      if (!Number.isFinite(numeric)) return null;
-      return text;
+      return text && !/^(?:Infinity|-Infinity|NaN)$/i.test(text) ? text : null;
     } catch {
       return null;
     }
@@ -5490,6 +5509,9 @@ function getDisplayName(item) {
         {
           amount: laboratorySafeResourceString(getCurrentResource(game, resourceName)),
           perSecond: laboratorySafeResourceString(getVelocity(game, resourceName)),
+          cap: resourceName === "energy"
+            ? laboratorySafeResourceString(safe("Laboratory live energy cap", () => getGameUnit(game, resourceName)?.capValue?.()) || null)
+            : null,
         },
       ])),
       counts: laboratoryCaptureGameCounts(game),
@@ -5501,6 +5523,10 @@ function getDisplayName(item) {
         enabled: !!config.enabled,
       },
     };
+    const structuralCounts = {
+      units: Object.fromEntries(Object.entries(capture.counts.units || {}).filter(([unitId]) => !resourceNames.includes(unitId))),
+      upgrades: capture.counts.upgrades,
+    };
     return {
       capture,
       structural: {
@@ -5508,7 +5534,7 @@ function getDisplayName(item) {
         goal: capture.goal,
         activePlannerAction: capture.activePlannerAction,
         config: capture.config,
-        counts: capture.counts,
+        counts: structuralCounts,
         runHistoryLength: capture.runHistoryLength,
         purchaseLogLength: capture.purchaseLogLength,
         advisorLogLength: capture.advisorLogLength,
@@ -5521,17 +5547,30 @@ function getDisplayName(item) {
     return `sha256:${await laboratorySha256(laboratoryCanonicalJson(structuralState))}`;
   }
 
-  function laboratoryLiveResourceTolerance(expectedAfter) {
-    const expected = decimalFrom(expectedAfter || 0);
-    const abs = expected.abs ? expected.abs() : decimalFrom(Math.abs(decimalToNumber(expected, 0)));
-    const base = decimalFrom("0.0001");
-    const scale = abs.times ? abs.times("0.000001") : base;
-    return base.greaterThan(scale) ? base : scale;
+  function laboratoryDecimalMax(values) {
+    return (values || []).reduce((best, current) => {
+      if (!best) return current;
+      if (!current) return best;
+      return current.greaterThan(best) ? current : best;
+    }, null) || newDecimal(0);
+  }
+
+  function laboratoryLiveResourceTolerance(beforePerSecond, elapsedSeconds, expectedAfter) {
+    const rate = laboratoryDecimalOrNull(beforePerSecond)?.abs?.() || newDecimal(0);
+    const elapsed = laboratoryDecimalOrNull(elapsedSeconds)?.abs?.() || newDecimal(0);
+    const expected = laboratoryDecimalOrNull(expectedAfter)?.abs?.() || newDecimal(0);
+    const runtimeTickResolutionSeconds = decimalFrom("0.05");
+    const minimumDecimalFloor = decimalFrom("1e-18");
+    const tickBudget = rate.times(runtimeTickResolutionSeconds);
+    const elapsedPrecisionBudget = rate.times(elapsed).times("1e-9");
+    const decimalPrecisionBudget = expected.times("1e-18");
+    return laboratoryDecimalMax([minimumDecimalFloor, tickBudget, elapsedPrecisionBudget, decimalPrecisionBudget]);
   }
 
   function laboratoryBuildLiveResourceDrift(beforeCapture, afterCapture) {
     const resourceNames = ["energy", "larva", "cocoon", "territory", "meat"];
-    const elapsedSeconds = Math.max(0, (new Date(afterCapture.timestamp).getTime() - new Date(beforeCapture.timestamp).getTime()) / 1000);
+    const elapsedSecondsNumber = Math.max(0, (new Date(afterCapture.timestamp).getTime() - new Date(beforeCapture.timestamp).getTime()) / 1000);
+    const elapsedSeconds = decimalFrom(String(elapsedSecondsNumber));
     const resourceDrift = {};
     let withinExpectedRange = true;
 
@@ -5541,6 +5580,7 @@ function getDisplayName(item) {
       const beforeAmount = laboratoryDecimalOrNull(before.amount);
       const beforePerSecond = laboratoryDecimalOrNull(before.perSecond);
       const afterAmount = laboratoryDecimalOrNull(after.amount);
+      const cap = laboratoryDecimalOrNull(before.cap ?? after.cap);
       if (!beforeAmount || !beforePerSecond || !afterAmount) {
         resourceDrift[resourceName] = {
           status: "unavailable",
@@ -5548,19 +5588,24 @@ function getDisplayName(item) {
         };
         continue;
       }
-      const expectedAfter = beforeAmount;
+      const projected = beforeAmount.plus(beforePerSecond.times(elapsedSeconds));
+      const expectedAfter = cap && cap.greaterThan(0) ? decimalMin(projected, cap) : projected;
       const drift = afterAmount.minus(expectedAfter);
-      const tolerance = laboratoryLiveResourceTolerance(expectedAfter);
+      const tolerance = laboratoryLiveResourceTolerance(beforePerSecond, elapsedSeconds, expectedAfter);
       const within = drift.abs().lessThanOrEqualTo(tolerance);
       if (!within) withinExpectedRange = false;
       resourceDrift[resourceName] = {
         before: laboratoryDecimalString(beforeAmount),
-        perSecondBefore: laboratoryDecimalString(beforePerSecond),
+        perSecond: laboratoryDecimalString(beforePerSecond),
+        elapsedSeconds: laboratoryDecimalString(elapsedSeconds),
         expectedAfter: laboratoryDecimalString(expectedAfter),
-        after: laboratoryDecimalString(afterAmount),
+        actualAfter: laboratoryDecimalString(afterAmount),
         drift: laboratoryDecimalString(drift),
         tolerance: laboratoryDecimalString(tolerance),
         withinExpectedRange: within,
+        normalizationMethod: cap && cap.greaterThan(0)
+          ? "passive-rate-plus-elapsed-with-energy-cap"
+          : "passive-rate-plus-elapsed",
       };
     }
 
@@ -5637,11 +5682,13 @@ function getDisplayName(item) {
   }
 
   function laboratoryDecimalString(value) {
-    const dec = decimalFrom(value);
     try {
-      return dec?.toString?.() ?? String(value ?? "0");
+      if (!laboratoryDecimalIsFiniteValue(value)) return null;
+      const dec = decimalFrom(value);
+      const text = dec?.toString?.() ?? String(value ?? "0");
+      return text && !/^(?:Infinity|-Infinity|NaN)$/i.test(text) ? text : null;
     } catch {
-      return String(value ?? "0");
+      return null;
     }
   }
 
@@ -5742,8 +5789,16 @@ function getDisplayName(item) {
     return getTerritoryPerSecondPerUnit(unit);
   }
 
+  function getLaboratoryResolvedUnit(game, unitIdOrAlias) {
+    const direct = getGameUnit(game, unitIdOrAlias);
+    if (direct) return direct;
+    const key = normalizeLabelKey(unitIdOrAlias);
+    if (!key) return null;
+    return (game?.unitlist?.() || []).find((unit) => getScenarioUnitKeys(unit).includes(key)) || null;
+  }
+
   function getLaboratoryUnitCount(game, unitId) {
-    const unit = getGameUnit(game, unitId);
+    const unit = getLaboratoryResolvedUnit(game, unitId);
     if (!unit) return newDecimal(0);
     const override = getScenarioUnitCountOverride(unit);
     if (Number.isFinite(Number(override))) return decimalFrom(override);
@@ -5763,22 +5818,25 @@ function getDisplayName(item) {
   }
 
   function buildLaboratoryArmySnapshot(game, warnings, formulaStatuses) {
-    const affectedIds = ["swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
     const units = [];
     let affectedTotal = newDecimal(0);
+    const territoryUnits = (game?.unitlist?.() || []).filter((unit) => getTabName(unit) === "territory");
+    if (!territoryUnits.length) {
+      warnings.push("Laboratory territory army units are unavailable from runtime.");
+      formulaStatuses.push("incomplete");
+    }
 
-    for (const unitId of affectedIds) {
-      const unit = getGameUnit(game, unitId);
-      const count = getLaboratoryUnitCount(game, unitId);
-      const perUnit = unit ? getLaboratoryEffectiveProductionPerUnit(unit, "territory") : newDecimal(0);
-      if (!unit) {
-        warnings.push(`Laboratory army unit missing from runtime: ${unitId}`);
-        formulaStatuses.push("incomplete");
-      }
+    for (const unit of territoryUnits) {
+      const canonicalRuntimeUnitId = getScenarioCanonicalUnitKey(unit) || normalizeLabelKey(unit?.name || "territory-unit");
+      const override = getScenarioUnitCountOverride(unit);
+      const count = Number.isFinite(Number(override)) ? decimalFrom(override) : decimalFrom(unit?.count?.() || 0);
+      const perUnit = getLaboratoryEffectiveProductionPerUnit(unit, "territory");
       const contribution = laboratoryFloorDecimal(count).times(perUnit);
       affectedTotal = affectedTotal.plus(contribution);
       units.push({
-        unitId,
+        unitId: canonicalRuntimeUnitId,
+        canonicalRuntimeUnitId,
+        label: getDisplayName(unit) || canonicalRuntimeUnitId,
         count: laboratoryDecimalString(count),
         effectiveTerritoryPerSecondPerUnit: laboratoryDecimalString(perUnit),
         territoryPerSecondContribution: laboratoryDecimalString(contribution),
@@ -6166,7 +6224,8 @@ function getDisplayName(item) {
   function laboratoryDecimalOrNull(value) {
     if (value === null || value === undefined || value === "") return null;
     try {
-      return decimalFrom(value);
+      const dec = decimalFrom(value);
+      return laboratoryDecimalIsFiniteValue(dec) ? dec : null;
     } catch {
       return null;
     }
@@ -6640,20 +6699,30 @@ function getDisplayName(item) {
             : { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, warnings: ["unsupported action"] };
 
       if (!immediate.ok) {
-        runs.push({
-          runId: `${experimentId}-${String(action?.actionId || "INVALID")}-0`,
-          actionId: String(action?.actionId || "INVALID"),
-          horizonSeconds: "0",
-          status: "invalid-action",
-          actionLegal: false,
-          actionApplied: false,
-          actionSafetySafe: false,
-          immediate: {},
-          metrics: {},
-          comparisonVsWait: null,
-          formulaValidation: { status: "invalid-action", warnings: immediate.warnings || [] },
-          warnings: immediate.warnings || [],
-        });
+        for (const horizon of horizons) {
+          runs.push({
+            runId: `${experimentId}-${String(action?.actionId || "INVALID")}-${String(horizon)}`,
+            actionId: String(action?.actionId || "INVALID"),
+            horizonSeconds: String(horizon),
+            status: "invalid-action",
+            actionLegal: false,
+            actionApplied: false,
+            actionSafetySafe: false,
+            immediate: {
+              schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION,
+              actionId: String(action?.actionId || "INVALID"),
+              actionLegal: false,
+              actionApplied: false,
+              actionSafetySafe: false,
+              formulaStatus: "invalid-action",
+              warnings: immediate.warnings || [],
+            },
+            metrics: {},
+            comparisonVsWait: null,
+            formulaValidation: { status: "invalid-action", warnings: immediate.warnings || [] },
+            warnings: immediate.warnings || [],
+          });
+        }
         continue;
       }
 
@@ -6928,6 +6997,7 @@ function getDisplayName(item) {
     const baseLines = laboratoryExportResultCsv(experiment).split(/\r?\n/);
     const header = baseLines.shift() || "";
     const extraHeader = ["capture_mode", "capture_timestamp", "snapshot_validity", "formula_source", "live_state_unchanged", "live_status", "live_warnings", "observation_summary"];
+    const flattenCell = (value) => String(value || "").replace(/\r?\n+/g, " | ");
     const rows = baseLines.map((line) => `${line},${[
       laboratoryCsvEscape(result?.captureMode || "live-read-only"),
       laboratoryCsvEscape(result?.captureTimestamp || result?.snapshot?.source?.capturedAt || ""),
@@ -6935,8 +7005,8 @@ function getDisplayName(item) {
       laboratoryCsvEscape(result?.formulaSource?.formulaSetId || result?.formulaSource?.sourceRepository || ""),
       laboratoryCsvEscape(laboratoryBoolean(result?.liveStateVerification?.unchanged)),
       laboratoryCsvEscape(result?.status || ""),
-      laboratoryCsvEscape(laboratoryJoinWarnings(result?.warnings || [])),
-      laboratoryCsvEscape(result?.observationSummary?.text || ""),
+      laboratoryCsvEscape(flattenCell(laboratoryJoinWarnings(result?.warnings || []))),
+      laboratoryCsvEscape(flattenCell(result?.observationSummary?.text || "")),
     ].join(",")}`);
     return [
       `${header},${extraHeader.map(laboratoryCsvEscape).join(",")}`,

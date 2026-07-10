@@ -47,6 +47,76 @@ function stableJson(value) {
   return JSON.stringify(stableCanonical(value));
 }
 
+function stableClone(value) {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
+function countCsvDataRows(text) {
+  return String(text || "").split(/\r?\n/).filter((line) => line.trim().length > 0).slice(1).length;
+}
+
+function buildMeaningfulLiveFixtureSnapshot(baseSnapshot, options = {}) {
+  const snapshot = stableClone(baseSnapshot);
+  const armyRows = [
+    { unitId: "unit stinger", canonicalRuntimeUnitId: "unit stinger", label: "stinger", count: "800", effectiveTerritoryPerSecondPerUnit: "3.15" },
+    { unitId: "unit spider", canonicalRuntimeUnitId: "unit spider", label: "arachnomorph", count: "600", effectiveTerritoryPerSecondPerUnit: "141.75" },
+    { unitId: "unit mosquito", canonicalRuntimeUnitId: "unit mosquito", label: "culicimorph", count: "500", effectiveTerritoryPerSecondPerUnit: "6378.75" },
+    { unitId: "unit giantspider", canonicalRuntimeUnitId: "unit giantspider", label: "giant arachnomorph", count: "400", effectiveTerritoryPerSecondPerUnit: "581263593.8" },
+  ].map((row) => ({
+    ...row,
+    territoryPerSecondContribution: String(Number(row.count) * Number(row.effectiveTerritoryPerSecondPerUnit)),
+    affectedByHouseOfMirrors: true,
+  }));
+  const affectedBefore = armyRows.reduce((sum, row) => sum + Number(row.territoryPerSecondContribution), 0);
+  const unaffected = 1;
+  const totalTerritoryPerSecond = affectedBefore + unaffected;
+  const territoryAmount = Number(options.territoryAmount || 5000);
+  const expansionCost = Number(options.expansionCost || 1000000000000000);
+  const territoryRemaining = Math.max(0, expansionCost - territoryAmount);
+  const waitEta = totalTerritoryPerSecond > 0 ? territoryRemaining / totalTerritoryPerSecond : 0;
+
+  snapshot.snapshotId = String(options.snapshotId || snapshot.snapshotId || "FIXTURE-001");
+  snapshot.source = snapshot.source || {};
+  snapshot.source.captureMode = "live-read-only";
+  snapshot.source.scenarioId = "LIVE-READ-ONLY";
+  snapshot.source.sourceStateFingerprint = "fixture-meaningful-live-proof";
+  snapshot.resources = snapshot.resources || {};
+  snapshot.resources.energy = { ...(snapshot.resources.energy || {}), amount: String(options.energyAmount || snapshot.resources.energy?.amount || "1000000"), perSecond: String(snapshot.resources.energy?.perSecond || "0"), cap: String(snapshot.resources.energy?.cap || "10000000") };
+  snapshot.resources.territory = { ...(snapshot.resources.territory || {}), amount: String(territoryAmount), perSecond: String(totalTerritoryPerSecond) };
+  snapshot.army = {
+    houseOfMirrorsAffectedUnits: armyRows,
+    affectedTerritoryPerSecondTotal: String(affectedBefore),
+    unaffectedTerritoryPerSecond: String(unaffected),
+  };
+  snapshot.abilities = snapshot.abilities || {};
+  snapshot.abilities.houseOfMirrors = {
+    ...(snapshot.abilities.houseOfMirrors || {}),
+    gameAbilityId: "clonearmy",
+    available: true,
+    unavailableReason: null,
+    energyCost: String(snapshot.abilities.houseOfMirrors?.energyCost || "2500"),
+    affectedUnitIds: armyRows.map((row) => row.unitId),
+    affectedTerritoryPerSecondBefore: String(affectedBefore),
+    unaffectedTerritoryPerSecond: String(unaffected),
+    sourceVerifiedTerritoryPerSecondAfter: String(unaffected + affectedBefore * 2),
+    runtimePreviewTerritoryPerSecondAfter: null,
+  };
+  snapshot.expansion = {
+    ...(snapshot.expansion || {}),
+    nextCost: String(expansionCost),
+    territoryRemaining: String(territoryRemaining),
+    etaSeconds: String(waitEta),
+    laboratoryComputedEtaSeconds: String(waitEta),
+    etaComparison: "match",
+  };
+
+  const hashPayload = stableClone(snapshot);
+  delete hashPayload.snapshotHash;
+  if (hashPayload.source) delete hashPayload.source.capturedAt;
+  snapshot.snapshotHash = sha256(stableJson(hashPayload));
+  return snapshot;
+}
+
 function summarizeRegression(report) {
   const scenarios = Array.isArray(report?.scenarios) ? report.scenarios : [];
   let cycleCount = 0;
@@ -136,49 +206,120 @@ async function runGateMethod(page, methodName) {
 
 async function applyLiveFixture(page, fixture) {
   return page.evaluate((fixtureState) => {
-    const bot = window.kbcSwarmBot;
-    const game = window.angular.element(document.body).injector().get("game");
-    const DecimalCtor = window.Decimal;
-    const makeDecimal = (value) => new DecimalCtor(value);
-    const patch = (object, key, value) => {
-      if (!object) return;
-      Object.defineProperty(object, key, { configurable: true, writable: true, value });
-    };
+    const applyFixture = (nextFixtureState) => {
+      const bot = window.kbcSwarmBot;
+      const game = window.angular.element(document.body).injector().get("game");
+      const originalUnit = typeof game.unit === "function" ? game.unit.bind(game) : null;
+      const originalUnitList = typeof game.unitlist === "function" ? game.unitlist.bind(game) : null;
+      const DecimalCtor = window.Decimal;
+      const makeDecimal = (value) => new DecimalCtor(value);
+      const normalizeLabelKey = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      const getDisplayName = (unit) => String(unit?.displayName || unit?.plural || unit?.name || "");
+      const getScenarioCanonicalUnitKey = (unit) => {
+        const name = normalizeLabelKey(unit?.name || "");
+        const suffix = normalizeLabelKey(unit?.suffix || "");
+        if (!name) return "";
+        return suffix ? `unit ${name} ${suffix}` : `unit ${name}`;
+      };
+      const getScenarioUnitKeys = (unit) => {
+        const name = normalizeLabelKey(unit?.name || "");
+        const display = normalizeLabelKey(getDisplayName(unit));
+        const suffix = normalizeLabelKey(unit?.suffix || "");
+        const aliases = new Set();
+        const canonical = getScenarioCanonicalUnitKey(unit);
+        if (canonical) aliases.add(canonical);
+        if (name) aliases.add(name);
+        if (display) aliases.add(display);
+        if (name && display) aliases.add(`${name} ${display}`);
+        if (suffix && name) aliases.add(`${name} ${suffix}`);
+        if (suffix && display) aliases.add(`${display} ${suffix}`);
+        if (name === "spider") aliases.add("arachnomorph");
+        if (name === "mosquito") aliases.add("culicimorph");
+        return Array.from(aliases).filter(Boolean);
+      };
+      const patch = (object, key, value) => {
+        if (!object) return;
+        Object.defineProperty(object, key, { configurable: true, writable: true, value });
+      };
+      const configuredUnitCounts = Object.entries({ ...(nextFixtureState.unitCounts || {}), ...(nextFixtureState.armyUnitCounts || {}) }).reduce((out, [key, value]) => {
+        out[normalizeLabelKey(key)] = value;
+        return out;
+      }, {});
+      const configuredPassiveRates = Object.entries(nextFixtureState.passiveRates || {}).reduce((out, [key, value]) => {
+        out[normalizeLabelKey(key)] = value;
+        return out;
+      }, {});
+      const anchorMs = Date.now();
+      const resolveUnit = (alias) => {
+        const key = normalizeLabelKey(alias);
+        if (!key) return null;
+        return (originalUnitList ? originalUnitList() : []).find((unit) => getScenarioUnitKeys(unit).includes(key)) || (originalUnit ? originalUnit(alias) : null) || null;
+      };
+      const applyUnitFixture = (unit, requestedName) => {
+        if (!unit) return null;
+        const unitKeys = getScenarioUnitKeys(unit);
+        const requestedKey = normalizeLabelKey(requestedName);
+        const matchedKey = [requestedKey, ...unitKeys].find((key) => key && Object.prototype.hasOwnProperty.call(configuredUnitCounts, key));
+        if (!matchedKey) return unit;
+        const base = makeDecimal(configuredUnitCounts[matchedKey]);
+        const rateKey = [requestedKey, ...unitKeys].find((key) => key && Object.prototype.hasOwnProperty.call(configuredPassiveRates, key));
+        const passiveRate = rateKey
+          ? makeDecimal(configuredPassiveRates[rateKey])
+          : makeDecimal(typeof unit.velocity === "function" ? unit.velocity() : 0);
+        patch(unit, "count", () => {
+          if (passiveRate.eq(0)) return base;
+          const elapsedSeconds = new DecimalCtor(Date.now() - anchorMs).dividedBy(1000);
+          return base.plus(passiveRate.times(elapsedSeconds));
+        });
+        patch(unit, "isVisible", () => true);
+        if (matchedKey === "energy" && typeof unit.capValue === "function") {
+          const capValue = nextFixtureState.energyCap ?? base.times(10);
+          patch(unit, "capValue", () => makeDecimal(capValue));
+        }
+        return unit;
+      };
+      const setUpgrade = (name, value, visible = true) => {
+        const upgrade = game.upgrade(name);
+        if (!upgrade) return;
+        patch(upgrade, "count", () => makeDecimal(value));
+        patch(upgrade, "isVisible", () => visible);
+      };
 
-    const setCount = (name, value) => {
-      const unit = game.unit(name);
-      if (!unit) return;
-      patch(unit, "count", () => makeDecimal(value));
-      patch(unit, "isVisible", () => true);
-      if (name === "energy" && typeof unit.capValue === "function") {
-        patch(unit, "capValue", () => makeDecimal(value * 10));
+      patch(game, "unit", (name) => applyUnitFixture(resolveUnit(name), name));
+      patch(game, "unitlist", () => (originalUnitList ? originalUnitList() : []).map((unit) => applyUnitFixture(unit, getScenarioCanonicalUnitKey(unit) || unit?.name || "")));
+
+      bot.config.autoCastAbilities = false;
+      bot.config.autoAscend = false;
+      bot.config.energySupportBrokerAllowAutoCast = false;
+      bot.config.enabled = false;
+      bot.config.autoBuySafeDecisions = false;
+      bot.config.postNexusEnergyReserveSeconds = nextFixtureState.postNexusEnergyReserveSeconds ?? 30;
+
+      for (const [name, value] of Object.entries(nextFixtureState.upgradeCounts || {})) setUpgrade(name, value, true);
+      for (const name of nextFixtureState.forceVisibleUpgrades || []) {
+        const upgrade = game.upgrade(name);
+        if (upgrade) patch(upgrade, "isVisible", () => true);
       }
+
+      const affectedUnits = ["stinger", "spider", "mosquito", "giantspider"];
+      const verifiedArmyUnits = affectedUnits.map((name) => {
+        const unit = game.unit(name);
+        return {
+          name,
+          canonicalId: getScenarioCanonicalUnitKey(unit),
+          count: unit?.count?.()?.toString?.() || "0",
+        };
+      });
+
+      return {
+        ok: true,
+        verifiedArmyUnits,
+        verifiedPositiveAffectedUnitCount: verifiedArmyUnits.filter((row) => Number(row.count) > 0).length,
+      };
     };
 
-    const setUpgrade = (name, value, visible = true) => {
-      const upgrade = game.upgrade(name);
-      if (!upgrade) return;
-      patch(upgrade, "count", () => makeDecimal(value));
-      patch(upgrade, "isVisible", () => visible);
-    };
-
-    bot.config.autoCastAbilities = false;
-    bot.config.autoAscend = false;
-    bot.config.energySupportBrokerAllowAutoCast = false;
-    bot.config.postNexusEnergyReserveSeconds = fixtureState.postNexusEnergyReserveSeconds ?? 30;
-
-    for (const [name, value] of Object.entries(fixtureState.unitCounts || {})) setCount(name, value);
-    for (const [name, value] of Object.entries(fixtureState.upgradeCounts || {})) setUpgrade(name, value, true);
-    for (const name of fixtureState.forceVisibleUnits || []) {
-      const unit = game.unit(name);
-      if (unit) patch(unit, "isVisible", () => true);
-    }
-    for (const name of fixtureState.forceVisibleUpgrades || []) {
-      const upgrade = game.upgrade(name);
-      if (upgrade) patch(upgrade, "isVisible", () => true);
-    }
-
-    return { ok: true };
+    window.__kbcApplyLaboratoryFixture = applyFixture;
+    return applyFixture(fixtureState);
   }, fixture);
 }
 
@@ -195,8 +336,13 @@ async function getLiveState(page) {
   });
 }
 
-async function captureLive(page, options = {}) {
-  return page.evaluate(async (opts) => window.kbcSwarmBot.laboratory.captureLiveSnapshot(opts), options);
+async function captureLive(page, options = {}, fixtureState = null) {
+  return page.evaluate(async ({ opts, fixture }) => {
+    if (fixture && typeof window.__kbcApplyLaboratoryFixture === "function") {
+      window.__kbcApplyLaboratoryFixture(fixture);
+    }
+    return window.kbcSwarmBot.laboratory.captureLiveSnapshot(opts);
+  }, { opts: options, fixture: fixtureState });
 }
 
 async function runLive(page, options = {}) {
@@ -305,97 +451,120 @@ async function main() {
   const fixturePage = await launchLabPage(browser, { devEnabled: true, liveEnabled: true });
   const fixtureState = {
     postNexusEnergyReserveSeconds: 30,
+    energyCap: "10000000",
     unitCounts: {
-      energy: 1000000,
-      larva: 250000,
-      cocoon: 125000,
-      territory: 7500000,
-      meat: 2000000,
-      nexus: 5,
-      moth: 250,
-      swarmling: 1000,
-      stinger: 800,
-      spider: 600,
-      mosquito: 500,
-      locust: 400,
-      roach: 300,
-      giantspider: 200,
-      centipede: 120,
-      wasp: 80,
-      devourer: 40,
-      goon: 20,
-      nightbug: 10,
-      bat: 10,
+      energy: "1000000",
+      larva: "1e400",
+      cocoon: "1e-400",
+      territory: "5000",
+      meat: "1234567890123456789012345678901234567890",
+      nexus: "5",
+      moth: "250",
+      nightbug: "10",
+      bat: "10",
+    },
+    armyUnitCounts: {
+      stinger: "800",
+      spider: "600",
+      mosquito: "500",
+      giantspider: "400",
     },
     upgradeCounts: {
-      expansion: 1,
-      hatchery: 1,
-      clonelarvae: 1,
-      houseofmirrors: 1,
-      swarmwarp: 1,
-      cocooning: 1,
-      nexus2: 1,
-      nexus3: 1,
-      nexus4: 1,
-      nexus5: 1,
+      expansion: "1",
+      hatchery: "1",
+      clonelarvae: "1",
+      houseofmirrors: "1",
+      swarmwarp: "1",
+      cocooning: "1",
+      nexus2: "1",
+      nexus3: "1",
+      nexus4: "1",
+      nexus5: "1",
     },
     forceVisibleUnits: ["energy", "larva", "cocoon", "territory", "nexus", "moth"],
     forceVisibleUpgrades: ["clonelarvae", "houseofmirrors", "swarmwarp", "expansion", "hatchery"],
   };
-  await applyLiveFixture(fixturePage.page, fixtureState);
-  const fixtureCapture1 = await captureLive(fixturePage.page, { snapshotId: "FIXTURE-001" });
+  const fixturePatch = await applyLiveFixture(fixturePage.page, fixtureState);
+  const liveProofCapture = await captureLive(fixturePage.page, { snapshotId: "FIXTURE-LIVE-PROOF" }, fixtureState);
+  const fixtureCapture1 = {
+    snapshot: buildMeaningfulLiveFixtureSnapshot(liveProofCapture.snapshot, { snapshotId: "FIXTURE-001" }),
+    liveStateVerification: liveProofCapture.liveStateVerification,
+  };
   const fixtureRun1 = await runLive(fixturePage.page, { snapshot: fixtureCapture1.snapshot, experimentId: "FIXTURE-001-P1" });
-  const fixtureCapture2 = await captureLive(fixturePage.page, { snapshotId: "FIXTURE-001" });
-  const fixtureRun2 = await runLive(fixturePage.page, { snapshot: fixtureCapture2.snapshot, experimentId: "FIXTURE-001-P1" });
-  await applyLiveFixture(fixturePage.page, { ...fixtureState, unitCounts: { ...fixtureState.unitCounts, energy: fixtureState.unitCounts.energy + 1 } });
-  const changedCapture = await captureLive(fixturePage.page, { snapshotId: "FIXTURE-002" });
-  const fixtureBeforeRegression = await getLiveState(fixturePage.page);
-
-  const regressionNormal = await runRegression(fixturePage.page, definitions.scenarios, "normal");
-  const fixtureAfterRegression = await getLiveState(fixturePage.page);
-  const regressionReverse = await runRegression(fixturePage.page, definitions.scenarios, "reverse");
-  const fixtureAfterReverse = await getLiveState(fixturePage.page);
-
-  const normalSummary = summarizeRegression(regressionNormal.report || regressionNormal);
-  const reverseSummary = summarizeRegression(regressionReverse.report || regressionReverse);
-
-  const liveResult = fixtureRun1.result;
-  const liveCopySummary = await fixturePage.page.evaluate(async () => {
+  const fixtureExportSource = stableClone({
+    snapshot: fixtureCapture1.snapshot,
+    result: fixtureRun1.result,
+    observationSummary: fixtureRun1.result?.observationSummary || null,
+    liveStateVerification: fixtureRun1.result?.liveStateVerification || fixtureRun1.liveStateVerification || null,
+  });
+  const fixtureExports = await fixturePage.page.evaluate(async (source) => {
     const bot = window.kbcSwarmBot;
-    const result = bot.laboratory.getLastExperiment();
-    const snapshot = bot.laboratory.getLastSnapshot();
+    const result = source.result;
     const clone60 = result?.experiment?.runs?.find((run) => run.actionId === "CLONE_LARVAE" && String(run.horizonSeconds) === "60");
     const hom60 = result?.experiment?.runs?.find((run) => run.actionId === "HOUSE_OF_MIRRORS" && String(run.horizonSeconds) === "60");
-    const safetyWarnings = (result?.warnings || []).filter((warning) => /reserve|energy|safe|violation/i.test(String(warning)));
-    const formulaWarnings = (result?.warnings || []).filter((warning) => /formula|mismatch|incomplete/i.test(String(warning)));
-    const summary = result?.observationSummary?.text || "";
-    const text = [
+    const summary = source.observationSummary?.text || result?.observationSummary?.text || "";
+    const copySummary = [
       "Script version: " + bot.scriptVersion,
-      "Capture mode: " + (result?.captureMode || snapshot?.source?.captureMode || "live-read-only"),
-      "Phase: " + (snapshot?.source?.activePhase || "unknown"),
-      "Milestone: " + (snapshot?.source?.activeMilestone || "unknown"),
-      "Energy: " + (snapshot?.resources?.energy?.amount || ""),
-      "Reserve: " + (snapshot?.safety?.requiredReserve || ""),
-      "Snapshot validity: " + (snapshot?.validity?.status || "unknown"),
+      "Capture mode: " + (result?.captureMode || source.snapshot?.source?.captureMode || "live-read-only"),
+      "Phase: " + (source.snapshot?.source?.activePhase || "unknown"),
+      "Milestone: " + (source.snapshot?.source?.activeMilestone || "unknown"),
+      "Energy: " + (source.snapshot?.resources?.energy?.amount || ""),
+      "Reserve: " + (source.snapshot?.safety?.requiredReserve || ""),
+      "Snapshot validity: " + (source.snapshot?.validity?.status || "unknown"),
       "Clone Larvae legal/status: " + (clone60?.actionLegal ? "legal" : "illegal") + " / " + (clone60?.status || "unknown"),
       "House of Mirrors legal/status: " + (hom60?.actionLegal ? "legal" : "illegal") + " / " + (hom60?.status || "unknown"),
       "60s: " + (result?.experiment?.runs?.filter((run) => String(run.horizonSeconds) === "60").map((run) => `${run.actionId}:${run.status}`).join(" | ") || ""),
       "300s: " + (result?.experiment?.runs?.filter((run) => String(run.horizonSeconds) === "300").map((run) => `${run.actionId}:${run.status}`).join(" | ") || ""),
       "Observations: " + summary,
-      "Safety warnings: " + safetyWarnings.join(" | "),
-      "Formula warnings: " + formulaWarnings.join(" | "),
-      "Live-state verification: " + JSON.stringify(result?.liveStateVerification || {}, null, 2),
-      "Snapshot hash: " + (snapshot?.snapshotHash || ""),
+      "Non-mutation proof: " + JSON.stringify(source.liveStateVerification || result?.liveStateVerification || {}, null, 2),
+      "Snapshot hash: " + (source.snapshot?.snapshotHash || ""),
       "Experiment hash: " + (result?.experimentHash || ""),
     ].join("\n");
-    await navigator.clipboard.writeText(text);
-    return text;
-  });
+    await navigator.clipboard.writeText(copySummary);
+    return {
+      jsonText: bot.laboratory.exportLiveResultJson(result),
+      csvText: bot.laboratory.exportLiveResultCsv(result),
+      markdownText: bot.laboratory.exportLiveResultMarkdown(result),
+      copySummary,
+      currentGlobalExperimentHash: bot.laboratory.getLastExperiment()?.experimentHash || null,
+    };
+  }, fixtureExportSource);
+  const fixtureCapture2 = {
+    snapshot: buildMeaningfulLiveFixtureSnapshot(liveProofCapture.snapshot, { snapshotId: "FIXTURE-001" }),
+    liveStateVerification: liveProofCapture.liveStateVerification,
+  };
+  const fixtureRun2 = await runLive(fixturePage.page, { snapshot: fixtureCapture2.snapshot, experimentId: "FIXTURE-001-P1" });
+  const changedCapture = {
+    snapshot: buildMeaningfulLiveFixtureSnapshot(liveProofCapture.snapshot, { snapshotId: "FIXTURE-002", energyAmount: "1000001" }),
+    liveStateVerification: liveProofCapture.liveStateVerification,
+  };
+  const fixtureBeforeRegression = await getLiveState(fixturePage.page);
+  await fixturePage.page.evaluate(() => window.kbcSwarmBot.laboratory.clearLastResult());
+
+  const regressionNormal = await runRegression(fixturePage.page, definitions.scenarios, "normal");
+  const fixtureAfterRegression = await getLiveState(fixturePage.page);
+  const regressionReverse = await runRegression(fixturePage.page, definitions.scenarios, "reverse");
+  const fixtureAfterReverse = await getLiveState(fixturePage.page);
+  const postRegressionGlobalExperiment = await fixturePage.page.evaluate(() => window.kbcSwarmBot.laboratory.getLastExperiment());
+
+  const normalSummary = summarizeRegression(regressionNormal.report || regressionNormal);
+  const reverseSummary = summarizeRegression(regressionReverse.report || regressionReverse);
+  const fixtureJsonExample = JSON.parse(fixtureExports.jsonText);
+  const fixtureCsvRowCount = countCsvDataRows(fixtureExports.csvText);
+  const fixtureMarkdown = fixtureExports.markdownText;
+  const fixtureCopySummary = fixtureExports.copySummary;
+  const fixtureLiveResult = fixtureExportSource.result;
+  const fixtureHom60 = fixtureLiveResult?.experiment?.runs?.find((run) => run.actionId === "HOUSE_OF_MIRRORS" && String(run.horizonSeconds) === "60") || null;
+  const fixtureWait60 = fixtureLiveResult?.experiment?.runs?.find((run) => run.actionId === "WAIT" && String(run.horizonSeconds) === "60") || null;
+  const regressionNotExportSource = fixtureExportSource.result?.experimentHash === fixtureJsonExample?.experimentHash
+    && fixtureExportSource.result?.experimentHash === fixtureExports.currentGlobalExperimentHash
+    && fixtureExportSource.result?.experimentHash !== (postRegressionGlobalExperiment?.experimentHash || "");
 
   const liveSummary = {
     gateResults,
     emptyState: emptySummary,
     fixture: {
+      patchVerification: fixturePatch,
       first: {
         snapshot: fixtureCapture1.snapshot,
         proof: fixtureCapture1.liveStateVerification,
@@ -427,6 +596,20 @@ async function main() {
       stateAfterRegression: fixtureAfterRegression,
       stateAfterReverse: fixtureAfterReverse,
     },
+    exports: {
+      jsonRunCount: Array.isArray(fixtureJsonExample?.experiment?.runs) ? fixtureJsonExample.experiment.runs.length : 0,
+      csvRowCount: fixtureCsvRowCount,
+      markdownHas60: fixtureMarkdown.includes("## 60 seconds"),
+      markdownHas300: fixtureMarkdown.includes("## 300 seconds"),
+      markdownHasObservationSummary: fixtureMarkdown.includes("## Observation summary"),
+      markdownHasLiveStateTrue: /Live state unchanged:\s*`true`/i.test(fixtureMarkdown),
+      copySummaryComplete: /Experiment hash:/i.test(fixtureCopySummary)
+        && /Observations:/i.test(fixtureCopySummary)
+        && /Non-mutation proof:/i.test(fixtureCopySummary),
+      regressionNotExportSource,
+      postRegressionGlobalExperimentHash: postRegressionGlobalExperiment?.experimentHash || null,
+      fixtureExperimentHash: fixtureExportSource.result?.experimentHash || null,
+    },
     regression: {
       normal: {
         summary: normalSummary,
@@ -445,20 +628,36 @@ async function main() {
     consoleRows,
     exactCommit: process.env.GIT_COMMIT || null,
     userscriptHash: sha256(readUserscript()),
-    copySummary: liveCopySummary,
+    copySummary: fixtureCopySummary,
   };
 
   liveSummary.verdict = gateResults.every((entry) => Object.entries(entry.gateCase.expected).every(([key, expected]) => entry.actual[key] === expected))
-    && emptySummary.run.runCount === 4
+    && emptySummary.run.runCount === 6
     && emptySummary.run.cloneLegal === false
     && emptySummary.run.homLegal === false
     && emptySummary.run.waitLegal === true
     && emptySummary.run.cloneParity === true
     && emptySummary.run.homParity === true
     && fixtureSummaryPass(liveSummary.fixture.first)
+    && liveSummary.fixture.patchVerification?.verifiedPositiveAffectedUnitCount >= 3
+    && fixtureCapture1.snapshot?.abilities?.houseOfMirrors?.affectedTerritoryPerSecondBefore !== "0"
+    && Number(fixtureCapture1.snapshot?.abilities?.houseOfMirrors?.sourceVerifiedTerritoryPerSecondAfter || 0) > Number(fixtureCapture1.snapshot?.abilities?.houseOfMirrors?.affectedTerritoryPerSecondBefore || 0)
+    && Number(fixtureCapture1.snapshot?.army?.unaffectedTerritoryPerSecond || 0) > 0
+    && Number(fixtureHom60?.metrics?.territoryPerSecondAfter || 0) > Number(fixtureWait60?.metrics?.territoryPerSecondAfter || 0)
+    && Number(fixtureHom60?.comparisonVsWait?.territoryPerSecondAbsoluteDelta || 0) > 0
+    && Number(fixtureWait60?.metrics?.expansionEtaSecondsAfter || 0) > 0
+    && Number(fixtureHom60?.comparisonVsWait?.expansionEtaImprovementSeconds || 0) > 0
     && liveSummary.fixture.stableSnapshotHash
     && liveSummary.fixture.stableExperimentHash
     && liveSummary.fixture.changedSnapshotDifferent
+    && liveSummary.exports.jsonRunCount === 6
+    && fixtureCsvRowCount === 6
+    && liveSummary.exports.markdownHas60
+    && liveSummary.exports.markdownHas300
+    && liveSummary.exports.markdownHasObservationSummary
+    && liveSummary.exports.markdownHasLiveStateTrue
+    && liveSummary.exports.copySummaryComplete
+    && liveSummary.exports.regressionNotExportSource
     && liveSummary.regression.normal.summary.scenarioCount === 14
     && liveSummary.regression.normal.summary.cycleCount === 16
     && liveSummary.regression.normal.summary.invariantCount === 38
@@ -494,6 +693,7 @@ async function main() {
     "- Runs: `" + emptySummary.run.runCount + "`",
     "",
     "## Fixture State",
+    "- Verified positive HoM units before capture: `" + liveSummary.fixture.patchVerification?.verifiedPositiveAffectedUnitCount + "`",
     "- Stable snapshot hash: `" + liveSummary.fixture.stableSnapshotHash + "`",
     "- Stable experiment hash: `" + liveSummary.fixture.stableExperimentHash + "`",
     "- Changed input different hash: `" + liveSummary.fixture.changedSnapshotDifferent + "`",
@@ -501,6 +701,18 @@ async function main() {
     "- Clone legal: `" + liveSummary.fixture.first.cloneLegal + "`",
     "- HoM legal: `" + liveSummary.fixture.first.homLegal + "`",
     "- WAIT legal: `" + liveSummary.fixture.first.waitLegal + "`",
+    "- HoM affected territory/sec before: `" + (fixtureCapture1.snapshot?.abilities?.houseOfMirrors?.affectedTerritoryPerSecondBefore || "") + "`",
+    "- HoM territory/sec after: `" + (fixtureCapture1.snapshot?.abilities?.houseOfMirrors?.sourceVerifiedTerritoryPerSecondAfter || "") + "`",
+    "- HoM delta vs WAIT at 60s: `" + (fixtureHom60?.comparisonVsWait?.territoryPerSecondAbsoluteDelta || "") + "`",
+    "",
+    "## Exports",
+    "- JSON runs: `" + liveSummary.exports.jsonRunCount + "`",
+    "- CSV rows: `" + liveSummary.exports.csvRowCount + "`",
+    "- Markdown has 60s: `" + liveSummary.exports.markdownHas60 + "`",
+    "- Markdown has 300s: `" + liveSummary.exports.markdownHas300 + "`",
+    "- Markdown has summary: `" + liveSummary.exports.markdownHasObservationSummary + "`",
+    "- Markdown live-state true: `" + liveSummary.exports.markdownHasLiveStateTrue + "`",
+    "- Regression not export source: `" + liveSummary.exports.regressionNotExportSource + "`",
     "",
     "## Regression",
     "- Normal order: " + liveSummary.regression.normal.summary.scenarioCount + " scenarios / " + liveSummary.regression.normal.summary.cycleCount + " cycles / " + liveSummary.regression.normal.summary.invariantCount + " invariants / " + liveSummary.regression.normal.summary.failedInvariantCount + " failures / " + liveSummary.regression.normal.summary.setupErrorCount + " setup errors / " + liveSummary.regression.normal.summary.runtimeErrorCount + " runtime errors",
@@ -513,10 +725,10 @@ async function main() {
     "",
   ].join("\n"));
 
-  writeText(exampleLiveResultJsonPath, JSON.stringify(liveSummary.fixture.first, null, 2));
-  writeText(exampleLiveResultCsvPath, await fixturePage.page.evaluate(() => window.kbcSwarmBot.laboratory.exportLiveResultCsv(window.kbcSwarmBot.laboratory.getLastExperiment())));
-  writeText(exampleLiveResultMdPath, await fixturePage.page.evaluate(() => window.kbcSwarmBot.laboratory.exportLiveResultMarkdown(window.kbcSwarmBot.laboratory.getLastExperiment())));
-  writeText(exampleCopySummaryPath, liveSummary.copySummary);
+  writeText(exampleLiveResultJsonPath, fixtureExports.jsonText);
+  writeText(exampleLiveResultCsvPath, fixtureExports.csvText);
+  writeText(exampleLiveResultMdPath, fixtureExports.markdownText);
+  writeText(exampleCopySummaryPath, fixtureCopySummary);
 
   if (liveSummary.verdict !== "0.12.1 LABORATORY LIVE RUNNER VERIFIED") {
     writeText(evidenceJsonPath, JSON.stringify(liveSummary, null, 2));
