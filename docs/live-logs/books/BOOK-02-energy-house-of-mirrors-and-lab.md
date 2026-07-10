@@ -21,11 +21,11 @@ Purpose: summarize ability-value findings and lab-capture correctness limits.
 
 ## Sources
 
-- ../archive/source-logs/2026-07-10-0.10.1-energy-support-counterfactual.md
-- ../archive/source-logs/2026-07-10-0.12.1-first-real-save-laboratory-result.md
-- ../archive/source-logs/2026-07-10-0.12.1-live-hom-runtime-forensics.md
-- ../archive/source-logs/2026-07-10-0.12.1-live-house-of-mirrors-cast.md
-- ../archive/source-logs/2026-07-10-energy-support-counterfactual-0.10.1.json
+- ../2026-07-10-0.10.1-energy-support-counterfactual.md
+- ../2026-07-10-0.12.1-first-real-save-laboratory-result.md
+- ../2026-07-10-0.12.1-live-hom-runtime-forensics.md
+- ../2026-07-10-0.12.1-live-house-of-mirrors-cast.md
+- ../2026-07-10-energy-support-counterfactual-0.10.1.json
 - ../../test-data/0.12.2-laboratory/live-real-save-post-hom-capture-run-2026-07-10.md
 - ../../test-data/0.12.2-laboratory/live-real-save-post-hom-capture-run-2026-07-10.json
 - ../../test-data/0.12.2-laboratory/live-second-hom-vs-lab-delta-2026-07-10.md
@@ -147,5 +147,9 @@ Purpose: summarize ability-value findings and lab-capture correctness limits.
 
 ## What to read next
 
-- For base mechanics and claim status: BOOK-01.
-- For raw browser exports and version artifacts: BOOK-03 and ../archive/browser-exports/.
+- For the active game model: `../../SWARMSIM_GAME_MODEL.md`.
+- For the base-game claims crosscheck: `../2026-07-10-base-game-claims-crosscheck.md`.
+- For the salvaged 0.12.2 raw-evidence inventory: `../../test-data/0.12.2-laboratory/LIVE_EVIDENCE_INDEX.md`.
+- For current 0.12.3 acceptance truth:
+	- `../live-real-save-0.12.3-effective-count-mature-save-2026-07-10.md`
+	- `../live-real-save-0.12.3-effective-count-mature-save-2026-07-10.json`
