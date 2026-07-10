@@ -19,6 +19,10 @@ docs/release-notes/
 
 ## Version notes
 
+- 2026-07-10 docs/planning: 0.12.3 is the verified technical baseline; next
+  phase is Strategy Intelligence, starting with Strategy Audit 0
+  (early-game behavioral baseline). No strategy changes are included in this
+  planning update.
 - 0.12.3: Laboratory live effective HoM count capture fix, reason propagation
   normalization for blocked/legal abilities, and honest verifier gates using
   unmodified production capture.

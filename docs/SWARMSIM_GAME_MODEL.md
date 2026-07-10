@@ -62,46 +62,39 @@ Rules:
 
 ## 2. Current baseline and next work
 
-Current verified baseline:
+Current verified runtime:
 
 ```text
-0.8.7 — Twin Upgrade Opportunity Cost Bypass
+0.12.3
 ```
 
-0.8.7 is verified in live logs to:
-
-- buy Twin Neural Clusters when opportunity-cost loss is negligible versus resource bank,
-- wait for Hatchery when Hatchery is inside the save-window,
-- buy Hatchery when ready,
-- resume meat-chain progression after Hatchery,
-- prep Hive Networks toward the next Twin Neural Clusters threshold,
-- release Clone Buffer hard lock after POST_CLONE recovery is complete.
-
-> **Verification note — 2026-07-09**
-> Status: PARTIALLY CONFIRMED
-> Evidence: `docs/release-notes/SwarmSim-Strategy-Autobuyer-0.8.7-release-notes.md`, `docs/live-logs/2026-07-09-clicked-mechanics-progression.md`
-> Supports: 0.8.7 formalizes the observed Twin opportunity-cost problem by comparing lost production/hour against available bank ratio.
-> Script implication: Keep the opportunity-cost bypass bounded and observable. The general Twin/Faster distinction is live-confirmed; exact 0.8.7 late-state behavior should continue to be checked against exported bot logs.
-
-Next planned work:
+Current repository baseline:
 
 ```text
-0.8.8 — Multi-Lane Coordinator / Territory Starvation Fix
+132abd6be782f2d6f5bcc99c3e239ff741a6fdbb
 ```
 
-Reason for 0.8.8:
+Current status:
 
-- Meat-chain planning now works well enough that it can dominate every run.
-- Latest live logs showed 20/20 main-buy runs on meat while Territory lane reported `OBSERVE none`.
-- Ability Prep simultaneously reported `HOLD House of Mirrors — army prep missing` with top fighting units empty.
-- Screenshot showed fighting units were buyable.
-- This is a lane coordination/starvation problem, not a meat-chain problem.
+Laboratory effective-count capture verified.
+Normal strategy behavior remains based on the existing multi-lane,
+post-Nexus, Council, Army Seed, and Energy Support architecture.
 
-> **Verification note — 2026-07-09**
-> Status: PARTIALLY CONFIRMED
-> Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md`; `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms Territory can indirectly advance the larva engine through Expansion.
-> Supports: The current gap is lane coordination/starvation, not a request to make meat-chain buying blindly larger.
-> Script implication: Next script review should focus on proposal/coordinator behavior, army/territory diagnostics, hard blockers, and bounded scored chunks. Do not broaden ability casting or default buyMax.
+Next work:
+
+```text
+Strategy Audit 0 — Early-Game Behavioral Baseline
+```
+
+The next step is not immediate strategy expansion. The immediate goal is to
+measure current decision quality in reproducible staged states and document
+where behavior is good, questionable, or inconclusive before proposing any
+strategy change.
+
+Related planning documents:
+
+- `docs/strategy/STRATEGY_INTELLIGENCE_ROADMAP.md`
+- `docs/strategy/STRATEGY_AUDIT_0_EARLY_GAME.md`
 
 ## 3. Hard safety defaults
 
