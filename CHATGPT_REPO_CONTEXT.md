@@ -1,104 +1,197 @@
-# SwarmSim Strategy Autobuyer - ChatGPT Repo Context
+# SwarmSim Strategy Autobuyer - Timeless ChatGPT Repo Context
 
-Purpose: Give any external AI chat enough stable context to reason about this
-repository safely, without relying on old uploads or stale copies.
+Purpose: give any new AI chat enough stable context to enter the project safely without freezing a version, commit, or temporary task into this file.
 
-## What This Repo Is
+This file is orientation only. It is never the source of truth for the current version, latest commit, active bug, current verdict, or next work item. Those facts must always be read from Git.
+
+## Core rule: Git is the truth
+
+Always determine the current state from the repository itself.
+
+Do not trust:
+
+- version numbers remembered from a previous chat
+- old pasted reports without verification
+- uploaded script copies
+- stale release notes taken out of context
+- line numbers from an earlier commit
+- this file for current status
+
+Before reasoning about current work:
+
+```bash
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+git status --short
+git log -10 --oneline
+git rev-parse HEAD
+git rev-parse origin/main
+```
+
+Then verify the active state from the files and commits currently on `main`.
+
+## What this repository is
 
 This project contains a Tampermonkey userscript for Swarm Simulator.
-It is a methodical smart advisor/autobuyer with explicit hard safety defaults.
 
-The bot is not conservative by identity. It should be logical, evidence-based,
-and transparent. It should optimize normal progression when the math and current
-user-selected mode support it. Caution is a risk posture, not the personality of
-the project.
+The project is a methodical, evidence-based advisor/autobuyer with explicit safety boundaries and strong observability. It should optimize ordinary reversible progression when the math and selected user mode support action. Safety defaults are not a mandate for passivity.
 
-## Operating Posture
+## Canonical sources
 
-Use this framing when reasoning about future work:
+Read these as the stable source map:
 
-- Advisor Mode: explain opportunities and risks for users who want to play more
-  manually.
-- Methodical Optimizer: default Smart behavior; goal-driven, rebuild/payback
-  aware, and willing to buy when evidence says the action is correct.
-- Aggressive Optimizer / Market Crusher: future explicit mode only; may push
-  progression harder, but still must remain observable and must not bypass hard
-  safety defaults or irreversible actions without explicit user choice.
+- Repo/process guard: `AGENTS.md`
+- AI orientation and work rules: `AI.md`
+- Active game/strategy model: `docs/SWARMSIM_GAME_MODEL.md`
+- Executable userscript: `src/SwarmSim-Strategy-Autobuyer.user.js`
+- Runtime assembly source: `dev-src/runtime-sections/runtime-main.js`
+- Build assembly configuration: `scripts/canonical-build.config.json`
+- Laboratory contract: `docs/laboratory/SWARMSIM_LABORATORY_PHASE_1.md`
+- Release history: Git commits, tags, `docs/HISTORY.md`, and `docs/release-notes/`
+- Empirical evidence: `docs/live-logs/` and versioned files under `docs/test-data/`
+- Active implementation handoffs: relevant files in `docs/prompts/`
 
-## Canonical Source Of Truth
+`src/SwarmSim-Strategy-Autobuyer.user.js` is the only executable userscript. Runtime work may be authored in the configured assembly source and then regenerated into `src/`; inspect the build configuration before editing so the real source is changed rather than only a generated artifact.
 
-Only one executable userscript source is valid:
+## Required reading order for a new AI chat
 
-- `src/SwarmSim-Strategy-Autobuyer.user.js`
-
-Active strategy/game model:
-
-- `docs/SWARMSIM_GAME_MODEL.md`
-
-Repo/process guardrails:
-
-- `AGENTS.md`
-- `AI.md`
-
-Development scaffolding (non-executable):
-
-- `dev-src/`
-
-## Required Read Order For Any AI
-
-Before proposing code changes, read in this order:
+Before proposing or changing code, read:
 
 1. `AGENTS.md`
 2. `AI.md`
 3. `docs/SWARMSIM_GAME_MODEL.md`
-4. `src/SwarmSim-Strategy-Autobuyer.user.js`
-5. Relevant file in `docs/prompts/`
-6. Relevant files in `docs/release-notes/` and `docs/live-logs/`
+4. `scripts/canonical-build.config.json`
+5. `docs/laboratory/SWARMSIM_LABORATORY_PHASE_1.md` when Laboratory work is relevant
+6. the latest relevant handoff/work order in `docs/prompts/`
+7. the latest relevant release notes and live evidence
+8. `dev-src/runtime-sections/runtime-main.js`
+9. `src/SwarmSim-Strategy-Autobuyer.user.js`
+10. relevant verifier scripts and `package.json`
 
-Use `reference/` only for sanity checks, not as active truth.
+Search by function, constant, schema, and test name. Do not rely on old line numbers.
 
-## Hard Rules
+## How to determine the current task
 
-- Do not treat old uploaded scripts as source of truth.
-- Do not create `.txt` mirrors of the userscript.
-- Do not create duplicate `.user.js` copies outside `src/`.
-- Do not invent or broaden automation unless explicitly requested.
-- Keep fixes narrow and scoped to the named issue.
-- Preserve hard safety defaults unless explicitly requested otherwise.
-- Do not confuse hard safety defaults with passive strategy. Normal progression
-  should be optimized logically within the selected user mode.
+The current task is not stored in this timeless context file.
 
-## Hard Safety Baseline
+Resolve it from, in order:
 
-- No auto-cast abilities by default.
-- No Clone Larvae auto-cast by default.
-- No House of Mirrors auto-cast by default.
-- No auto-ascend by default.
-- No Nightbug/Bat auto-buy by default.
-- Keep Nexus/energy protection enabled.
-- Avoid aggressive buyMax behavior by default.
+1. the user's latest instruction
+2. the latest report the user supplies
+3. the current Git history on `main`
+4. the relevant work order in `docs/prompts/`
+5. current release notes, evidence, and open verification gaps
 
-## How To Work In This Repo
+If the user supplies a Copilot/Codex report, treat it as a claim to audit, not as proof. Verify commits, diffs, files, tests, evidence, `main`, and working-tree status before accepting its verdict.
 
-- Implement behavior in `src/SwarmSim-Strategy-Autobuyer.user.js` unless an
-  explicit migration task says otherwise.
-- `dev-src/` is scaffold space for modularization, not runtime truth.
-- If changing behavior, keep observability/debug output aligned with behavior.
-- Avoid unrelated refactors during hotfixes.
+## Stable project posture
 
-## Validation Before Claiming Done
+Use these meanings:
 
-Run:
+- Advisor Mode: explain opportunities, risks, and timing for manual play.
+- Methodical Optimizer: default Smart behavior; goal-driven, rebuild/payback aware, and willing to act when evidence supports it.
+- Higher-tempo modes: explicit future/user-selected behavior only, still observable and still bounded by hard safety rules.
+
+Do not interpret “optimize harder” as permission to enable irreversible or high-risk automation.
+
+## Hard safety defaults
+
+These must remain off by default unless the user explicitly authorizes a change:
+
+```text
+autoCastAbilities = false
+autoAscend = false
+energySupportBrokerAllowAutoCast = false
+```
+
+Also preserve these stable boundaries unless explicitly changed:
+
+- no default Clone Larvae auto-cast
+- no default House of Mirrors auto-cast
+- no default Nightbug/Bat auto-buy
+- Nexus/Energy protection remains enabled
+- no blind aggressive buyMax behavior in default Smart mode
+- Laboratory remains manually triggered, gated, read-only, and simulation-only
+
+## Narrow-change rule
+
+For every patch:
+
+- fix only the named issue
+- do not add unrelated strategy
+- do not widen automation
+- do not change safety thresholds unless explicitly requested
+- avoid unrelated refactors
+- keep observability aligned with behavior
+- keep scenario/test fixtures honest
+- never rewrite expectations merely to force a pass
+- preserve Decimal precision
+- preserve deterministic hashes and non-mutation guarantees where applicable
+
+## Repository hygiene
+
+Do not create:
+
+- `.txt` mirrors of the userscript
+- duplicate executable `.user.js` files
+- duplicate release trees
+- byte-identical userscript copies outside `src/`
+
+Do not force-push or rewrite history.
+
+Use the repository workflow currently authorized by the user and documented in `AGENTS.md`. When the user explicitly directs work on `main`, keep commits small, scoped, and normally pushed.
+
+## Validation discipline
+
+Never claim completion from one narrow check alone.
+
+Start with the commands required by `AGENTS.md`, `AI.md`, `package.json`, and the active work order. Typical validation includes:
 
 ```bash
 node scripts/validate-repo-guardrails.js
+npm run build
+npm run verify
+git diff --check
 ```
 
-This checks syntax, hard safety defaults, and duplicate-script guardrails.
+Then run every versioned verifier relevant to the changed subsystem.
 
-## What To Tell ChatGPT In One Sentence
+For formal acceptance, verify:
 
-"Treat `src/SwarmSim-Strategy-Autobuyer.user.js` and
-`docs/SWARMSIM_GAME_MODEL.md` as canonical truth, follow `AGENTS.md`/`AI.md`
-guardrails, keep changes narrow, preserve hard safety defaults, and optimize
-methodically rather than passively within the selected user mode."
+- version surfaces are aligned
+- generated userscript matches runtime source
+- required browser fixtures pass
+- deterministic regression passes in required orders
+- evidence is committed
+- safety defaults remain unchanged
+- no cast, buy, save, or unintended mutation occurred
+- `HEAD` matches `origin/main`
+- working tree is clean
+
+## Evidence hierarchy
+
+Prefer evidence in this order:
+
+1. current runtime behavior from a read-only live capture
+2. deterministic browser/scenario verification
+3. source-verified game formulas and pinned provenance
+4. committed JSON/CSV/Markdown evidence
+5. release notes and summaries
+6. agent reports
+
+A report is not stronger than the underlying committed evidence.
+
+## Handoff rule between chats
+
+A new chat should receive:
+
+- this timeless context file
+- the user's latest Copilot/Codex report
+- a task-specific opening prompt telling the new chat what to verify first
+
+The opening prompt may contain current versions and SHAs. This timeless file should not.
+
+## One-sentence orientation
+
+Treat Git `main` as the only current truth; read `AGENTS.md`, `AI.md`, the active game model, build configuration, relevant prompt/evidence, and current runtime source; audit reports before accepting them; keep fixes narrow; preserve safety defaults; and optimize methodically rather than passively.
