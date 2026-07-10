@@ -469,6 +469,9 @@
   let liveDiagnostics = null;
   let lastLaboratorySnapshot = null;
   let lastLaboratoryExperiment = null;
+  let lastLaboratoryLiveSnapshot = null;
+  let lastLaboratoryLiveExperiment = null;
+  let lastLaboratoryLiveStateVerification = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -3485,7 +3488,7 @@ function getDisplayName(item) {
     const lepiDecisionBase = normalizeCouncilDecision(lepidopteraPlan.postNexusEnergyDecision || "HOLD", "HOLD");
     let lepiRole = "wait";
     if (lepiDecisionBase === "BUY") {
-      lepiRole = (/energy/i.test(String(smartFocus || "")) || (!cloneReady && !mirrorReady)) ? "primary" : "background";
+      lepiRole = /energy/i.test(String(smartFocus || "")) ? "primary" : "background";
     } else if (lepiVisible) {
       lepiRole = String(lepidopteraPlan.postNexusEnergyBlockedBy || "").includes("stop threshold") ? "hold" : "wait";
     }
@@ -5401,83 +5404,236 @@ function getDisplayName(item) {
     return enabled;
   }
 
-  function buildLaboratoryLiveStateFingerprint(game) {
-    const resourceNames = ["energy", "larva", "cocoon", "territory", "nexus"];
-    const unitNames = ["moth", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
-    const liveState = {
+  function laboratoryGateFailure(code) {
+    if (code === "LABORATORY_DISABLED") {
+      return {
+        ok: false,
+        code,
+        error: `Laboratory development gate is disabled. Enable explicitly with localStorage key ${LABORATORY_DEVELOPMENT_ENABLE_KEY}=true.`,
+      };
+    }
+    return {
+      ok: false,
+      code,
+      error: `Laboratory live mode is disabled. Enable explicitly with localStorage key ${LABORATORY_LIVE_ENABLE_KEY}=true.`,
+    };
+  }
+
+  function laboratoryRequireDevelopmentGate() {
+    if (!isLaboratoryDevelopmentGateEnabled()) return laboratoryGateFailure("LABORATORY_DISABLED");
+    return { ok: true };
+  }
+
+  function laboratoryRequireLiveGates() {
+    if (!isLaboratoryDevelopmentGateEnabled()) return laboratoryGateFailure("LABORATORY_DISABLED");
+    if (!isLaboratoryLiveGateEnabled()) return laboratoryGateFailure("LABORATORY_LIVE_MODE_DISABLED");
+    return { ok: true };
+  }
+
+  function laboratoryDecimalString(value) {
+    const dec = decimalFrom(value);
+    try {
+      const text = dec?.toString?.() ?? String(value ?? "0");
+      if (!text || /^(?:Infinity|-Infinity|NaN)$/i.test(text)) return null;
+      const numeric = decimalToNumber(dec, NaN);
+      if (!Number.isFinite(numeric)) return null;
+      return text;
+    } catch {
+      return null;
+    }
+  }
+
+  function laboratorySafeResourceString(value) {
+    return laboratoryDecimalString(value);
+  }
+
+  function laboratoryCaptureGameCounts(game) {
+    const unitIds = ["energy", "larva", "cocoon", "territory", "nexus", "moth", "swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon", "nightbug", "bat"];
+    const upgradeIds = ["expansion", "hatchery", "clonelarvae", "houseofmirrors", "swarmwarp", "cocooning", "nexus2", "nexus3", "nexus4", "nexus5"];
+    return {
+      units: Object.fromEntries(unitIds.map((unitId) => {
+        const unit = getGameUnit(game, unitId);
+        return [unitId, {
+          count: laboratorySafeResourceString(unit?.count?.()),
+          visible: !!unit?.isVisible?.(),
+        }];
+      })),
+      upgrades: Object.fromEntries(upgradeIds.map((upgradeId) => {
+        const upgrade = getGameUpgrade(game, upgradeId);
+        return [upgradeId, {
+          count: laboratorySafeResourceString(upgrade?.count?.()),
+          visible: !!upgrade?.isVisible?.(),
+          affordable: !!upgrade?.isAffordable?.(),
+        }];
+      })),
+    };
+  }
+
+  function buildLaboratoryLiveStateFingerprint(game, timestamp = new Date()) {
+    const resourceNames = ["energy", "larva", "cocoon", "territory", "meat", "nexus"];
+    const capture = {
+      timestamp: timestamp instanceof Date ? timestamp.toISOString() : String(timestamp || new Date().toISOString()),
       phase: strategyInspector?.phase || null,
       goal: strategyInspector?.goal || null,
       activePlannerAction: strategyInspector?.activePlannerAction || null,
-      resources: Object.fromEntries(resourceNames.map((resourceName) => [
-        resourceName,
-        {
-          amount: laboratoryDecimalString(getCurrentResource(game, resourceName)),
-          perSecond: laboratoryDecimalString(getVelocity(game, resourceName)),
-        },
-      ])),
-      units: Object.fromEntries(unitNames.map((unitName) => [
-        unitName,
-        laboratoryDecimalString(getLaboratoryUnitCount(game, unitName)),
-      ])),
       config: {
         smartMode: !!config.smartMode,
         advisorOnly: !!config.advisorOnly,
-        autoBuySafe: !!config.autoBuySafe,
+        autoBuySafeDecisions: !!config.autoBuySafeDecisions,
         strategyInspector: !!config.strategyInspector,
         councilUi: !!config.councilUi,
+        autoCastAbilities: !!config.autoCastAbilities,
+        autoAscend: !!config.autoAscend,
+      },
+      resources: Object.fromEntries(resourceNames.map((resourceName) => [
+        resourceName,
+        {
+          amount: laboratorySafeResourceString(getCurrentResource(game, resourceName)),
+          perSecond: laboratorySafeResourceString(getVelocity(game, resourceName)),
+        },
+      ])),
+      counts: laboratoryCaptureGameCounts(game),
+      runHistoryLength: Number((runHistory || []).length || 0),
+      purchaseLogLength: Number((purchaseLog || []).length || 0),
+      advisorLogLength: Number((advisorLog || []).length || 0),
+      liveDiagnostics: {
+        lastStatus: lastStatus || null,
+        enabled: !!config.enabled,
       },
     };
     return {
-      state: liveState,
-      fingerprint: laboratoryCanonicalJson(liveState),
+      capture,
+      structural: {
+        phase: capture.phase,
+        goal: capture.goal,
+        activePlannerAction: capture.activePlannerAction,
+        config: capture.config,
+        counts: capture.counts,
+        runHistoryLength: capture.runHistoryLength,
+        purchaseLogLength: capture.purchaseLogLength,
+        advisorLogLength: capture.advisorLogLength,
+        liveDiagnostics: capture.liveDiagnostics,
+      },
+    };
+  }
+
+  async function laboratoryHashLiveStructuralState(structuralState) {
+    return `sha256:${await laboratorySha256(laboratoryCanonicalJson(structuralState))}`;
+  }
+
+  function laboratoryLiveResourceTolerance(expectedAfter) {
+    const expected = decimalFrom(expectedAfter || 0);
+    const abs = expected.abs ? expected.abs() : decimalFrom(Math.abs(decimalToNumber(expected, 0)));
+    const base = decimalFrom("0.0001");
+    const scale = abs.times ? abs.times("0.000001") : base;
+    return base.greaterThan(scale) ? base : scale;
+  }
+
+  function laboratoryBuildLiveResourceDrift(beforeCapture, afterCapture) {
+    const resourceNames = ["energy", "larva", "cocoon", "territory", "meat"];
+    const elapsedSeconds = Math.max(0, (new Date(afterCapture.timestamp).getTime() - new Date(beforeCapture.timestamp).getTime()) / 1000);
+    const resourceDrift = {};
+    let withinExpectedRange = true;
+
+    for (const resourceName of resourceNames) {
+      const before = beforeCapture.resources?.[resourceName] || {};
+      const after = afterCapture.resources?.[resourceName] || {};
+      const beforeAmount = laboratoryDecimalOrNull(before.amount);
+      const beforePerSecond = laboratoryDecimalOrNull(before.perSecond);
+      const afterAmount = laboratoryDecimalOrNull(after.amount);
+      if (!beforeAmount || !beforePerSecond || !afterAmount) {
+        resourceDrift[resourceName] = {
+          status: "unavailable",
+          reason: "missing resource amount or rate",
+        };
+        continue;
+      }
+      const expectedAfter = beforeAmount;
+      const drift = afterAmount.minus(expectedAfter);
+      const tolerance = laboratoryLiveResourceTolerance(expectedAfter);
+      const within = drift.abs().lessThanOrEqualTo(tolerance);
+      if (!within) withinExpectedRange = false;
+      resourceDrift[resourceName] = {
+        before: laboratoryDecimalString(beforeAmount),
+        perSecondBefore: laboratoryDecimalString(beforePerSecond),
+        expectedAfter: laboratoryDecimalString(expectedAfter),
+        after: laboratoryDecimalString(afterAmount),
+        drift: laboratoryDecimalString(drift),
+        tolerance: laboratoryDecimalString(tolerance),
+        withinExpectedRange: within,
+      };
+    }
+
+    return {
+      elapsedSeconds: laboratoryDecimalString(elapsedSeconds),
+      resourceDrift,
+      resourceDriftWithinExpectedRange: withinExpectedRange,
+    };
+  }
+
+  async function laboratoryBuildLiveStateVerification(beforeCapture, afterCapture) {
+    const structuralBeforeHash = await laboratoryHashLiveStructuralState(beforeCapture.structural);
+    const structuralAfterHash = await laboratoryHashLiveStructuralState(afterCapture.structural);
+    const structuralUnchanged = structuralBeforeHash === structuralAfterHash;
+    const resourceDrift = laboratoryBuildLiveResourceDrift(beforeCapture.capture, afterCapture.capture);
+    const warnings = [];
+    if (!structuralUnchanged) warnings.push("Structural live-state mutation detected during capture.");
+    if (!resourceDrift.resourceDriftWithinExpectedRange) warnings.push("Resource drift exceeded the expected time-normalized range.");
+    return {
+      structuralBeforeHash,
+      structuralAfterHash,
+      structuralUnchanged,
+      elapsedSeconds: resourceDrift.elapsedSeconds,
+      resourceDrift: resourceDrift.resourceDrift,
+      resourceDriftWithinExpectedRange: resourceDrift.resourceDriftWithinExpectedRange,
+      warnings,
+      unchanged: structuralUnchanged && resourceDrift.resourceDriftWithinExpectedRange,
     };
   }
 
   async function captureLaboratoryLiveSnapshot(options = {}) {
-    if (!isLaboratoryLiveGateEnabled()) {
-      return {
-        ok: false,
-        error: `Laboratory live gate is disabled. Enable explicitly with localStorage key ${LABORATORY_LIVE_ENABLE_KEY}=true.`,
-      };
-    }
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
     const game = getGame();
-    const beforeState = buildLaboratoryLiveStateFingerprint(game);
+    const before = buildLaboratoryLiveStateFingerprint(game, options.captureTimestampBefore || new Date());
+    const beforeFingerprint = await laboratoryHashLiveStructuralState(before.structural);
     const captureTimestamp = String(options.captureTimestamp || new Date().toISOString());
     const snapshot = await buildLaboratorySnapshot(game, {
       snapshotId: options.snapshotId,
       captureMode: "live-read-only",
       captureTimestamp,
+      scenarioId: "LIVE-READ-ONLY",
+      scenarioPayload: {
+        scenarioId: "LIVE-READ-ONLY",
+        source: "live-browser",
+        overrides: null,
+      },
       gameBuild: options.gameBuild || "live-browser",
       liveMetadata: {
-        activePhase: beforeState.state.phase,
-        activeMilestone: beforeState.state.goal,
-        currentPlannerTarget: beforeState.state.activePlannerAction,
-        relevantConfig: beforeState.state.config,
+        activePhase: before.capture.phase,
+        activeMilestone: before.capture.goal,
+        currentPlannerTarget: before.capture.activePlannerAction,
+        relevantConfig: before.capture.config,
       },
-      sourceStateFingerprint: beforeState.fingerprint,
+      sourceStateFingerprint: beforeFingerprint,
     });
-    const afterState = buildLaboratoryLiveStateFingerprint(game);
-    const nonMutationProof = {
-      beforeFingerprint: beforeState.fingerprint,
-      afterFingerprint: afterState.fingerprint,
-      unchanged: beforeState.fingerprint === afterState.fingerprint,
-    };
-    if (!nonMutationProof.unchanged) {
-      return {
-        ok: false,
-        error: "Laboratory live capture changed live game state, which is not allowed.",
-        nonMutationProof,
-      };
-    }
-    lastLaboratorySnapshot = snapshot;
-    lastLaboratoryExperiment = null;
-    return {
+    const after = buildLaboratoryLiveStateFingerprint(game, options.captureTimestampAfter || new Date());
+    const liveStateVerification = await laboratoryBuildLiveStateVerification(before, after);
+    const validity = snapshot?.validity || { status: "valid" };
+    const result = {
       ok: true,
       fileName: `swarm-lab-live-snapshot-${snapshot.snapshotId}.json`,
       snapshot,
-      nonMutationProof,
-      liveState: beforeState.state,
+      liveStateVerification,
+      validity,
+      liveState: before.capture,
     };
+    lastLaboratorySnapshot = snapshot;
+    lastLaboratoryLiveSnapshot = snapshot;
+    lastLaboratoryLiveStateVerification = liveStateVerification;
+    lastLaboratoryExperiment = null;
+    lastLaboratoryLiveExperiment = null;
+    return result;
   }
 
   function laboratoryDecimalString(value) {
@@ -5861,6 +6017,14 @@ function getDisplayName(item) {
     };
   }
 
+  function laboratoryClassifySnapshotValidity({ warnings = [], formulaStatuses = [], runtimeReady = true, liveCapture = false } = {}) {
+    if (!runtimeReady) return { status: "runtime-not-ready", warnings: warnings.slice() };
+    if (formulaStatuses.includes("mismatch")) return { status: "formula-mismatch", warnings: warnings.slice() };
+    if (formulaStatuses.includes("incomplete")) return { status: "incomplete", warnings: warnings.slice() };
+    if (warnings.length) return { status: liveCapture ? "valid-with-warnings" : "valid-with-warnings", warnings: warnings.slice() };
+    return { status: "valid", warnings: [] };
+  }
+
   async function buildLaboratorySnapshot(game, options = {}) {
     const warnings = [];
     const formulaStatuses = [];
@@ -5888,6 +6052,7 @@ function getDisplayName(item) {
 
     const energyUnit = getGameUnit(game, "energy");
     const energyCap = safe("Laboratory energy cap", () => energyUnit?.capValue?.()) || newDecimal(0);
+    const runtimeReady = !!energyUnit && !!getGameUnit(game, "larva") && !!getGameUnit(game, "territory") && !!getGameUpgrade(game, "expansion");
     const army = buildLaboratoryArmySnapshot(game, warnings, formulaStatuses);
     const meat = buildLaboratoryMeatProjection(game, warnings, formulaStatuses);
     if (meat.rateProjection.validation === "mismatch") formulaStatusByName.meatProducerCoefficients = "mismatch";
@@ -5984,6 +6149,7 @@ function getDisplayName(item) {
 
     const hashPayload = laboratoryDeterministicHashPayload(snapshot);
     snapshot.snapshotHash = `sha256:${await laboratorySha256(laboratoryCanonicalJson(hashPayload))}`;
+    snapshot.validity = laboratoryClassifySnapshotValidity({ warnings, formulaStatuses, runtimeReady, liveCapture });
     return laboratoryDeepFreeze(snapshot);
   }
 
@@ -6561,6 +6727,249 @@ function getDisplayName(item) {
     return laboratoryDeepFreeze(result);
   }
 
+  function laboratoryCloneResult(value) {
+    return value ? laboratoryCloneJson(value) : null;
+  }
+
+  function laboratoryLatestLiveSnapshot(options = {}) {
+    if (options.snapshot) return options.snapshot;
+    if (lastLaboratoryLiveSnapshot) return lastLaboratoryLiveSnapshot;
+    if (lastLaboratorySnapshot && lastLaboratorySnapshot?.source?.captureMode === "live-read-only") return lastLaboratorySnapshot;
+    return null;
+  }
+
+  function laboratoryBuildLiveExperimentWrapper(snapshot, experiment, liveStateVerification, options = {}) {
+    const observations = laboratoryCreateObservationSummary({ snapshot, experiment, liveStateVerification, ...options });
+    const wrapper = {
+      schemaVersion: "swarmsim-lab.live-result.v1",
+      kind: "live-read-only-simulation",
+      captureMode: snapshot?.source?.captureMode || "live-read-only",
+      captureTimestamp: snapshot?.source?.capturedAt || null,
+      snapshot,
+      experiment,
+      runs: experiment?.runs || [],
+      observationSummary: observations,
+      liveStateVerification,
+      formulaSource: snapshot?.formulaProvenance || null,
+      warnings: Array.from(new Set([...(snapshot?.warnings || []), ...(experiment?.warnings || []), ...(observations?.warnings || []), ...(liveStateVerification?.warnings || [])].filter(Boolean))),
+      status: liveStateVerification?.unchanged === false ? "live-state-mismatch" : (snapshot?.validity?.status === "runtime-not-ready" ? "runtime-not-ready" : "ok"),
+      validity: snapshot?.validity || { status: "valid" },
+      snapshotHash: snapshot?.snapshotHash || null,
+      experimentHash: experiment?.experimentHash || null,
+    };
+    return laboratoryDeepFreeze(wrapper);
+  }
+
+  function laboratoryActionRunForExperiment(experiment, actionId, horizonSeconds) {
+    return (experiment?.runs || []).find((run) => run.actionId === actionId && String(run.horizonSeconds) === String(horizonSeconds)) || null;
+  }
+
+  function laboratoryActionTableRow(run, waitRun) {
+    const comparison = run?.comparisonVsWait || {};
+    const statusLabel = run?.status === "ok" ? "Valid" : run?.status === "invalid-action" ? "Invalid action" : run?.status === "formula-mismatch" ? "Formula mismatch" : run?.status || "Unknown";
+    const safetyLabel = run?.metrics?.safetyViolation ? "Reserve violation" : (run?.actionSafetySafe ? "Safe" : "Unsafe");
+    const formulaLabel = run?.metrics?.formulaStatus === "mismatch" ? "Formula mismatch" : run?.metrics?.formulaStatus === "incomplete" ? "Formula incomplete" : "Formula verified";
+    return {
+      action: run?.actionId || "",
+      status: statusLabel,
+      energy: run?.metrics?.energyAfter ?? "",
+      energyDelta: comparison.energyAbsoluteDelta ?? "",
+      larvae: run?.metrics?.larvaeAfter ?? "",
+      larvaeDelta: comparison.larvaeAbsoluteDelta ?? "",
+      territoryPerSecond: run?.metrics?.territoryPerSecondAfter ?? "",
+      territoryPerSecondDelta: comparison.territoryPerSecondAbsoluteDelta ?? "",
+      expansionEta: run?.metrics?.expansionEtaSecondsAfter ?? "",
+      etaImprovement: comparison.expansionEtaImprovementSeconds ?? "",
+      reserveAfter: run?.metrics?.reserveAfterAction ?? "",
+      safety: safetyLabel,
+      formulaStatus: formulaLabel,
+      waitReference: !!waitRun,
+    };
+  }
+
+  function laboratoryCompactTableText(experiment, horizonSeconds) {
+    const rows = (experiment?.runs || []).filter((run) => String(run.horizonSeconds) === String(horizonSeconds));
+    const waitRun = rows.find((run) => run.actionId === "WAIT") || null;
+    return rows.map((run) => {
+      const row = laboratoryActionTableRow(run, waitRun);
+      return `${row.action}: ${row.status}; Energy ${row.energy}; ΔE ${row.energyDelta}; Larvae ${row.larvae}; ΔL ${row.larvaeDelta}; Terr/sec ${row.territoryPerSecond}; ΔT ${row.territoryPerSecondDelta}; ETA ${row.expansionEta}; ΔETA ${row.etaImprovement}; Reserve ${row.reserveAfter}; ${row.safety}; ${row.formulaStatus}`;
+    }).join("\n");
+  }
+
+  function laboratoryCreateObservationSummary(result) {
+    const experiment = result?.experiment || result;
+    const warnings = [];
+    const lines = [];
+    const wait300 = laboratoryActionRunForExperiment(experiment, "WAIT", 300);
+    const clone300 = laboratoryActionRunForExperiment(experiment, "CLONE_LARVAE", 300);
+    const hom300 = laboratoryActionRunForExperiment(experiment, "HOUSE_OF_MIRRORS", 300);
+
+    if (!experiment?.runs?.length) {
+      return { text: "No live experiment runs are available.", warnings: ["no-runs"] };
+    }
+
+    if (clone300?.status === "ok" && wait300?.status === "ok") {
+      const larvaeDelta = clone300.metrics?.larvaeAfter && wait300.metrics?.larvaeAfter ? String(clone300.metrics.larvaeAfter) === String(wait300.metrics.larvaeAfter) ? "tied with WAIT" : "leads for larvae" : "unavailable";
+      if (larvaeDelta === "leads for larvae") lines.push("Clone Larvae leads for larvae after 300 seconds.");
+      if (String(clone300.metrics?.meatPerSecondAfter || "") === String(wait300.metrics?.meatPerSecondAfter || "")) {
+        lines.push("Meat/sec is unchanged because Phase 1 does not spend added larvae.");
+      }
+    }
+
+    if (hom300?.status === "ok" && wait300?.status === "ok") {
+      if (String(hom300.metrics?.territoryPerSecondAfter || "") !== String(wait300.metrics?.territoryPerSecondAfter || "")) {
+        lines.push("House of Mirrors leads for territory production at 300 seconds.");
+      }
+      if (String(hom300.metrics?.expansionEtaSecondsAfter || "") !== String(wait300.metrics?.expansionEtaSecondsAfter || "")) {
+        lines.push("House of Mirrors shortens Expansion ETA compared with WAIT.");
+      }
+    }
+
+    if (!lines.length) lines.push("The live snapshot is incomplete or unavailable for metric-specific observation.");
+    return { text: lines.join("\n"), warnings };
+  }
+
+  function laboratoryLiveBadge(label, tone = "") {
+    return `<span class="kbc-badge ${tone}">${escapeHtml(label)}</span>`;
+  }
+
+  function laboratoryLiveResultTableHtml(result, horizonSeconds) {
+    const runs = (result?.experiment?.runs || result?.runs || []).filter((run) => String(run.horizonSeconds) === String(horizonSeconds));
+    const waitRun = runs.find((run) => run.actionId === "WAIT") || null;
+    const rows = runs.map((run) => {
+      const comparison = run.comparisonVsWait || {};
+      const statusTone = run.status === "ok" ? "kbc-ok" : run.status === "invalid-action" ? "kbc-warn" : run.status === "formula-mismatch" ? "kbc-bad" : "";
+      const safetyTone = run.metrics?.safetyViolation ? "kbc-bad" : run.actionSafetySafe ? "kbc-ok" : "";
+      const formulaTone = run.metrics?.formulaStatus === "mismatch" ? "kbc-bad" : run.metrics?.formulaStatus === "incomplete" ? "kbc-warn" : "kbc-ok";
+      return `
+        <tr>
+          <td>${escapeHtml(run.actionId || "")}</td>
+          <td>${laboratoryLiveBadge(run.status === "ok" ? "Valid" : run.status === "invalid-action" ? "Invalid action" : run.status === "formula-mismatch" ? "Formula mismatch" : run.status, statusTone)}</td>
+          <td>${escapeHtml(run.metrics?.energyAfter ?? "")}</td>
+          <td>${escapeHtml(comparison.energyAbsoluteDelta ?? "")}</td>
+          <td>${escapeHtml(run.metrics?.larvaeAfter ?? "")}</td>
+          <td>${escapeHtml(comparison.larvaeAbsoluteDelta ?? "")}</td>
+          <td>${escapeHtml(run.metrics?.territoryPerSecondAfter ?? "")}</td>
+          <td>${escapeHtml(comparison.territoryPerSecondAbsoluteDelta ?? "")}</td>
+          <td>${escapeHtml(run.metrics?.expansionEtaSecondsAfter ?? "")}</td>
+          <td>${escapeHtml(comparison.expansionEtaImprovementSeconds ?? "")}</td>
+          <td>${escapeHtml(run.metrics?.reserveAfterAction ?? "")}</td>
+          <td>${laboratoryLiveBadge(run.metrics?.safetyViolation ? "Reserve violation" : run.actionSafetySafe ? "Safe" : "Unsafe", safetyTone)}</td>
+          <td>${laboratoryLiveBadge(run.metrics?.formulaStatus === "mismatch" ? "Formula mismatch" : run.metrics?.formulaStatus === "incomplete" ? "Formula incomplete" : "Formula verified", formulaTone)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    return `
+      <div class="kbc-section-title">${escapeHtml(String(horizonSeconds))} seconds</div>
+      <table class="kbc-lab-table">
+        <thead>
+          <tr>
+            <th>Action</th><th>Status</th><th>Energy</th><th>Energy delta vs WAIT</th><th>Larvae</th><th>Larvae delta vs WAIT</th><th>Territory/sec</th><th>Territory/sec delta</th><th>Expansion ETA</th><th>ETA improvement</th><th>Reserve after action</th><th>Safety</th><th>Formula status</th>
+          </tr>
+        </thead>
+        <tbody>${rows || `<tr><td colspan="13">No runs</td></tr>`}</tbody>
+      </table>
+    `;
+  }
+
+  function laboratoryLiveResultHtml(result) {
+    if (!result) return `<div class="kbc-note">No live result captured yet.</div>`;
+    const proof = result.liveStateVerification || {};
+    const warnings = laboratoryJoinWarnings(result.warnings || []);
+    return `
+      <div class="kbc-note">
+        <div><strong>Laboratory · Read-only</strong></div>
+        <div>Simulation only. No live actions will be executed.</div>
+        <div>Laboratory gate: ${laboratoryLiveBadge(isLaboratoryDevelopmentGateEnabled() ? "enabled" : "disabled", isLaboratoryDevelopmentGateEnabled() ? "kbc-ok" : "kbc-bad")}</div>
+        <div>Live gate: ${laboratoryLiveBadge(isLaboratoryLiveGateEnabled() ? "enabled" : "disabled", isLaboratoryLiveGateEnabled() ? "kbc-ok" : "kbc-bad")}</div>
+        <div>Capture mode: ${escapeHtml(result.captureMode || result.snapshot?.source?.captureMode || "live-read-only")}</div>
+        <div>Snapshot hash: ${escapeHtml(result.snapshotHash || result.snapshot?.snapshotHash || "")}</div>
+        <div>Experiment hash: ${escapeHtml(result.experimentHash || result.experiment?.experimentHash || "")}</div>
+        <div>Validity: ${laboratoryLiveBadge(result.validity?.status || result.snapshot?.validity?.status || "unknown", result.validity?.status === "formula-mismatch" ? "kbc-bad" : result.validity?.status === "runtime-not-ready" ? "kbc-warn" : "kbc-ok")}</div>
+        <div>Non-mutation proof: ${laboratoryLiveBadge(String(proof?.unchanged), proof?.unchanged ? "kbc-ok" : "kbc-bad")}</div>
+        ${warnings ? `<div>Warnings: ${escapeHtml(warnings)}</div>` : ""}
+      </div>
+      ${laboratoryLiveResultTableHtml(result, 60)}
+      ${laboratoryLiveResultTableHtml(result, 300)}
+    `;
+  }
+
+  async function laboratoryRunLivePhase1(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const snapshot = laboratoryLatestLiveSnapshot(options);
+    const captureResult = snapshot ? { ok: true, snapshot, liveStateVerification: lastLaboratoryLiveStateVerification || null } : await captureLaboratoryLiveSnapshot(options);
+    if (!captureResult?.ok) return captureResult;
+    const experiment = await laboratoryRunPhase1Experiment(captureResult.snapshot, options);
+    if (!experiment?.ok && experiment?.error) return experiment;
+    const liveStateVerification = captureResult.liveStateVerification || lastLaboratoryLiveStateVerification || null;
+    const result = laboratoryBuildLiveExperimentWrapper(captureResult.snapshot, experiment, liveStateVerification, options);
+    lastLaboratoryLiveSnapshot = captureResult.snapshot;
+    lastLaboratoryLiveExperiment = result;
+    lastLaboratoryLiveStateVerification = liveStateVerification;
+    return { ok: true, snapshot: captureResult.snapshot, experiment, result, liveStateVerification, observationSummary: result.observationSummary };
+  }
+
+  async function laboratoryCaptureAndRunLivePhase1(options = {}) {
+    const capture = await captureLaboratoryLiveSnapshot(options);
+    if (!capture?.ok) return capture;
+    const run = await laboratoryRunLivePhase1({ ...options, snapshot: capture.snapshot });
+    if (!run?.ok) return run;
+    return { ok: true, snapshot: capture.snapshot, experiment: run.experiment, result: run.result, liveStateVerification: run.liveStateVerification, observationSummary: run.observationSummary };
+  }
+
+  function laboratoryExportLiveResultJson(result) {
+    return JSON.stringify(result, null, 2);
+  }
+
+  function laboratoryExportLiveResultCsv(result) {
+    const experiment = result?.experiment || result;
+    const baseLines = laboratoryExportResultCsv(experiment).split(/\r?\n/);
+    const header = baseLines.shift() || "";
+    const extraHeader = ["capture_mode", "capture_timestamp", "snapshot_validity", "formula_source", "live_state_unchanged", "live_status", "live_warnings", "observation_summary"];
+    const rows = baseLines.map((line) => `${line},${[
+      laboratoryCsvEscape(result?.captureMode || "live-read-only"),
+      laboratoryCsvEscape(result?.captureTimestamp || result?.snapshot?.source?.capturedAt || ""),
+      laboratoryCsvEscape(result?.snapshot?.validity?.status || result?.validity?.status || ""),
+      laboratoryCsvEscape(result?.formulaSource?.formulaSetId || result?.formulaSource?.sourceRepository || ""),
+      laboratoryCsvEscape(laboratoryBoolean(result?.liveStateVerification?.unchanged)),
+      laboratoryCsvEscape(result?.status || ""),
+      laboratoryCsvEscape(laboratoryJoinWarnings(result?.warnings || [])),
+      laboratoryCsvEscape(result?.observationSummary?.text || ""),
+    ].join(",")}`);
+    return [
+      `${header},${extraHeader.map(laboratoryCsvEscape).join(",")}`,
+      ...rows,
+    ].join("\n");
+  }
+
+  function laboratoryExportLiveResultMarkdown(result) {
+    const lines = [];
+    lines.push("This report was generated from a read-only Laboratory simulation.");
+    lines.push("No actions were executed in the live game.");
+    lines.push("");
+    lines.push(`# SwarmSim Laboratory Live Result`);
+    lines.push("");
+    lines.push(`- Snapshot hash: \`${result?.snapshotHash || result?.snapshot?.snapshotHash || ""}\``);
+    lines.push(`- Experiment hash: \`${result?.experimentHash || result?.experiment?.experimentHash || ""}\``);
+    lines.push(`- Status: \`${result?.status || "unknown"}\``);
+    lines.push(`- Live state unchanged: \`${laboratoryBoolean(result?.liveStateVerification?.unchanged)}\``);
+    lines.push("");
+    lines.push("## Observation summary");
+    lines.push("");
+    lines.push(result?.observationSummary?.text || "No observation summary available.");
+    lines.push("");
+    lines.push("## 60 seconds");
+    lines.push("");
+    lines.push(laboratoryCompactTableText(result?.experiment, 60));
+    lines.push("");
+    lines.push("## 300 seconds");
+    lines.push("");
+    lines.push(laboratoryCompactTableText(result?.experiment, 300));
+    return lines.join("\n");
+  }
+
   function laboratoryExportResultJson(result) {
     return JSON.stringify(result, null, 2);
   }
@@ -6579,6 +6988,7 @@ function getDisplayName(item) {
     lines.push(`- Scenario ID: \`${snapshot?.source?.scenarioId || "unknown"}\``);
     lines.push(`- Game build: \`${snapshot?.source?.gameBuild || "unknown"}\``);
     lines.push(`- Captured at: \`${snapshot?.source?.capturedAt || "unknown"}\``);
+    lines.push(`- Validity: \`${snapshot?.validity?.status || "unknown"}\``);
     lines.push("");
     lines.push("## Live proof");
     lines.push("");
@@ -13923,7 +14333,12 @@ function getDisplayName(item) {
 
       <div class="kbc-row">
         <button id="kbc-lab-live-toggle" title="Toggle live read-only Laboratory capture">${isLaboratoryLiveGateEnabled() ? "Live on" : "Live off"}</button>
-        <button id="kbc-lab-live-capture" title="Capture a read-only live snapshot">Live capture</button>
+        <button id="kbc-lab-live-capture" title="Capture a read-only live snapshot">Capture Current State</button>
+      </div>
+
+      <div class="kbc-row">
+        <button id="kbc-lab-live-run-last" title="Run Phase 1 on the latest live snapshot">Run Last Snapshot</button>
+        <button id="kbc-lab-live-run" title="Capture live state and run Phase 1">Capture + Run</button>
       </div>
 
       <div class="kbc-row">
@@ -13931,7 +14346,22 @@ function getDisplayName(item) {
         <button id="kbc-lab-live-download-md" title="Download the latest live snapshot as Markdown">Live MD</button>
       </div>
 
+      <div class="kbc-row">
+        <button id="kbc-lab-live-export-result-json" title="Export the latest live result as JSON">Export Result JSON</button>
+        <button id="kbc-lab-live-export-result-csv" title="Export the latest live result as CSV">Export Result CSV</button>
+        <button id="kbc-lab-live-export-result-md" title="Export the latest live result as Markdown">Export Result Markdown</button>
+      </div>
+
+      <div class="kbc-row">
+        <button id="kbc-lab-live-copy-summary" title="Copy a chat-ready summary of the current live result">Copy Summary</button>
+        <button id="kbc-lab-live-clear" title="Clear the latest live snapshot and result">Clear Result</button>
+      </div>
+
       <div class="kbc-note" id="kbc-lab-live-status">Live capture is ${isLaboratoryLiveGateEnabled() ? "enabled" : "disabled"}. It only snapshots the current state and proves non-mutation.</div>
+
+      <div class="kbc-note" id="kbc-lab-live-summary">No live result captured yet.</div>
+
+      <div id="kbc-lab-live-result"></div>
       ` : ""}
 
       <div class="kbc-tabs" title="Dela upp inställningarna i enklare grupper">
@@ -15149,7 +15579,7 @@ function getDisplayName(item) {
     });
 
     panel?.querySelector("#kbc-lab-live-download-json")?.addEventListener("click", async () => {
-      const result = await captureLaboratoryLiveSnapshot();
+      const result = lastLaboratoryLiveSnapshot ? { ok: true, snapshot: lastLaboratoryLiveSnapshot } : await captureLaboratoryLiveSnapshot();
       if (!result?.ok) return;
       laboratoryDownloadText(
         `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.json`,
@@ -15159,13 +15589,123 @@ function getDisplayName(item) {
     });
 
     panel?.querySelector("#kbc-lab-live-download-md")?.addEventListener("click", async () => {
-      const result = await captureLaboratoryLiveSnapshot();
+      const result = lastLaboratoryLiveSnapshot ? { ok: true, snapshot: lastLaboratoryLiveSnapshot } : await captureLaboratoryLiveSnapshot();
       if (!result?.ok) return;
       laboratoryDownloadText(
         `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.md`,
         laboratoryExportSnapshotMarkdown(result.snapshot),
         "text/markdown"
       );
+    });
+
+    panel?.querySelector("#kbc-lab-live-run-last")?.addEventListener("click", async () => {
+      const result = await laboratoryRunLivePhase1({ snapshot: lastLaboratoryLiveSnapshot || null });
+      if (!result?.ok) {
+        const status = panel?.querySelector("#kbc-lab-live-status");
+        if (status) status.textContent = result.error || "Laboratory live run failed.";
+        return;
+      }
+      refreshPanel();
+    });
+
+    panel?.querySelector("#kbc-lab-live-run")?.addEventListener("click", async () => {
+      const result = await laboratoryCaptureAndRunLivePhase1();
+      const status = panel?.querySelector("#kbc-lab-live-status");
+      if (!result?.ok) {
+        if (status) status.textContent = result.error || "Laboratory live capture/run failed.";
+        return;
+      }
+      if (status) status.textContent = `Live experiment ${result.result?.experimentHash || result.experiment?.experimentHash || "pending"}`;
+      refreshPanel();
+    });
+
+    panel?.querySelector("#kbc-lab-live-export-result-json")?.addEventListener("click", async () => {
+      let result = lastLaboratoryLiveExperiment;
+      if (!result) {
+        const run = lastLaboratoryLiveSnapshot ? await laboratoryRunLivePhase1({ snapshot: lastLaboratoryLiveSnapshot }) : await laboratoryCaptureAndRunLivePhase1();
+        if (!run?.ok) return;
+        result = run.result;
+      }
+      laboratoryDownloadText(
+        `swarm-lab-live-result-${result.experiment?.experimentId || result.experimentId}.json`,
+        laboratoryExportLiveResultJson(result),
+        "application/json"
+      );
+    });
+
+    panel?.querySelector("#kbc-lab-live-export-result-csv")?.addEventListener("click", async () => {
+      let result = lastLaboratoryLiveExperiment;
+      if (!result) {
+        const run = lastLaboratoryLiveSnapshot ? await laboratoryRunLivePhase1({ snapshot: lastLaboratoryLiveSnapshot }) : await laboratoryCaptureAndRunLivePhase1();
+        if (!run?.ok) return;
+        result = run.result;
+      }
+      laboratoryDownloadText(
+        `swarm-lab-live-result-${result.experiment?.experimentId || result.experimentId}.csv`,
+        laboratoryExportLiveResultCsv(result),
+        "text/csv"
+      );
+    });
+
+    panel?.querySelector("#kbc-lab-live-export-result-md")?.addEventListener("click", async () => {
+      let result = lastLaboratoryLiveExperiment;
+      if (!result) {
+        const run = lastLaboratoryLiveSnapshot ? await laboratoryRunLivePhase1({ snapshot: lastLaboratoryLiveSnapshot }) : await laboratoryCaptureAndRunLivePhase1();
+        if (!run?.ok) return;
+        result = run.result;
+      }
+      laboratoryDownloadText(
+        `swarm-lab-live-result-${result.experiment?.experimentId || result.experimentId}.md`,
+        laboratoryExportLiveResultMarkdown(result),
+        "text/markdown"
+      );
+    });
+
+    panel?.querySelector("#kbc-lab-live-copy-summary")?.addEventListener("click", async () => {
+      let result = lastLaboratoryLiveExperiment;
+      if (!result) {
+        const run = lastLaboratoryLiveSnapshot ? await laboratoryRunLivePhase1({ snapshot: lastLaboratoryLiveSnapshot }) : await laboratoryCaptureAndRunLivePhase1();
+        if (!run?.ok) return;
+        result = run.result;
+      }
+      const summary = laboratoryCreateObservationSummary(result);
+      const clone60 = laboratoryActionRunForExperiment(result.experiment, "CLONE_LARVAE", 60);
+      const clone300 = laboratoryActionRunForExperiment(result.experiment, "CLONE_LARVAE", 300);
+      const hom60 = laboratoryActionRunForExperiment(result.experiment, "HOUSE_OF_MIRRORS", 60);
+      const hom300 = laboratoryActionRunForExperiment(result.experiment, "HOUSE_OF_MIRRORS", 300);
+      const safetyWarnings = (result.warnings || []).filter((warning) => /reserve|energy|safe|violation/i.test(String(warning)));
+      const formulaWarnings = (result.warnings || []).filter((warning) => /formula|mismatch|incomplete/i.test(String(warning)));
+      const text = [
+        `Script version: ${SCRIPT_VERSION}`,
+        `Capture mode: ${result.captureMode || result.snapshot?.source?.captureMode || "live-read-only"}`,
+        `Phase: ${result.snapshot?.source?.activePhase || "unknown"}`,
+        `Milestone: ${result.snapshot?.source?.activeMilestone || "unknown"}`,
+        `Energy: ${result.snapshot?.resources?.energy?.amount || ""}`,
+        `Reserve: ${result.snapshot?.safety?.requiredReserve || ""}`,
+        `Snapshot validity: ${result.validity?.status || result.snapshot?.validity?.status || "unknown"}`,
+        `Clone Larvae legal/status: ${clone60?.actionLegal ? "legal" : "illegal"} / ${clone60?.status || "unknown"}; 300s ${clone300?.status || "unknown"}`,
+        `House of Mirrors legal/status: ${hom60?.actionLegal ? "legal" : "illegal"} / ${hom60?.status || "unknown"}; 300s ${hom300?.status || "unknown"}`,
+        "",
+        `60s:\n${laboratoryCompactTableText(result.experiment, 60)}`,
+        "",
+        `300s:\n${laboratoryCompactTableText(result.experiment, 300)}`,
+        "",
+        `Observations:\n${summary.text}`,
+        "",
+        `Safety warnings:\n${laboratoryJoinWarnings(safetyWarnings)}`,
+        `Formula warnings:\n${laboratoryJoinWarnings(formulaWarnings)}`,
+        `Warnings:\n${laboratoryJoinWarnings(result.warnings || [])}`,
+        "",
+        `Live-state verification: ${JSON.stringify(result.liveStateVerification || {}, null, 2)}`,
+        `Snapshot hash: ${result.snapshotHash || result.snapshot?.snapshotHash || ""}`,
+        `Experiment hash: ${result.experimentHash || result.experiment?.experimentHash || ""}`,
+      ].join("\n");
+      await navigator.clipboard.writeText(text);
+    });
+
+    panel?.querySelector("#kbc-lab-live-clear")?.addEventListener("click", () => {
+      clearLastResult();
+      refreshPanel();
     });
 
     strategyBar?.querySelector("#kbc-hide-strategy-bar")?.addEventListener("click", () => {
@@ -15737,6 +16277,23 @@ function getDisplayName(item) {
             .join("")
         : `<div class="kbc-purchase-row">Inga köp ännu</div>`;
     }
+
+    const liveSummaryEl = panel?.querySelector("#kbc-lab-live-summary");
+    if (liveSummaryEl) {
+      const result = lastLaboratoryLiveExperiment;
+      if (result) {
+        liveSummaryEl.textContent = `Capture mode ${result.captureMode || result.snapshot?.source?.captureMode || "live-read-only"} · validity ${result.validity?.status || result.snapshot?.validity?.status || "unknown"} · snapshot ${result.snapshotHash || result.snapshot?.snapshotHash || ""} · experiment ${result.experimentHash || result.experiment?.experimentHash || ""}`;
+      } else if (lastLaboratoryLiveSnapshot) {
+        liveSummaryEl.textContent = `Latest live snapshot ${lastLaboratoryLiveSnapshot.snapshotHash || ""} is cached. Run Last Snapshot to generate a result.`;
+      } else {
+        liveSummaryEl.textContent = "No live result captured yet.";
+      }
+    }
+
+    const liveResultEl = panel?.querySelector("#kbc-lab-live-result");
+    if (liveResultEl) {
+      liveResultEl.innerHTML = laboratoryLiveResultHtml(lastLaboratoryLiveExperiment);
+    }
   }
 
   function start() {
@@ -15820,96 +16377,153 @@ function getDisplayName(item) {
         },
       },
 
-      ...(isLaboratoryDevelopmentGateEnabled() ? {
-        laboratory: {
-          isEnabled: isLaboratoryDevelopmentGateEnabled,
-          isLiveEnabled: isLaboratoryLiveGateEnabled,
-          enable() {
-            return setLaboratoryDevelopmentGateEnabled(true);
-          },
-          disable() {
-            return setLaboratoryDevelopmentGateEnabled(false);
-          },
-          enableLive() {
-            return setLaboratoryLiveGateEnabled(true);
-          },
-          disableLive() {
-            return setLaboratoryLiveGateEnabled(false);
-          },
-          captureSnapshot(options = {}) {
+      laboratory: {
+        isEnabled: isLaboratoryDevelopmentGateEnabled,
+        isLiveEnabled: isLaboratoryLiveGateEnabled,
+        enable() {
+          return setLaboratoryDevelopmentGateEnabled(true);
+        },
+        disable() {
+          return setLaboratoryDevelopmentGateEnabled(false);
+        },
+        enableLive() {
+          return setLaboratoryLiveGateEnabled(true);
+        },
+        disableLive() {
+          return setLaboratoryLiveGateEnabled(false);
+        },
+        captureSnapshot(options = {}) {
+          if (options?.scenario) {
+            const gate = laboratoryRequireDevelopmentGate();
+            if (!gate.ok) return gate;
             return captureLaboratorySnapshot(options);
-          },
-          captureLiveSnapshot(options = {}) {
-            return captureLaboratoryLiveSnapshot(options);
-          },
-          downloadSnapshot(options = {}) {
-            return downloadLaboratorySnapshot(options);
-          },
-          downloadLiveSnapshot(options = {}) {
-            return captureLaboratoryLiveSnapshot(options).then((result) => {
-              if (!result?.ok) return result;
+          }
+          const gate = isLaboratoryDevelopmentGateEnabled() && isLaboratoryLiveGateEnabled()
+            ? { ok: true }
+            : laboratoryGateFailure("LABORATORY_DISABLED");
+          if (!gate.ok) return gate;
+          return captureLaboratoryLiveSnapshot(options);
+        },
+        captureLiveSnapshot(options = {}) {
+          return captureLaboratoryLiveSnapshot(options);
+        },
+        downloadSnapshot(options = {}) {
+          const gate = laboratoryRequireDevelopmentGate();
+          if (!gate.ok) return gate;
+          return downloadLaboratorySnapshot(options);
+        },
+        downloadLiveSnapshot(options = {}) {
+          return (async () => {
+            const gate = laboratoryRequireLiveGates();
+            if (!gate.ok) return gate;
+            const snapshot = laboratoryLatestLiveSnapshot(options);
+            if (snapshot) {
               laboratoryDownloadText(
-                `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.json`,
-                laboratoryExportSnapshotJson(result.snapshot),
+                `swarm-lab-live-snapshot-${snapshot.snapshotId}.json`,
+                laboratoryExportSnapshotJson(snapshot),
                 "application/json"
               );
-              return { ok: true, fileName: `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.json`, snapshot: result.snapshot, nonMutationProof: result.nonMutationProof };
-            });
-          },
-          validateSnapshot(snapshot) {
-            return laboratoryValidateSnapshotShape(snapshot);
-          },
-          applyAction(snapshot, action) {
-            const actionId = String(action?.actionId || action || "").toUpperCase();
-            if (actionId === "WAIT") return { snapshot, ...laboratoryWaitImmediate(snapshot, []) };
-            if (actionId === "CLONE_LARVAE") return { snapshot, ...laboratoryCloneLarvaeImmediate(snapshot, []) };
-            if (actionId === "HOUSE_OF_MIRRORS") return { snapshot, ...laboratoryHouseOfMirrorsImmediate(snapshot, []) };
-            return { snapshot, ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, actionSafetySafe: false, warnings: ["unsupported action"] };
-          },
-          projectState(postActionState, horizonSeconds) {
-            return laboratoryProjectState(postActionState?.snapshot || postActionState, postActionState, horizonSeconds);
-          },
-          async runPhase1Experiment(snapshot, options = {}) {
-            return laboratoryRunPhase1Experiment(snapshot, options);
-          },
-          exportSnapshotJson(snapshot) {
-            return laboratoryExportSnapshotJson(snapshot);
-          },
-          exportLiveSnapshotJson(snapshot) {
-            return laboratoryExportSnapshotJson(snapshot);
-          },
-          exportLiveSnapshotMarkdown(snapshot) {
-            return laboratoryExportSnapshotMarkdown(snapshot);
-          },
-          exportResultJson(result) {
-            return laboratoryExportResultJson(result);
-          },
-          exportResultCsv(result) {
-            return laboratoryExportResultCsv(result);
-          },
-          exportResultMarkdown(result) {
-            return laboratoryExportResultMarkdown(result);
-          },
-          downloadResultJson(result, fileName) {
-            return laboratoryDownloadResultJson(result, fileName);
-          },
-          downloadResultCsv(result, fileName) {
-            return laboratoryDownloadResultCsv(result, fileName);
-          },
-          downloadResultMarkdown(result, fileName) {
-            return laboratoryDownloadResultMarkdown(result, fileName);
-          },
-          getLastSnapshot() {
-            return lastLaboratorySnapshot;
-          },
-          getLastExperiment() {
-            return lastLaboratoryExperiment;
-          },
-          captureAndRunPhase1(options = {}) {
-            return laboratoryCaptureAndRunPhase1(options);
-          },
+              return { ok: true, fileName: `swarm-lab-live-snapshot-${snapshot.snapshotId}.json`, snapshot, liveStateVerification: lastLaboratoryLiveStateVerification };
+            }
+            const result = await captureLaboratoryLiveSnapshot(options);
+            if (!result?.ok) return result;
+            laboratoryDownloadText(
+              `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.json`,
+              laboratoryExportSnapshotJson(result.snapshot),
+              "application/json"
+            );
+            return { ok: true, fileName: `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.json`, snapshot: result.snapshot, liveStateVerification: result.liveStateVerification };
+          })();
         },
-      } : {}),
+        validateSnapshot(snapshot) {
+          return laboratoryValidateSnapshotShape(snapshot);
+        },
+        applyAction(snapshot, action) {
+          const actionId = String(action?.actionId || action || "").toUpperCase();
+          if (actionId === "WAIT") return { snapshot, ...laboratoryWaitImmediate(snapshot, []) };
+          if (actionId === "CLONE_LARVAE") return { snapshot, ...laboratoryCloneLarvaeImmediate(snapshot, []) };
+          if (actionId === "HOUSE_OF_MIRRORS") return { snapshot, ...laboratoryHouseOfMirrorsImmediate(snapshot, []) };
+          return { snapshot, ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, actionSafetySafe: false, warnings: ["unsupported action"] };
+        },
+        projectState(postActionState, horizonSeconds) {
+          return laboratoryProjectState(postActionState?.snapshot || postActionState, postActionState, horizonSeconds);
+        },
+        async runPhase1Experiment(snapshot, options = {}) {
+          const gate = laboratoryRequireDevelopmentGate();
+          if (!gate.ok) return gate;
+          return laboratoryRunPhase1Experiment(snapshot, options);
+        },
+        async runLivePhase1(options = {}) {
+          return laboratoryRunLivePhase1(options);
+        },
+        async captureAndRunPhase1(options = {}) {
+          const gate = laboratoryRequireDevelopmentGate();
+          if (!gate.ok) return gate;
+          return laboratoryCaptureAndRunPhase1(options);
+        },
+        async captureAndRunLivePhase1(options = {}) {
+          return laboratoryCaptureAndRunLivePhase1(options);
+        },
+        exportSnapshotJson(snapshot) {
+          return laboratoryExportSnapshotJson(snapshot);
+        },
+        exportLiveSnapshotJson(snapshot) {
+          return laboratoryExportSnapshotJson(snapshot);
+        },
+        exportLiveSnapshotMarkdown(snapshot) {
+          return laboratoryExportSnapshotMarkdown(snapshot);
+        },
+        exportResultJson(result) {
+          return laboratoryExportResultJson(result);
+        },
+        exportResultCsv(result) {
+          return laboratoryExportResultCsv(result);
+        },
+        exportResultMarkdown(result) {
+          return laboratoryExportResultMarkdown(result);
+        },
+        exportLiveResultJson(result) {
+          const gate = laboratoryRequireLiveGates();
+          if (!gate.ok) return gate;
+          return laboratoryExportLiveResultJson(result);
+        },
+        exportLiveResultCsv(result) {
+          const gate = laboratoryRequireLiveGates();
+          if (!gate.ok) return gate;
+          return laboratoryExportLiveResultCsv(result);
+        },
+        exportLiveResultMarkdown(result) {
+          const gate = laboratoryRequireLiveGates();
+          if (!gate.ok) return gate;
+          return laboratoryExportLiveResultMarkdown(result);
+        },
+        downloadResultJson(result, fileName) {
+          return laboratoryDownloadResultJson(result, fileName);
+        },
+        downloadResultCsv(result, fileName) {
+          return laboratoryDownloadResultCsv(result, fileName);
+        },
+        downloadResultMarkdown(result, fileName) {
+          return laboratoryDownloadResultMarkdown(result, fileName);
+        },
+        getLastSnapshot() {
+          return laboratoryCloneResult(lastLaboratoryLiveSnapshot || lastLaboratorySnapshot);
+        },
+        getLastExperiment() {
+          return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
+        },
+        clearLastResult() {
+          lastLaboratorySnapshot = null;
+          lastLaboratoryExperiment = null;
+          lastLaboratoryLiveSnapshot = null;
+          lastLaboratoryLiveExperiment = null;
+          lastLaboratoryLiveStateVerification = null;
+          return { ok: true };
+        },
+        createObservationSummary(result) {
+          return laboratoryCreateObservationSummary(result);
+        },
+      },
 
       copyLogExport,
       downloadLogExport,
