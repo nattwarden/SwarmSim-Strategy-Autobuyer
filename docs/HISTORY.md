@@ -19,6 +19,11 @@ docs/release-notes/
 
 ## Version notes
 
+- 2026-07-10 docs/planning: Strategy Audit now requires a documented testbed
+  feasibility decision before execution. Disposable audit instances may be
+  freely staged, while planner output may never be forced. A visible headed
+  watch mode is a product requirement. No runtime or strategy change is
+  included.
 - 2026-07-10 docs/planning: 0.12.3 is the verified technical baseline; next
   phase is Strategy Intelligence, starting with Strategy Audit 0
   (early-game behavioral baseline). No strategy changes are included in this

@@ -1,71 +1,93 @@
 # Strategy Intelligence Roadmap
 
-## Current status
+## Stable provenance
 
-Current verified runtime: 0.12.3
-Current repository baseline: 132abd6be782f2d6f5bcc99c3e239ff741a6fdbb
-Current strategy status: unchanged from pre-Laboratory baseline
-Laboratory status: live effective-count capture verified
+- Current verified runtime: `0.12.3`
+- Runtime implementation commit: `c819c7d7adc8ab0280e06d25466f6697fb915409`
+- Mature-save acceptance evidence commit: `636cfb4b061ce9a0c72d273812a977ede0114c27`
+- Strategy Intelligence planning introduced: `3ec61fe48754fcdba5bfd17fcd0e4ef577e6cbf6`
+- Current repository HEAD: resolve dynamically with `git rev-parse HEAD`; do not pin mutable HEAD here.
 
-Laboratory is currently strongest as a controlled evidence and comparison
-system for a narrow ability subset. Its primary comparison set so far is:
+Current strategy behavior remains based on the existing multi-lane, post-Nexus, Council, Army Seed, and Energy Support architecture. The 0.12.x Laboratory work verified evidence capture and did not redesign normal strategy behavior.
 
-- WAIT
-- CLONE_LARVAE
-- HOUSE_OF_MIRRORS
+Laboratory is currently strongest as a controlled comparison system for:
 
-Laboratory is not yet a general strategic scorer for all normal purchase and
-multi-lane progression decisions.
+- `WAIT`
+- `CLONE_LARVAE`
+- `HOUSE_OF_MIRRORS`
+
+It is not yet a general strategic scorer for normal purchases and competing planner lanes.
 
 ## Product north star
 
-Over time, Council and planning systems should be able to show:
+SwarmSim Strategy Autobuyer should become a methodical player that:
 
-- Chosen action
-- Active goal
-- Best legal alternatives
-- Why the winner won
-- Expected progress over defined horizons
-- Hard blockers
-- When the decision should be reconsidered
+- understands the current position and active goal;
+- compares the most relevant legal next steps;
+- performs justified reversible progression;
+- explains why the selected action beat the alternatives;
+- reports expected progress over explicit horizons;
+- preserves hard safety rules;
+- states when the decision should be reconsidered.
 
-## Proposed roadmap
+Council and planner surfaces should eventually expose:
 
-- 0.12.3
-  - Verified technical foundation
-- Strategy Audit 0
-  - Early-game behavioral baseline from staged deterministic states
-- Strategy Audit 1
-  - Mid-game multi-lane decision quality
-- 0.12.4
-  - Only if an audit identifies one narrow concrete strategy defect
-- 0.13.0
-  - Counterfactual Strategy Advisor / Strategy Intelligence foundation
+- chosen action;
+- active goal and target;
+- best legal alternatives;
+- best rejected alternative;
+- why the winner won;
+- expected progress;
+- hard and soft blockers;
+- reconsideration trigger.
 
-## 0.13.0 direction (exploratory, not committed implementation)
+## Required phase order
 
-This is a possible larger future phase, not an already approved implementation
-plan for the current task.
+### 0.12.3
+
+Verified technical foundation.
+
+### Strategy Audit testbed feasibility and decision
+
+Select a stable test environment before implementing the audit runner. Compare production, pinned-local, persistent-extension, and VS Code browser approaches. Visible execution is a product requirement.
+
+See:
+
+- `docs/strategy/STRATEGY_AUDIT_TESTBED_DECISION.md`
+- `docs/prompts/next-strategy-audit-testbed-feasibility.md`
+
+### Strategy Audit 0
+
+Early-game behavioral baseline from staged, reproducible states.
+
+### Strategy Audit 1
+
+Mid-game multi-lane decision quality.
+
+### 0.12.4
+
+Only if an audit identifies one narrow, concrete strategy or observability defect.
+
+### Possible 0.13.0
+
+Counterfactual Strategy Advisor / Strategy Intelligence foundation.
+
+## 0.13.0 direction (exploratory)
 
 Potential capabilities:
 
-- Compare the chosen buy against the most relevant legal alternatives.
-- Show estimated impact over 1 and 5 minutes, and potentially later over 30
-  minutes where justified.
-- Distinguish short-term production gains from direct goal progression.
-- Compare guidance across Meat, Engine, Territory, Energy, and Ability lanes.
-- Keep auto-cast disabled by default.
-- Keep auto-ascend disabled by default.
-- Preserve hard safety blockers.
-- Avoid optimizing only for immediate raw production.
+- compare the chosen buy with relevant legal alternatives;
+- show impact over 1 and 5 minutes, later 30 minutes where justified;
+- distinguish raw production from direct goal progress;
+- compare Meat, Engine, Territory, Energy, and Ability guidance;
+- preserve hard blockers;
+- keep auto-cast and auto-ascend disabled by default;
+- avoid optimizing only for immediate production.
 
 ## User modes (direction only)
-
-Planned direction remains:
 
 - Advisor Mode
 - Methodical Optimizer
 - High-Tempo Optimizer
 
-These are documented as strategy direction only in this docs phase. They are
-not implemented in this task.
+These modes are not part of the testbed or Audit 0 implementation.
