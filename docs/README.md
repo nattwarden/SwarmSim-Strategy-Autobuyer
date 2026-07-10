@@ -14,7 +14,6 @@ live-logs/2026-07-09-clicked-mechanics-progression.md
 live-logs/2026-07-10-0.10.1-energy-support-counterfactual.md
 live-logs/2026-07-10-energy-support-counterfactual-0.10.1.json
 live-logs/2026-07-10-base-game-claims-crosscheck.md
-live-logs/2026-07-10-base-game-knowledge-bank-refresh.md
 ```
 
 ## Project posture

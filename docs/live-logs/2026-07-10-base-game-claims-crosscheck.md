@@ -99,3 +99,18 @@ Legend:
 - Keep automation defaults anchored in live-verified behavior and safety guardrails.
 - When a claim is old and absolute, require fresh live evidence before upgrading it to policy.
 - For current policy, all previously open claims above are now closed as either DEMOTED default rules or situational-only guidance.
+
+## Knowledge-bank consistency checkpoint (2026-07-10)
+
+Purpose:
+- Re-check whether any confirmed/partial/demoted statuses should change after latest runtime sessions.
+
+Result:
+- No contradictions found against currently confirmed base-game claims.
+- Keep current CONFIRMED claims unchanged.
+- Keep PARTIALLY CONFIRMED claims as situational and evidence-dependent.
+- Keep DEMOTED absolute legacy rules demoted by default.
+
+Docs policy impact:
+- Keep this file as the single claim-level truth table for base-game knowledge status.
+- Avoid parallel refresh files unless they add materially new evidence.
