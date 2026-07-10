@@ -152,13 +152,15 @@
       "evaluationCycles": 1,
       "overrides": {
         "resourceCounts": { "nexus": 5, "energy": 1000000, "larva": 1, "clone": 1000000000 },
+        "unitCounts": { "nexus": 5, "energy": 1000000, "larva": 1, "clone": 1000000000, "moth": 0 },
         "abilities": { "clonelarvae": { "visible": true, "energyCost": 1000 } },
         "config": {
           "lepidopteraStopAtBoostPercent": 99.9,
           "postNexusEnergyReserveSeconds": 0,
           "postNexusLepidopteraMinBoostGainPercent": 0,
           "maxLepidopteraPerRun": 5,
-          "energySupportPreferSafeBackgroundLepidoptera": true
+          "energySupportPreferSafeBackgroundLepidoptera": true,
+          "cloneBufferPlanner": false
         },
         "engine": { "expansionEtaSeconds": 1200 }
       },
@@ -175,6 +177,7 @@
       "evaluationCycles": 1,
       "overrides": {
         "resourceCounts": { "nexus": 5, "energy": 1000000 },
+        "unitCounts": { "nexus": 5, "energy": 1000000, "moth": 0 },
         "abilities": {
           "clonelarvae": { "visible": false },
           "houseofmirrors": { "visible": false }
@@ -203,7 +206,9 @@
       "evaluationCycles": 1,
       "overrides": {
         "resourceCounts": { "energy": 500000, "larva": 1000000000, "clone": 1, "nexus": 5 },
-        "abilities": { "clonelarvae": { "visible": true, "energyCost": 1000 } }
+        "unitCounts": { "energy": 500000, "larva": 1000000000, "clone": 1, "nexus": 5 },
+        "abilities": { "clonelarvae": { "visible": true, "energyCost": 1000 } },
+        "config": { "cloneBufferPlanner": false }
       },
       "expected": [
         { "id": "r4-clone-hold", "field": "energySupportCloneDecision", "equals": "HOLD" },
@@ -218,7 +223,9 @@
       "evaluationCycles": 1,
       "overrides": {
         "resourceCounts": { "energy": 500000, "larva": 1, "clone": 1000000000, "nexus": 5 },
-        "abilities": { "clonelarvae": { "visible": true, "energyCost": 1000 } }
+        "unitCounts": { "energy": 500000, "larva": 1, "clone": 1000000000, "nexus": 5 },
+        "abilities": { "clonelarvae": { "visible": true, "energyCost": 1000 } },
+        "config": { "cloneBufferPlanner": false }
       },
       "expected": [
         { "id": "r5-clone-ready", "field": "energySupportCloneDecision", "oneOf": ["ADVISE", "READY"] }
@@ -259,6 +266,11 @@
       "overrides": {
         "resourceCounts": { "nexus": 5, "meat": 1000000000000, "larva": 1000000000, "energy": 1000000000, "territory": 1000000000 },
         "unitCounts": {
+          "nexus": 5,
+          "meat": 1000000000000,
+          "larva": 1000000000,
+          "energy": 1000000000,
+          "territory": 1000000000,
           "drone": 1e30,
           "queen": 0,
           "nest": 0,
@@ -275,9 +287,11 @@
           "pantheon5": 0
         },
         "config": {
+          "pauseUnitsNearAscension": false,
           "saveForHatcherySeconds": 0,
           "saveForExpansionSeconds": 0,
           "postNexusEnergyReserveSeconds": 0,
+          "maxLepidopteraPerRun": 0,
           "meatGoalPlanner": true,
           "meatUnlockPlanner": true,
           "meatParentStepPlanner": true,
@@ -300,10 +314,15 @@
           "parentStepCompletedForRefill": true,
           "transition": {
             "plannerTransitionMarker": "r8-parent-step-completed",
-            "parentStepCompletedForRefill": true
+            "parentStepCompletedForRefill": true,
+            "actionUnit": "drone",
+            "parentUnit": "queen",
+            "targetUnit": "none"
           },
           "applyOverrides": {
-            "remainingActions": 2
+            "remainingActions": 2,
+            "resourceCounts": { "larva": 0 },
+            "unitCounts": { "drone": 0, "queen": 1, "larva": 0 }
           }
         }
       ],

@@ -9,9 +9,8 @@ const implementationCommit = "366617602f1e25087378d630490cb96df8b25f71";
 const branch = "feature/0.12.0-laboratory-snapshot-foundation";
 const evidenceDir = path.join(root, "docs", "live-logs");
 const testDataDir = path.join(root, "docs", "test-data", "0.12.0-laboratory");
-const jsonPath = path.join(evidenceDir, "browser-test-0.12.0-laboratory-snapshot.json");
-const mdPath = path.join(evidenceDir, "browser-test-0.12.0-laboratory-snapshot.md");
-const examplePath = path.join(testDataDir, "example-snapshot.json");
+const defaultSnapshotJsonPath = path.join(evidenceDir, "browser-test-0.12.0-laboratory-snapshot.json");
+const defaultExamplePath = path.join(testDataDir, "example-snapshot.json");
 
 function gitShow(file) {
   return execFileSync("git", ["show", `${implementationCommit}:${file}`], {
@@ -81,6 +80,16 @@ function gitShowAt(commit, file) {
       encoding: "utf8",
       maxBuffer: 50 * 1024 * 1024,
     }),
+  };
+}
+
+function loadScenarioDefinitions(definitionsCommit = "HEAD") {
+  const file = "docs/test-data/0.11.7-scenarios/scenario-definitions.json";
+  const source = gitShowAt(definitionsCommit, file);
+  return {
+    ...source,
+    parsed: JSON.parse(source.content),
+    hash: `sha256:${sha256Hex(source.content)}`,
   };
 }
 
@@ -182,6 +191,103 @@ function collectActualDecisionFields(report) {
     out[`${id}-cycle-1`] = cycle?.decisions || null;
   }
   return out;
+}
+
+function deterministicRegressionHash(report) {
+  const clone = stableClone(report || {});
+  delete clone.runAt;
+  return `sha256:${sha256Hex(stableJson(clone))}`;
+}
+
+async function collectRuntimeHydrationStatus(page) {
+  return page.evaluate(() => {
+    const status = {
+      ok: false,
+      missing: [],
+      diagnostics: {},
+      signature: "",
+    };
+    try {
+      const injector = window.angular?.element?.(document.body)?.injector?.();
+      const game = injector?.get?.("game");
+      const units = game?.unitlist?.() || [];
+      const upgrades = game?.upgradelist?.() || [];
+      const unitIds = units.map((unit) => String(unit?.name || "")).filter(Boolean).sort();
+      const resourceIds = unitIds.filter((id) => ["meat", "larva", "cocoon", "territory", "energy", "clone", "nexus"].includes(id));
+      const abilityIds = upgrades.map((upgrade) => String(upgrade?.name || "")).filter(Boolean).sort();
+      const has = {
+        game: !!game,
+        unitService: typeof game?.unit === "function",
+        resourceService: ["meat", "larva", "territory"].every((id) => !!game?.unit?.(id)),
+        upgradeService: typeof game?.upgrade === "function" || typeof game?.upgradelist === "function",
+        canonicalUnitlist: unitIds.length > 20,
+        larvaeMeatTerritory: ["larva", "meat", "territory"].every((id) => unitIds.includes(id)),
+        lepidopteraRuntimeData: unitIds.includes("moth"),
+        cloneLarvaeResolvable: abilityIds.includes("clonelarvae"),
+        houseOfMirrorsResolvable: abilityIds.includes("swarmwarp") || abilityIds.includes("houseofmirrors") || abilityIds.includes("clonearmy"),
+        scenarioHarnessApi: !!window.kbcSwarmBot?.scenarioHarness?.run,
+      };
+      for (const [key, value] of Object.entries(has)) {
+        if (!value) status.missing.push(key);
+      }
+      status.ok = status.missing.length === 0;
+      status.diagnostics = {
+        ...has,
+        unitCount: unitIds.length,
+        abilityCount: abilityIds.length,
+        unitIds,
+        resourceIds,
+        abilityIds,
+        gates: {
+          scenarioHarness: localStorage.getItem("kbcSwarmBotScenarioHarnessEnabled_v1"),
+          laboratory: localStorage.getItem("kbcSwarmBotLaboratoryEnabled_v1"),
+        },
+        bootstrapResources: Object.fromEntries(["meat", "larva", "territory", "energy", "clone", "nexus"].map((id) => [
+          id,
+          String(game?.unit?.(id)?.count?.() || "0"),
+        ])),
+      };
+      status.signature = JSON.stringify({
+        unitIds,
+        abilityIds,
+      });
+      return status;
+    } catch (error) {
+      status.missing.push("runtime-evaluation");
+      status.diagnostics.error = String(error?.message || error);
+      return status;
+    }
+  });
+}
+
+async function waitForRuntimeHydration(page, timeoutMs = 60000) {
+  const started = Date.now();
+  let previousSignature = "";
+  let stableCount = 0;
+  let lastStatus = null;
+
+  while (Date.now() - started < timeoutMs) {
+    lastStatus = await collectRuntimeHydrationStatus(page);
+    if (lastStatus.ok && lastStatus.signature === previousSignature) {
+      stableCount++;
+    } else {
+      stableCount = 0;
+      previousSignature = lastStatus.signature;
+    }
+    if (lastStatus.ok && stableCount >= 1) {
+      return {
+        ...lastStatus,
+        stableObservations: stableCount + 1,
+        waitedMs: Date.now() - started,
+      };
+    }
+    await page.waitForTimeout(250);
+  }
+
+  const error = new Error("SCENARIO_RUNTIME_HYDRATION_TIMEOUT");
+  error.code = "SCENARIO_RUNTIME_HYDRATION_TIMEOUT";
+  error.diagnostics = lastStatus;
+  throw error;
 }
 
 function selectComparableFields(cycle) {
@@ -316,11 +422,18 @@ function buildComparison(a, b) {
   };
 }
 
-async function runRegressionForCommit({ scriptCommit, label, definitionsCommit }) {
+async function runRegressionForCommit({ scriptCommit, label, definitionsCommit, order = "normal" }) {
   const scriptObject = gitShowAt(scriptCommit, "src/SwarmSim-Strategy-Autobuyer.user.js");
-  const definitionsObject = gitShowAt(definitionsCommit, "docs/test-data/0.11.7-scenarios/scenario-definitions.json");
+  const definitionsObject = loadScenarioDefinitions(definitionsCommit);
   const userscript = scriptObject.content;
-  const definitions = JSON.parse(definitionsObject.content);
+  const definitions = stableClone(definitionsObject.parsed);
+  if (order === "reverse") definitions.scenarios = definitions.scenarios.slice().reverse();
+  if (order === "random") {
+    definitions.scenarios = definitions.scenarios
+      .map((scenario) => ({ scenario, key: sha256Hex(`${scriptObject.commit}:${definitionsObject.hash}:${scenario.id}`) }))
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((row) => row.scenario);
+  }
   const userscriptHash = `sha256:${sha256Hex(userscript)}`;
   const metadataVersion = parseUserscriptMetadataVersion(userscript);
   const url = "https://www.swarmsim.com/#/tab/territory";
@@ -354,6 +467,7 @@ async function runRegressionForCommit({ scriptCommit, label, definitionsCommit }
     });
     await page.addScriptTag({ content: userscript });
     await page.waitForFunction(() => !!window.kbcSwarmBot, { timeout: 60000 });
+    const hydration = await waitForRuntimeHydration(page);
 
     result = await page.evaluate(async ({ definitions }) => {
       const bot = window.kbcSwarmBot;
@@ -391,6 +505,7 @@ async function runRegressionForCommit({ scriptCommit, label, definitionsCommit }
         scenarioReportVersion: bot.scenarioReportVersion,
         gatingOff,
         regression,
+        deterministicResultHash: `sha256:${await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(regression.report))).then((hash) => Array.from(new Uint8Array(hash)).map((byte) => byte.toString(16).padStart(2, "0")).join(""))}`,
         safetyDefaults: {
           autoCastAbilities: bot.config.autoCastAbilities,
           autoAscend: bot.config.autoAscend,
@@ -405,6 +520,7 @@ async function runRegressionForCommit({ scriptCommit, label, definitionsCommit }
         },
       };
     }, { definitions });
+    result.runtimeHydration = hydration;
 
     await context.close();
   } finally {
@@ -445,7 +561,9 @@ async function runRegressionForCommit({ scriptCommit, label, definitionsCommit }
       file: definitionsObject.file,
       blob: definitionsObject.blob,
       hash: `sha256:${sha256Hex(definitionsObject.content)}`,
+      deterministicHash: definitionsObject.hash,
       scenarioCount: definitions.scenarios.length,
+      order,
     },
     browserEnvironment: {
       mode: "local-playwright-chromium-clean-profile",
@@ -473,7 +591,7 @@ async function runRegressionForCommit({ scriptCommit, label, definitionsCommit }
           kbcSwarmBotLaboratoryEnabled_v1: "false",
         },
       },
-      testOrder: "gating-off, deterministic batch, restoration/leak, safety defaults",
+      testOrder: `gating-off, deterministic batch (${order}), restoration/leak, safety defaults`,
     },
     versionGate,
     gatingOff: {
@@ -483,11 +601,13 @@ async function runRegressionForCommit({ scriptCommit, label, definitionsCommit }
     regression: {
       ok: !!result.regression?.ok,
       summary,
+      deterministicResultHash: deterministicRegressionHash(result.regression?.report),
       focus: getFocus(result.regression?.report),
       report: result.regression?.report || null,
       actualDecisionFields: collectActualDecisionFields(result.regression?.report),
     },
     restorationLeak: result.restorationLeak,
+    runtimeHydration: result.runtimeHydration,
     safetyDefaults: result.safetyDefaults,
     consoleRows,
     verdict: summary.failedInvariantCount === 0
@@ -515,6 +635,8 @@ function writeRegressionEvidence(result, jsonPath) {
     `- Userscript hash: \`${result.userscriptSource.hash}\``,
     `- Userscript blob: \`${result.userscriptSource.blob}\``,
     `- Scenario definitions commit: \`${result.scenarioDefinitions.commit}\``,
+    `- Scenario definitions hash: \`${result.scenarioDefinitions.hash}\``,
+    `- Scenario order: \`${result.scenarioDefinitions.order}\``,
     `- Browser mode: \`${result.browserEnvironment.mode}\``,
     `- Playwright: \`${result.browserEnvironment.playwrightVersion}\``,
     `- Chromium: \`${result.browserEnvironment.chromiumVersion}\``,
@@ -523,6 +645,8 @@ function writeRegressionEvidence(result, jsonPath) {
     `- Timezone: \`${result.browserEnvironment.timezoneId}\``,
     `- SwarmSim URL: ${result.browserEnvironment.swarmSimUrl}`,
     `- Version gate: ${passFail(result.versionGate.allMatch)}`,
+    `- Runtime hydration: ${passFail(result.runtimeHydration?.ok)} (${result.runtimeHydration?.waitedMs ?? "n/a"} ms)`,
+    `- Deterministic result hash: \`${result.regression.deterministicResultHash}\``,
     `- Verdict: \`${result.verdict}\``,
     "",
     "## Totals",
@@ -539,6 +663,23 @@ function writeRegressionEvidence(result, jsonPath) {
     "## Failed Invariants",
     "",
     ...(failed.length ? failed.map((row) => `- ${row.id}: ${row.field} expected \`${row.expected?.equals || row.expected?.includes || row.expected?.notIncludes || ""}\`, actual \`${row.actual}\``) : ["- none"]),
+    "",
+    "## Runtime Hydration",
+    "",
+    "```json",
+    JSON.stringify({
+      ok: result.runtimeHydration?.ok,
+      missing: result.runtimeHydration?.missing,
+      stableObservations: result.runtimeHydration?.stableObservations,
+      diagnostics: {
+        unitCount: result.runtimeHydration?.diagnostics?.unitCount,
+        abilityCount: result.runtimeHydration?.diagnostics?.abilityCount,
+        resourceIds: result.runtimeHydration?.diagnostics?.resourceIds,
+        gates: result.runtimeHydration?.diagnostics?.gates,
+        bootstrapResources: result.runtimeHydration?.diagnostics?.bootstrapResources,
+      },
+    }, null, 2),
+    "```",
     "",
     "## R2/R3/R8 Cycle 1 Actual Decision Fields",
     "",
@@ -609,7 +750,8 @@ async function runRegressionCli(args) {
   const result = await runRegressionForCommit({
     scriptCommit,
     label: args.label || scriptCommit.slice(0, 7),
-    definitionsCommit: args["definitions-commit"] || "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+    definitionsCommit: args["definitions-commit"] || "HEAD",
+    order: args.order || "normal",
   });
   const written = writeRegressionEvidence(result, output);
   console.log(JSON.stringify({ verdict: result.verdict, written }, null, 2));
@@ -619,9 +761,10 @@ async function runAbCli(args) {
   ensureCleanWorkingTree();
   const aCommit = args["script-commit-a"] || "1ee631901cd04a1d97ddb0bcee5efa2499481ecc";
   const bCommit = args["script-commit-b"] || "366617602f1e25087378d630490cb96df8b25f71";
-  const definitionsCommit = args["definitions-commit"] || "1ee631901cd04a1d97ddb0bcee5efa2499481ecc";
-  const a = await runRegressionForCommit({ scriptCommit: aCommit, label: "0.11.7-clean-profile", definitionsCommit });
-  const b = await runRegressionForCommit({ scriptCommit: bCommit, label: "0.12.0-clean-profile", definitionsCommit });
+  const definitionsCommit = args["definitions-commit"] || "HEAD";
+  const order = args.order || "normal";
+  const a = await runRegressionForCommit({ scriptCommit: aCommit, label: `0.11.7-clean-profile-${order}`, definitionsCommit, order });
+  const b = await runRegressionForCommit({ scriptCommit: bCommit, label: `0.12.0-clean-profile-${order}`, definitionsCommit, order });
   const comparison = buildComparison(a, b);
 
   const aWritten = writeRegressionEvidence(a, args["output-a"] || path.join(evidenceDir, "browser-ab-0.11.7-clean-profile.json"));
@@ -659,7 +802,11 @@ async function main() {
   fs.mkdirSync(testDataDir, { recursive: true });
 
   const userscript = gitShow("src/SwarmSim-Strategy-Autobuyer.user.js");
-  const definitions = JSON.parse(gitShow("docs/test-data/0.11.7-scenarios/scenario-definitions.json"));
+  const definitionsObject = loadScenarioDefinitions(args["definitions-commit"] || "HEAD");
+  const definitions = definitionsObject.parsed;
+  const snapshotJsonPath = args.output || defaultSnapshotJsonPath;
+  const snapshotMdPath = snapshotJsonPath.replace(/\.json$/i, ".md");
+  const snapshotExamplePath = args["example-output"] || defaultExamplePath;
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
@@ -931,8 +1078,10 @@ async function main() {
     : "0.12.0 LABORATORY PHASE 1A REQUIRES PATCH";
   result.consoleRows = consoleRows;
 
-  fs.writeFileSync(jsonPath, `${JSON.stringify(result, null, 2)}\n`);
-  fs.writeFileSync(examplePath, `${JSON.stringify(result.snapshotA, null, 2)}\n`);
+  ensureParentDir(snapshotJsonPath);
+  ensureParentDir(snapshotExamplePath);
+  fs.writeFileSync(snapshotJsonPath, `${JSON.stringify(result, null, 2)}\n`);
+  fs.writeFileSync(snapshotExamplePath, `${JSON.stringify(result.snapshotA, null, 2)}\n`);
 
   const md = [
     "# Browser Test 0.12.0 Laboratory Snapshot",
@@ -1040,7 +1189,7 @@ async function main() {
     ...(result.warnings.length ? result.warnings.map((warning) => `- ${warning}`) : ["- none"]),
     "",
   ].join("\n");
-  fs.writeFileSync(mdPath, md);
+  fs.writeFileSync(snapshotMdPath, md);
 
   console.log(JSON.stringify({
     verdict: result.verdict,
@@ -1048,9 +1197,9 @@ async function main() {
     hashB: result.hashB,
     hashC: result.hashC,
     regression: result.regression,
-    jsonPath,
-    mdPath,
-    examplePath,
+    jsonPath: snapshotJsonPath,
+    mdPath: snapshotMdPath,
+    examplePath: snapshotExamplePath,
   }, null, 2));
 }
 
