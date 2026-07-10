@@ -65,6 +65,10 @@ docs/release-notes/
 - 0.11.6: Narrow deterministic-harness progression patch for scenario aliasing
   and planner target fallback in scenario mode, with refreshed 0.11.6
   verification evidence and unchanged safety defaults.
+- 0.11.7: Narrow deterministic-harness input stabilization patch with canonical
+  army alias resolution (early setup-fail on ambiguous/missing alias), richer
+  R8/HoM/Clone observability fields, and 0.11.7 scenario/version-surface
+  templates for Laboratory Phase 1 baseline work.
 
 ## Documentation posture note
 

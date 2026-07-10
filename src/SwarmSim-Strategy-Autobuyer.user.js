@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.11.6
+// @version      0.11.7
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -16,7 +16,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.11.6";
+  const AUTOBUYER_VERSION = "0.11.7";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -1228,6 +1228,7 @@ function getDisplayName(item) {
       resourceCounts: normalizeScenarioOverrideMap(overrides.resourceCounts || overrides.resources),
       resourceVelocities: normalizeScenarioOverrideMap(overrides.resourceVelocities || overrides.velocities),
       unitCounts: normalizeScenarioOverrideMap(overrides.unitCounts),
+      armyUnitCounts: normalizeScenarioOverrideMap(overrides.armyUnitCounts || overrides.armyUnits),
       abilities: normalizeScenarioAbilityOverrides(overrides.abilities),
       config: cfg,
       remainingActions: Number.isFinite(Number(overrides.remainingActions)) ? Number(overrides.remainingActions) : null,
@@ -1236,6 +1237,13 @@ function getDisplayName(item) {
         hatcheryEtaSeconds: Number.isFinite(Number(overrides?.engine?.hatcheryEtaSeconds)) ? Number(overrides.engine.hatcheryEtaSeconds) : null,
       },
     };
+  }
+
+  function getScenarioCanonicalUnitKey(unit) {
+    const name = normalizeLabelKey(unit?.name || "");
+    const suffix = normalizeLabelKey(unit?.suffix || "");
+    if (!name) return "";
+    return suffix ? `unit ${name} ${suffix}` : `unit ${name}`;
   }
 
   function applyScenarioUnitOverrides(game) {
@@ -1270,6 +1278,8 @@ function getDisplayName(item) {
     const display = normalizeLabelKey(getDisplayName(unit));
     const suffixAliases = getScenarioSuffixAliases(unit?.suffix || "");
     const aliases = [];
+    const canonical = getScenarioCanonicalUnitKey(unit);
+    if (canonical) aliases.push(canonical);
     if (name) aliases.push(name);
     if (display) aliases.push(display);
     if (name && display) aliases.push(`${name} ${display}`);
@@ -1284,6 +1294,97 @@ function getDisplayName(item) {
     if (name === "mosquito") aliases.push("culicimorph", "culicimorph v");
     if (name === "stinger") aliases.push("stinger v");
     return Array.from(new Set(aliases.filter(Boolean).map((entry) => normalizeLabelKey(entry))));
+  }
+
+  function getTerritoryPerSecondPerUnit(unit) {
+    const list = Array.isArray(unit?.prod) ? unit.prod : [];
+    const row = list.find((entry) => String(entry?.unit?.name || "").toLowerCase() === "territory");
+    return decimalFrom(row?.val || 0);
+  }
+
+  function resolveScenarioArmyUnitOverrides(game, overrides) {
+    const normalized = normalizeScenarioOverrides(overrides || {});
+    const aliasMap = normalized.armyUnitCounts || {};
+    const resolvedUnitCounts = { ...(normalized.unitCounts || {}) };
+    const resolved = [];
+    const errors = [];
+
+    const homAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const homVisible = !!homAbility?.isVisible?.();
+    const homCost = formatSwarmNumber(getCostForResource(homAbility, "energy"));
+    const territoryVelocity = decimalFrom(getVelocity(game, "territory"));
+    const resourceEnergy = formatSwarmNumber(getCurrentResource(game, "energy"));
+    const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
+    const reserveAmount = decimalFrom(getVelocity(game, "energy")).times(reserveSeconds);
+
+    for (const [alias, injectedRaw] of Object.entries(aliasMap)) {
+      const injectedCount = Number(injectedRaw);
+      if (!Number.isFinite(injectedCount)) continue;
+
+      const matches = (game?.unitlist?.() || []).filter((unit) => unitMatchesArmyPrepLabel(unit, alias));
+      if (!matches.length) {
+        errors.push(`army-unit alias '${alias}' could not resolve to any runtime unit`);
+        continue;
+      }
+      if (matches.length > 1) {
+        const labels = matches.map((unit) => `${getDisplayName(unit)} (${getScenarioCanonicalUnitKey(unit) || normalizeLabelKey(unit?.name || "unknown")})`);
+        errors.push(`army-unit alias '${alias}' resolved ambiguously: ${labels.join(", ")}`);
+        continue;
+      }
+
+      const unit = matches[0];
+      const canonicalId = getScenarioCanonicalUnitKey(unit);
+      if (!canonicalId) {
+        errors.push(`army-unit alias '${alias}' resolved without canonical id`);
+        continue;
+      }
+
+      resolvedUnitCounts[canonicalId] = injectedCount;
+
+      const runtimeCount = decimalFrom(unit?.count?.() || 0);
+      const tpsPerUnit = getTerritoryPerSecondPerUnit(unit);
+      const injectedDecimal = decimalFrom(injectedCount);
+      const totalContribution = injectedDecimal.times(tpsPerUnit);
+      const inPreferredTierSet = HOUSE_OF_MIRRORS_ARMY_TIERS.some((tier) => unitMatchesArmyPrepLabel(unit, tier.label));
+
+      resolved.push({
+        alias,
+        canonicalRuntimeUnitId: canonicalId,
+        unitName: unit?.name || "unknown",
+        label: getDisplayName(unit),
+        suffix: unit?.suffix || "",
+        injectedRawCount: formatSwarmNumber(injectedDecimal),
+        runtimeVisibleEffectiveCount: formatSwarmNumber(runtimeCount),
+        visible: unit?.isVisible?.() ? "yes" : "no",
+        territoryPerSecondPerUnit: formatSwarmNumber(tpsPerUnit),
+        territoryPerSecondContribution: formatSwarmNumber(totalContribution),
+        inHouseOfMirrorsPreferredSet: inPreferredTierSet ? "yes" : "no",
+      });
+    }
+
+    const homAffectedContribution = resolved
+      .filter((row) => row.inHouseOfMirrorsPreferredSet === "yes")
+      .reduce((sum, row) => sum.plus(decimalFrom(row.territoryPerSecondContribution || 0)), newDecimal(0));
+    const unaffectedContribution = territoryVelocity.minus(homAffectedContribution);
+
+    return {
+      ok: errors.length === 0,
+      errors,
+      resolvedOverrides: {
+        ...normalized,
+        unitCounts: resolvedUnitCounts,
+      },
+      observability: {
+        aliasToCanonicalRuntimeId: resolved,
+        houseOfMirrorsAvailability: homVisible ? "yes" : "no",
+        houseOfMirrorsEnergyCost: homCost,
+        totalTerritoryPerSecond: formatSwarmNumber(territoryVelocity),
+        houseOfMirrorsAffectedTerritoryPerSecond: formatSwarmNumber(homAffectedContribution),
+        unaffectedTerritoryPerSecond: formatSwarmNumber(unaffectedContribution),
+        actualEnergy: resourceEnergy,
+        safetyReserve: formatSwarmNumber(reserveAmount),
+      },
+    };
   }
 
   function getScenarioUnitCountOverride(unit) {
@@ -4491,6 +4592,7 @@ function getDisplayName(item) {
       resourceCounts: mergeScenarioOverrideMaps(base.resourceCounts || base.resources, patch.resourceCounts || patch.resources),
       resourceVelocities: mergeScenarioOverrideMaps(base.resourceVelocities || base.velocities, patch.resourceVelocities || patch.velocities),
       unitCounts: mergeScenarioOverrideMaps(base.unitCounts, patch.unitCounts),
+      armyUnitCounts: mergeScenarioOverrideMaps(base.armyUnitCounts || base.armyUnits, patch.armyUnitCounts || patch.armyUnits),
       abilities: mergeScenarioOverrideMaps(base.abilities, patch.abilities),
       config: mergeScenarioOverrideMaps(base.config, patch.config),
       remainingActions: Number.isFinite(Number(patch.remainingActions))
@@ -4563,6 +4665,31 @@ function getDisplayName(item) {
         setScenarioContext({ scenarioId, source, overrides: scenarioOverrides });
 
         for (let cycle = 1; cycle <= cycles; cycle++) {
+          const setupResolution = resolveScenarioArmyUnitOverrides(game, scenarioOverrides);
+          if (!setupResolution.ok) {
+            cycleReport.push({
+              cycle,
+              source,
+              scenarioId,
+              inputOverrides: scenarioOverrides,
+              setupError: {
+                code: "SCENARIO_SETUP_ALIAS_RESOLUTION_FAILED",
+                errors: setupResolution.errors,
+              },
+              invariants: [],
+            });
+            break;
+          }
+
+          scenarioOverrides = setupResolution.resolvedOverrides;
+          setScenarioContext({
+            scenarioId,
+            source,
+            overrides: scenarioOverrides,
+            preserveEvaluationRevision: true,
+            preserveTransition: true,
+          });
+
           scenarioHarnessContext.cycleRevision = Number(scenarioHarnessContext.cycleRevision || 0) + 1;
           const cycleConfigRestore = applyScenarioConfigOverrides(scenarioOverrides);
           clearAdvisorLog();
@@ -4602,6 +4729,14 @@ function getDisplayName(item) {
           const cyclePlan = safe(`Scenario ${scenarioId} cycle ${cycle} plan`, () => buildMeatGoalPlan(game)) || null;
           const cycleActionUnit = cyclePlan?.actionUnit || null;
           const cycleParentUnit = getDirectTargetPathParentUnit(cyclePlan);
+          const parentStepCandidateCosts = getCostList(cycleParentUnit)
+            .filter((row) => row?.unit && isPositive(row?.val))
+            .map((row) => `${getDisplayName(row.unit)}=${formatSwarmNumber(row.val)}`)
+            .join("; ");
+          const parentStepCandidateResources = getCostList(cycleParentUnit)
+            .filter((row) => row?.unit && isPositive(row?.val))
+            .map((row) => `${getDisplayName(row.unit)}=${formatSwarmNumber(getCurrentResource(game, row.unit?.name || ""))}`)
+            .join("; ");
           const cycleTransition = getScenarioTransitionState();
           const decisionFields = {
             energySupportBestUse: payload.energySupportBestUse,
@@ -4635,6 +4770,16 @@ function getDisplayName(item) {
             parentStepTarget: payload.parentStepTarget,
             parentStepActionUnit: payload.parentStepActionUnit,
             parentStepConsumedUnit: payload.parentStepConsumedUnit,
+            parentStepCandidateUnitId: cycleParentUnit ? (getScenarioCanonicalUnitKey(cycleParentUnit) || "none") : "none",
+            parentStepCandidateLabel: cycleParentUnit ? getDisplayName(cycleParentUnit) : "none",
+            parentStepCandidateCurrentCount: formatSwarmNumber(cycleParentUnit?.count?.() || 0),
+            parentStepCandidateCosts: parentStepCandidateCosts || "none",
+            parentStepCandidateResources: parentStepCandidateResources || "none",
+            parentStepCandidateVisible: cycleParentUnit?.isVisible?.() ? "yes" : "no",
+            parentStepCandidateAvailable: cycleParentUnit ? "yes" : "no",
+            parentStepCandidateBuyable: cycleParentUnit?.isVisible?.() && cycleParentUnit?.isBuyable?.() ? "yes" : "no",
+            parentStepReserveResult: parentStepPlannerState?.reserveRatioText || "n/a",
+            parentStepPaybackResult: parentStepPlannerState?.paybackBypassed ? "bypassed" : (parentStepPlannerState?.decision === "BUY" ? "passed" : "blocked/unknown"),
             actionUnitRefillDecision: payload.actionUnitRefillDecision,
             actionUnitRefillTargetUnit: payload.actionUnitRefillCandidate,
             actionUnitRefillParentUnit: payload.parentStepCandidate,
@@ -4654,6 +4799,26 @@ function getDisplayName(item) {
             transitionSeenByCycle: cycleTransition?.appliedAfterCycle ? (cycle > Number(cycleTransition.appliedAfterCycle) ? "yes" : "no") : "no",
             plannerEvaluationRevision: String(scenarioHarnessContext.evaluationRevision || 0),
             harnessCycleRevision: String(scenarioHarnessContext.cycleRevision || 0),
+            cloneLarvaeAvailability: payload.energySupportCloneCandidate !== "none" ? "yes" : "no",
+            cloneLarvaeEnergyCost: formatSwarmNumber(getCostForResource(getGameUpgrade(game, "clonelarvae"), "energy")),
+            cloneLarvaeLarvaCount: formatSwarmNumber(getCurrentResource(game, "larva")),
+            cloneLarvaeCocoonCount: formatSwarmNumber(getCurrentResource(game, "cocoon")),
+            cloneLarvaeLarvaVelocity: formatSwarmNumber(getVelocity(game, "larva")),
+            cloneLarvaeCocoonVelocity: formatSwarmNumber(getVelocity(game, "cocoon")),
+            cloneLarvaeRuntimePreview: payload.energySupportCloneLarvaeGain || "n/a",
+            houseOfMirrorsAvailability: payload.energySupportMirrorCandidate !== "none" ? "yes" : "no",
+            houseOfMirrorsEnergyCost: formatSwarmNumber(getCostForResource(getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp"), "energy")),
+            houseOfMirrorsAffectedUnitIds: (setupResolution.observability.aliasToCanonicalRuntimeId || [])
+              .filter((row) => row.inHouseOfMirrorsPreferredSet === "yes")
+              .map((row) => row.canonicalRuntimeUnitId)
+              .join(", ") || "none",
+            houseOfMirrorsAffectedCountsBefore: (setupResolution.observability.aliasToCanonicalRuntimeId || [])
+              .filter((row) => row.inHouseOfMirrorsPreferredSet === "yes")
+              .map((row) => `${row.canonicalRuntimeUnitId}=${row.runtimeVisibleEffectiveCount}`)
+              .join("; ") || "none",
+            houseOfMirrorsAffectedTerritoryPerSecondBefore: setupResolution.observability.houseOfMirrorsAffectedTerritoryPerSecond || "0",
+            houseOfMirrorsAffectedTerritoryPerSecondAfter: payload.energySupportMirrorTerritoryPerSecondAfter || "0",
+            houseOfMirrorsUnaffectedTerritoryPerSecond: setupResolution.observability.unaffectedTerritoryPerSecond || "0",
             whyNoFollowUpAction: payload.whyNoFollowUpAction,
             activeCouncilSpeaker: payload.activeCouncilSpeaker,
             doThisNow: payload.momentumBestStep,
@@ -4668,6 +4833,7 @@ function getDisplayName(item) {
             inputOverrides: scenarioOverrides,
             beforeState: getScenarioStateSnapshot(game, engine),
             decisions: decisionFields,
+            setupObservability: setupResolution.observability,
             projection: {
               territoryPerSecondBefore: payload.energySupportMirrorTerritoryPerSecondBefore,
               territoryPerSecondAfter: payload.energySupportMirrorTerritoryPerSecondAfter,
@@ -8203,13 +8369,18 @@ function getDisplayName(item) {
     const labelKey = normalizeLabelKey(label);
     if (!labelKey) return false;
     const text = normalizeLabelKey(`${unit?.name || ""} ${getDisplayName(unit)} ${unit?.suffix || ""}`);
+    const textTokens = new Set(text.split(/\s+/).filter(Boolean));
 
     const aliases = [labelKey];
     if (/culicimorph/.test(labelKey)) aliases.push(labelKey.replace(/culicimorph/g, "mosquito"));
     if (/arachnomorph/.test(labelKey)) aliases.push(labelKey.replace(/arachnomorph/g, "spider"));
     if (/\bv\b/.test(labelKey)) aliases.push(labelKey.replace(/\bv\b/g, "5"));
 
-    return aliases.some((entry) => text.includes(entry));
+    return aliases.some((entry) => {
+      const tokens = normalizeLabelKey(entry).split(/\s+/).filter(Boolean);
+      if (!tokens.length) return false;
+      return tokens.every((token) => textTokens.has(token));
+    });
   }
 
   function getTerritoryPrepBuyNum(unit, forceSingle = false) {

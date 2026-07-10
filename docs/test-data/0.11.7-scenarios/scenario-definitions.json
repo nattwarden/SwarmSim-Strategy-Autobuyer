@@ -1,0 +1,295 @@
+{
+  "version": "0.11.7",
+  "source": "deterministic-scenario",
+  "notes": "0.11.7 deterministic patch scenarios for harness input stabilization and observability parity.",
+  "scenarios": [
+    {
+      "id": "H1",
+      "description": "All preferred HoM units missing",
+      "source": "deterministic-scenario",
+      "smartFocus": "territory",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "energy": 100000, "territory": 1000000000000, "nexus": 5 },
+        "resourceVelocities": { "territory": 1000000 },
+        "armyUnitCounts": { "Culicimorph V": 0, "Arachnomorph V": 0, "Stinger V": 0 },
+        "abilities": { "houseofmirrors": { "visible": true, "energyCost": 2500 } },
+        "engine": { "expansionEtaSeconds": 7200 }
+      },
+      "expected": [
+        { "id": "h1-decision", "field": "energySupportMirrorDecision", "equals": "HOLD" },
+        { "id": "h1-gate", "field": "energySupportMirrorActiveGate", "equals": "relevant-army" }
+      ]
+    },
+    {
+      "id": "H2",
+      "description": "Cycle-specific HoM expectations after between-cycle unit buys",
+      "source": "deterministic-scenario",
+      "smartFocus": "territory",
+      "evaluationCycles": 2,
+      "overrides": {
+        "resourceCounts": { "energy": 100000, "territory": 1000000000000, "nexus": 5 },
+        "resourceVelocities": { "territory": 1000000 },
+        "armyUnitCounts": { "Culicimorph V": 0, "Arachnomorph V": 0, "Stinger V": 0 },
+        "abilities": { "houseofmirrors": { "visible": true, "energyCost": 2500 } },
+        "engine": { "expansionEtaSeconds": 5400 }
+      },
+      "betweenEvaluations": [
+        {
+          "afterCycle": 1,
+          "applyOverrides": {
+            "armyUnitCounts": { "Culicimorph V": 10, "Arachnomorph V": 10, "Stinger V": 10 }
+          }
+        }
+      ],
+      "expectedByCycle": {
+        "1": [
+          { "id": "h2-c1-missing", "field": "energySupportMirrorPreferredUnitsMissing", "includes": "Culicimorph V" }
+        ],
+        "2": [
+          { "id": "h2-c2-no-missing-reason", "field": "energySupportMirrorReason", "notIncludes": "mirror-preferred units missing" }
+        ]
+      }
+    },
+    {
+      "id": "H3",
+      "description": "Only one preferred HoM unit missing",
+      "source": "deterministic-scenario",
+      "smartFocus": "territory",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "energy": 100000, "territory": 1000000000000, "nexus": 5 },
+        "resourceVelocities": { "territory": 1000000 },
+        "armyUnitCounts": { "Culicimorph V": 25, "Arachnomorph V": 30, "Stinger V": 0 },
+        "abilities": { "houseofmirrors": { "visible": true, "energyCost": 2500 } },
+        "engine": { "expansionEtaSeconds": 4800 }
+      },
+      "expected": [
+        { "id": "h3-stinger-missing", "field": "energySupportMirrorPreferredUnitsMissing", "equals": "Stinger V" }
+      ]
+    },
+    {
+      "id": "H4",
+      "description": "Preferred units ready but HoM payoff below meaningful threshold",
+      "source": "deterministic-scenario",
+      "smartFocus": "territory",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "energy": 100000, "territory": 1000000000000, "nexus": 5 },
+        "resourceVelocities": { "territory": 1 },
+        "armyUnitCounts": { "Culicimorph V": 1, "Arachnomorph V": 1, "Stinger V": 1 },
+        "abilities": { "houseofmirrors": { "visible": true, "energyCost": 2500 } },
+        "engine": { "expansionEtaSeconds": 180000 }
+      },
+      "expected": [
+        { "id": "h4-hold", "field": "energySupportMirrorDecision", "equals": "HOLD" },
+        { "id": "h4-payoff-gate", "field": "energySupportMirrorActiveGate", "equals": "payoff" },
+        { "id": "h4-reason", "field": "energySupportMirrorReason", "includes": "no clear territory/Expansion payoff" }
+      ]
+    },
+    {
+      "id": "H5",
+      "description": "Clear HoM payoff can win best-use arbitration",
+      "source": "counterfactual-projection",
+      "smartFocus": "territory",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "energy": 500000, "territory": 1000000000000000, "nexus": 5, "larva": 1000000000000, "clone": 1000 },
+        "resourceVelocities": { "territory": 500000000 },
+        "armyUnitCounts": { "Culicimorph V": 1000000, "Arachnomorph V": 1000000, "Stinger V": 1000000 },
+        "abilities": {
+          "houseofmirrors": { "visible": true, "energyCost": 2500 },
+          "clonelarvae": { "visible": true, "energyCost": 500000 }
+        },
+        "engine": { "expansionEtaSeconds": 3600 }
+      },
+      "expected": [
+        { "id": "h5-best-use", "field": "energySupportBestUse", "equals": "house-of-mirrors" },
+        { "id": "h5-mirror-decision", "field": "energySupportMirrorDecision", "oneOf": ["ADVISE", "READY"] },
+        { "id": "h5-selection-reason", "field": "energySupportBestUseSelectionReason", "includes": "house-of-mirrors" }
+      ]
+    },
+    {
+      "id": "H6",
+      "description": "HoM visible but no relevant territory army",
+      "source": "deterministic-scenario",
+      "smartFocus": "territory",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "energy": 100000, "territory": 1000000000000, "nexus": 5 },
+        "resourceVelocities": { "territory": 1000 },
+        "armyUnitCounts": { "Culicimorph V": 0, "Arachnomorph V": 0, "Stinger V": 0 },
+        "abilities": { "houseofmirrors": { "visible": true, "energyCost": 2500 } },
+        "engine": { "expansionEtaSeconds": 7200 }
+      },
+      "expected": [
+        { "id": "h6-hold", "field": "energySupportMirrorDecision", "equals": "HOLD" },
+        { "id": "h6-army-gate", "field": "energySupportMirrorReason", "includes": "no relevant territory army exists" },
+        { "id": "h6-active-gate", "field": "energySupportMirrorActiveGate", "equals": "relevant-army" }
+      ]
+    },
+    {
+      "id": "R1",
+      "description": "Expansion save-window priority",
+      "source": "deterministic-scenario",
+      "smartFocus": "save-territory",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "nexus": 5, "energy": 500000 },
+        "engine": { "expansionEtaSeconds": 30 }
+      },
+      "expected": [
+        { "id": "r1-best-step", "field": "momentumBestStep", "equals": "Wait for Expansion" },
+        { "id": "r1-focus", "field": "momentumPrimaryFocus", "equals": "Save territory for Expansion" },
+        { "id": "r1-source", "field": "momentumPrimaryPrioritySource", "equals": "Expansion save-window" }
+      ]
+    },
+    {
+      "id": "R2",
+      "description": "Lepidoptera background role from real planner branch",
+      "source": "counterfactual-projection",
+      "smartFocus": "meat",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "nexus": 5, "energy": 1000000, "larva": 1, "clone": 1000000000 },
+        "abilities": { "clonelarvae": { "visible": true, "energyCost": 1000 } },
+        "config": {
+          "lepidopteraStopAtBoostPercent": 99.9,
+          "postNexusEnergyReserveSeconds": 0,
+          "postNexusLepidopteraMinBoostGainPercent": 0,
+          "maxLepidopteraPerRun": 5
+        },
+        "engine": { "expansionEtaSeconds": 1200 }
+      },
+      "expected": [
+        { "id": "r2-role", "field": "energySupportLepidopteraRole", "equals": "background" },
+        { "id": "r2-best-step-not-lepi", "field": "momentumBestStep", "notIncludes": "Lepidoptera" }
+      ]
+    },
+    {
+      "id": "R3",
+      "description": "Lepidoptera primary role from real planner branch",
+      "source": "counterfactual-projection",
+      "smartFocus": "energy",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "nexus": 5, "energy": 1000000 },
+        "abilities": {
+          "clonelarvae": { "visible": false },
+          "houseofmirrors": { "visible": false }
+        },
+        "config": {
+          "lepidopteraStopAtBoostPercent": 99.9,
+          "postNexusEnergyReserveSeconds": 0,
+          "postNexusLepidopteraMinBoostGainPercent": 0,
+          "maxLepidopteraPerRun": 5,
+          "energySupportPreferSafeBackgroundLepidoptera": false
+        },
+        "engine": { "expansionEtaSeconds": 999999 }
+      },
+      "expected": [
+        { "id": "r3-role", "field": "energySupportLepidopteraRole", "equals": "primary" },
+        { "id": "r3-best-use", "field": "energySupportBestUse", "equals": "lepidoptera" },
+        { "id": "r3-advisor", "field": "momentumPrimaryAdvisor", "equals": "Beetle Magus" },
+        { "id": "r3-speaker", "field": "activeCouncilSpeaker", "equals": "Beetle Magus" }
+      ]
+    },
+    {
+      "id": "R4",
+      "description": "Clone Larvae safe but below threshold",
+      "source": "deterministic-scenario",
+      "smartFocus": "meat",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "energy": 500000, "larva": 1000000000, "clone": 1, "nexus": 5 },
+        "abilities": { "clonelarvae": { "visible": true, "energyCost": 1000 } }
+      },
+      "expected": [
+        { "id": "r4-clone-hold", "field": "energySupportCloneDecision", "equals": "HOLD" },
+        { "id": "r4-threshold", "field": "energySupportCloneReason", "includes": "benefit below meaningful threshold" }
+      ]
+    },
+    {
+      "id": "R5",
+      "description": "Clone Larvae meaningful",
+      "source": "counterfactual-projection",
+      "smartFocus": "meat",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "energy": 500000, "larva": 1, "clone": 1000000000, "nexus": 5 },
+        "abilities": { "clonelarvae": { "visible": true, "energyCost": 1000 } }
+      },
+      "expected": [
+        { "id": "r5-clone-ready", "field": "energySupportCloneDecision", "oneOf": ["ADVISE", "READY"] }
+      ]
+    },
+    {
+      "id": "R6",
+      "description": "Twin prep under meaningful gate",
+      "source": "counterfactual-projection",
+      "smartFocus": "meat",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "nexus": 5 }
+      },
+      "expected": [
+        { "id": "r6-gate", "field": "momentumBestStepDecision", "oneOf": ["WAIT", "HOLD", "OBSERVE"] }
+      ]
+    },
+    {
+      "id": "R7",
+      "description": "Twin prep over meaningful gate",
+      "source": "counterfactual-projection",
+      "smartFocus": "meat",
+      "evaluationCycles": 1,
+      "overrides": {
+        "resourceCounts": { "nexus": 5 }
+      },
+      "expected": [
+        { "id": "r7-non-empty-step", "field": "momentumBestStep", "notIncludes": "Wait" }
+      ]
+    },
+    {
+      "id": "R8",
+      "description": "Parent Step then Parent Refill over two cycles",
+      "source": "deterministic-scenario",
+      "smartFocus": "meat",
+      "evaluationCycles": 2,
+      "overrides": {
+        "resourceCounts": { "nexus": 5, "meat": 1000000000, "larva": 1000000 },
+        "unitCounts": { "drone": 1000000, "queen": 0, "nest": 0 },
+        "remainingActions": 1
+      },
+      "betweenEvaluations": [
+        {
+          "afterCycle": 1,
+          "plannerTransitionMarker": "r8-parent-step-completed",
+          "parentStepCompletedForRefill": true,
+          "transition": {
+            "plannerTransitionMarker": "r8-parent-step-completed",
+            "parentStepCompletedForRefill": true
+          },
+          "applyOverrides": {
+            "remainingActions": 2
+          }
+        }
+      ],
+      "expectedByCycle": {
+        "1": [
+          { "id": "r8-c1-parent-step", "field": "parentStepDecision", "equals": "BUY" },
+          { "id": "r8-c1-refill-not-yet", "field": "actionUnitRefillDecision", "notIncludes": "BUY" }
+        ],
+        "2": [
+          { "id": "r8-c2-between-cycle-applied", "field": "betweenCycleApplied", "equals": "yes" },
+          { "id": "r8-c2-transition-seen", "field": "transitionSeenByCycle", "equals": "yes" },
+          { "id": "r8-c2-transition-marker", "field": "plannerTransitionMarker", "equals": "r8-parent-step-completed" },
+          { "id": "r8-c2-parent-step-transition-state", "field": "parentStepCompletedForRefill", "equals": "yes" },
+          { "id": "r8-c2-parent-refill", "field": "actionUnitRefillDecision", "equals": "BUY" },
+          { "id": "r8-c2-active-refill", "field": "activePlannerAction", "includes": "Parent Refill" },
+          { "id": "r8-c2-refill-reason", "field": "actionUnitRefillReason", "includes": "after parent-step" },
+          { "id": "r8-c2-parent-step-not-repeat", "field": "parentStepDecision", "notIncludes": "BUY" }
+        ]
+      }
+    }
+  ]
+}
