@@ -63,6 +63,11 @@
     territoryPrepChunkPercent: 5,
     territoryStarvationRunThreshold: 12,
     territoryArmySeedWhenEmpty: true,
+    expansionArmySeedPlanner: true,
+    expansionArmySeedMaxChunkPercent: 10,
+    expansionArmySeedMinEtaImprovementSeconds: 120,
+    expansionArmySeedMinEtaImprovementRatio: 0.05,
+    expansionArmySeedDoNotSpendInsideSaveWindow: true,
     smartUnitBuyPercent: 0.25,
     meatChainCascade: true,
     meatChainTwinPrep: true,
@@ -188,6 +193,11 @@
       territoryPrepChunkPercent: 5,
       territoryStarvationRunThreshold: 12,
       territoryArmySeedWhenEmpty: true,
+      expansionArmySeedPlanner: true,
+      expansionArmySeedMaxChunkPercent: 10,
+      expansionArmySeedMinEtaImprovementSeconds: 120,
+      expansionArmySeedMinEtaImprovementRatio: 0.05,
+      expansionArmySeedDoNotSpendInsideSaveWindow: true,
       runEverySeconds: 5,
       purchaseOrder: "upgrades-first",
       unitBuyPercent: 0.85,
@@ -609,6 +619,21 @@
     c.territoryPrepChunkPercent = clampNumber(c.territoryPrepChunkPercent, 0.1, 25, DEFAULT_CONFIG.territoryPrepChunkPercent);
     c.territoryStarvationRunThreshold = Math.round(clampNumber(c.territoryStarvationRunThreshold, 1, 100, DEFAULT_CONFIG.territoryStarvationRunThreshold));
     c.territoryArmySeedWhenEmpty = c.territoryArmySeedWhenEmpty !== false;
+    c.expansionArmySeedPlanner = c.expansionArmySeedPlanner !== false;
+    c.expansionArmySeedMaxChunkPercent = clampNumber(c.expansionArmySeedMaxChunkPercent, 0.1, 25, DEFAULT_CONFIG.expansionArmySeedMaxChunkPercent);
+    c.expansionArmySeedMinEtaImprovementSeconds = clampNumber(
+      c.expansionArmySeedMinEtaImprovementSeconds,
+      0,
+      31536000,
+      DEFAULT_CONFIG.expansionArmySeedMinEtaImprovementSeconds
+    );
+    c.expansionArmySeedMinEtaImprovementRatio = clampNumber(
+      c.expansionArmySeedMinEtaImprovementRatio,
+      0,
+      1,
+      DEFAULT_CONFIG.expansionArmySeedMinEtaImprovementRatio
+    );
+    c.expansionArmySeedDoNotSpendInsideSaveWindow = c.expansionArmySeedDoNotSpendInsideSaveWindow !== false;
     c.smartUnitBuyPercent = clampNumber(c.smartUnitBuyPercent, 0.001, 1, DEFAULT_CONFIG.smartUnitBuyPercent);
     c.meatChainCascade = !!c.meatChainCascade;
     c.meatChainTwinPrep = !!c.meatChainTwinPrep;
@@ -1518,7 +1543,7 @@ function getDisplayName(item) {
     }
 
     const allowed = summary?.bestAllowedCandidate;
-    if (allowed) return `${allowed.candidate}${allowed.decision === "SIDE" ? " side-task" : ""}`;
+    if (allowed) return `${allowed.candidate}${allowed.decision === "SIDE" ? " companion action" : ""}`;
 
     const rejected = summary?.bestRejectedCandidate;
     if (rejected) return `${rejected.candidate} when blockers clear`;
@@ -1528,7 +1553,7 @@ function getDisplayName(item) {
 
   function mainLaneDecisionLabel(mainActions, sideActions) {
     if (Number(mainActions || 0) > 0) return "BUY";
-    if (Number(sideActions || 0) > 0) return "HOLD — side-task allowed";
+    if (Number(sideActions || 0) > 0) return "HOLD — companion side-task allowed";
     return "HOLD";
   }
 
@@ -1667,6 +1692,11 @@ function getDisplayName(item) {
     settings.push(`focus ${config.focusTab}`);
     settings.push(`chunk ${trimNumber(config.smartUnitBuyPercent * 100)}%`);
     if (config.territoryRoiMode) settings.push(`territory ROI min ${formatEtaImprovementSummary(config.territoryMinEtaImprovementSeconds)} / ${trimNumber(config.territoryMinEtaImprovementRatio * 100)}%`);
+    if (config.expansionArmySeedPlanner) {
+      settings.push(
+        `army seed ${trimNumber(config.expansionArmySeedMaxChunkPercent)}% chunk, min ${formatDuration(config.expansionArmySeedMinEtaImprovementSeconds)} or ${trimNumber(config.expansionArmySeedMinEtaImprovementRatio * 100)}% Expansion ETA gain`
+      );
+    }
 
     if (config.larvaEnginePriority) settings.push(`Hatchery/Expansion guard ${inspectProtectedResources(protectedResources)}`);
     if (config.energyStrategy) settings.push(`Nexus target ${config.nexusTarget}`);
@@ -1703,6 +1733,11 @@ function getDisplayName(item) {
       territoryRoiMode: config.territoryRoiMode,
       territoryMinEtaImprovementSeconds: config.territoryMinEtaImprovementSeconds,
       territoryMinEtaImprovementRatio: config.territoryMinEtaImprovementRatio,
+      expansionArmySeedPlanner: config.expansionArmySeedPlanner,
+      expansionArmySeedMaxChunkPercent: config.expansionArmySeedMaxChunkPercent,
+      expansionArmySeedMinEtaImprovementSeconds: config.expansionArmySeedMinEtaImprovementSeconds,
+      expansionArmySeedMinEtaImprovementRatio: config.expansionArmySeedMinEtaImprovementRatio,
+      expansionArmySeedDoNotSpendInsideSaveWindow: config.expansionArmySeedDoNotSpendInsideSaveWindow,
       smartMaxActionsPerRun: config.smartMaxActionsPerRun,
       saveForHatcherySeconds: config.saveForHatcherySeconds,
       saveForExpansionSeconds: config.saveForExpansionSeconds,
@@ -2126,6 +2161,20 @@ function getDisplayName(item) {
       : Number(mainActions || 0) > 0
         ? "Main lane action ran."
         : "Main lanes held.";
+    const councilSpeakerByLane = {
+      Territory: "General Mandible",
+      Energy: "Beetle Magus",
+      "Clone Prep": "Larva Steward",
+      Meat: "Flesh Smith",
+      Twin: "Twin Oracle",
+      Upgrade: "Twin Oracle",
+      Engine: "Brood Architect",
+      Ability: "Beetle Magus",
+    };
+    const councilWinningLane = selectedMainAction?.lane || "none";
+    const councilWinningCandidate = selectedMainAction?.candidate || "none";
+    const activeCouncilSpeaker = councilSpeakerByLane[councilWinningLane] || "none";
+    const councilFocusBubble = selectedMainAction?.reason || noSideReason || "No lane has a safe bounded action yet.";
     const rawRemainingBudgetReason = coordinatorState?.coordinatorRemainingBudgetReason || refillState?.coordinatorRemainingBudgetReason || "none";
     const firstBlockerReason = (items, label) => {
       const first = Array.isArray(items) ? items[0] : null;
@@ -2158,6 +2207,7 @@ function getDisplayName(item) {
       decision,
       mainDecision: mainLaneDecisionLabel(mainActions, sideActions),
       sideDecision: selectedSideAction ? `${selectedSideAction.lane} BUY` : "none",
+      companionDecision: selectedSideAction ? `${selectedSideAction.lane} BUY` : "none",
       compactStatus,
       reason,
       mainReason: getSelectedLaneActionReason(0),
@@ -2167,16 +2217,20 @@ function getDisplayName(item) {
       overseerSideSelected: selectedSideAction ? `${selectedSideAction.lane} BUY ${selectedSideAction.candidate}` : "none",
       overseerActionsUsed: `${Number(mainActions || 0)}/${maxActions}`,
       overseerWhySelected: selectedMainAction?.reason || reason,
-      overseerWhyNoSide: selectedSideAction ? selectedSideAction.reason : `No side selected — ${noSideReason}`,
+      overseerWhyNoSide: selectedSideAction ? selectedSideAction.reason : `No companion selected — ${noSideReason}`,
       overseerBlockedByHardGuard: candidateSummary.blockedBySummary || "none",
       protectedResources: inspectProtectedResources(protectedResources),
       waits: getWaitSignals(game, engine, protectedResources),
       smartFocus: smartFocus || "unknown",
       nexus: `${nexusCount}/${config.nexusTarget}`,
       lepidoptera: `${formatSwarmNumber(mothCount)} (+${trimNumber(mothBoost)}%)`,
-      actions: `${mainActions || 0} main, ${sideActions || 0} side`,
+      actions: `${mainActions || 0} main, ${sideActions || 0} side-tasks`,
       mainActions: Number(mainActions || 0),
       sideActions: Number(sideActions || 0),
+      activeCouncilSpeaker,
+      councilWinningLane,
+      councilWinningCandidate,
+      councilFocusBubble,
       laneCoordinatorDecision: coordinatorState?.coordinatorDecision || mainLaneDecisionLabel(mainActions, sideActions),
       laneCoordinatorSelectedActions: coordinatorState?.selectedLaneActions || [],
       laneCoordinatorSelectedSummary: coordinatorState?.selectedLaneSummary || "none",
@@ -2345,10 +2399,25 @@ function getDisplayName(item) {
       territoryPrepVisibleFightingUnits: territoryPrepState?.territoryPrepVisibleFightingUnits ?? 0,
       territoryPrepBuyableFightingUnits: territoryPrepState?.territoryPrepBuyableFightingUnits ?? 0,
       territoryPrepMissingMatchedCount: territoryPrepState?.territoryPrepMissingMatchedCount ?? 0,
+      expansionArmySeedCandidate: territoryPrepState?.expansionArmySeedCandidate || "none",
+      expansionArmySeedDecision: territoryPrepState?.expansionArmySeedDecision || "OBSERVE",
+      expansionArmySeedUnit: territoryPrepState?.expansionArmySeedUnit || "none",
+      expansionArmySeedAmount: territoryPrepState?.expansionArmySeedAmount || "0",
+      expansionArmySeedReason: territoryPrepState?.expansionArmySeedReason || "none",
+      expansionArmySeedEtaBefore: territoryPrepState?.expansionArmySeedEtaBefore || "n/a",
+      expansionArmySeedEtaAfter: territoryPrepState?.expansionArmySeedEtaAfter || "n/a",
+      expansionArmySeedEtaGainSeconds: territoryPrepState?.expansionArmySeedEtaGainSeconds || "0",
+      expansionArmySeedEtaGainPercent: territoryPrepState?.expansionArmySeedEtaGainPercent || "0%",
+      expansionArmySeedTerritoryPerSecondBefore: territoryPrepState?.expansionArmySeedTerritoryPerSecondBefore || "0",
+      expansionArmySeedTerritoryPerSecondAfter: territoryPrepState?.expansionArmySeedTerritoryPerSecondAfter || "0",
+      expansionArmySeedBlockedBy: territoryPrepState?.expansionArmySeedBlockedBy || "none",
+      expansionArmySeedInsideSaveWindow: territoryPrepState?.expansionArmySeedInsideSaveWindow || "no",
+      expansionArmySeedBestRejectedUnit: territoryPrepState?.expansionArmySeedBestRejectedUnit || "none",
+      expansionArmySeedBestRejectedReason: territoryPrepState?.expansionArmySeedBestRejectedReason || "none",
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.9.0 adds conservative post-Nexus Lepidoptera planning plus clearer budget, clone, territory and Council observability while preserving 0.8.13 Twin Prep and Parent Refill behavior.",
+      futurePlanners: "0.10.0 adds a conservative Expansion-aware Army Seed planner plus clearer companion wording and Council active-speaker guidance while preserving Parent Refill, Twin meaningful gate, clone safety, and no auto-cast defaults.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2369,17 +2438,17 @@ function getDisplayName(item) {
       ["Decision", strategyInspector.decision],
       ["Overseer decision", strategyInspector.overseerDecision || strategyInspector.laneCoordinatorDecision || "none"],
       ["Main selected", strategyInspector.overseerMainSelected || "none"],
-      ["Side selected", strategyInspector.overseerSideSelected || "none"],
+      ["Companion selected", strategyInspector.overseerSideSelected || "none"],
       ["Actions used", strategyInspector.overseerActionsUsed || `${strategyInspector.mainActions || 0}/?`],
       ["Why selected", strategyInspector.overseerWhySelected || "none"],
-      ["Why no side", strategyInspector.overseerWhyNoSide || "none"],
+      ["Why no companion", strategyInspector.overseerWhyNoSide || "none"],
       ["Blocked by hard guard", strategyInspector.overseerBlockedByHardGuard || "none"],
       ["Main", strategyInspector.mainDecision || strategyInspector.decision],
-      ["Side", strategyInspector.sideDecision || "none"],
+      ["Companion", strategyInspector.companionDecision || strategyInspector.sideDecision || "none"],
       ["Status", strategyInspector.compactStatus || "n/a"],
       ["Reason", strategyInspector.reason],
       ["Main reason", strategyInspector.mainReason || "none"],
-      ["Side reason", strategyInspector.sideReason || "none"],
+      ["Companion reason", strategyInspector.sideReason || "none"],
       ["Best allowed", strategyInspector.bestAllowedAction || "none"],
       ["Best allowed main", strategyInspector.bestAllowedMainAction || "none"],
       ["Best allowed side", strategyInspector.bestAllowedSideAction || "none"],
@@ -2521,8 +2590,24 @@ function getDisplayName(item) {
       ["Territory visible fighting units", String(strategyInspector.territoryPrepVisibleFightingUnits ?? 0)],
       ["Territory buyable fighting units", String(strategyInspector.territoryPrepBuyableFightingUnits ?? 0)],
       ["Territory HoM matches", String(strategyInspector.territoryPrepMissingMatchedCount ?? 0)],
+      ["Army seed candidate", strategyInspector.expansionArmySeedCandidate || "none"],
+      ["Army seed decision", strategyInspector.expansionArmySeedDecision || "OBSERVE"],
+      ["Army seed reason", strategyInspector.expansionArmySeedReason || "none"],
+      ["Army seed unit", strategyInspector.expansionArmySeedUnit || "none"],
+      ["Army seed amount", strategyInspector.expansionArmySeedAmount || "0"],
+      ["Army seed ETA before", strategyInspector.expansionArmySeedEtaBefore || "n/a"],
+      ["Army seed ETA after", strategyInspector.expansionArmySeedEtaAfter || "n/a"],
+      ["Army seed ETA gain", `${strategyInspector.expansionArmySeedEtaGainSeconds || "0"}s (${strategyInspector.expansionArmySeedEtaGainPercent || "0%"})`],
+      ["Army seed territory/sec", `${strategyInspector.expansionArmySeedTerritoryPerSecondBefore || "0"} -> ${strategyInspector.expansionArmySeedTerritoryPerSecondAfter || "0"}`],
+      ["Army seed blocked by", strategyInspector.expansionArmySeedBlockedBy || "none"],
+      ["Army seed inside save-window", strategyInspector.expansionArmySeedInsideSaveWindow || "no"],
+      ["Army seed best rejected", strategyInspector.expansionArmySeedBestRejectedUnit || "none"],
+      ["Army seed reject reason", strategyInspector.expansionArmySeedBestRejectedReason || "none"],
       ["Army prep missing units", strategyInspector.armyPrepMissingUnits || "none"],
       ["Why territory did not buy", strategyInspector.territoryDidNotBuyReason || "none"],
+      ["Council speaker", strategyInspector.activeCouncilSpeaker || "none"],
+      ["Council winning lane", strategyInspector.councilWinningLane || "none"],
+      ["Council winning candidate", strategyInspector.councilWinningCandidate || "none"],
       ["Settings now", strategyInspector.settings.join(" · ")],
       ["Recommended", strategyInspector.recommendedSmart],
       ["Future", strategyInspector.futurePlanners],
@@ -2713,11 +2798,81 @@ function getDisplayName(item) {
     return items.slice(0, 4);
   }
 
-  function councilCardHtml(card) {
+  function buildCouncilSpeakerState() {
+    const lane = String(strategyInspector?.councilWinningLane || "none");
+    const candidate = String(strategyInspector?.councilWinningCandidate || "none");
+    const fallback = {
+      speaker: strategyInspector?.activeCouncilSpeaker || "The Council",
+      lane,
+      candidate,
+      bubble: strategyInspector?.councilFocusBubble || "Observe the next run.",
+    };
+
+    if (lane === "Territory") {
+      if (strategyInspector?.expansionArmySeedDecision === "BUY") {
+        return {
+          speaker: "General Mandible",
+          lane,
+          candidate,
+          bubble: `Raise the warband first. More ${strategyInspector.expansionArmySeedUnit || candidate} will bring the next Expansion much sooner.`,
+        };
+      }
+      if (strategyInspector?.expansionArmySeedInsideSaveWindow === "yes") {
+        return {
+          speaker: "General Mandible",
+          lane,
+          candidate,
+          bubble: "Hold the ground. Expansion is close, so territory must be saved.",
+        };
+      }
+    }
+
+    if (lane === "Energy") {
+      if (strategyInspector?.postNexusEnergyDecision === "BUY") {
+        return {
+          speaker: "Beetle Magus",
+          lane,
+          candidate,
+          bubble: `I will feed the energy swarm carefully: +${strategyInspector.postNexusEnergyAmount || "0"} ${strategyInspector.postNexusEnergyCandidate || "Lepidoptera"}, still below the stop line.`,
+        };
+      }
+      return {
+        speaker: "Beetle Magus",
+        lane,
+        candidate,
+        bubble: "Rituals stay sealed. Auto-cast is off.",
+      };
+    }
+
+    if (lane === "Meat") {
+      return {
+        speaker: "Flesh Smith",
+        lane,
+        candidate,
+        bubble: "Forge the next body-step, then refill the hive neurons we spent.",
+      };
+    }
+
+    if (lane === "Engine") {
+      return {
+        speaker: "Brood Architect",
+        lane,
+        candidate,
+        bubble: strategyInspector?.protectedResources?.includes("territory")
+          ? "Save territory. Expansion is near."
+          : "Expansion is the next larva engine milestone.",
+      };
+    }
+
+    return fallback;
+  }
+
+  function councilCardHtml(card, activeSpeaker) {
     const decision = normalizeCouncilDecision(card.decision);
     const relevantClass = card.relevant ? "is-relevant" : "is-muted";
+    const activeClass = activeSpeaker?.speaker === card.name ? "is-active" : "";
     return `
-      <article class="kbc-council-card ${relevantClass}" data-kbc-decision="${escapeHtml(decision)}">
+      <article class="kbc-council-card ${relevantClass} ${activeClass}" data-kbc-decision="${escapeHtml(decision)}">
         <div class="kbc-council-card-head">
           <span class="kbc-council-icon" aria-hidden="true">${card.icon}</span>
           <div>
@@ -2726,8 +2881,8 @@ function getDisplayName(item) {
           </div>
           ${councilBadgeHtml(decision)}
         </div>
-        <div class="kbc-council-action">${escapeHtml(card.action || "No active action")}</div>
-        <p>${escapeHtml(card.advice || "Observing this lane.")}</p>
+        <div class="kbc-council-action">${escapeHtml(card.spoken || "Observing this lane.")}</div>
+        <p class="kbc-council-why">${escapeHtml(card.why || "No clear reason reported this run.")}</p>
         ${councilBlockersHtml(card.blockers)}
         <details class="kbc-council-technical">
           <summary>Technical details</summary>
@@ -2752,11 +2907,19 @@ function getDisplayName(item) {
         name: "General Mandible",
         role: "Territory & Army",
         decision: selectedLaneDecision("Territory", strategyInspector.territoryPrepDecision || territoryLane?.decision),
-        action: firstCouncilText(strategyInspector.territoryPrepCandidate, territoryLane?.title, strategyInspector.armyPrepMissingUnits),
-        advice: normalizeCouncilDecision(strategyInspector.territoryPrepDecision || territoryLane?.decision) === "BUY"
-          ? "The front is moving with a bounded army or territory action."
-          : "I hold the front until territory ROI, army seed, and hard guards agree.",
+        spoken: normalizeCouncilDecision(strategyInspector.expansionArmySeedDecision || strategyInspector.territoryPrepDecision || territoryLane?.decision) === "BUY"
+          ? "Raise the army to claim territory faster."
+          : (strategyInspector.expansionArmySeedInsideSaveWindow === "yes"
+            ? "Hold territory. Expansion is close."
+            : "No army move would speed Expansion enough yet."),
+        why: firstCouncilText(
+          strategyInspector.expansionArmySeedReason,
+          strategyInspector.territoryPrepReason,
+          strategyInspector.territoryDidNotBuyReason,
+          territoryLane?.reason
+        ),
         technical: firstCouncilText(
+          strategyInspector.expansionArmySeedReason,
           strategyInspector.territoryPrepReason,
           strategyInspector.territoryDidNotBuyReason,
           territoryLane?.reason
@@ -2773,12 +2936,12 @@ function getDisplayName(item) {
         name: "Beetle Magus",
         role: "Energy & Abilities",
         decision: selectedLaneDecision("Energy", strategyInspector.postNexusEnergyDecision || strategyInspector.abilityPrepDecision || energyLane?.decision || abilityLane?.decision),
-        action: firstCouncilText(strategyInspector.postNexusEnergyCandidate, strategyInspector.abilityPrepCandidate, energyLane?.title, abilityLane?.title, strategyInspector.nexus),
-        advice: config.autoCastAbilities
-          ? "Ritual casting is enabled by user setting; hard guards still apply."
-          : (normalizeCouncilDecision(strategyInspector.postNexusEnergyDecision) === "BUY"
-            ? "Post-Nexus energy growth is allowed as a bounded unit buy; rituals remain disabled."
-            : "Mana is reserved. No rituals are cast without your order."),
+        spoken: normalizeCouncilDecision(strategyInspector.postNexusEnergyDecision) === "BUY"
+          ? "Grow energy carefully with a small Lepidoptera step."
+          : "Rituals stay sealed. Auto-cast is off.",
+        why: normalizeCouncilDecision(strategyInspector.postNexusEnergyDecision) === "BUY"
+          ? "Energy growth is still below the configured stop line."
+          : (strategyInspector.postNexusEnergyBlockedBy || "Energy growth has reached a hold condition."),
         technical: firstCouncilText(strategyInspector.postNexusEnergyReason, strategyInspector.abilityPrepReason, energyLane?.reason, abilityLane?.reason, strategyInspector.lepidoptera),
         blockers: [
           config.autoCastAbilities ? "" : "auto-cast disabled",
@@ -2793,14 +2956,12 @@ function getDisplayName(item) {
         name: "Larva Steward",
         role: "Larvae & Clone Buffer",
         decision: strategyInspector.cloneBufferHardLockActive === "yes" ? "HOLD" : normalizeCouncilDecision(cloneLane?.decision, "OBSERVE"),
-        action: `Buffer ${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"})`,
-        advice: strategyInspector.cloneBufferHardLockActive === "yes"
-          ? "Larvae are guarded until clone debt is recovered."
-          : (normalizeCouncilDecision(cloneLane?.decision) === "SIDE" || normalizeCouncilDecision(cloneLane?.decision) === "BUY"
-            ? "I am building the cocoon buffer as a side task."
-            : (strategyInspector.cloneBufferRecoveryComplete === "yes"
-              ? "The larvae ledger is satisfied; clone prep remains a side task."
-              : "I am waiting for safe larvae, cooldown, or cocoon visibility.")),
+        spoken: strategyInspector.cloneBufferHardLockActive === "yes"
+          ? "Protect larvae until the clone debt is rebuilt."
+          : (strategyInspector.cloneBufferRecoveryComplete === "yes"
+            ? "The clone buffer is safe again."
+            : "Add cocoons so Clone Larvae can be absorbed later."),
+        why: `Buffer ${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"}).`,
         technical: firstCouncilText(strategyInspector.cloneBufferReason, cloneLane?.reason, `spendable larvae ${strategyInspector.cloneBufferSpendableLarvae || "0"}`),
         blockers: [
           strategyInspector.cloneBufferHardLockActive === "yes" ? "clone hard lock" : "",
@@ -2814,10 +2975,12 @@ function getDisplayName(item) {
         name: "Flesh Smith",
         role: "Meat Chain",
         decision: selectedLaneDecision("Meat", strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision),
-        action: firstCouncilText(strategyInspector.parentStepCandidate, strategyInspector.unlockPlannerCandidate, strategyInspector.meatActionUnitName, meatLane?.title),
-        advice: normalizeCouncilDecision(strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision) === "BUY"
-          ? "I am forging the next meat-chain step with bounded spend."
-          : "I wait for reserve, payback, or the active action unit to line up.",
+        spoken: normalizeCouncilDecision(strategyInspector.parentStepDecision || strategyInspector.unlockPlannerDecision || meatLane?.decision) === "BUY"
+          ? "Convert hive neurons into neural clusters for the target path."
+          : "The meat chain waits for a safer step.",
+        why: normalizeCouncilDecision(strategyInspector.actionUnitRefillDecision) === "BUY"
+          ? "Refill the hive neurons spent on the parent step."
+          : "Reserve and payback guards still apply.",
         technical: firstCouncilText(
           strategyInspector.parentStepReason,
           strategyInspector.actionUnitRefillReason,
@@ -2838,10 +3001,12 @@ function getDisplayName(item) {
         name: "Twin Oracle",
         role: "Upgrades & Thresholds",
         decision: selectedLaneDecision("Twin|Upgrade", strategyInspector.twinUnlockPrepDecision || strategyInspector.twinUnlockDecision || twinLane?.decision),
-        action: firstCouncilText(strategyInspector.twinUnlockPrepCandidate, strategyInspector.twinUnlockCandidate, strategyInspector.twinUnlockUpgrade, twinLane?.title),
-        advice: strategyInspector.twinUnlockPrepMeaningful === "yes"
-          ? "The threshold omen is close enough to prepare."
-          : "The threshold is too distant for a tiny offering.",
+        spoken: strategyInspector.twinUnlockPrepMeaningful === "yes"
+          ? "Twin threshold is close enough. Prepare the missing chain."
+          : "Too early for Twin Prep. The chunk is too small to matter.",
+        why: strategyInspector.twinUnlockPrepMeaningful === "yes"
+          ? "The threshold gate says this prep is meaningful now."
+          : "Waiting for better threshold proximity.",
         technical: firstCouncilText(
           strategyInspector.twinUnlockPrepDeferredReason,
           strategyInspector.twinUnlockReason,
@@ -2860,8 +3025,12 @@ function getDisplayName(item) {
         name: "Brood Architect",
         role: "Hatchery & Expansion",
         decision: selectedLaneDecision("Engine", engineLane?.decision || strategyInspector.mainDecision),
-        action: firstCouncilText(engineLane?.title, strategyInspector.waits, strategyInspector.protectedResources),
-        advice: "The build plan protects Hatchery, Expansion, and larva-engine timing.",
+        spoken: strategyInspector.protectedResources?.includes("territory")
+          ? "Save territory. Expansion is near."
+          : "Expansion is the next larva engine milestone.",
+        why: strategyInspector.protectedResources?.includes("territory")
+          ? "Not buyable yet, but territory must be held for the save window."
+          : "Not buyable yet.",
         technical: firstCouncilText(engineLane?.reason, strategyInspector.waits, strategyInspector.protectedResources),
         blockers: [
           strategyInspector.protectedResources,
@@ -2896,6 +3065,7 @@ function getDisplayName(item) {
       liveDiagnosticsWarningLabel()
     ) || "none";
     const focusItems = buildCouncilFocusItems();
+    const activeSpeaker = buildCouncilSpeakerState();
 
     return `
       <div class="kbc-council-shell">
@@ -2910,7 +3080,7 @@ function getDisplayName(item) {
           ${councilSummaryTile("Phase", strategyInspector.phase || "n/a")}
           ${councilSummaryTile("Goal", strategyInspector.goal || "n/a")}
           ${councilSummaryTile("Main", strategyInspector.overseerMainSelected || "none")}
-          ${councilSummaryTile("Side", strategyInspector.overseerSideSelected || "none")}
+          ${councilSummaryTile("Companion", strategyInspector.overseerSideSelected || "none")}
           ${councilSummaryTile("Actions", strategyInspector.overseerActionsUsed || strategyInspector.actions || "0/?")}
           ${councilSummaryTile("Next", strategyInspector.nextLikelyBuy || "unknown")}
           ${councilSummaryTile("Blocker", importantBlocker, importantBlocker === "none" ? "" : "warn")}
@@ -2919,8 +3089,13 @@ function getDisplayName(item) {
           <strong>Focus now</strong>
           <ul>${focusItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
         </section>
+        <section class="kbc-council-speaker" aria-label="Active speaker">
+          <strong>${escapeHtml(activeSpeaker.speaker || "The Council")}</strong>
+          <div class="kbc-council-bubble">${escapeHtml(activeSpeaker.bubble || "Observe the next run.")}</div>
+          <small>Winning lane: ${escapeHtml(activeSpeaker.lane || "none")} · Candidate: ${escapeHtml(activeSpeaker.candidate || "none")}</small>
+        </section>
         <div class="kbc-council-grid">
-          ${buildCouncilCards().map(councilCardHtml).join("")}
+          ${buildCouncilCards().map((card) => councilCardHtml(card, activeSpeaker)).join("")}
         </div>
       </div>
     `;
@@ -2947,7 +3122,7 @@ function getDisplayName(item) {
     const cards = [
       ["Overseer", strategyInspector.overseerDecision || strategyInspector.laneCoordinatorDecision || "none", strategyInspector.overseerWhySelected || "", strategyInspector.overseerActionsUsed || ""],
       ["Main selected", strategyInspector.overseerMainSelected || "none", strategyInspector.overseerWhySelected || "", ""],
-      ["Side selected", strategyInspector.overseerSideSelected || "none", strategyInspector.overseerWhyNoSide || "", strategyInspector.overseerBlockedByHardGuard || ""],
+      ["Companion selected", strategyInspector.overseerSideSelected || "none", strategyInspector.overseerWhyNoSide || "", strategyInspector.overseerBlockedByHardGuard || ""],
       laneCard("Engine / Larva", laneByName.get("Engine")),
       laneCard("Meat", laneByName.get("Meat")),
       laneCard("Territory / Army", laneByName.get("Territory")),
@@ -2981,7 +3156,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.9.0",
+      scriptVersion: "0.10.0",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -3140,8 +3315,27 @@ function getDisplayName(item) {
       territoryPrepVisibleFightingUnits: strategyInspector?.territoryPrepVisibleFightingUnits ?? territoryPrepPlannerState?.territoryPrepVisibleFightingUnits ?? 0,
       territoryPrepBuyableFightingUnits: strategyInspector?.territoryPrepBuyableFightingUnits ?? territoryPrepPlannerState?.territoryPrepBuyableFightingUnits ?? 0,
       territoryPrepMissingMatchedCount: strategyInspector?.territoryPrepMissingMatchedCount ?? territoryPrepPlannerState?.territoryPrepMissingMatchedCount ?? 0,
+      expansionArmySeedCandidate: strategyInspector?.expansionArmySeedCandidate || territoryPrepPlannerState?.expansionArmySeedCandidate || "none",
+      expansionArmySeedDecision: strategyInspector?.expansionArmySeedDecision || territoryPrepPlannerState?.expansionArmySeedDecision || "OBSERVE",
+      expansionArmySeedUnit: strategyInspector?.expansionArmySeedUnit || territoryPrepPlannerState?.expansionArmySeedUnit || "none",
+      expansionArmySeedAmount: strategyInspector?.expansionArmySeedAmount || territoryPrepPlannerState?.expansionArmySeedAmount || "0",
+      expansionArmySeedReason: strategyInspector?.expansionArmySeedReason || territoryPrepPlannerState?.expansionArmySeedReason || "none",
+      expansionArmySeedEtaBefore: strategyInspector?.expansionArmySeedEtaBefore || territoryPrepPlannerState?.expansionArmySeedEtaBefore || "n/a",
+      expansionArmySeedEtaAfter: strategyInspector?.expansionArmySeedEtaAfter || territoryPrepPlannerState?.expansionArmySeedEtaAfter || "n/a",
+      expansionArmySeedEtaGainSeconds: strategyInspector?.expansionArmySeedEtaGainSeconds || territoryPrepPlannerState?.expansionArmySeedEtaGainSeconds || "0",
+      expansionArmySeedEtaGainPercent: strategyInspector?.expansionArmySeedEtaGainPercent || territoryPrepPlannerState?.expansionArmySeedEtaGainPercent || "0%",
+      expansionArmySeedTerritoryPerSecondBefore: strategyInspector?.expansionArmySeedTerritoryPerSecondBefore || territoryPrepPlannerState?.expansionArmySeedTerritoryPerSecondBefore || "0",
+      expansionArmySeedTerritoryPerSecondAfter: strategyInspector?.expansionArmySeedTerritoryPerSecondAfter || territoryPrepPlannerState?.expansionArmySeedTerritoryPerSecondAfter || "0",
+      expansionArmySeedBlockedBy: strategyInspector?.expansionArmySeedBlockedBy || territoryPrepPlannerState?.expansionArmySeedBlockedBy || "none",
+      expansionArmySeedInsideSaveWindow: strategyInspector?.expansionArmySeedInsideSaveWindow || territoryPrepPlannerState?.expansionArmySeedInsideSaveWindow || "no",
+      expansionArmySeedBestRejectedUnit: strategyInspector?.expansionArmySeedBestRejectedUnit || territoryPrepPlannerState?.expansionArmySeedBestRejectedUnit || "none",
+      expansionArmySeedBestRejectedReason: strategyInspector?.expansionArmySeedBestRejectedReason || territoryPrepPlannerState?.expansionArmySeedBestRejectedReason || "none",
       territoryDidNotBuyReason: strategyInspector?.territoryDidNotBuyReason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: strategyInspector?.armyPrepMissingUnits || territoryPrepPlannerState?.armyPrepMissingUnits || abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "none",
+      activeCouncilSpeaker: strategyInspector?.activeCouncilSpeaker || "none",
+      councilWinningLane: strategyInspector?.councilWinningLane || "none",
+      councilWinningCandidate: strategyInspector?.councilWinningCandidate || "none",
+      councilFocusBubble: strategyInspector?.councilFocusBubble || "none",
       advisorLog: advisorLog.slice(),
       purchaseLog: purchaseLog.slice(),
       configSummary: cfg,
@@ -3175,11 +3369,11 @@ function getDisplayName(item) {
       `- Goal: ${inspector.goal || "n/a"}`,
       `- Decision: ${inspector.decision || "n/a"}`,
       `- Main: ${inspector.mainDecision || "n/a"}`,
-      `- Side: ${inspector.sideDecision || "none"}`,
+      `- Companion: ${inspector.companionDecision || inspector.sideDecision || "none"}`,
       `- Status: ${inspector.compactStatus || "n/a"}`,
       `- Reason: ${inspector.reason || "n/a"}`,
       `- Main reason: ${inspector.mainReason || "none"}`,
-      `- Side reason: ${inspector.sideReason || "none"}`,
+      `- Companion reason: ${inspector.sideReason || "none"}`,
       `- Best allowed main: ${rankingLine(payload.bestAllowedMainCandidate)}`,
       `- Best allowed side: ${rankingLine(payload.bestAllowedSideCandidate)}`,
       `- Best rejected strategic: ${rankingLine(payload.bestRejectedStrategicCandidate)}`,
@@ -3307,12 +3501,29 @@ function getDisplayName(item) {
       `- Ability prep requires clone buffer: ${payload.abilityPrepRequiresCloneBuffer || "no"}`,
       `- House of Mirrors army value: ${payload.houseOfMirrorsArmyValue || "n/a"}`,
       `- House of Mirrors missing units: ${payload.houseOfMirrorsMissingUnits || "none"}`,
+      `- Army seed candidate: ${payload.expansionArmySeedCandidate || "none"}`,
+      `- Army seed decision: ${payload.expansionArmySeedDecision || "OBSERVE"}`,
+      `- Army seed reason: ${payload.expansionArmySeedReason || "none"}`,
+      `- Army seed unit: ${payload.expansionArmySeedUnit || "none"}`,
+      `- Army seed amount: ${payload.expansionArmySeedAmount || "0"}`,
+      `- Army seed ETA before: ${payload.expansionArmySeedEtaBefore || "n/a"}`,
+      `- Army seed ETA after: ${payload.expansionArmySeedEtaAfter || "n/a"}`,
+      `- Army seed ETA gain: ${payload.expansionArmySeedEtaGainSeconds || "0"}s (${payload.expansionArmySeedEtaGainPercent || "0%"})`,
+      `- Army seed territory/sec: ${payload.expansionArmySeedTerritoryPerSecondBefore || "0"} -> ${payload.expansionArmySeedTerritoryPerSecondAfter || "0"}`,
+      `- Army seed blocked by: ${payload.expansionArmySeedBlockedBy || "none"}`,
+      `- Army seed inside save-window: ${payload.expansionArmySeedInsideSaveWindow || "no"}`,
+      `- Army seed best rejected unit: ${payload.expansionArmySeedBestRejectedUnit || "none"}`,
+      `- Army seed best rejected reason: ${payload.expansionArmySeedBestRejectedReason || "none"}`,
+      `- Council active speaker: ${payload.activeCouncilSpeaker || "none"}`,
+      `- Council winning lane: ${payload.councilWinningLane || "none"}`,
+      `- Council winning candidate: ${payload.councilWinningCandidate || "none"}`,
+      `- Council focus bubble: ${payload.councilFocusBubble || "none"}`,
       `- Skipped meat candidates: ${(payload.skippedMeatCandidates || []).map((item) => `${item.candidate || "unknown"}: ${item.reason || "skipped"}`).join("; ") || "none"}`,
       ``,
       `## Live diagnostics`,
       ``,
       `- History size: ${diag.historySize ?? 0}`,
-      `- Side-only runs: ${diag.sideOnlyRuns ?? 0}`,
+      `- Side-task-only runs: ${diag.sideOnlyRuns ?? 0}`,
       `- Main-buy runs: ${diag.mainBuyRuns ?? 0}`,
       `- Hold runs: ${diag.holdRuns ?? 0}`,
       `- Recent main hold runs: ${diag.recentMainHoldRuns ?? 0}`,
@@ -3354,7 +3565,7 @@ function getDisplayName(item) {
       ``,
       `## Run history summary`,
       ``,
-      ...history.slice(-20).map((run) => `- ${run.timestamp} · ${run.decision} · ${run.mainActions} main/${run.sideActions} side · ${run.phase} · next ${run.nextLikelyBuy || "unknown"} · blocked ${run.blockedBySummary || "none"}`),
+      ...history.slice(-20).map((run) => `- ${run.timestamp} · ${run.decision} · ${run.mainActions} main/${run.sideActions} side-tasks · ${run.phase} · next ${run.nextLikelyBuy || "unknown"} · blocked ${run.blockedBySummary || "none"}`),
       ``,
       `## Advisor log`,
       ``,
@@ -6009,6 +6220,7 @@ function getDisplayName(item) {
 
       const missing = [];
       let armyValue = newDecimal(0);
+      let territoryArmyTotal = newDecimal(0);
 
       for (const tier of tiers) {
         const count = unitCountByNameLike(game, tier.key);
@@ -6016,10 +6228,18 @@ function getDisplayName(item) {
         if (!isPositive(count)) missing.push(tier.label);
       }
 
+      for (const unit of game.unitlist?.() || []) {
+        if (getTabName(unit) !== "territory") continue;
+        territoryArmyTotal = territoryArmyTotal.plus(decimalFrom(unit?.count?.() || 0));
+      }
+
       const needsArmyPrep = missing.length >= 2 || !isPositive(armyValue);
+      const territoryArmyExists = isPositive(territoryArmyTotal);
       const decision = needsArmyPrep ? "HOLD" : "PLAN";
       const reason = needsArmyPrep
-        ? `army prep missing; top fighting units ${missing.join(", ")} are empty`
+        ? (territoryArmyExists
+          ? `Territory army exists, but the mirror ritual still lacks its preferred units: ${missing.join(", ")}.`
+          : `Mirror ritual army prep missing; preferred units ${missing.join(", ")} are still empty.`)
         : "army has meaningful mirror value; energy available; auto-cast disabled";
 
       recordAdvisor(decision, "House of Mirrors", reason);
@@ -6592,11 +6812,30 @@ function getDisplayName(item) {
     return newDecimal(1);
   }
 
+  function getExpansionArmySeedBuyNum(unit) {
+    const max = safe(`Expansion army seed max ${unit?.name}`, () => unit?.maxCostMet?.(config.unitBuyPercent)) || newDecimal(0);
+    if (!isPositive(max)) return newDecimal(0);
+
+    const percent = clampNumber(config.expansionArmySeedMaxChunkPercent, 0.1, 25, DEFAULT_CONFIG.expansionArmySeedMaxChunkPercent);
+    const chunk = decimalFrom(max).times(percent).dividedBy(100).floor();
+    if (isPositive(chunk)) return chunk;
+    return newDecimal(1);
+  }
+
   function buildTerritoryPrepProposal(game, engine, protectedResources) {
     const armyPrep = getHouseOfMirrorsArmyPrep(game);
     const missingLabels = getArmyPrepMissingUnitLabels(game);
-    const expansionEtaBefore = Number.isFinite(engine?.expansionEta) ? formatDuration(engine.expansionEta) : "n/a";
+    const expansionEtaBeforeSeconds = Number.isFinite(engine?.expansionEta) ? Math.max(0, Number(engine.expansionEta)) : Infinity;
+    const expansionEtaBefore = Number.isFinite(expansionEtaBeforeSeconds) ? formatDuration(expansionEtaBeforeSeconds) : "n/a";
     const scannedFightingUnits = (game.unitlist?.() || []).filter((unit) => unit?.isVisible?.() && (getTabName(unit) === "territory" || HOUSE_OF_MIRRORS_ARMY_TIERS.some((tier) => unitMatchesArmyPrepLabel(unit, tier.label))));
+    const visibleFightingUnits = scannedFightingUnits.filter((unit) => isPositive(productionPerUnit(unit, "territory")));
+    const buyableUnits = visibleFightingUnits.filter((unit) => unit?.isBuyable?.());
+    const matchingBuyableUnits = buyableUnits.filter((unit) => missingLabels.some((label) => unitMatchesArmyPrepLabel(unit, label)));
+
+    const nowNexus = Math.floor(decimalToNumber(getNexusCount(game), 0));
+    const postNexusReady = nowNexus >= Number(config.nexusTarget || DEFAULT_CONFIG.nexusTarget);
+    const expansionRelevant = !!engine?.expansion && (postNexusReady || Number.isFinite(engine?.expansionEta) || !!engine?.expansionBuyable);
+    const insideSaveWindow = !!(protectedResources?.has("territory") || (Number.isFinite(engine?.expansionEta) && engine.expansionEta > 0 && engine.expansionEta <= config.saveForExpansionSeconds));
 
     if (!config.territoryPrepPlanner) {
       return recordTerritoryPrepPlannerState({
@@ -6611,25 +6850,151 @@ function getDisplayName(item) {
         territoryPrepVisibleFightingUnits: scannedFightingUnits.length,
         territoryPrepBuyableFightingUnits: scannedFightingUnits.filter((unit) => unit?.isBuyable?.()).length,
         territoryPrepMissingMatchedCount: missingLabels.length,
+        expansionArmySeedCandidate: "none",
+        expansionArmySeedDecision: "OBSERVE",
+        expansionArmySeedReason: "expansion army seed planner disabled",
+        expansionArmySeedUnit: "none",
+        expansionArmySeedAmount: "0",
+        expansionArmySeedEtaBefore: expansionEtaBefore,
+        expansionArmySeedEtaAfter: "n/a",
+        expansionArmySeedEtaGainSeconds: "0",
+        expansionArmySeedEtaGainPercent: "0%",
+        expansionArmySeedTerritoryPerSecondBefore: "0",
+        expansionArmySeedTerritoryPerSecondAfter: "0",
+        expansionArmySeedBlockedBy: "planner disabled",
+        expansionArmySeedInsideSaveWindow: insideSaveWindow,
+        expansionArmySeedBestRejectedUnit: "none",
+        expansionArmySeedBestRejectedReason: "planner disabled",
       });
     }
 
-    const visibleFightingUnits = scannedFightingUnits.filter((unit) => {
-      const producesTerritory = isPositive(productionPerUnit(unit, "territory"));
-      return producesTerritory || HOUSE_OF_MIRRORS_ARMY_TIERS.some((tier) => unitMatchesArmyPrepLabel(unit, tier.label));
-    });
-    const buyableUnits = visibleFightingUnits.filter((unit) => unit?.isBuyable?.());
-    const matchingBuyableUnits = buyableUnits.filter((unit) => missingLabels.some((label) => unitMatchesArmyPrepLabel(unit, label)));
+    if (!config.expansionArmySeedPlanner) {
+      return recordTerritoryPrepPlannerState({
+        territoryPrepCandidate: "none",
+        territoryPrepDecision: "OBSERVE",
+        territoryPrepReason: "expansion army seed planner disabled",
+        territoryPrepExpansionEtaBefore: expansionEtaBefore,
+        territoryPrepExpansionEtaAfter: "n/a",
+        territoryPrepBlockedBy: "planner disabled",
+        armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+        territoryPrepScannedFightingUnits: scannedFightingUnits.length,
+        territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
+        territoryPrepBuyableFightingUnits: buyableUnits.length,
+        territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
+        expansionArmySeedCandidate: "none",
+        expansionArmySeedDecision: "OBSERVE",
+        expansionArmySeedReason: "expansion army seed planner disabled",
+        expansionArmySeedUnit: "none",
+        expansionArmySeedAmount: "0",
+        expansionArmySeedEtaBefore: expansionEtaBefore,
+        expansionArmySeedEtaAfter: "n/a",
+        expansionArmySeedEtaGainSeconds: "0",
+        expansionArmySeedEtaGainPercent: "0%",
+        expansionArmySeedTerritoryPerSecondBefore: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedTerritoryPerSecondAfter: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedBlockedBy: "planner disabled",
+        expansionArmySeedInsideSaveWindow: insideSaveWindow,
+        expansionArmySeedBestRejectedUnit: "none",
+        expansionArmySeedBestRejectedReason: "planner disabled",
+      });
+    }
 
-    if (!visibleFightingUnits.length) {
+    if (!expansionRelevant) {
+      const holdReason = "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.";
       addLaneCandidate({
         lane: "Territory",
         decision: "HOLD",
-        candidate: "Territory prep",
-        reason: armyPrep.visible && missingLabels.length
-          ? "House of Mirrors army prep missing; no visible matching fighting units"
-          : "no visible fighting units",
-        blockers: [armyPrep.visible && missingLabels.length ? "no visible matching fighting units" : "no visible fighting units"],
+        candidate: "Army seed",
+        reason: holdReason,
+        blockers: ["expansion not relevant yet"],
+        score: 0,
+        target: "Expansion",
+        resource: "territory",
+      });
+
+      return recordTerritoryPrepPlannerState({
+        territoryPrepCandidate: "none",
+        territoryPrepDecision: "HOLD",
+        territoryPrepReason: holdReason,
+        territoryPrepExpansionEtaBefore: expansionEtaBefore,
+        territoryPrepExpansionEtaAfter: "n/a",
+        territoryPrepBlockedBy: "expansion not relevant yet",
+        armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+        territoryPrepScannedFightingUnits: scannedFightingUnits.length,
+        territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
+        territoryPrepBuyableFightingUnits: buyableUnits.length,
+        territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
+        expansionArmySeedCandidate: "none",
+        expansionArmySeedDecision: "HOLD",
+        expansionArmySeedReason: holdReason,
+        expansionArmySeedUnit: "none",
+        expansionArmySeedAmount: "0",
+        expansionArmySeedEtaBefore: expansionEtaBefore,
+        expansionArmySeedEtaAfter: "n/a",
+        expansionArmySeedEtaGainSeconds: "0",
+        expansionArmySeedEtaGainPercent: "0%",
+        expansionArmySeedTerritoryPerSecondBefore: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedTerritoryPerSecondAfter: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedBlockedBy: "expansion not relevant yet",
+        expansionArmySeedInsideSaveWindow: insideSaveWindow,
+        expansionArmySeedBestRejectedUnit: "none",
+        expansionArmySeedBestRejectedReason: "expansion not relevant yet",
+      });
+    }
+
+    if (config.expansionArmySeedDoNotSpendInsideSaveWindow && insideSaveWindow) {
+      const holdReason = "Army seed HOLD: Expansion is already inside save-window; saving territory for Expansion.";
+      addLaneCandidate({
+        lane: "Territory",
+        decision: "HOLD",
+        candidate: "Army seed",
+        reason: holdReason,
+        blockers: ["territory protected for Expansion"],
+        score: 0,
+        target: "Expansion",
+        resource: "territory",
+      });
+
+      return recordTerritoryPrepPlannerState({
+        territoryPrepCandidate: "none",
+        territoryPrepDecision: "HOLD",
+        territoryPrepReason: holdReason,
+        territoryPrepExpansionEtaBefore: expansionEtaBefore,
+        territoryPrepExpansionEtaAfter: expansionEtaBefore,
+        territoryPrepBlockedBy: "inside save-window",
+        armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
+        territoryPrepScannedFightingUnits: scannedFightingUnits.length,
+        territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
+        territoryPrepBuyableFightingUnits: buyableUnits.length,
+        territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
+        expansionArmySeedCandidate: "none",
+        expansionArmySeedDecision: "HOLD",
+        expansionArmySeedReason: holdReason,
+        expansionArmySeedUnit: "none",
+        expansionArmySeedAmount: "0",
+        expansionArmySeedEtaBefore: expansionEtaBefore,
+        expansionArmySeedEtaAfter: expansionEtaBefore,
+        expansionArmySeedEtaGainSeconds: "0",
+        expansionArmySeedEtaGainPercent: "0%",
+        expansionArmySeedTerritoryPerSecondBefore: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedTerritoryPerSecondAfter: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedBlockedBy: "inside save-window",
+        expansionArmySeedInsideSaveWindow: true,
+        expansionArmySeedBestRejectedUnit: "none",
+        expansionArmySeedBestRejectedReason: "inside save-window",
+      });
+    }
+
+    if (!visibleFightingUnits.length) {
+      const holdReason = armyPrep.visible && missingLabels.length
+        ? "Army seed HOLD: no visible territory-producing army units; territory army exists check cannot pass yet."
+        : "Army seed HOLD: no visible territory-producing army units.";
+      addLaneCandidate({
+        lane: "Territory",
+        decision: "HOLD",
+        candidate: "Army seed",
+        reason: holdReason,
+        blockers: ["no visible territory army"],
         score: 0,
         target: "Expansion",
         resource: "territory",
@@ -6637,29 +7002,41 @@ function getDisplayName(item) {
       return recordTerritoryPrepPlannerState({
         territoryPrepCandidate: "none",
         territoryPrepDecision: "HOLD",
-        territoryPrepReason: armyPrep.visible && missingLabels.length
-          ? "House of Mirrors army prep missing; no visible matching fighting units"
-          : "no visible fighting units",
+        territoryPrepReason: holdReason,
         territoryPrepExpansionEtaBefore: expansionEtaBefore,
         territoryPrepExpansionEtaAfter: "n/a",
-        territoryPrepBlockedBy: armyPrep.visible && missingLabels.length ? "no visible matching fighting units" : "no visible fighting units",
+        territoryPrepBlockedBy: "no visible territory army",
         armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
         territoryPrepScannedFightingUnits: scannedFightingUnits.length,
         territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
         territoryPrepBuyableFightingUnits: buyableUnits.length,
         territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
+        expansionArmySeedCandidate: "none",
+        expansionArmySeedDecision: "HOLD",
+        expansionArmySeedReason: holdReason,
+        expansionArmySeedUnit: "none",
+        expansionArmySeedAmount: "0",
+        expansionArmySeedEtaBefore: expansionEtaBefore,
+        expansionArmySeedEtaAfter: "n/a",
+        expansionArmySeedEtaGainSeconds: "0",
+        expansionArmySeedEtaGainPercent: "0%",
+        expansionArmySeedTerritoryPerSecondBefore: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedTerritoryPerSecondAfter: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedBlockedBy: "no visible territory army",
+        expansionArmySeedInsideSaveWindow: insideSaveWindow,
+        expansionArmySeedBestRejectedUnit: "none",
+        expansionArmySeedBestRejectedReason: "no visible territory army",
       });
     }
 
     if (!buyableUnits.length) {
+      const holdReason = "Army seed HOLD: territory army is visible, but no safe buyable territory producer right now.";
       addLaneCandidate({
         lane: "Territory",
         decision: "HOLD",
-        candidate: "Territory prep",
-        reason: armyPrep.visible && missingLabels.length
-          ? "House of Mirrors army prep missing; no buyable matching fighting units found"
-          : "no buyable fighting units",
-        blockers: [armyPrep.visible && missingLabels.length ? "no buyable matching fighting units found" : "no buyable fighting units"],
+        candidate: "Army seed",
+        reason: holdReason,
+        blockers: ["no buyable territory army"],
         score: 0,
         target: "Expansion",
         resource: "territory",
@@ -6667,136 +7044,198 @@ function getDisplayName(item) {
       return recordTerritoryPrepPlannerState({
         territoryPrepCandidate: "none",
         territoryPrepDecision: "HOLD",
-        territoryPrepReason: armyPrep.visible && missingLabels.length
-          ? "House of Mirrors army prep missing; no buyable matching fighting units found"
-          : "no buyable fighting units",
+        territoryPrepReason: holdReason,
         territoryPrepExpansionEtaBefore: expansionEtaBefore,
         territoryPrepExpansionEtaAfter: "n/a",
-        territoryPrepBlockedBy: armyPrep.visible && missingLabels.length ? "no buyable matching fighting units found" : "no buyable fighting units",
+        territoryPrepBlockedBy: "no buyable territory army",
         armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
         territoryPrepScannedFightingUnits: scannedFightingUnits.length,
         territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
         territoryPrepBuyableFightingUnits: buyableUnits.length,
         territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
+        expansionArmySeedCandidate: "none",
+        expansionArmySeedDecision: "HOLD",
+        expansionArmySeedReason: holdReason,
+        expansionArmySeedUnit: "none",
+        expansionArmySeedAmount: "0",
+        expansionArmySeedEtaBefore: expansionEtaBefore,
+        expansionArmySeedEtaAfter: "n/a",
+        expansionArmySeedEtaGainSeconds: "0",
+        expansionArmySeedEtaGainPercent: "0%",
+        expansionArmySeedTerritoryPerSecondBefore: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedTerritoryPerSecondAfter: formatSwarmNumber(getVelocity(game, "territory")),
+        expansionArmySeedBlockedBy: "no buyable territory army",
+        expansionArmySeedInsideSaveWindow: insideSaveWindow,
+        expansionArmySeedBestRejectedUnit: "none",
+        expansionArmySeedBestRejectedReason: "no buyable territory army",
       });
     }
 
-    let best = null;
-    let blockedReason = "ROI below minimum";
-    let sawZeroTerritoryProduction = false;
+    const territoryVelocityBefore = decimalFrom(getVelocity(game, "territory"));
+    const territoryNow = getCurrentResource(game, "territory");
+    const territoryCost = getCostForResource(engine?.expansion, "territory");
+    const remainingTerritory = decimalFrom(territoryCost).minus(territoryNow);
+    const minEtaGainSeconds = Number(config.expansionArmySeedMinEtaImprovementSeconds || 0);
+    const minEtaGainRatio = Number(config.expansionArmySeedMinEtaImprovementRatio || 0);
+
+    let bestAccepted = null;
+    let bestRejected = null;
+    let bestRejectedReason = "no candidate evaluated";
 
     for (const unit of buyableUnits) {
-      const matchingMissing = missingLabels.find((label) => unitMatchesArmyPrepLabel(unit, label)) || "";
-      const zeroCount = !isPositive(decimalFrom(unit?.count?.() || 0));
-      const forceSingle = !!matchingMissing && zeroCount;
-      const num = getTerritoryPrepBuyNum(unit, forceSingle);
+      const num = getExpansionArmySeedBuyNum(unit);
 
       if (!isPositive(num)) {
-        blockedReason = "no safe territory prep amount";
+        bestRejectedReason = "candidate had no safe bounded chunk";
         continue;
       }
 
       const territory = scoreTerritoryCandidate(game, unit, num, engine);
-      if (!territory) sawZeroTerritoryProduction = true;
+      if (!territory) {
+        bestRejected = {
+          unit,
+          unitName: getDisplayName(unit),
+          num,
+          etaGainSeconds: 0,
+        };
+        bestRejectedReason = `${getDisplayName(unit)} has no territory/sec production in eachProduction()`;
+        continue;
+      }
 
-      const armySeedAllowed = !!(config.territoryArmySeedWhenEmpty && matchingMissing && zeroCount);
-      let candidate = {
+      const block = getUnitCandidateBlock({ unit, meetsMinimum: true }, num, protectedResources, "expansion army seed guard");
+      if (block) {
+        const blockedCandidate = {
+          unit,
+          unitName: getDisplayName(unit),
+          num,
+          etaGainSeconds: territory.etaImprovement,
+        };
+        if (!bestRejected || blockedCandidate.etaGainSeconds > bestRejected.etaGainSeconds) {
+          bestRejected = blockedCandidate;
+          bestRejectedReason = `Army seed HOLD: ${getDisplayName(unit)} would spend a protected resource (${block.reason}).`;
+        }
+        continue;
+      }
+
+      const beforeSeconds = Number.isFinite(territory.etaBeforeSeconds) ? Math.max(0, territory.etaBeforeSeconds) : Infinity;
+      const afterSeconds = Number.isFinite(territory.etaAfterSeconds) ? Math.max(0, territory.etaAfterSeconds) : Infinity;
+      const etaGainSeconds = Number.isFinite(beforeSeconds) && Number.isFinite(afterSeconds)
+        ? Math.max(0, beforeSeconds - afterSeconds)
+        : (!Number.isFinite(beforeSeconds) && Number.isFinite(afterSeconds) ? Number.POSITIVE_INFINITY : 0);
+      const etaGainRatio = Number.isFinite(beforeSeconds) && beforeSeconds > 0
+        ? (Number.isFinite(etaGainSeconds) ? etaGainSeconds / beforeSeconds : 1)
+        : (!Number.isFinite(beforeSeconds) && Number.isFinite(afterSeconds) ? 1 : 0);
+      const territoryPerSecondAfter = territoryVelocityBefore.plus(decimalFrom(territory.addedVelocity || 0));
+
+      const meaningful = (!Number.isFinite(beforeSeconds) && Number.isFinite(afterSeconds))
+        || (Number.isFinite(etaGainSeconds) && etaGainSeconds >= minEtaGainSeconds)
+        || etaGainRatio >= minEtaGainRatio;
+
+      const candidate = {
         unit,
         num,
-        score: territory?.score || unitCostScore(unit),
-        reason: territory?.reason || "eachProduction().territory missing/zero",
-        guardReason: territory?.guardReason || "eachProduction().territory missing/zero",
-        raw: territory?.raw || null,
-        etaImprovement: territory?.etaImprovement || 0,
-        etaBeforeSeconds: territory?.etaBeforeSeconds,
-        etaAfterSeconds: territory?.etaAfterSeconds,
-        meetsMinimum: territory?.meetsMinimum ?? false,
-        armySeed: false,
-        matchingMissing,
+        score: (meaningful ? 60000 : 0) + Math.min(Number.isFinite(etaGainSeconds) ? etaGainSeconds : 999999, 999999) + Math.max(0, unitCostScore(unit) * 0.05),
+        reason: meaningful
+          ? `Army seed BUY ${getDisplayName(unit)}: bounded ${trimNumber(config.expansionArmySeedMaxChunkPercent)}% chunk; Expansion ETA ${Number.isFinite(beforeSeconds) ? formatDuration(beforeSeconds) : "n/a"} -> ${Number.isFinite(afterSeconds) ? formatDuration(afterSeconds) : "n/a"}; territory/sec gain is meaningful; Expansion not inside save-window yet.`
+          : `Army seed HOLD: best candidate ${getDisplayName(unit)} only improves Expansion ETA by ${Number.isFinite(etaGainSeconds) ? formatDuration(etaGainSeconds) : "n/a"}, below ${formatDuration(minEtaGainSeconds)} minimum.`,
+        unitName: getDisplayName(unit),
+        etaBeforeSeconds: beforeSeconds,
+        etaAfterSeconds: afterSeconds,
+        etaGainSeconds,
+        etaGainRatio,
+        territoryPerSecondBefore: territoryVelocityBefore,
+        territoryPerSecondAfter,
+        raw: {
+          etaBeforeSeconds: beforeSeconds,
+          etaAfterSeconds: afterSeconds,
+          etaGainSeconds,
+          etaGainRatio,
+          minEtaGainSeconds,
+          minEtaGainRatio,
+          territoryPerSecondBefore: territoryVelocityBefore,
+          territoryPerSecondAfter,
+          remainingTerritory,
+        },
       };
 
-      let block = getUnitCandidateBlock(candidate, num, protectedResources, "territory prep guard");
-      if (block && !(armySeedAllowed && block.type === "territory-roi")) {
-        blockedReason = block.reason || blockedReason;
-        continue;
+      if (meaningful) {
+        if (!bestAccepted || candidate.score > bestAccepted.score) bestAccepted = candidate;
+      } else if (!bestRejected || candidate.etaGainSeconds > bestRejected.etaGainSeconds) {
+        bestRejected = candidate;
+        bestRejectedReason = candidate.reason;
       }
-
-      if (!territory && !armySeedAllowed) {
-        blockedReason = "eachProduction().territory missing/zero";
-        continue;
-      }
-
-      candidate.armySeed = !!(armySeedAllowed && (!territory || !territory.meetsMinimum));
-      candidate.reason = candidate.armySeed
-        ? `House of Mirrors army prep missing; seeding ${getDisplayName(unit)} with bounded scored chunk; hard blockers clear`
-        : matchingMissing
-          ? `${territory.reason}; supports House of Mirrors prep (${matchingMissing})`
-          : territory.reason;
-      candidate.score += matchingMissing ? 8000 : 0;
-      candidate.score += zeroCount ? 2000 : 0;
-      candidate.score += candidate.armySeed ? 12000 : 0;
-
-      if (!best || candidate.score > best.score) best = candidate;
     }
 
-    if (!best) {
-      const reason = sawZeroTerritoryProduction && blockedReason === "ROI below minimum"
-        ? "eachProduction().territory missing/zero"
-        : blockedReason;
+    if (!bestAccepted) {
+      const holdReason = bestRejectedReason || "Army seed HOLD: no candidate improved Expansion ETA meaningfully.";
       addLaneCandidate({
         lane: "Territory",
         decision: "HOLD",
-        candidate: "Territory prep",
-        reason: armyPrep.visible && missingLabels.length && reason === "ROI below minimum"
-          ? "House of Mirrors army prep missing; no buyable matching fighting units found"
-          : reason,
-        blockers: [reason],
+        candidate: bestRejected?.unitName || "Army seed",
+        reason: holdReason,
+        blockers: ["not meaningful"],
         score: 0,
         target: "Expansion",
         resource: "territory",
       });
+
       return recordTerritoryPrepPlannerState({
-        territoryPrepCandidate: "none",
+        territoryPrepCandidate: bestRejected?.unitName || "none",
         territoryPrepDecision: "HOLD",
-        territoryPrepReason: armyPrep.visible && missingLabels.length && reason === "ROI below minimum"
-          ? "House of Mirrors army prep missing; no buyable matching fighting units found"
-          : reason,
+        territoryPrepReason: holdReason,
+        territoryPrepUnit: bestRejected?.unitName || "none",
+        territoryPrepAmount: bestRejected?.num ? formatSwarmNumber(bestRejected.num) : "0",
         territoryPrepExpansionEtaBefore: expansionEtaBefore,
-        territoryPrepExpansionEtaAfter: "n/a",
-        territoryPrepBlockedBy: reason,
+        territoryPrepExpansionEtaAfter: bestRejected && Number.isFinite(bestRejected.etaAfterSeconds) ? formatDuration(bestRejected.etaAfterSeconds) : "n/a",
+        territoryPrepBlockedBy: "not meaningful",
         armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
         territoryPrepScannedFightingUnits: scannedFightingUnits.length,
         territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
         territoryPrepBuyableFightingUnits: buyableUnits.length,
         territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
+        expansionArmySeedCandidate: bestRejected?.unitName || "none",
+        expansionArmySeedDecision: "HOLD",
+        expansionArmySeedReason: holdReason,
+        expansionArmySeedUnit: bestRejected?.unitName || "none",
+        expansionArmySeedAmount: bestRejected?.num ? formatSwarmNumber(bestRejected.num) : "0",
+        expansionArmySeedEtaBefore: expansionEtaBefore,
+        expansionArmySeedEtaAfter: bestRejected && Number.isFinite(bestRejected.etaAfterSeconds) ? formatDuration(bestRejected.etaAfterSeconds) : "n/a",
+        expansionArmySeedEtaGainSeconds: bestRejected && Number.isFinite(bestRejected.etaGainSeconds) ? trimNumber(bestRejected.etaGainSeconds) : "0",
+        expansionArmySeedEtaGainPercent: bestRejected && Number.isFinite(bestRejected.etaGainRatio) ? `${trimNumber(bestRejected.etaGainRatio * 100)}%` : "0%",
+        expansionArmySeedTerritoryPerSecondBefore: bestRejected?.territoryPerSecondBefore ? formatSwarmNumber(bestRejected.territoryPerSecondBefore) : formatSwarmNumber(territoryVelocityBefore),
+        expansionArmySeedTerritoryPerSecondAfter: bestRejected?.territoryPerSecondAfter ? formatSwarmNumber(bestRejected.territoryPerSecondAfter) : formatSwarmNumber(territoryVelocityBefore),
+        expansionArmySeedBlockedBy: "not meaningful",
+        expansionArmySeedInsideSaveWindow: insideSaveWindow,
+        expansionArmySeedBestRejectedUnit: bestRejected?.unitName || "none",
+        expansionArmySeedBestRejectedReason: holdReason,
       });
     }
 
-    const etaAfter = Number.isFinite(best.etaAfterSeconds) ? formatDuration(best.etaAfterSeconds) : "n/a";
+    const etaAfter = Number.isFinite(bestAccepted.etaAfterSeconds) ? formatDuration(bestAccepted.etaAfterSeconds) : "n/a";
     addLaneCandidate({
       lane: "Territory",
       decision: "BUY",
-      candidate: getDisplayName(best.unit),
-      reason: best.reason,
-      score: best.score,
-      wouldBuyAmount: formatSwarmNumber(best.num),
+      candidate: bestAccepted.unitName,
+      reason: bestAccepted.reason,
+      score: bestAccepted.score,
+      wouldBuyAmount: formatSwarmNumber(bestAccepted.num),
       etaBefore: expansionEtaBefore,
       etaAfter,
-      target: best.armySeed ? "House of Mirrors prep" : "Expansion",
+      target: "Expansion",
       resource: "territory",
       observations: missingLabels.length ? [`army prep missing: ${missingLabels.join(", ")}`] : [],
-      raw: best.raw,
+      raw: bestAccepted.raw,
     });
 
     return recordTerritoryPrepPlannerState({
-      territoryPrepCandidate: getDisplayName(best.unit),
+      territoryPrepCandidate: bestAccepted.unitName,
       territoryPrepDecision: "BUY",
-      territoryPrepReason: best.reason,
-      territoryPrepUnit: getDisplayName(best.unit),
-      territoryPrepAmount: formatSwarmNumber(best.num),
+      territoryPrepReason: bestAccepted.reason,
+      territoryPrepUnit: bestAccepted.unitName,
+      territoryPrepAmount: formatSwarmNumber(bestAccepted.num),
       territoryPrepExpansionEtaBefore: expansionEtaBefore,
       territoryPrepExpansionEtaAfter: etaAfter,
-      territoryPrepArmySeed: best.armySeed,
+      territoryPrepArmySeed: true,
       territoryPrepSafeCandidate: true,
       territoryPrepBlockedBy: "none",
       armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
@@ -6804,7 +7243,26 @@ function getDisplayName(item) {
       territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
       territoryPrepBuyableFightingUnits: buyableUnits.length,
       territoryPrepMissingMatchedCount: matchingBuyableUnits.length,
-      proposal: best,
+      expansionArmySeedCandidate: bestAccepted.unitName,
+      expansionArmySeedDecision: "BUY",
+      expansionArmySeedReason: bestAccepted.reason,
+      expansionArmySeedUnit: bestAccepted.unitName,
+      expansionArmySeedAmount: formatSwarmNumber(bestAccepted.num),
+      expansionArmySeedEtaBefore: expansionEtaBefore,
+      expansionArmySeedEtaAfter: etaAfter,
+      expansionArmySeedEtaGainSeconds: Number.isFinite(bestAccepted.etaGainSeconds) ? trimNumber(bestAccepted.etaGainSeconds) : "n/a",
+      expansionArmySeedEtaGainPercent: Number.isFinite(bestAccepted.etaGainRatio) ? `${trimNumber(bestAccepted.etaGainRatio * 100)}%` : "n/a",
+      expansionArmySeedTerritoryPerSecondBefore: formatSwarmNumber(bestAccepted.territoryPerSecondBefore),
+      expansionArmySeedTerritoryPerSecondAfter: formatSwarmNumber(bestAccepted.territoryPerSecondAfter),
+      expansionArmySeedBlockedBy: "none",
+      expansionArmySeedInsideSaveWindow: insideSaveWindow,
+      expansionArmySeedBestRejectedUnit: bestRejected?.unitName || "none",
+      expansionArmySeedBestRejectedReason: bestRejectedReason || "none",
+      proposal: {
+        ...bestAccepted,
+        armySeed: true,
+        meetsMinimum: true,
+      },
     });
   }
 
@@ -7311,6 +7769,23 @@ function getDisplayName(item) {
       territoryPrepVisibleFightingUnits: Number.isFinite(Number(fields.territoryPrepVisibleFightingUnits)) ? Number(fields.territoryPrepVisibleFightingUnits) : (territoryPrepPlannerState?.territoryPrepVisibleFightingUnits ?? 0),
       territoryPrepBuyableFightingUnits: Number.isFinite(Number(fields.territoryPrepBuyableFightingUnits)) ? Number(fields.territoryPrepBuyableFightingUnits) : (territoryPrepPlannerState?.territoryPrepBuyableFightingUnits ?? 0),
       territoryPrepMissingMatchedCount: Number.isFinite(Number(fields.territoryPrepMissingMatchedCount)) ? Number(fields.territoryPrepMissingMatchedCount) : (territoryPrepPlannerState?.territoryPrepMissingMatchedCount ?? 0),
+      expansionArmySeedCandidate: fields.expansionArmySeedCandidate || territoryPrepPlannerState?.expansionArmySeedCandidate || "none",
+      expansionArmySeedDecision: fields.expansionArmySeedDecision || territoryPrepPlannerState?.expansionArmySeedDecision || "OBSERVE",
+      expansionArmySeedUnit: fields.expansionArmySeedUnit || territoryPrepPlannerState?.expansionArmySeedUnit || "none",
+      expansionArmySeedAmount: fields.expansionArmySeedAmount || territoryPrepPlannerState?.expansionArmySeedAmount || "0",
+      expansionArmySeedReason: fields.expansionArmySeedReason || territoryPrepPlannerState?.expansionArmySeedReason || "none",
+      expansionArmySeedEtaBefore: fields.expansionArmySeedEtaBefore || territoryPrepPlannerState?.expansionArmySeedEtaBefore || "n/a",
+      expansionArmySeedEtaAfter: fields.expansionArmySeedEtaAfter || territoryPrepPlannerState?.expansionArmySeedEtaAfter || "n/a",
+      expansionArmySeedEtaGainSeconds: fields.expansionArmySeedEtaGainSeconds || territoryPrepPlannerState?.expansionArmySeedEtaGainSeconds || "0",
+      expansionArmySeedEtaGainPercent: fields.expansionArmySeedEtaGainPercent || territoryPrepPlannerState?.expansionArmySeedEtaGainPercent || "0%",
+      expansionArmySeedTerritoryPerSecondBefore: fields.expansionArmySeedTerritoryPerSecondBefore || territoryPrepPlannerState?.expansionArmySeedTerritoryPerSecondBefore || "0",
+      expansionArmySeedTerritoryPerSecondAfter: fields.expansionArmySeedTerritoryPerSecondAfter || territoryPrepPlannerState?.expansionArmySeedTerritoryPerSecondAfter || "0",
+      expansionArmySeedBlockedBy: fields.expansionArmySeedBlockedBy || territoryPrepPlannerState?.expansionArmySeedBlockedBy || "none",
+      expansionArmySeedInsideSaveWindow: fields.expansionArmySeedInsideSaveWindow !== undefined
+        ? (fields.expansionArmySeedInsideSaveWindow ? "yes" : "no")
+        : (territoryPrepPlannerState?.expansionArmySeedInsideSaveWindow || "no"),
+      expansionArmySeedBestRejectedUnit: fields.expansionArmySeedBestRejectedUnit || territoryPrepPlannerState?.expansionArmySeedBestRejectedUnit || "none",
+      expansionArmySeedBestRejectedReason: fields.expansionArmySeedBestRejectedReason || territoryPrepPlannerState?.expansionArmySeedBestRejectedReason || "none",
       proposal: fields.proposal || territoryPrepPlannerState?.proposal || null,
     };
 
@@ -9717,11 +10192,11 @@ function getDisplayName(item) {
     refreshUi();
 
     if (units === "paused-ascension") {
-      lastStatus = `Smart: ${mainActions}/${maxActions} main actions, ${sideActions} side, units pausade nära ascension`;
+      lastStatus = `Smart: ${mainActions}/${maxActions} main actions, ${sideActions} side-tasks, units pausade nära ascension`;
     } else if (summaries.length) {
-      lastStatus = `Smart: ${mainActions}/${maxActions} main actions, ${sideActions} side · ${summaries.slice(0, 3).join("; ")}`;
+      lastStatus = `Smart: ${mainActions}/${maxActions} main actions, ${sideActions} side-tasks · ${summaries.slice(0, 3).join("; ")}`;
     } else {
-      lastStatus = `Smart: 0/${maxActions} main actions, ${sideActions} side`;
+      lastStatus = `Smart: 0/${maxActions} main actions, ${sideActions} side-tasks`;
     }
 
     refreshPanel();
@@ -10757,6 +11232,35 @@ function getDisplayName(item) {
         line-height: 1.25;
       }
 
+      .kbc-council-speaker {
+        padding: 7px 8px;
+        border: 1px solid rgba(255, 211, 106, 0.42);
+        border-radius: 6px;
+        background: rgba(255, 211, 106, 0.12);
+      }
+
+      .kbc-council-speaker strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
+      .kbc-council-bubble {
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.25);
+        line-height: 1.3;
+      }
+
+      .kbc-council-speaker small {
+        display: block;
+        margin-top: 4px;
+        color: var(--kbc-council-muted);
+        line-height: 1.2;
+      }
+
       .kbc-council-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(150px, 1fr));
@@ -10769,6 +11273,12 @@ function getDisplayName(item) {
         border: 1px solid var(--kbc-council-line);
         border-radius: 6px;
         background: rgba(0,0,0,0.18);
+      }
+
+      .kbc-council-card.is-active {
+        border-color: rgba(124, 227, 139, 0.88);
+        box-shadow: 0 0 0 1px rgba(124, 227, 139, 0.4), 0 0 14px rgba(124, 227, 139, 0.22);
+        background: rgba(124, 227, 139, 0.11);
       }
 
       .kbc-council-card.is-muted {
@@ -10846,6 +11356,11 @@ function getDisplayName(item) {
         margin: 4px 0 0 0;
         color: rgba(255,255,255,0.86);
         line-height: 1.25;
+      }
+
+      .kbc-council-why {
+        margin: 4px 0 0 0;
+        color: rgba(255,255,255,0.82);
       }
 
       .kbc-council-blockers {

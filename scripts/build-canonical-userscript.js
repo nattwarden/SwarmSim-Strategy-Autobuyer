@@ -6,6 +6,21 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const configPath = path.join(root, "scripts", "canonical-build.config.json");
+const packageJsonPath = path.join(root, "package.json");
+
+function readPackageVersion() {
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error(`Missing package.json: ${packageJsonPath}`);
+  }
+
+  const raw = fs.readFileSync(packageJsonPath, "utf8");
+  const pkg = JSON.parse(raw);
+  const version = String(pkg?.version || "").trim();
+  if (!version) {
+    throw new Error("package.json version is missing or empty.");
+  }
+  return version;
+}
 
 function readBuildConfig() {
   if (!fs.existsSync(configPath)) {
@@ -102,8 +117,25 @@ function applyConfiguredSections(content, config, eol) {
   return synced;
 }
 
+function applyVersionStamps(content, version) {
+  let stamped = content;
+
+  stamped = stamped.replace(
+    /^\/\/\s*@version\s+.*$/mu,
+    `// @version      ${version}`
+  );
+
+  stamped = stamped.replace(
+    /scriptVersion:\s*"[^"]+"/gu,
+    `scriptVersion: "${version}"`
+  );
+
+  return stamped;
+}
+
 function buildCanonicalContent(config) {
   const defaultSource = readTextFile(config.source);
+  const packageVersion = readPackageVersion();
   const eol = defaultSource.includes("\r\n") ? "\r\n" : "\n";
   const sectionCache = new Map();
 
@@ -136,7 +168,7 @@ function buildCanonicalContent(config) {
     .join(`${eol}${eol}`);
 
   const withSections = applyConfiguredSections(`${built}${eol}`, config, eol);
-  return withSections;
+  return applyVersionStamps(withSections, packageVersion);
 }
 
 function main() {

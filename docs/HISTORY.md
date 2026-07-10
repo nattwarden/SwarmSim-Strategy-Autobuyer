@@ -38,6 +38,9 @@ docs/release-notes/
 - 0.8.14: Swarm Council Advisor UI presentation refresh.
 - 0.9.0: Post-Nexus Strategy Pack with conservative Lepidoptera planning,
   clearer action-budget diagnostics, and Council planner-state integration.
+- 0.10.0: Expansion-aware Army Seed Planner with bounded ETA-gain gating,
+  active Council speaker bubble, clearer companion wording, and stronger
+  territory/army observability.
 
 ## Documentation posture note
 

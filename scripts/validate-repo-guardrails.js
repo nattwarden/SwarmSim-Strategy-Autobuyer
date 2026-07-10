@@ -8,7 +8,25 @@ const { spawnSync } = require("child_process");
 
 const root = path.resolve(__dirname, "..");
 const canonicalScript = path.join(root, "src", "SwarmSim-Strategy-Autobuyer.user.js");
+const packageJsonPath = path.join(root, "package.json");
 const failures = [];
+
+function readPackageVersion() {
+  if (!fs.existsSync(packageJsonPath)) {
+    fail(`Missing package.json: ${rel(packageJsonPath)}`);
+    return "";
+  }
+
+  try {
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    return String(pkg?.version || "").trim();
+  } catch (error) {
+    fail(`Could not parse package.json: ${error.message || error}`);
+    return "";
+  }
+}
+
+const packageVersion = readPackageVersion();
 
 function rel(file) {
   return path.relative(root, file).replace(/\\/g, "/");
@@ -50,6 +68,24 @@ if (!fs.existsSync(canonicalScript)) {
   }
 
   const script = fs.readFileSync(canonicalScript, "utf8");
+  if (packageVersion) {
+    const metadataVersionMatch = script.match(/^\/\/\s*@version\s+([^\s]+)/mu);
+    const metadataVersion = metadataVersionMatch?.[1] || "";
+    if (metadataVersion !== packageVersion) {
+      fail(`Version mismatch: package.json is ${packageVersion} but userscript metadata is ${metadataVersion || "missing"}`);
+    }
+
+    const scriptVersionMatches = Array.from(script.matchAll(/scriptVersion:\s*"([^"]+)"/gu)).map((match) => match[1]);
+    if (!scriptVersionMatches.length) {
+      fail("No scriptVersion field found in canonical userscript export payload.");
+    } else {
+      const mismatched = scriptVersionMatches.filter((value) => value !== packageVersion);
+      if (mismatched.length) {
+        fail(`Version mismatch: scriptVersion field(s) [${mismatched.join(", ")}] do not match package.json ${packageVersion}`);
+      }
+    }
+  }
+
   const requiredDefaults = [
     ["autoCastAbilities", "false"],
     ["autoAscend", "false"],
