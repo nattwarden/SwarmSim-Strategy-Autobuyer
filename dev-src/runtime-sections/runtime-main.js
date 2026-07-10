@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.11.5";
+  const AUTOBUYER_VERSION = "0.11.6";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -1120,6 +1120,42 @@ function getDisplayName(item) {
     return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   }
 
+  function getScenarioSuffixAliases(rawSuffix) {
+    const normalized = normalizeLabelKey(rawSuffix);
+    if (!normalized) return [];
+
+    const romanToNumber = {
+      i: "1",
+      ii: "2",
+      iii: "3",
+      iv: "4",
+      v: "5",
+      vi: "6",
+      vii: "7",
+      viii: "8",
+      ix: "9",
+      x: "10",
+    };
+    const numberToRoman = {
+      1: "i",
+      2: "ii",
+      3: "iii",
+      4: "iv",
+      5: "v",
+      6: "vi",
+      7: "vii",
+      8: "viii",
+      9: "ix",
+      10: "x",
+    };
+
+    const aliases = [normalized];
+    if (romanToNumber[normalized]) aliases.push(romanToNumber[normalized]);
+    if (numberToRoman[normalized]) aliases.push(numberToRoman[normalized]);
+
+    return Array.from(new Set(aliases.filter(Boolean)));
+  }
+
   function isScenarioHarnessEnabled() {
     try {
       const stored = String(localStorage.getItem(SCENARIO_HARNESS_ENABLE_KEY) || "false").toLowerCase();
@@ -1219,14 +1255,18 @@ function getDisplayName(item) {
   function getScenarioUnitKeys(unit) {
     const name = normalizeLabelKey(unit?.name || "");
     const display = normalizeLabelKey(getDisplayName(unit));
-    const suffix = normalizeLabelKey(unit?.suffix || "");
+    const suffixAliases = getScenarioSuffixAliases(unit?.suffix || "");
     const aliases = [];
     if (name) aliases.push(name);
     if (display) aliases.push(display);
     if (name && display) aliases.push(`${name} ${display}`);
-    if (name && suffix) aliases.push(`${name} ${suffix}`);
-    if (display && suffix) aliases.push(`${display} ${suffix}`);
-    if (name && display && suffix) aliases.push(`${name} ${display} ${suffix}`);
+
+    for (const suffix of suffixAliases) {
+      if (name) aliases.push(`${name} ${suffix}`);
+      if (display) aliases.push(`${display} ${suffix}`);
+      if (name && display) aliases.push(`${name} ${display} ${suffix}`);
+    }
+
     if (name === "spider") aliases.push("arachnomorph", "arachnomorph v");
     if (name === "mosquito") aliases.push("culicimorph", "culicimorph v");
     if (name === "stinger") aliases.push("stinger v");
@@ -8150,7 +8190,13 @@ function getDisplayName(item) {
     const labelKey = normalizeLabelKey(label);
     if (!labelKey) return false;
     const text = normalizeLabelKey(`${unit?.name || ""} ${getDisplayName(unit)} ${unit?.suffix || ""}`);
-    return text.includes(labelKey);
+
+    const aliases = [labelKey];
+    if (/culicimorph/.test(labelKey)) aliases.push(labelKey.replace(/culicimorph/g, "mosquito"));
+    if (/arachnomorph/.test(labelKey)) aliases.push(labelKey.replace(/arachnomorph/g, "spider"));
+    if (/\bv\b/.test(labelKey)) aliases.push(labelKey.replace(/\bv\b/g, "5"));
+
+    return aliases.some((entry) => text.includes(entry));
   }
 
   function getTerritoryPrepBuyNum(unit, forceSingle = false) {
@@ -10102,6 +10148,44 @@ function getDisplayName(item) {
       const unit = getGameUnit(game, MEAT_CHAIN_NAMES[i]);
       if (!unit?.isVisible?.()) continue;
       if (!isOwned(unit)) return unit;
+    }
+
+    // If all visible meat-chain targets are owned, prefer a target where
+    // parent-step conversion can still advance the current path.
+    for (let i = MEAT_CHAIN_NAMES.length - 1; i >= 0; i--) {
+      const unit = getGameUnit(game, MEAT_CHAIN_NAMES[i]);
+      if (!unit?.isVisible?.()) continue;
+
+      const bottleneck = getUnitBottleneckCost(unit);
+      const bottleneckUnit = bottleneck?.unit || null;
+      if (!bottleneckUnit || !isMeatChainUnit(bottleneckUnit)) continue;
+      if (isBasePlannerResourceName(bottleneckUnit?.name || "")) continue;
+
+      return unit;
+    }
+
+    // Deterministic scenarios may run from early live-state snapshots where
+    // deeper units are hidden. Allow hidden target-path planning in harness
+    // mode so parent-step/refill transitions can still be evaluated.
+    if (scenarioHarnessContext.active) {
+      for (let i = MEAT_CHAIN_NAMES.length - 1; i >= 0; i--) {
+        const unit = getGameUnit(game, MEAT_CHAIN_NAMES[i]);
+        if (!unit) continue;
+
+        const bottleneck = getUnitBottleneckCost(unit);
+        const bottleneckUnit = bottleneck?.unit || null;
+        if (!bottleneckUnit || !isMeatChainUnit(bottleneckUnit)) continue;
+        if (isBasePlannerResourceName(bottleneckUnit?.name || "")) continue;
+
+        return unit;
+      }
+    }
+
+    // Last resort: pick highest visible target to keep momentum planner alive.
+    for (let i = MEAT_CHAIN_NAMES.length - 1; i >= 0; i--) {
+      const unit = getGameUnit(game, MEAT_CHAIN_NAMES[i]);
+      if (!unit?.isVisible?.()) continue;
+      return unit;
     }
 
     return null;
