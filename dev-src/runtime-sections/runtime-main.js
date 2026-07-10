@@ -2201,16 +2201,6 @@ function getDisplayName(item) {
       : Number(mainActions || 0) > 0
         ? "Main lane action ran."
         : "Main lanes held.";
-    const councilSpeakerByLane = {
-      Territory: "General Mandible",
-      Energy: "Beetle Magus",
-      "Clone Prep": "Larva Steward",
-      Meat: "Flesh Smith",
-      Twin: "Twin Oracle",
-      Upgrade: "Twin Oracle",
-      Engine: "Brood Architect",
-      Ability: "Beetle Magus",
-    };
     const councilWinningLane = selectedMainAction?.lane || "none";
     const councilWinningCandidate = selectedMainAction?.candidate || "none";
     const energySupport = buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction);
@@ -2227,7 +2217,7 @@ function getDisplayName(item) {
       whyWaiting: waitingSummary,
       bestRejectedStrategic,
     });
-    const activeCouncilSpeaker = momentum.momentumPrimaryAdvisor || councilSpeakerByLane[councilWinningLane] || "none";
+    const activeCouncilSpeaker = resolveCouncilPrimarySpeaker(momentum.momentumPrimaryAdvisor, councilWinningLane) || "none";
     const councilFocusBubble = selectedMainAction?.reason || noSideReason || "No lane has a safe bounded action yet.";
     const rawRemainingBudgetReason = coordinatorState?.coordinatorRemainingBudgetReason || refillState?.coordinatorRemainingBudgetReason || "none";
     const firstBlockerReason = (items, label) => {
@@ -2322,6 +2312,8 @@ function getDisplayName(item) {
       nextLikelyBuy: momentum.momentumNextMilestone || upcomingMilestone,
       ...energySupport,
       ...momentum,
+      momentumPrimaryPrioritySource: momentum.momentumPrimaryPrioritySource || "default",
+      momentumPrimarySelectionReason: momentum.momentumPrimarySelectionReason || "default lane priority",
       settings,
       meatFallbackEnabled: !!config.meatFallbackEnabled,
       meatFallbackCandidate: meatFallbackState?.candidate || "none",
@@ -2756,6 +2748,73 @@ function getDisplayName(item) {
     });
   }
 
+  function isExpansionSaveWindowPriority(smartFocus, selectedMainAction) {
+    const focus = String(smartFocus || "");
+    const lane = String(selectedMainAction?.lane || "");
+    const candidate = String(selectedMainAction?.candidate || "");
+    const reason = String(selectedMainAction?.reason || "");
+
+    if (/save-territory/i.test(focus)) return true;
+    if (/wait for expansion/i.test(candidate)) return true;
+    return lane === "Engine" && /expansion/i.test(candidate) && /save|wait|hold/i.test(reason);
+  }
+
+  function getCouncilSpeakerByLane(lane) {
+    const laneSpeakerMap = {
+      Territory: "General Mandible",
+      Energy: "Beetle Magus",
+      "Clone Prep": "Larva Steward",
+      Meat: "Flesh Smith",
+      Twin: "Twin Oracle",
+      Upgrade: "Twin Oracle",
+      Engine: "Brood Architect",
+      Ability: "Beetle Magus",
+    };
+    return laneSpeakerMap[String(lane || "")] || "none";
+  }
+
+  function resolveCouncilPrimarySpeaker(primaryAdvisor, winningLane) {
+    const advisor = String(primaryAdvisor || "").trim();
+    if (advisor && advisor !== "none") return advisor;
+    return getCouncilSpeakerByLane(winningLane);
+  }
+
+  function unitCountByArmyPrepLabel(game, label) {
+    let total = newDecimal(0);
+    for (const unit of game.unitlist?.() || []) {
+      if (!unitMatchesArmyPrepLabel(unit, label)) continue;
+      total = total.plus(decimalFrom(unit?.count?.() || 0));
+    }
+    return total;
+  }
+
+  function getHouseOfMirrorsArmyState(game) {
+    const mirrors = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const visible = !!mirrors?.isVisible?.();
+    const missing = [];
+    let armyValue = newDecimal(0);
+
+    for (const tier of HOUSE_OF_MIRRORS_ARMY_TIERS) {
+      const count = unitCountByArmyPrepLabel(game, tier.label);
+      armyValue = armyValue.plus(count);
+      if (!isPositive(count)) missing.push(tier.label);
+    }
+
+    let territoryArmyTotal = newDecimal(0);
+    for (const unit of game.unitlist?.() || []) {
+      if (getTabName(unit) !== "territory") continue;
+      territoryArmyTotal = territoryArmyTotal.plus(decimalFrom(unit?.count?.() || 0));
+    }
+
+    return {
+      visible,
+      armyValue,
+      missing,
+      territoryArmyTotal,
+      territoryArmyExists: isPositive(territoryArmyTotal),
+    };
+  }
+
   function buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction) {
     if (!config.energySupportBroker) {
       return {
@@ -2787,6 +2846,7 @@ function getDisplayName(item) {
         energySupportMirrorBlockedBy: "advisor disabled",
         energySupportMirrorPreferredUnitsMissing: "none",
         energySupportMirrorTerritoryArmyExists: "no",
+        energySupportMirrorReadinessState: "disabled",
         energySupportLepidopteraDecision: "WAIT",
         energySupportLepidopteraRole: "wait",
         energySupportLepidopteraReason: "broker disabled",
@@ -2799,6 +2859,7 @@ function getDisplayName(item) {
     }
 
     const minMeaningfulBenefit = Number(config.energySupportMinMeaningfulBenefit || 0);
+    const expansionSaveWindowPriority = isExpansionSaveWindowPriority(smartFocus, selectedMainAction);
     const energy = decimalFrom(getCurrentResource(game, "energy"));
     const larvaPerSecond = decimalFrom(getVelocity(game, "larva"));
     const larvaBank = decimalFrom(getCurrentResource(game, "larva"));
@@ -2832,19 +2893,10 @@ function getDisplayName(item) {
 
     const mirrorCost = mirrorAbility?.isVisible?.() ? decimalFrom(getCostForResource(mirrorAbility, "energy")) : newDecimal(0);
     const mirrorCandidate = mirrorAbility?.isVisible?.() ? "House of Mirrors" : "none";
-    let mirrorArmyValueRaw = newDecimal(0);
-    const missingMirrorUnits = [];
-    for (const tier of HOUSE_OF_MIRRORS_ARMY_TIERS) {
-      const count = unitCountByNameLike(game, tier.key);
-      mirrorArmyValueRaw = mirrorArmyValueRaw.plus(count);
-      if (!isPositive(count)) missingMirrorUnits.push(tier.label);
-    }
-    let territoryArmyRaw = newDecimal(0);
-    for (const unit of game.unitlist?.() || []) {
-      if (getTabName(unit) !== "territory") continue;
-      territoryArmyRaw = territoryArmyRaw.plus(decimalFrom(unit?.count?.() || 0));
-    }
-    const mirrorTerritoryArmyExists = isPositive(territoryArmyRaw);
+    const mirrorArmyState = getHouseOfMirrorsArmyState(game);
+    const mirrorArmyValueRaw = mirrorArmyState.armyValue;
+    const missingMirrorUnits = mirrorArmyState.missing.slice();
+    const mirrorTerritoryArmyExists = mirrorArmyState.territoryArmyExists;
     const mirrorReadyEnergy = mirrorAbility?.isVisible?.() ? decimalAtLeast(energy, mirrorCost) : false;
     const mirrorPreferredQuality = Math.max(0, (HOUSE_OF_MIRRORS_ARMY_TIERS.length - missingMirrorUnits.length) / HOUSE_OF_MIRRORS_ARMY_TIERS.length);
     const mirrorArmyScale = Math.max(0, Math.min(0.35, decimalLog10(mirrorArmyValueRaw.plus(1)) * 0.05));
@@ -2872,6 +2924,14 @@ function getDisplayName(item) {
     const mirrorReason = mirrorReady
       ? "Mirror the army would help General Mandible now, but default mode keeps auto-cast off."
       : (mirrorBlocked[0] || "Mirror ritual is not worth it yet.");
+    const mirrorReadinessState = [
+      `visible=${mirrorCandidate !== "none" ? "yes" : "no"}`,
+      `energy=${mirrorReadyEnergy ? "yes" : "no"}`,
+      `territoryArmy=${mirrorTerritoryArmyExists ? "yes" : "no"}`,
+      `preferredMissing=${missingMirrorUnits.length ? missingMirrorUnits.join("|") : "none"}`,
+      `helpsTarget=${mirrorHelpsTarget ? "yes" : "no"}`,
+      `meaningful=${mirrorMeaningful ? "yes" : "no"}`,
+    ].join("; ");
 
     const lepidopteraPlan = postNexusEnergyPlannerState || {};
     const lepiVisible = moth?.isVisible?.() && moth?.isBuyable?.();
@@ -2882,16 +2942,21 @@ function getDisplayName(item) {
     } else if (lepiVisible) {
       lepiRole = String(lepidopteraPlan.postNexusEnergyBlockedBy || "").includes("stop threshold") ? "hold" : "wait";
     }
+    if (expansionSaveWindowPriority && lepiRole === "primary") {
+      lepiRole = lepiVisible ? "background" : "wait";
+    }
     if (config.energySupportPreferSafeBackgroundLepidoptera && lepiRole === "primary" && (cloneReady || mirrorReady)) {
       lepiRole = "background";
     }
     const lepiDecision = lepiRole === "primary"
       ? "ADVISE"
       : (lepiRole === "background" ? "BACKGROUND" : (lepiRole === "hold" ? "HOLD" : "WAIT"));
-    const lepiReason = lepidopteraPlan.postNexusEnergyReason
+    const lepiReason = expansionSaveWindowPriority && lepiRole !== "primary"
+      ? "Expansion save-window is active; keep Lepidoptera as background support only."
+      : (lepidopteraPlan.postNexusEnergyReason
       || (lepiRole === "background"
         ? "Safe energy growth, but Expansion/meat momentum is the current focus."
-        : "Save energy for a stronger support action.");
+        : "Save energy for a stronger support action."));
     const lepiChunk = lepidopteraPlan.postNexusEnergyAmount || (lepiVisible ? formatSwarmNumber(getSafeLepidopteraBuyNum(game)) : "0");
 
     const clonePriorityScore = cloneReady ? 3 : 0;
@@ -2973,6 +3038,7 @@ function getDisplayName(item) {
       energySupportMirrorBlockedBy: mirrorBlocked.length ? mirrorBlocked.join("; ") : "none",
       energySupportMirrorPreferredUnitsMissing: missingMirrorUnits.length ? missingMirrorUnits.join(", ") : "none",
       energySupportMirrorTerritoryArmyExists: mirrorTerritoryArmyExists ? "yes" : "no",
+      energySupportMirrorReadinessState: mirrorReadinessState,
       energySupportLepidopteraDecision: lepiDecision,
       energySupportLepidopteraRole: lepiRole,
       energySupportLepidopteraReason: lepiReason,
@@ -3011,6 +3077,9 @@ function getDisplayName(item) {
     const sideTasks = [];
     const topBlockedOpportunity = bestRejectedStrategic ? `${bestRejectedStrategic.lane}: ${bestRejectedStrategic.candidate}` : "none";
     let whyWaitBest = mainActions > 0 ? "none" : (whyWaiting || "No safe lane candidate beat current guardrails.");
+    const expansionSaveWindowPriority = isExpansionSaveWindowPriority(smartFocus, selectedMainAction);
+    let primaryPrioritySource = selectedMainAction?.lane ? `${selectedMainAction.lane} lane` : "default";
+    let primarySelectionReason = selectedMainAction?.reason || "default lane priority";
 
     if (/save-territory/i.test(String(smartFocus || ""))) {
       primaryFocus = "Save territory for Expansion";
@@ -3021,27 +3090,76 @@ function getDisplayName(item) {
       playerInstruction = "Do not buy territory-costing army right now.";
       autobuyerInstruction = "Hold territory spend; keep only safe background tasks.";
       nextMilestone = "Expansion";
+      primaryPrioritySource = "Expansion save-window";
+      primarySelectionReason = "Expansion save-window hard-priority keeps territory reserved.";
     } else if (/territory/i.test(String(smartFocus || "")) || /Territory/.test(String(selectedMainAction?.lane || ""))) {
       primaryFocus = "Army seed toward Expansion";
       primaryAdvisor = "General Mandible";
       playerInstruction = "Build bounded army chunks that improve Expansion ETA.";
       nextMilestone = "Expansion";
+      primaryPrioritySource = "Territory lane";
+      primarySelectionReason = "Territory lane is the active momentum path.";
     } else if (/meat|save-meat/i.test(String(smartFocus || "")) || /Meat/.test(String(selectedMainAction?.lane || ""))) {
       primaryFocus = "Meat-chain progression";
       primaryAdvisor = "Flesh Smith";
       playerInstruction = "Build the next meat-chain step, then refill the parent cost.";
       nextMilestone = "Lesser Hive Mind path";
+      primaryPrioritySource = "Meat lane";
+      primarySelectionReason = "Meat lane has the strongest safe progression action.";
     }
 
-    if (energySupport.energySupportBestUse === "clone-larvae") {
+    if (!expansionSaveWindowPriority && energySupport.energySupportBestUse === "clone-larvae") {
       primaryAdvisor = "Larva Steward";
+      primaryPrioritySource = "Energy support";
+      primarySelectionReason = "Clone Larvae is the best immediate support, advisor-only.";
       if (energySupport.energySupportBestUseDecision === "ADVISE") {
         companion.push("Energy support: Clone Larvae advisor-only");
       }
     }
 
+    const lepidopteraIsPrimary = energySupport.energySupportLepidopteraRole === "primary" && energySupport.energySupportBestUse === "lepidoptera";
+    if (!expansionSaveWindowPriority && lepidopteraIsPrimary) {
+      primaryFocus = "Energy growth via Lepidoptera";
+      primaryAdvisor = "Beetle Magus";
+      bestStep = `Energy: ${energySupport.energySupportLepidopteraSuggestedChunk || "0"} Lepidoptera`;
+      bestStepDecision = "ADVISE";
+      bestStepReason = energySupport.energySupportLepidopteraReason || "Lepidoptera has the highest safe energy momentum now.";
+      playerInstruction = "Use bounded Lepidoptera growth while reserves stay safe.";
+      autobuyerInstruction = "Energy lane leads with bounded Lepidoptera chunking.";
+      primaryPrioritySource = "Energy Lepidoptera primary";
+      primarySelectionReason = "Lepidoptera is explicitly marked primary and no higher-priority gate blocks it.";
+    }
+
     if (energySupport.energySupportBackgroundAction && energySupport.energySupportBackgroundAction !== "none") {
       background.push(energySupport.energySupportBackgroundAction);
+    }
+
+    if (energySupport.energySupportLepidopteraRole === "background") {
+      if (/lepidoptera/i.test(String(bestStep || "")) || /energy/i.test(String(primaryFocus || ""))) {
+        if (expansionSaveWindowPriority) {
+          bestStep = "Wait for Expansion";
+          bestStepDecision = "WAIT";
+          bestStepReason = "Expansion save-window remains primary; Lepidoptera stays in background only.";
+          primaryFocus = "Save territory for Expansion";
+          primaryAdvisor = "Brood Architect";
+          primaryPrioritySource = "Expansion save-window";
+          primarySelectionReason = "Background Lepidoptera cannot replace Expansion primary focus.";
+        } else if (/territory/i.test(String(smartFocus || ""))) {
+          bestStep = "Territory: Army seed toward Expansion";
+          bestStepDecision = "BUY";
+          bestStepReason = "Maintain territory momentum while Lepidoptera runs as background growth.";
+          primaryFocus = "Army seed toward Expansion";
+          primaryAdvisor = "General Mandible";
+          primaryPrioritySource = "Territory lane";
+          primarySelectionReason = "Background Lepidoptera is demoted below main territory plan.";
+        } else {
+          bestStep = "Wait for main-lane window";
+          bestStepDecision = "WAIT";
+          bestStepReason = "Main lane momentum stays primary; Lepidoptera remains background support only.";
+          primaryPrioritySource = "Main-lane hold";
+          primarySelectionReason = "Background Lepidoptera cannot become momentum best-step.";
+        }
+      }
     }
 
     if (selectedSideAction) {
@@ -3072,6 +3190,8 @@ function getDisplayName(item) {
       momentumSideTasks: sideTasks.length ? sideTasks.join("; ") : "none",
       momentumTopBlockedOpportunity: topBlockedOpportunity,
       momentumWhyWaitingIsBest: whyWaitBest,
+      momentumPrimaryPrioritySource: primaryPrioritySource,
+      momentumPrimarySelectionReason: primarySelectionReason,
     };
   }
 
@@ -3166,8 +3286,9 @@ function getDisplayName(item) {
   function buildCouncilSpeakerState() {
     const lane = String(strategyInspector?.councilWinningLane || "none");
     const candidate = String(strategyInspector?.councilWinningCandidate || "none");
+    const resolvedSpeaker = resolveCouncilPrimarySpeaker(strategyInspector?.momentumPrimaryAdvisor, lane) || "The Council";
     const fallback = {
-      speaker: strategyInspector?.momentumPrimaryAdvisor || strategyInspector?.activeCouncilSpeaker || "The Council",
+      speaker: resolvedSpeaker,
       lane,
       candidate,
       bubble: strategyInspector?.momentumBestStepReason || strategyInspector?.councilFocusBubble || "Observe the next run.",
@@ -3176,7 +3297,7 @@ function getDisplayName(item) {
     if (lane === "Territory") {
       if (strategyInspector?.expansionArmySeedDecision === "BUY") {
         return {
-          speaker: "General Mandible",
+          speaker: resolvedSpeaker,
           lane,
           candidate,
           bubble: `Raise the warband first. More ${strategyInspector.expansionArmySeedUnit || candidate} will bring the next Expansion much sooner.`,
@@ -3184,7 +3305,7 @@ function getDisplayName(item) {
       }
       if (strategyInspector?.expansionArmySeedInsideSaveWindow === "yes") {
         return {
-          speaker: "General Mandible",
+          speaker: resolvedSpeaker,
           lane,
           candidate,
           bubble: "Hold the ground. Expansion is close, so territory must be saved.",
@@ -3195,14 +3316,14 @@ function getDisplayName(item) {
     if (lane === "Energy") {
       if (strategyInspector?.postNexusEnergyDecision === "BUY") {
         return {
-          speaker: "Beetle Magus",
+          speaker: resolvedSpeaker,
           lane,
           candidate,
           bubble: `I will feed the energy swarm carefully: +${strategyInspector.postNexusEnergyAmount || "0"} ${strategyInspector.postNexusEnergyCandidate || "Lepidoptera"}, still below the stop line.`,
         };
       }
       return {
-        speaker: "Beetle Magus",
+        speaker: resolvedSpeaker,
         lane,
         candidate,
         bubble: "Rituals stay sealed. Auto-cast is off.",
@@ -3211,7 +3332,7 @@ function getDisplayName(item) {
 
     if (lane === "Meat") {
       return {
-        speaker: "Flesh Smith",
+        speaker: resolvedSpeaker,
         lane,
         candidate,
         bubble: "Forge the next body-step, then refill the hive neurons we spent.",
@@ -3220,7 +3341,7 @@ function getDisplayName(item) {
 
     if (lane === "Engine") {
       return {
-        speaker: "Brood Architect",
+        speaker: resolvedSpeaker,
         lane,
         candidate,
         bubble: strategyInspector?.protectedResources?.includes("territory")
@@ -3568,7 +3689,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.11.0",
+      scriptVersion: "0.11.1",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -3776,6 +3897,7 @@ function getDisplayName(item) {
       energySupportMirrorBlockedBy: strategyInspector?.energySupportMirrorBlockedBy || "none",
       energySupportMirrorPreferredUnitsMissing: strategyInspector?.energySupportMirrorPreferredUnitsMissing || "none",
       energySupportMirrorTerritoryArmyExists: strategyInspector?.energySupportMirrorTerritoryArmyExists || "no",
+      energySupportMirrorReadinessState: strategyInspector?.energySupportMirrorReadinessState || "none",
       energySupportLepidopteraDecision: strategyInspector?.energySupportLepidopteraDecision || "WAIT",
       energySupportLepidopteraRole: strategyInspector?.energySupportLepidopteraRole || "wait",
       energySupportLepidopteraReason: strategyInspector?.energySupportLepidopteraReason || "none",
@@ -3789,6 +3911,8 @@ function getDisplayName(item) {
       momentumBestStep: strategyInspector?.momentumBestStep || "Wait",
       momentumBestStepDecision: strategyInspector?.momentumBestStepDecision || "WAIT",
       momentumBestStepReason: strategyInspector?.momentumBestStepReason || "none",
+      momentumPrimaryPrioritySource: strategyInspector?.momentumPrimaryPrioritySource || "default",
+      momentumPrimarySelectionReason: strategyInspector?.momentumPrimarySelectionReason || "default lane priority",
       momentumNextMilestone: strategyInspector?.momentumNextMilestone || "unknown",
       momentumNextMilestoneEta: strategyInspector?.momentumNextMilestoneEta || "n/a",
       momentumPlayerInstruction: strategyInspector?.momentumPlayerInstruction || "none",
@@ -3867,11 +3991,14 @@ function getDisplayName(item) {
       `- Energy support background action: ${payload.energySupportBackgroundAction || "none"}`,
       `- Clone support: ${payload.energySupportCloneDecision || "HOLD"} ${payload.energySupportCloneCandidate || "none"} (${payload.energySupportCloneReason || "none"})`,
       `- Mirror support: ${payload.energySupportMirrorDecision || "HOLD"} ${payload.energySupportMirrorCandidate || "none"} (${payload.energySupportMirrorReason || "none"})`,
+      `- Mirror readiness state: ${payload.energySupportMirrorReadinessState || "none"}`,
       `- Lepidoptera support role: ${payload.energySupportLepidopteraRole || "wait"} (${payload.energySupportLepidopteraDecision || "WAIT"})`,
       `- Momentum primary focus: ${payload.momentumPrimaryFocus || "Methodical progression"}`,
       `- Momentum advisor: ${payload.momentumPrimaryAdvisor || "none"}`,
       `- Momentum best step: ${payload.momentumBestStep || "Wait"} (${payload.momentumBestStepDecision || "WAIT"})`,
       `- Momentum best-step reason: ${payload.momentumBestStepReason || "none"}`,
+      `- Momentum priority source: ${payload.momentumPrimaryPrioritySource || "default"}`,
+      `- Momentum selection reason: ${payload.momentumPrimarySelectionReason || "default lane priority"}`,
       `- Momentum companion actions: ${payload.momentumCompanionActions || "none"}`,
       `- Momentum background actions: ${payload.momentumBackgroundActions || "none"}`,
       `- Momentum side tasks: ${payload.momentumSideTasks || "none"}`,
@@ -6695,29 +6822,12 @@ function getDisplayName(item) {
 
     const mirrors = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
     if (mirrors?.isVisible?.()) {
-      const tiers = [
-        { key: "culicimorph v", label: "Culicimorph V" },
-        { key: "arachnomorph v", label: "Arachnomorph V" },
-        { key: "stinger v", label: "Stinger V" },
-      ];
-
-      const missing = [];
-      let armyValue = newDecimal(0);
-      let territoryArmyTotal = newDecimal(0);
-
-      for (const tier of tiers) {
-        const count = unitCountByNameLike(game, tier.key);
-        armyValue = armyValue.plus(count);
-        if (!isPositive(count)) missing.push(tier.label);
-      }
-
-      for (const unit of game.unitlist?.() || []) {
-        if (getTabName(unit) !== "territory") continue;
-        territoryArmyTotal = territoryArmyTotal.plus(decimalFrom(unit?.count?.() || 0));
-      }
+      const mirrorArmyState = getHouseOfMirrorsArmyState(game);
+      const missing = mirrorArmyState.missing;
+      const armyValue = mirrorArmyState.armyValue;
 
       const needsArmyPrep = missing.length >= 2 || !isPositive(armyValue);
-      const territoryArmyExists = isPositive(territoryArmyTotal);
+      const territoryArmyExists = mirrorArmyState.territoryArmyExists;
       const decision = needsArmyPrep ? "HOLD" : "PLAN";
       const reason = needsArmyPrep
         ? (territoryArmyExists
@@ -7236,14 +7346,9 @@ function getDisplayName(item) {
   }
 
   function getHouseOfMirrorsArmyPrep(game) {
-    const mirrors = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
-    const tiers = [
-      { key: "culicimorph v", label: "Culicimorph V" },
-      { key: "arachnomorph v", label: "Arachnomorph V" },
-      { key: "stinger v", label: "Stinger V" },
-    ];
+    const state = getHouseOfMirrorsArmyState(game);
 
-    if (!mirrors?.isVisible?.()) {
+    if (!state.visible) {
       return {
         visible: false,
         armyValue: newDecimal(0),
@@ -7251,19 +7356,10 @@ function getDisplayName(item) {
       };
     }
 
-    const missing = [];
-    let armyValue = newDecimal(0);
-
-    for (const tier of tiers) {
-      const count = unitCountByNameLike(game, tier.key);
-      armyValue = armyValue.plus(count);
-      if (!isPositive(count)) missing.push(tier.label);
-    }
-
     return {
       visible: true,
-      armyValue,
-      missing,
+      armyValue: state.armyValue,
+      missing: state.missing,
     };
   }
 

@@ -46,6 +46,10 @@ docs/release-notes/
 - 0.11.0: Energy Support Broker advisor/observability layer plus Quest Council
   momentum framing (Do this now, I want/Because/Status), while preserving
   no-auto-cast safety defaults.
+- 0.11.1: Narrow consistency patch for Expansion save-window priority over
+  Energy/Lepidoptera primary, Lepidoptera background/best-step consistency,
+  centralized Beetle Magus primary speaker mapping, and refreshed House of
+  Mirrors readiness/reason observability.
 
 ## Documentation posture note
 
