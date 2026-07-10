@@ -59,6 +59,9 @@ docs/release-notes/
 - 0.11.4: Narrow Parent Step -> Parent Refill transition fix for deterministic
   scenario R8 with harness transition replay markers and per-cycle transition
   trace fields; no strategy expansion.
+- 0.11.5: Parent Step/Parent Refill finalization in cycle-2 refill state
+  (no repeated Parent Step BUY signal), plus canonical runtime version export
+  alignment for scriptVersion/autobuyerVersion surfaces.
 
 ## Documentation posture note
 

@@ -75,14 +75,17 @@ if (!fs.existsSync(canonicalScript)) {
       fail(`Version mismatch: package.json is ${packageVersion} but userscript metadata is ${metadataVersion || "missing"}`);
     }
 
-    const scriptVersionMatches = Array.from(script.matchAll(/scriptVersion:\s*"([^"]+)"/gu)).map((match) => match[1]);
-    if (!scriptVersionMatches.length) {
+    const hasScriptVersionField = /scriptVersion\s*:\s*("[^"]+"|SCRIPT_VERSION)\b/u.test(script);
+    if (!hasScriptVersionField) {
       fail("No scriptVersion field found in canonical userscript export payload.");
-    } else {
-      const mismatched = scriptVersionMatches.filter((value) => value !== packageVersion);
-      if (mismatched.length) {
-        fail(`Version mismatch: scriptVersion field(s) [${mismatched.join(", ")}] do not match package.json ${packageVersion}`);
-      }
+    }
+
+    const scriptVersionConst = script.match(/const\s+SCRIPT_VERSION\s*=\s*(?:"([^"]+)"|(AUTOBUYER_VERSION))\s*;/u);
+    const autobuyerVersionConst = script.match(/const\s+AUTOBUYER_VERSION\s*=\s*"([^"]+)"\s*;/u);
+    const scriptVersionLiteral = scriptVersionConst?.[1]
+      || (scriptVersionConst?.[2] ? (autobuyerVersionConst?.[1] || "") : "");
+    if (scriptVersionLiteral !== packageVersion) {
+      fail(`Version mismatch: SCRIPT_VERSION resolves to ${scriptVersionLiteral || "missing"} but package.json is ${packageVersion}`);
     }
   }
 

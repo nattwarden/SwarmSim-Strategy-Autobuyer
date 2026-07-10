@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.11.4
+// @version      0.11.5
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -16,8 +16,9 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const SCRIPT_VERSION = "0.11.4";
-  const SCENARIO_REPORT_VERSION = "0.11.4";
+  const AUTOBUYER_VERSION = "0.11.5";
+  const SCRIPT_VERSION = AUTOBUYER_VERSION;
+  const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
@@ -4072,14 +4073,20 @@ function getDisplayName(item) {
     const summary = summarizeLaneCandidates();
     const diagnostics = liveDiagnostics || buildLiveDiagnostics(runHistory);
     const cfg = compactConfigSummary();
+    const refillIsActive = String(strategyInspector?.actionUnitRefillDecision || actionUnitRefillState?.decision || "").toUpperCase() === "BUY";
+    const refillCandidate = strategyInspector?.actionUnitRefillCandidate || actionUnitRefillState?.candidate || "none";
+    const activePlannerAction = refillIsActive
+      ? `Parent Refill: ${refillCandidate}`
+      : (strategyInspector?.momentumBestStep || "Wait");
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.11.4",
+      scriptVersion: SCRIPT_VERSION,
       source: scenarioSourceTag(),
       scenarioId: scenarioHarnessContext.active ? scenarioHarnessContext.scenarioId : "none",
       status: lastStatus,
       strategyInspector,
+      activePlannerAction,
       runHistory: runHistory.slice(),
       liveDiagnostics: diagnostics,
       laneCoordinatorDecision: strategyInspector?.laneCoordinatorDecision || laneCoordinatorState?.coordinatorDecision || "none",
@@ -4489,6 +4496,7 @@ function getDisplayName(item) {
       source: "deterministic-scenario",
       scriptVersion: SCRIPT_VERSION,
       scenarioReportVersion: SCENARIO_REPORT_VERSION,
+      autobuyerVersion: SCRIPT_VERSION,
       runAt: new Date().toISOString(),
       warning: "Scenario harness runs against live browser state but uses deterministic override layers and does not write save state.",
       scenarios: [],
@@ -4598,7 +4606,7 @@ function getDisplayName(item) {
             parentUnitCount: formatSwarmNumber(cycleParentUnit?.count?.() || 0),
             affordability: `actionUnit=${cycleActionUnit?.isVisible?.() && cycleActionUnit?.isBuyable?.() ? "buyable" : "hold"}; parentUnit=${cycleParentUnit?.isVisible?.() && cycleParentUnit?.isBuyable?.() ? "buyable" : "hold"}`,
             reserveResult: `parentStep=${payload.parentStepReserveRatio || "n/a"}; refill=${payload.actionUnitRefillReserveRatio || "n/a"}`,
-            activePlannerAction: payload.momentumBestStep || "Wait",
+            activePlannerAction: payload.activePlannerAction || payload.momentumBestStep || "Wait",
             plannerTransitionState: cycleTransition?.plannerTransitionMarker || "none",
             betweenCycleApplied: cycleTransition?.betweenCycleApplied ? "yes" : "no",
             plannerTransitionMarker: cycleTransition?.plannerTransitionMarker || "none",
@@ -9193,6 +9201,31 @@ function getDisplayName(item) {
     return actionUnitRefillState;
   }
 
+  function finalizeParentStepAfterRefillSelection(refillCandidate, refillReason = "") {
+    if (!parentStepPlannerState) return null;
+    if (String(parentStepPlannerState.decision || "").toUpperCase() !== "BUY") return parentStepPlannerState;
+
+    const chosenRefill = String(refillCandidate || actionUnitRefillState?.candidate || parentStepPlannerState.actionUnit || "none");
+    const statusReason = refillReason
+      ? `parent-step already completed; Parent Refill is active: ${chosenRefill}; ${refillReason}`
+      : `parent-step already completed; Parent Refill is active: ${chosenRefill}`;
+
+    return recordParentStepPlannerState({
+      candidate: parentStepPlannerState.candidate,
+      decision: "OBSERVE",
+      reason: statusReason,
+      target: parentStepPlannerState.target,
+      actionUnit: parentStepPlannerState.actionUnit,
+      costResource: parentStepPlannerState.costResource,
+      reserveRatio: parentStepPlannerState.reserveRatio,
+      paybackBypassed: !!parentStepPlannerState.paybackBypassed,
+      supportsActionUnit: !!parentStepPlannerState.supportsActionUnit,
+      consumedActionUnit: !!parentStepPlannerState.consumedActionUnit,
+      consumedUnit: parentStepPlannerState.consumedUnit || "none",
+      executed: !!parentStepPlannerState.executed,
+    });
+  }
+
   function getCurrentMeatActionUnitPaybackState(game) {
     const plan = safe("Current meat action payback state", () => buildMeatGoalPlan(game));
     const actionUnit = getStrategicActionUnit(plan);
@@ -10553,6 +10586,7 @@ function getDisplayName(item) {
         antiPingpongGuardAllowedRefill: true,
         coordinatorRemainingBudgetReason: "none",
       });
+      finalizeParentStepAfterRefillSelection(actionLabel, reason);
       return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Would refill ${actionLabel} after parent-step` };
     }
 
@@ -10577,6 +10611,10 @@ function getDisplayName(item) {
       antiPingpongGuardAllowedRefill: true,
       coordinatorRemainingBudgetReason: didBuy ? "none" : "blocked by no safe chunk",
     });
+
+    if (didBuy) {
+      finalizeParentStepAfterRefillSelection(actionLabel, reason);
+    }
 
     return {
       actionTaken: true,
@@ -11011,7 +11049,14 @@ function getDisplayName(item) {
     if (plannerResult.actionTaken && Number(plannerResult.bought || 0) > 0) {
       boughtCount += Number(plannerResult.bought || 0);
       const row = latestAdvisorRow(["BUY"]);
-      markSelectedLane("Meat", row?.title || plannerResult.summary || "Meat planner", formatAdvisorReason(row), "");
+      const refillWon = String(actionUnitRefillState?.decision || "").toUpperCase() === "BUY" && !!actionUnitRefillState?.followUpActionSelected;
+      const selectedCandidate = refillWon
+        ? `Parent Refill: ${actionUnitRefillState?.candidate || row?.title || "none"}`
+        : (row?.title || plannerResult.summary || "Meat planner");
+      const selectedReason = refillWon
+        ? (actionUnitRefillState?.reason || formatAdvisorReason(row))
+        : formatAdvisorReason(row);
+      markSelectedLane("Meat", selectedCandidate, selectedReason, "");
 
       buildTerritoryGuardProposal({ game, engine, protectedResources });
       if (boughtCount < maxUnitActions) {
@@ -13695,6 +13740,9 @@ function getDisplayName(item) {
     scenarioHarnessContext.enabled = isScenarioHarnessEnabled();
 
     w[BOT_NAME] = {
+      scriptVersion: SCRIPT_VERSION,
+      autobuyerVersion: SCRIPT_VERSION,
+      scenarioReportVersion: SCENARIO_REPORT_VERSION,
       config,
       runOnce,
 
