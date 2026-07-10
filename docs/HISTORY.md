@@ -53,6 +53,9 @@ docs/release-notes/
 - 0.11.2: House of Mirrors live-state preferred-unit matching fix (suffix-aware),
   deterministic scenario harness (explicitly gated debug API), and minimal mirror
   source/revision observability for reproducible scenario checks.
+- 0.11.3: HoM gate-order/payoff/arbitration patch plus deterministic harness
+  cycle-semantics hardening (cycle-specific expectations, clone/report mapping,
+  transition observability, and scenario report versioning).
 
 ## Documentation posture note
 

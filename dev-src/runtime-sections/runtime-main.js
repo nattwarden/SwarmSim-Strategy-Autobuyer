@@ -3,7 +3,8 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const SCRIPT_VERSION = "0.11.2";
+  const SCRIPT_VERSION = "0.11.3";
+  const SCENARIO_REPORT_VERSION = "0.11.3";
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
@@ -452,6 +453,7 @@
     scenarioId: "none",
     evaluationRevision: 0,
     overrides: null,
+    patchedUnits: [],
   };
   let panel = null;
   let strategyBar = null;
@@ -1163,16 +1165,52 @@ function getDisplayName(item) {
 
   function normalizeScenarioOverrides(rawOverrides) {
     const overrides = rawOverrides || {};
+    const cfg = {};
+    if (overrides.config && typeof overrides.config === "object") {
+      for (const [key, value] of Object.entries(overrides.config)) {
+        if (!Object.prototype.hasOwnProperty.call(DEFAULT_CONFIG, key)) continue;
+        if (["boolean", "number", "string"].includes(typeof value)) cfg[key] = value;
+      }
+    }
     return {
       resourceCounts: normalizeScenarioOverrideMap(overrides.resourceCounts || overrides.resources),
       resourceVelocities: normalizeScenarioOverrideMap(overrides.resourceVelocities || overrides.velocities),
       unitCounts: normalizeScenarioOverrideMap(overrides.unitCounts),
       abilities: normalizeScenarioAbilityOverrides(overrides.abilities),
+      config: cfg,
+      remainingActions: Number.isFinite(Number(overrides.remainingActions)) ? Number(overrides.remainingActions) : null,
       engine: {
         expansionEtaSeconds: Number.isFinite(Number(overrides?.engine?.expansionEtaSeconds)) ? Number(overrides.engine.expansionEtaSeconds) : null,
         hatcheryEtaSeconds: Number.isFinite(Number(overrides?.engine?.hatcheryEtaSeconds)) ? Number(overrides.engine.hatcheryEtaSeconds) : null,
       },
     };
+  }
+
+  function applyScenarioUnitOverrides(game) {
+    if (!scenarioHarnessContext.active) return;
+    const map = scenarioHarnessContext.overrides?.unitCounts;
+    if (!map) return;
+
+    for (const unit of game?.unitlist?.() || []) {
+      const overrideCount = getScenarioUnitCountOverride(unit);
+      if (overrideCount === null) continue;
+      if (scenarioHarnessContext.patchedUnits.some((entry) => entry.unit === unit)) continue;
+
+      const originalCount = typeof unit?.count === "function" ? unit.count.bind(unit) : null;
+      unit.count = function scenarioCountOverride() {
+        return decimalFrom(getScenarioUnitCountOverride(unit) ?? overrideCount);
+      };
+
+      scenarioHarnessContext.patchedUnits.push({ unit, originalCount });
+    }
+  }
+
+  function clearScenarioUnitOverrides() {
+    for (const entry of scenarioHarnessContext.patchedUnits || []) {
+      if (!entry?.unit) continue;
+      entry.unit.count = entry.originalCount;
+    }
+    scenarioHarnessContext.patchedUnits = [];
   }
 
   function getScenarioUnitKeys(unit) {
@@ -1240,14 +1278,17 @@ function getDisplayName(item) {
   }
 
   function setScenarioContext({ scenarioId = "none", source = "deterministic-scenario", overrides = null }) {
+    clearScenarioUnitOverrides();
     scenarioHarnessContext.active = true;
     scenarioHarnessContext.source = source;
     scenarioHarnessContext.scenarioId = scenarioId;
     scenarioHarnessContext.overrides = normalizeScenarioOverrides(overrides);
     scenarioHarnessContext.evaluationRevision = 0;
+    applyScenarioUnitOverrides(getGame());
   }
 
   function clearScenarioContext() {
+    clearScenarioUnitOverrides();
     scenarioHarnessContext.active = false;
     scenarioHarnessContext.source = "live-browser";
     scenarioHarnessContext.scenarioId = "none";
@@ -3002,6 +3043,9 @@ function getDisplayName(item) {
         energySupportMirrorPreferredUnitsMissing: "none",
         energySupportMirrorTerritoryArmyExists: "no",
         energySupportMirrorReadinessState: "disabled",
+        energySupportMirrorActiveGate: "disabled",
+        energySupportMirrorTerritoryRateGainRatio: "0",
+        energySupportMirrorEtaGainRatio: "0",
         energySupportLepidopteraDecision: "WAIT",
         energySupportLepidopteraRole: "wait",
         energySupportLepidopteraReason: "broker disabled",
@@ -3010,6 +3054,8 @@ function getDisplayName(item) {
         energySupportLepidopteraBoostAfter: "n/a",
         energySupportLepidopteraBoostGain: "n/a",
         energySupportLepidopteraReserveAfter: "0",
+        energySupportCandidateRanking: "none",
+        energySupportBestUseSelectionReason: "broker disabled",
       };
     }
 
@@ -3054,40 +3100,67 @@ function getDisplayName(item) {
     const mirrorArmyValueRaw = mirrorArmyState.armyValue;
     const missingMirrorUnits = mirrorArmyState.missing.slice();
     const mirrorTerritoryArmyExists = mirrorArmyState.territoryArmyExists;
+    const mirrorRelevantArmyExists = isPositive(mirrorArmyValueRaw);
     const mirrorReadyEnergy = mirrorVisible ? decimalAtLeast(energy, mirrorCost) : false;
     const mirrorPreferredQuality = Math.max(0, (HOUSE_OF_MIRRORS_ARMY_TIERS.length - missingMirrorUnits.length) / HOUSE_OF_MIRRORS_ARMY_TIERS.length);
     const mirrorArmyScale = Math.max(0, Math.min(0.35, decimalLog10(mirrorArmyValueRaw.plus(1)) * 0.05));
     const mirrorBoostRatio = mirrorTerritoryArmyExists ? mirrorPreferredQuality * mirrorArmyScale : 0;
     const mirrorTpsBeforeRaw = decimalFrom(getVelocity(game, "territory"));
     const mirrorTpsAfterRaw = mirrorTpsBeforeRaw.times(1 + mirrorBoostRatio);
+    const mirrorTpsBefore = decimalToNumber(mirrorTpsBeforeRaw, 0);
+    const mirrorTpsAfter = decimalToNumber(mirrorTpsAfterRaw, 0);
     const mirrorEtaBeforeSeconds = Number.isFinite(engine?.expansionEta) ? Math.max(0, Number(engine.expansionEta)) : Infinity;
     const mirrorEtaAfterSeconds = Number.isFinite(mirrorEtaBeforeSeconds) && mirrorBoostRatio > 0 ? Math.max(0, mirrorEtaBeforeSeconds / (1 + mirrorBoostRatio)) : mirrorEtaBeforeSeconds;
     const mirrorEtaGainSeconds = Number.isFinite(mirrorEtaBeforeSeconds) && Number.isFinite(mirrorEtaAfterSeconds)
       ? Math.max(0, mirrorEtaBeforeSeconds - mirrorEtaAfterSeconds)
       : 0;
     const mirrorHelpsTarget = /territory|save-territory/i.test(String(smartFocus || "")) || /Territory|Engine/i.test(String(selectedMainAction?.lane || ""));
-    const mirrorMeaningful = mirrorBoostRatio >= minMeaningfulBenefit || mirrorEtaGainSeconds >= 30;
-    const mirrorReady = !!mirrorCandidate && mirrorReadyEnergy && mirrorTerritoryArmyExists && !missingMirrorUnits.length && mirrorHelpsTarget && mirrorMeaningful;
+    const mirrorProjectionCalculable = (Number.isFinite(mirrorTpsBefore) && mirrorTpsBefore > 0 && Number.isFinite(mirrorTpsAfter) && mirrorTpsAfter >= 0)
+      || (Number.isFinite(mirrorEtaBeforeSeconds) && mirrorEtaBeforeSeconds > 0 && Number.isFinite(mirrorEtaAfterSeconds));
+    const mirrorTerritoryRateGainRatio = Number.isFinite(mirrorTpsBefore) && mirrorTpsBefore > 0
+      ? Math.max(0, (mirrorTpsAfter - mirrorTpsBefore) / mirrorTpsBefore)
+      : 0;
+    const mirrorEtaGainRatio = Number.isFinite(mirrorEtaBeforeSeconds) && mirrorEtaBeforeSeconds > 0 && Number.isFinite(mirrorEtaGainSeconds)
+      ? Math.max(0, mirrorEtaGainSeconds / mirrorEtaBeforeSeconds)
+      : 0;
+    const mirrorMeaningful = Math.max(mirrorTerritoryRateGainRatio, mirrorEtaGainRatio) >= minMeaningfulBenefit;
+    const mirrorRelevantContextExists = mirrorRelevantArmyExists || (mirrorHelpsTarget && mirrorBoostRatio > 0);
+    const mirrorGateOrder = [
+      { key: "ability", pass: mirrorCandidate !== "none", reason: "mirror ritual locked/unavailable" },
+      { key: "energy", pass: mirrorReadyEnergy, reason: "not enough energy" },
+      { key: "relevant-army", pass: mirrorRelevantContextExists, reason: "no relevant territory army exists" },
+      { key: "preferred-units", pass: !missingMirrorUnits.length, reason: `mirror-preferred units missing: ${missingMirrorUnits.join(", ")}` },
+      { key: "projection", pass: mirrorProjectionCalculable, reason: "projection unavailable (invalid territory velocity/ETA)" },
+      { key: "payoff", pass: mirrorMeaningful, reason: "no clear territory/Expansion payoff yet" },
+      { key: "decision", pass: mirrorHelpsTarget, reason: "does not help current target" },
+    ];
+    const firstMirrorFailedGate = mirrorGateOrder.find((gate) => !gate.pass);
+    const mirrorGateKey = firstMirrorFailedGate ? firstMirrorFailedGate.key : "decision";
+    const mirrorReady = !!mirrorCandidate && !firstMirrorFailedGate;
     const mirrorBlocked = [];
     if (!mirrorCandidate) mirrorBlocked.push("mirror ritual locked/unavailable");
     if (mirrorCandidate && !mirrorReadyEnergy) mirrorBlocked.push("not enough energy");
-    if (mirrorCandidate && !mirrorTerritoryArmyExists) mirrorBlocked.push("no territory army exists");
+    if (mirrorCandidate && !mirrorRelevantContextExists) mirrorBlocked.push("no relevant territory army exists");
     if (mirrorCandidate && missingMirrorUnits.length) mirrorBlocked.push(`mirror-preferred units missing: ${missingMirrorUnits.join(", ")}`);
     if (mirrorCandidate && !mirrorHelpsTarget) mirrorBlocked.push("does not help current target");
+    if (mirrorCandidate && !mirrorProjectionCalculable) mirrorBlocked.push("projection unavailable (invalid territory velocity/ETA)");
     if (mirrorCandidate && !mirrorMeaningful) mirrorBlocked.push("no clear territory/Expansion payoff yet");
     const mirrorDecision = mirrorReady
       ? (config.energySupportBrokerAdvisorOnly || !config.energySupportBrokerAllowAutoCast ? "ADVISE" : "READY")
       : "HOLD";
     const mirrorReason = mirrorReady
       ? "Mirror the army would help General Mandible now, but default mode keeps auto-cast off."
-      : (mirrorBlocked[0] || "Mirror ritual is not worth it yet.");
+      : (firstMirrorFailedGate?.reason || mirrorBlocked[0] || "Mirror ritual is not worth it yet.");
     const mirrorReadinessState = [
       `visible=${mirrorCandidate !== "none" ? "yes" : "no"}`,
       `energy=${mirrorReadyEnergy ? "yes" : "no"}`,
       `territoryArmy=${mirrorTerritoryArmyExists ? "yes" : "no"}`,
+      `relevantArmy=${mirrorRelevantArmyExists ? "yes" : "no"}`,
       `preferredMissing=${missingMirrorUnits.length ? missingMirrorUnits.join("|") : "none"}`,
+      `projection=${mirrorProjectionCalculable ? "yes" : "no"}`,
       `helpsTarget=${mirrorHelpsTarget ? "yes" : "no"}`,
       `meaningful=${mirrorMeaningful ? "yes" : "no"}`,
+      `activeGate=${mirrorGateKey}`,
     ].join("; ");
 
     const lepidopteraPlan = postNexusEnergyPlannerState || {};
@@ -3116,9 +3189,87 @@ function getDisplayName(item) {
         : "Save energy for a stronger support action."));
     const lepiChunk = lepidopteraPlan.postNexusEnergyAmount || (lepiVisible ? formatSwarmNumber(getSafeLepidopteraBuyNum(game)) : "0");
 
-    const clonePriorityScore = cloneReady ? 3 : 0;
-    const mirrorPriorityScore = mirrorReady ? 2 : 0;
-    const lepiPriorityScore = lepiRole === "primary" ? 1.5 : (lepiRole === "background" ? 1 : 0);
+    const cloneBenefitScore = Math.max(0, cloneGainRatio);
+    const mirrorBenefitScore = Math.max(0, mirrorTerritoryRateGainRatio, mirrorEtaGainRatio);
+    const lepiBoostGainScore = Number.parseFloat(String(lepidopteraPlan.postNexusEnergyBoostGain || "0").replace("%", "")) || 0;
+    const lepiBenefitScore = Math.max(0, lepiBoostGainScore / 100);
+    const focus = String(smartFocus || "").toLowerCase();
+
+    function supportDecisionClass(decision, role = "") {
+      if (["ADVISE", "READY"].includes(String(decision || ""))) return "advise";
+      if (String(role || "") === "background" || String(decision || "") === "BACKGROUND") return "background";
+      if (String(decision || "") === "HOLD") return "hold";
+      return "blocked";
+    }
+
+    function decisionClassWeight(cls) {
+      switch (String(cls || "")) {
+      case "advise": return 4000;
+      case "background": return 3000;
+      case "hold": return 2000;
+      case "blocked": return 1000;
+      default: return 0;
+      }
+    }
+
+    function rankCandidate(candidate) {
+      return decisionClassWeight(candidate.className)
+        + Math.round(Math.max(0, Number(candidate.benefit || 0)) * 1000)
+        + Math.round(Math.max(0, Number(candidate.urgency || 0)) * 100);
+    }
+
+    const cloneFocusBonus = /meat|save-meat/.test(focus) ? 0.2 : 0;
+    const mirrorFocusBonus = /territory|save-territory/.test(focus) ? 0.2 : 0;
+    const lepiFocusBonus = /energy/.test(focus) ? 0.15 : 0;
+
+    const supportCandidates = [
+      {
+        key: "clone-larvae",
+        decision: cloneDecision,
+        className: supportDecisionClass(cloneDecision),
+        benefit: cloneBenefitScore + cloneFocusBonus,
+        urgency: cloneReady ? 1 : 0,
+        reason: cloneReason,
+        blockedBy: cloneBlocked.length ? cloneBlocked.join("; ") : "none",
+      },
+      {
+        key: "house-of-mirrors",
+        decision: mirrorDecision,
+        className: supportDecisionClass(mirrorDecision),
+        benefit: mirrorBenefitScore + mirrorFocusBonus,
+        urgency: mirrorReady ? 1 : 0,
+        reason: mirrorReason,
+        blockedBy: mirrorBlocked.length ? mirrorBlocked.join("; ") : "none",
+      },
+      {
+        key: "lepidoptera",
+        decision: lepiDecision,
+        className: supportDecisionClass(lepiDecision, lepiRole),
+        benefit: lepiBenefitScore + lepiFocusBonus,
+        urgency: lepiRole === "primary" ? 1 : (lepiRole === "background" ? 0.5 : 0),
+        reason: lepiReason,
+        blockedBy: lepidopteraPlan.postNexusEnergyBlockedBy || "none",
+      },
+      {
+        key: "wait",
+        decision: "WAIT",
+        className: "blocked",
+        benefit: 0,
+        urgency: 0,
+        reason: "Save energy for a stronger support action.",
+        blockedBy: "none",
+      },
+    ];
+
+    supportCandidates.sort((a, b) => {
+      const diff = rankCandidate(b) - rankCandidate(a);
+      if (diff !== 0) return diff;
+      return String(a.key).localeCompare(String(b.key));
+    });
+    const topSupport = supportCandidates[0];
+    const candidateRanking = supportCandidates
+      .map((entry) => `${entry.key}:${entry.className}:${trimNumber(entry.benefit)}:${entry.decision}`)
+      .join(" | ");
 
     let bestUse = "wait";
     let bestDecision = "WAIT";
@@ -3129,7 +3280,7 @@ function getDisplayName(item) {
     let autobuyerInstruction = "No support cast should run.";
     let backgroundAction = "none";
 
-    if (clonePriorityScore >= mirrorPriorityScore && clonePriorityScore >= lepiPriorityScore && cloneCandidate !== "none") {
+    if (topSupport?.key === "clone-larvae" && cloneCandidate !== "none") {
       bestUse = "clone-larvae";
       bestDecision = cloneDecision;
       bestReason = cloneReason;
@@ -3140,7 +3291,7 @@ function getDisplayName(item) {
         : "Prepare cocoons and clone buffer before Clone Larvae.";
       autobuyerInstruction = "Auto-cast disabled; do not cast.";
       if (lepiRole === "background") backgroundAction = `Lepidoptera +${lepiChunk} in background`;
-    } else if (mirrorPriorityScore >= lepiPriorityScore && mirrorCandidate !== "none") {
+    } else if (topSupport?.key === "house-of-mirrors" && mirrorCandidate !== "none") {
       bestUse = "house-of-mirrors";
       bestDecision = mirrorDecision;
       bestReason = mirrorReason;
@@ -3151,7 +3302,7 @@ function getDisplayName(item) {
         : "Do not cast House of Mirrors until army/payoff gates are met.";
       autobuyerInstruction = "Auto-cast disabled; do not cast.";
       if (lepiRole === "background") backgroundAction = `Lepidoptera +${lepiChunk} in background`;
-    } else if (lepiRole === "primary" || lepiRole === "background") {
+    } else if (topSupport?.key === "lepidoptera" && (lepiRole === "primary" || lepiRole === "background")) {
       bestUse = "lepidoptera";
       bestDecision = lepiDecision;
       bestReason = lepiReason;
@@ -3165,6 +3316,8 @@ function getDisplayName(item) {
         : "Allow bounded Lepidoptera chunking only.";
       backgroundAction = lepiRole === "background" ? `Lepidoptera +${lepiChunk}` : "none";
     }
+
+    const bestUseSelectionReason = `${topSupport?.key || "wait"} selected from ranked support candidates (${candidateRanking})`;
 
     scenarioHarnessContext.evaluationRevision = (Number(scenarioHarnessContext.evaluationRevision) || 0) + 1;
 
@@ -3198,6 +3351,9 @@ function getDisplayName(item) {
       energySupportMirrorPreferredUnitsMissing: missingMirrorUnits.length ? missingMirrorUnits.join(", ") : "none",
       energySupportMirrorTerritoryArmyExists: mirrorTerritoryArmyExists ? "yes" : "no",
       energySupportMirrorReadinessState: mirrorReadinessState,
+      energySupportMirrorActiveGate: mirrorGateKey,
+      energySupportMirrorTerritoryRateGainRatio: trimNumber(mirrorTerritoryRateGainRatio),
+      energySupportMirrorEtaGainRatio: trimNumber(mirrorEtaGainRatio),
       energySupportMirrorArmyStateSource: `live-unitlist:${scenarioSourceTag()}`,
       energySupportMirrorEvaluationRevision: String(scenarioHarnessContext.evaluationRevision),
       energySupportLepidopteraDecision: lepiDecision,
@@ -3208,6 +3364,8 @@ function getDisplayName(item) {
       energySupportLepidopteraBoostAfter: lepidopteraPlan.postNexusEnergyBoostAfter || "n/a",
       energySupportLepidopteraBoostGain: lepidopteraPlan.postNexusEnergyBoostGain || "n/a",
       energySupportLepidopteraReserveAfter: lepidopteraPlan.postNexusEnergyReserve || "0",
+      energySupportCandidateRanking: candidateRanking,
+      energySupportBestUseSelectionReason: bestUseSelectionReason,
     };
   }
 
@@ -3850,7 +4008,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.11.2",
+      scriptVersion: "0.11.3",
       source: scenarioSourceTag(),
       scenarioId: scenarioHarnessContext.active ? scenarioHarnessContext.scenarioId : "none",
       status: lastStatus,
@@ -4039,7 +4197,9 @@ function getDisplayName(item) {
       energySupportBestUsePlayerInstruction: strategyInspector?.energySupportBestUsePlayerInstruction || "none",
       energySupportBestUseAutobuyerInstruction: strategyInspector?.energySupportBestUseAutobuyerInstruction || "none",
       energySupportBestUseBlockedBy: strategyInspector?.energySupportBestUseBlockedBy || "none",
+      energySupportBestUseSelectionReason: strategyInspector?.energySupportBestUseSelectionReason || "none",
       energySupportBackgroundAction: strategyInspector?.energySupportBackgroundAction || "none",
+      energySupportCandidateRanking: strategyInspector?.energySupportCandidateRanking || "none",
       energySupportCloneCandidate: strategyInspector?.energySupportCloneCandidate || "none",
       energySupportCloneDecision: strategyInspector?.energySupportCloneDecision || "HOLD",
       energySupportCloneReason: strategyInspector?.energySupportCloneReason || "none",
@@ -4061,6 +4221,9 @@ function getDisplayName(item) {
       energySupportMirrorPreferredUnitsMissing: strategyInspector?.energySupportMirrorPreferredUnitsMissing || "none",
       energySupportMirrorTerritoryArmyExists: strategyInspector?.energySupportMirrorTerritoryArmyExists || "no",
       energySupportMirrorReadinessState: strategyInspector?.energySupportMirrorReadinessState || "none",
+      energySupportMirrorActiveGate: strategyInspector?.energySupportMirrorActiveGate || "none",
+      energySupportMirrorTerritoryRateGainRatio: strategyInspector?.energySupportMirrorTerritoryRateGainRatio || "0",
+      energySupportMirrorEtaGainRatio: strategyInspector?.energySupportMirrorEtaGainRatio || "0",
       energySupportMirrorArmyStateSource: strategyInspector?.energySupportMirrorArmyStateSource || "live-unitlist:live-browser",
       energySupportMirrorEvaluationRevision: strategyInspector?.energySupportMirrorEvaluationRevision || "0",
       energySupportLepidopteraDecision: strategyInspector?.energySupportLepidopteraDecision || "WAIT",
@@ -4149,6 +4312,71 @@ function getDisplayName(item) {
     return rows;
   }
 
+  function getScenarioExpectedForCycle(scenario, cycle) {
+    const shared = Array.isArray(scenario?.expected) ? scenario.expected : [];
+    const byCycle = [];
+    const map = scenario?.expectedByCycle;
+
+    if (Array.isArray(map)) {
+      for (const entry of map) {
+        if (Number(entry?.cycle) !== Number(cycle)) continue;
+        for (const exp of entry?.expected || []) byCycle.push(exp);
+      }
+    } else if (map && typeof map === "object") {
+      const rows = map[String(cycle)];
+      if (Array.isArray(rows)) {
+        for (const exp of rows) byCycle.push(exp);
+      }
+    }
+
+    return [...shared, ...byCycle];
+  }
+
+  function mergeScenarioOverrideMaps(base = {}, patch = {}) {
+    const out = { ...base };
+    for (const [k, v] of Object.entries(patch || {})) out[k] = v;
+    return out;
+  }
+
+  function mergeScenarioOverrides(baseOverrides, patchOverrides) {
+    const base = baseOverrides || {};
+    const patch = patchOverrides || {};
+    return {
+      ...base,
+      ...patch,
+      resourceCounts: mergeScenarioOverrideMaps(base.resourceCounts || base.resources, patch.resourceCounts || patch.resources),
+      resourceVelocities: mergeScenarioOverrideMaps(base.resourceVelocities || base.velocities, patch.resourceVelocities || patch.velocities),
+      unitCounts: mergeScenarioOverrideMaps(base.unitCounts, patch.unitCounts),
+      abilities: mergeScenarioOverrideMaps(base.abilities, patch.abilities),
+      config: mergeScenarioOverrideMaps(base.config, patch.config),
+      remainingActions: Number.isFinite(Number(patch.remainingActions))
+        ? Number(patch.remainingActions)
+        : (Number.isFinite(Number(base.remainingActions)) ? Number(base.remainingActions) : null),
+      engine: {
+        ...(base.engine || {}),
+        ...(patch.engine || {}),
+      },
+    };
+  }
+
+  function applyScenarioConfigOverrides(overrides) {
+    const normalized = normalizeScenarioOverrides(overrides || {});
+    const configOverrides = normalized.config || {};
+    const restore = {};
+    for (const [key, value] of Object.entries(configOverrides)) {
+      if (!Object.prototype.hasOwnProperty.call(config, key)) continue;
+      restore[key] = config[key];
+      config[key] = value;
+    }
+    return restore;
+  }
+
+  function restoreScenarioConfigOverrides(restoreMap) {
+    for (const [key, value] of Object.entries(restoreMap || {})) {
+      config[key] = value;
+    }
+  }
+
   function runDeterministicScenarioHarness(options = {}) {
     if (!isScenarioHarnessEnabled()) {
       return {
@@ -4163,6 +4391,7 @@ function getDisplayName(item) {
     const report = {
       source: "deterministic-scenario",
       scriptVersion: SCRIPT_VERSION,
+      scenarioReportVersion: SCENARIO_REPORT_VERSION,
       runAt: new Date().toISOString(),
       warning: "Scenario harness runs against live browser state but uses deterministic override layers and does not write save state.",
       scenarios: [],
@@ -4184,10 +4413,12 @@ function getDisplayName(item) {
         const source = String(scenario?.source || "deterministic-scenario");
         const cycles = Math.max(1, Number(scenario?.evaluationCycles || 1));
         const cycleReport = [];
+        let scenarioOverrides = normalizeScenarioOverrides(scenario?.overrides || {});
 
-        setScenarioContext({ scenarioId, source, overrides: scenario?.overrides || {} });
+        setScenarioContext({ scenarioId, source, overrides: scenarioOverrides });
 
         for (let cycle = 1; cycle <= cycles; cycle++) {
+          const cycleConfigRestore = applyScenarioConfigOverrides(scenarioOverrides);
           clearAdvisorLog();
           clearLaneCandidates();
           meatFallbackState = null;
@@ -4209,11 +4440,14 @@ function getDisplayName(item) {
 
           const protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
           const smartFocus = scenario?.smartFocus || decideSmartFocus(engine);
+          const remainingActions = Number.isFinite(Number(scenarioHarnessContext.overrides?.remainingActions))
+            ? Number(scenarioHarnessContext.overrides.remainingActions)
+            : Math.max(1, Number(scenario?.remainingActions || 1));
 
           safe(`Scenario ${scenarioId} energy`, () => handleEnergyStrategy(game, commands, protectedResources));
           safe(`Scenario ${scenarioId} clone`, () => runCloneBufferPlanner(game, commands));
           safe(`Scenario ${scenarioId} unlock`, () => runUnlockPlanner(game, commands, protectedResources));
-          safe(`Scenario ${scenarioId} units`, () => buySmartUnits(game, commands, engine, protectedResources, Math.max(1, Number(scenario?.remainingActions || 1))));
+          safe(`Scenario ${scenarioId} units`, () => buySmartUnits(game, commands, engine, protectedResources, Math.max(1, remainingActions)));
           runAbilityPrepPlanner(game);
 
           strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, [], 0, 0, Math.max(1, Number(config.smartMaxActionsPerRun || 1)));
@@ -4223,10 +4457,17 @@ function getDisplayName(item) {
             energySupportBestUse: payload.energySupportBestUse,
             energySupportBestUseDecision: payload.energySupportBestUseDecision,
             energySupportBestUseReason: payload.energySupportBestUseReason,
+            energySupportBestUseSelectionReason: payload.energySupportBestUseSelectionReason,
+            energySupportCandidateRanking: payload.energySupportCandidateRanking,
+            energySupportCloneDecision: payload.energySupportCloneDecision,
+            energySupportCloneReason: payload.energySupportCloneReason,
             energySupportMirrorDecision: payload.energySupportMirrorDecision,
             energySupportMirrorReason: payload.energySupportMirrorReason,
             energySupportMirrorReadinessState: payload.energySupportMirrorReadinessState,
             energySupportMirrorPreferredUnitsMissing: payload.energySupportMirrorPreferredUnitsMissing,
+            energySupportMirrorActiveGate: payload.energySupportMirrorActiveGate,
+            energySupportMirrorTerritoryRateGainRatio: payload.energySupportMirrorTerritoryRateGainRatio,
+            energySupportMirrorEtaGainRatio: payload.energySupportMirrorEtaGainRatio,
             energySupportMirrorArmyStateSource: payload.energySupportMirrorArmyStateSource || "n/a",
             energySupportMirrorEvaluationRevision: payload.energySupportMirrorEvaluationRevision || "0",
             energySupportLepidopteraRole: payload.energySupportLepidopteraRole,
@@ -4236,16 +4477,28 @@ function getDisplayName(item) {
             momentumBestStepDecision: payload.momentumBestStepDecision,
             momentumPrimaryPrioritySource: payload.momentumPrimaryPrioritySource,
             momentumPrimarySelectionReason: payload.momentumPrimarySelectionReason,
+            parentStepDecision: payload.parentStepDecision,
+            parentStepCandidate: payload.parentStepCandidate,
+            parentStepReason: payload.parentStepReason,
+            parentStepTarget: payload.parentStepTarget,
+            parentStepActionUnit: payload.parentStepActionUnit,
+            parentStepConsumedUnit: payload.parentStepConsumedUnit,
+            actionUnitRefillDecision: payload.actionUnitRefillDecision,
+            actionUnitRefillReason: payload.actionUnitRefillReason,
+            actionUnitRefillBlockedBy: payload.actionUnitRefillBlockedBy,
+            actionUnitRefillParentStepConsumedUnit: payload.actionUnitRefillParentStepConsumedUnit,
+            whyNoFollowUpAction: payload.whyNoFollowUpAction,
             activeCouncilSpeaker: payload.activeCouncilSpeaker,
             doThisNow: payload.momentumBestStep,
             why: payload.momentumBestStepReason,
           };
+          const expectedForCycle = getScenarioExpectedForCycle(scenario, cycle);
 
           cycleReport.push({
             cycle,
             source,
             scenarioId,
-            inputOverrides: scenario?.overrides || {},
+            inputOverrides: scenarioOverrides,
             beforeState: getScenarioStateSnapshot(game, engine),
             decisions: decisionFields,
             projection: {
@@ -4255,17 +4508,15 @@ function getDisplayName(item) {
               expansionEtaAfter: payload.energySupportMirrorExpansionEtaAfter,
               etaGainSeconds: payload.energySupportMirrorEtaGainSeconds,
             },
-            invariants: evaluateScenarioExpectations(decisionFields, scenario?.expected || []),
+            invariants: evaluateScenarioExpectations(decisionFields, expectedForCycle),
           });
+          restoreScenarioConfigOverrides(cycleConfigRestore);
 
           const between = Array.isArray(scenario?.betweenEvaluations) ? scenario.betweenEvaluations : [];
           for (const action of between) {
             if (Number(action?.afterCycle) !== cycle) continue;
-            const merged = {
-              ...(scenario?.overrides || {}),
-              ...(action?.applyOverrides || {}),
-            };
-            setScenarioContext({ scenarioId, source, overrides: merged });
+            scenarioOverrides = normalizeScenarioOverrides(mergeScenarioOverrides(scenarioOverrides, action?.applyOverrides || {}));
+            setScenarioContext({ scenarioId, source, overrides: scenarioOverrides });
           }
         }
 
