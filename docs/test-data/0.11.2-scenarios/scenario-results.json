@@ -1,0 +1,469 @@
+{
+  "source": "deterministic-scenario",
+  "scriptVersion": "0.11.2",
+  "runAt": "2026-07-10T01:45:05.806Z",
+  "note": "Populate scenarios[].cycles by running in browser console: kbcSwarmBot.scenarioHarness.enable(); kbcSwarmBot.scenarioHarness.run({ scenarios: <definitions.scenarios> })",
+  "scenarios": [
+    {
+      "scenarioId": "H1",
+      "description": "All preferred HoM units missing",
+      "source": "deterministic-scenario",
+      "inputOverrides": {
+        "resourceCounts": {
+          "energy": 100000,
+          "territory": 1000000000000,
+          "nexus": 5
+        },
+        "resourceVelocities": {
+          "territory": 1000000
+        },
+        "unitCounts": {
+          "Culicimorph V": 0,
+          "Arachnomorph V": 0,
+          "Stinger V": 0
+        },
+        "abilities": {
+          "houseofmirrors": {
+            "visible": true,
+            "energyCost": 2500
+          }
+        },
+        "engine": {
+          "expansionEtaSeconds": 7200
+        }
+      },
+      "expected": [
+        {
+          "id": "h1-decision",
+          "field": "energySupportMirrorDecision",
+          "equals": "HOLD"
+        },
+        {
+          "id": "h1-missing-culi",
+          "field": "energySupportMirrorReadinessState",
+          "includes": "Culicimorph V"
+        },
+        {
+          "id": "h1-missing-arach",
+          "field": "energySupportMirrorReadinessState",
+          "includes": "Arachnomorph V"
+        },
+        {
+          "id": "h1-missing-stinger",
+          "field": "energySupportMirrorReadinessState",
+          "includes": "Stinger V"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "H2",
+      "description": "Preferred units become present between eval cycles",
+      "source": "deterministic-scenario",
+      "inputOverrides": {
+        "resourceCounts": {
+          "energy": 100000,
+          "territory": 1000000000000,
+          "nexus": 5
+        },
+        "resourceVelocities": {
+          "territory": 1000000
+        },
+        "unitCounts": {
+          "Culicimorph V": 0,
+          "Arachnomorph V": 0,
+          "Stinger V": 0
+        },
+        "abilities": {
+          "houseofmirrors": {
+            "visible": true,
+            "energyCost": 2500
+          }
+        },
+        "engine": {
+          "expansionEtaSeconds": 5400
+        }
+      },
+      "expected": [
+        {
+          "id": "h2-no-missing-reason",
+          "field": "energySupportMirrorReason",
+          "notIncludes": "mirror-preferred units missing"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "H3",
+      "description": "Only one preferred HoM unit missing",
+      "source": "deterministic-scenario",
+      "inputOverrides": {
+        "resourceCounts": {
+          "energy": 100000,
+          "territory": 1000000000000,
+          "nexus": 5
+        },
+        "resourceVelocities": {
+          "territory": 1000000
+        },
+        "unitCounts": {
+          "Culicimorph V": 25,
+          "Arachnomorph V": 30,
+          "Stinger V": 0
+        },
+        "abilities": {
+          "houseofmirrors": {
+            "visible": true,
+            "energyCost": 2500
+          }
+        },
+        "engine": {
+          "expansionEtaSeconds": 4800
+        }
+      },
+      "expected": [
+        {
+          "id": "h3-stinger-missing",
+          "field": "energySupportMirrorPreferredUnitsMissing",
+          "equals": "Stinger V"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "H4",
+      "description": "Readiness passed but payoff not meaningful",
+      "source": "deterministic-scenario",
+      "inputOverrides": {
+        "resourceCounts": {
+          "energy": 100000,
+          "territory": 1000000000000,
+          "nexus": 5
+        },
+        "resourceVelocities": {
+          "territory": 1
+        },
+        "unitCounts": {
+          "Culicimorph V": 1,
+          "Arachnomorph V": 1,
+          "Stinger V": 1
+        },
+        "abilities": {
+          "houseofmirrors": {
+            "visible": true,
+            "energyCost": 2500
+          }
+        },
+        "engine": {
+          "expansionEtaSeconds": 180000
+        }
+      },
+      "expected": [
+        {
+          "id": "h4-hold",
+          "field": "energySupportMirrorDecision",
+          "equals": "HOLD"
+        },
+        {
+          "id": "h4-no-missing-text",
+          "field": "energySupportMirrorReason",
+          "notIncludes": "missing"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "H5",
+      "description": "Clear HoM payoff opportunity",
+      "source": "counterfactual-projection",
+      "inputOverrides": {
+        "resourceCounts": {
+          "energy": 500000,
+          "territory": 1000000000000000,
+          "nexus": 5
+        },
+        "resourceVelocities": {
+          "territory": 500000000
+        },
+        "unitCounts": {
+          "Culicimorph V": 1000000,
+          "Arachnomorph V": 1000000,
+          "Stinger V": 1000000
+        },
+        "abilities": {
+          "houseofmirrors": {
+            "visible": true,
+            "energyCost": 2500
+          }
+        },
+        "engine": {
+          "expansionEtaSeconds": 3600
+        }
+      },
+      "expected": [
+        {
+          "id": "h5-best-use",
+          "field": "energySupportBestUse",
+          "equals": "house-of-mirrors"
+        },
+        {
+          "id": "h5-mirror-decision",
+          "field": "energySupportMirrorDecision",
+          "oneOf": [
+            "ADVISE",
+            "READY"
+          ]
+        },
+        {
+          "id": "h5-speaker",
+          "field": "activeCouncilSpeaker",
+          "equals": "General Mandible"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "H6",
+      "description": "HoM visible but no meaningful territory army",
+      "source": "deterministic-scenario",
+      "inputOverrides": {
+        "resourceCounts": {
+          "energy": 100000,
+          "territory": 1000000000000,
+          "nexus": 5
+        },
+        "resourceVelocities": {
+          "territory": 1000
+        },
+        "unitCounts": {
+          "Culicimorph V": 0,
+          "Arachnomorph V": 0,
+          "Stinger V": 0
+        },
+        "abilities": {
+          "houseofmirrors": {
+            "visible": true,
+            "energyCost": 2500
+          }
+        },
+        "engine": {
+          "expansionEtaSeconds": 7200
+        }
+      },
+      "expected": [
+        {
+          "id": "h6-hold",
+          "field": "energySupportMirrorDecision",
+          "equals": "HOLD"
+        },
+        {
+          "id": "h6-army-gate",
+          "field": "energySupportMirrorReason",
+          "includes": "no territory army exists"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "R1",
+      "description": "Expansion save-window priority",
+      "source": "deterministic-scenario",
+      "inputOverrides": {
+        "resourceCounts": {
+          "nexus": 5,
+          "energy": 500000
+        },
+        "engine": {
+          "expansionEtaSeconds": 30
+        }
+      },
+      "expected": [
+        {
+          "id": "r1-best-step",
+          "field": "momentumBestStep",
+          "equals": "Wait for Expansion"
+        },
+        {
+          "id": "r1-focus",
+          "field": "momentumPrimaryFocus",
+          "equals": "Save territory for Expansion"
+        },
+        {
+          "id": "r1-source",
+          "field": "momentumPrimaryPrioritySource",
+          "equals": "Expansion save-window"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "R2",
+      "description": "Lepidoptera background role",
+      "source": "counterfactual-projection",
+      "inputOverrides": {
+        "resourceCounts": {
+          "nexus": 5,
+          "energy": 1000000
+        },
+        "engine": {
+          "expansionEtaSeconds": 1200
+        }
+      },
+      "expected": [
+        {
+          "id": "r2-role",
+          "field": "energySupportLepidopteraRole",
+          "equals": "background"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "R3",
+      "description": "Lepidoptera primary role",
+      "source": "counterfactual-projection",
+      "inputOverrides": {
+        "resourceCounts": {
+          "nexus": 5,
+          "energy": 1000000
+        },
+        "engine": {
+          "expansionEtaSeconds": 999999
+        }
+      },
+      "expected": [
+        {
+          "id": "r3-role",
+          "field": "energySupportLepidopteraRole",
+          "equals": "primary"
+        },
+        {
+          "id": "r3-advisor",
+          "field": "momentumPrimaryAdvisor",
+          "equals": "Beetle Magus"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "R4",
+      "description": "Clone Larvae safe but below threshold",
+      "source": "deterministic-scenario",
+      "inputOverrides": {
+        "resourceCounts": {
+          "energy": 500000,
+          "larva": 1000000000,
+          "clone": 1,
+          "nexus": 5
+        },
+        "abilities": {
+          "clonelarvae": {
+            "visible": true,
+            "energyCost": 1000
+          }
+        }
+      },
+      "expected": [
+        {
+          "id": "r4-clone-hold",
+          "field": "energySupportCloneDecision",
+          "equals": "HOLD"
+        },
+        {
+          "id": "r4-threshold",
+          "field": "energySupportCloneReason",
+          "includes": "benefit below meaningful threshold"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "R5",
+      "description": "Clone Larvae meaningful",
+      "source": "counterfactual-projection",
+      "inputOverrides": {
+        "resourceCounts": {
+          "energy": 500000,
+          "larva": 1,
+          "clone": 1000000000,
+          "nexus": 5
+        },
+        "abilities": {
+          "clonelarvae": {
+            "visible": true,
+            "energyCost": 1000
+          }
+        }
+      },
+      "expected": [
+        {
+          "id": "r5-clone-ready",
+          "field": "energySupportCloneDecision",
+          "oneOf": [
+            "ADVISE",
+            "READY"
+          ]
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "R6",
+      "description": "Twin prep under meaningful gate",
+      "source": "counterfactual-projection",
+      "inputOverrides": {
+        "resourceCounts": {
+          "nexus": 5
+        }
+      },
+      "expected": [
+        {
+          "id": "r6-gate",
+          "field": "momentumBestStepDecision",
+          "oneOf": [
+            "WAIT",
+            "HOLD",
+            "OBSERVE"
+          ]
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "R7",
+      "description": "Twin prep over meaningful gate",
+      "source": "counterfactual-projection",
+      "inputOverrides": {
+        "resourceCounts": {
+          "nexus": 5
+        }
+      },
+      "expected": [
+        {
+          "id": "r7-non-empty-step",
+          "field": "momentumBestStep",
+          "notIncludes": "Wait"
+        }
+      ],
+      "cycles": []
+    },
+    {
+      "scenarioId": "R8",
+      "description": "Parent Step then Parent Refill over two cycles",
+      "source": "deterministic-scenario",
+      "inputOverrides": {
+        "resourceCounts": {
+          "nexus": 5
+        }
+      },
+      "expected": [
+        {
+          "id": "r8-step-exists",
+          "field": "momentumBestStep",
+          "notIncludes": "none"
+        }
+      ],
+      "cycles": []
+    }
+  ]
+}

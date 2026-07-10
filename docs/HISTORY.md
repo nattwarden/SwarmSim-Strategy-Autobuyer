@@ -50,6 +50,9 @@ docs/release-notes/
   Energy/Lepidoptera primary, Lepidoptera background/best-step consistency,
   centralized Beetle Magus primary speaker mapping, and refreshed House of
   Mirrors readiness/reason observability.
+- 0.11.2: House of Mirrors live-state preferred-unit matching fix (suffix-aware),
+  deterministic scenario harness (explicitly gated debug API), and minimal mirror
+  source/revision observability for reproducible scenario checks.
 
 ## Documentation posture note
 

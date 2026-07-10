@@ -1,13 +1,17 @@
 {
   "name": "swarmsim-strategy-autobuyer",
   "private": true,
-  "version": "0.11.1",
+  "version": "0.11.2",
   "description": "SwarmSim Strategy Autobuyer tooling",
   "license": "UNLICENSED",
   "scripts": {
     "build": "node scripts/build-canonical-userscript.js --write",
     "build:check": "node scripts/build-canonical-userscript.js --check",
+    "scenarios:0.11.2": "node scripts/run-0.11.2-deterministic-scenarios.js",
+    "check:0.11.2:scenarios": "node scripts/check-0.11.2-scenarios.js",
+    "check:0.11.2:hom": "node scripts/check-0.11.2-hom-readiness.js",
     "check:0.11.1": "node scripts/check-0.11.1-invariants.js",
+    "check:0.11.2": "node scripts/check-0.11.2-invariants.js",
     "sync:from-canonical": "node scripts/extract-runtime-source.js",
     "hotfix:canonical": "npm run sync:from-canonical && npm run build && npm run verify",
     "validate:guardrails": "node scripts/validate-repo-guardrails.js",

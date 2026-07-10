@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.11.1
+// @version      0.11.2
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -16,12 +16,13 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const SCRIPT_VERSION = "0.11.1";
+  const SCRIPT_VERSION = "0.11.2";
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
   const PURCHASE_LAYOUT_STORAGE_KEY = "kbcSwarmBotPurchasePanelLayout_v1";
   const SETTINGS_TAB_STORAGE_KEY = "kbcSwarmBotSettingsActiveTab_v1";
+  const SCENARIO_HARNESS_ENABLE_KEY = "kbcSwarmBotScenarioHarnessEnabled_v1";
 
   const DEFAULT_CONFIG = {
     enabled: true,
@@ -457,6 +458,14 @@
   let postNexusEnergyPlannerState = null;
   let territoryPrepPlannerState = null;
   let laneCoordinatorState = null;
+  let scenarioHarnessContext = {
+    enabled: false,
+    active: false,
+    source: "live-browser",
+    scenarioId: "none",
+    evaluationRevision: 0,
+    overrides: null,
+  };
   let panel = null;
   let strategyBar = null;
   let logPanel = null;
@@ -1117,6 +1126,150 @@ function getDisplayName(item) {
 
   function normalizeLabelKey(value) {
     return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  }
+
+  function isScenarioHarnessEnabled() {
+    try {
+      const stored = String(localStorage.getItem(SCENARIO_HARNESS_ENABLE_KEY) || "false").toLowerCase();
+      return stored === "true";
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function setScenarioHarnessEnabled(enabled) {
+    const value = enabled ? "true" : "false";
+    localStorage.setItem(SCENARIO_HARNESS_ENABLE_KEY, value);
+    scenarioHarnessContext.enabled = enabled;
+    return enabled;
+  }
+
+  function toScenarioNumber(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function normalizeScenarioOverrideMap(rawMap) {
+    const out = {};
+    for (const [key, value] of Object.entries(rawMap || {})) {
+      const normalized = normalizeLabelKey(key);
+      if (!normalized) continue;
+      const n = toScenarioNumber(value);
+      if (!Number.isFinite(n)) continue;
+      out[normalized] = n;
+    }
+    return out;
+  }
+
+  function normalizeScenarioAbilityOverrides(rawAbilities) {
+    const out = {};
+    for (const [abilityKey, raw] of Object.entries(rawAbilities || {})) {
+      const key = normalizeLabelKey(abilityKey);
+      if (!key || !raw || typeof raw !== "object") continue;
+      out[key] = {
+        visible: raw.visible === undefined ? undefined : !!raw.visible,
+        energyCost: Number.isFinite(Number(raw.energyCost)) ? Number(raw.energyCost) : undefined,
+      };
+    }
+    return out;
+  }
+
+  function normalizeScenarioOverrides(rawOverrides) {
+    const overrides = rawOverrides || {};
+    return {
+      resourceCounts: normalizeScenarioOverrideMap(overrides.resourceCounts || overrides.resources),
+      resourceVelocities: normalizeScenarioOverrideMap(overrides.resourceVelocities || overrides.velocities),
+      unitCounts: normalizeScenarioOverrideMap(overrides.unitCounts),
+      abilities: normalizeScenarioAbilityOverrides(overrides.abilities),
+      engine: {
+        expansionEtaSeconds: Number.isFinite(Number(overrides?.engine?.expansionEtaSeconds)) ? Number(overrides.engine.expansionEtaSeconds) : null,
+        hatcheryEtaSeconds: Number.isFinite(Number(overrides?.engine?.hatcheryEtaSeconds)) ? Number(overrides.engine.hatcheryEtaSeconds) : null,
+      },
+    };
+  }
+
+  function getScenarioUnitKeys(unit) {
+    const name = normalizeLabelKey(unit?.name || "");
+    const display = normalizeLabelKey(getDisplayName(unit));
+    const suffix = normalizeLabelKey(unit?.suffix || "");
+    const aliases = [];
+    if (name) aliases.push(name);
+    if (display) aliases.push(display);
+    if (name && display) aliases.push(`${name} ${display}`);
+    if (name && suffix) aliases.push(`${name} ${suffix}`);
+    if (display && suffix) aliases.push(`${display} ${suffix}`);
+    if (name && display && suffix) aliases.push(`${name} ${display} ${suffix}`);
+    if (name === "spider") aliases.push("arachnomorph", "arachnomorph v");
+    if (name === "mosquito") aliases.push("culicimorph", "culicimorph v");
+    if (name === "stinger") aliases.push("stinger v");
+    return Array.from(new Set(aliases.filter(Boolean).map((entry) => normalizeLabelKey(entry))));
+  }
+
+  function getScenarioUnitCountOverride(unit) {
+    if (!scenarioHarnessContext.active) return null;
+    const map = scenarioHarnessContext.overrides?.unitCounts;
+    if (!map) return null;
+    for (const key of getScenarioUnitKeys(unit)) {
+      if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
+    }
+    return null;
+  }
+
+  function getScenarioResourceCountOverride(name) {
+    if (!scenarioHarnessContext.active) return null;
+    const map = scenarioHarnessContext.overrides?.resourceCounts;
+    if (!map) return null;
+    const key = normalizeLabelKey(name);
+    if (!key) return null;
+    return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
+  }
+
+  function getScenarioResourceVelocityOverride(name) {
+    if (!scenarioHarnessContext.active) return null;
+    const map = scenarioHarnessContext.overrides?.resourceVelocities;
+    if (!map) return null;
+    const key = normalizeLabelKey(name);
+    if (!key) return null;
+    return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
+  }
+
+  function getScenarioAbilityOverride(abilityName) {
+    if (!scenarioHarnessContext.active) return null;
+    const map = scenarioHarnessContext.overrides?.abilities;
+    if (!map) return null;
+    const key = normalizeLabelKey(abilityName);
+    if (!key) return null;
+    if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
+    if (key === "swarmwarp" && Object.prototype.hasOwnProperty.call(map, "houseofmirrors")) return map.houseofmirrors;
+    if (key === "houseofmirrors" && Object.prototype.hasOwnProperty.call(map, "swarmwarp")) return map.swarmwarp;
+    if ((key === "houseofmirrors" || key === "swarmwarp") && Object.prototype.hasOwnProperty.call(map, "house of mirrors")) return map["house of mirrors"];
+    return null;
+  }
+
+  function isItemVisibleWithScenarioOverride(item) {
+    const override = getScenarioAbilityOverride(item?.name);
+    if (override && override.visible !== undefined) return !!override.visible;
+    return !!item?.isVisible?.();
+  }
+
+  function setScenarioContext({ scenarioId = "none", source = "deterministic-scenario", overrides = null }) {
+    scenarioHarnessContext.active = true;
+    scenarioHarnessContext.source = source;
+    scenarioHarnessContext.scenarioId = scenarioId;
+    scenarioHarnessContext.overrides = normalizeScenarioOverrides(overrides);
+    scenarioHarnessContext.evaluationRevision = 0;
+  }
+
+  function clearScenarioContext() {
+    scenarioHarnessContext.active = false;
+    scenarioHarnessContext.source = "live-browser";
+    scenarioHarnessContext.scenarioId = "none";
+    scenarioHarnessContext.overrides = null;
+    scenarioHarnessContext.evaluationRevision = 0;
+  }
+
+  function scenarioSourceTag() {
+    return scenarioHarnessContext.active ? scenarioHarnessContext.source : "live-browser";
   }
 
   function getLaneActionAge(lane, history = runHistory) {
@@ -2796,7 +2949,9 @@ function getDisplayName(item) {
     let total = newDecimal(0);
     for (const unit of game.unitlist?.() || []) {
       if (!unitMatchesArmyPrepLabel(unit, label)) continue;
-      total = total.plus(decimalFrom(unit?.count?.() || 0));
+      const overrideCount = getScenarioUnitCountOverride(unit);
+      const unitCount = overrideCount !== null ? overrideCount : decimalToNumber(decimalFrom(unit?.count?.() || 0), 0);
+      total = total.plus(decimalFrom(unitCount));
     }
     return total;
   }
@@ -2880,9 +3035,10 @@ function getDisplayName(item) {
     const mirrorAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
     const moth = getGameUnit(game, "moth");
 
-    const cloneCost = cloneAbility?.isVisible?.() ? decimalFrom(getCostForResource(cloneAbility, "energy")) : newDecimal(0);
-    const cloneCandidate = cloneAbility?.isVisible?.() ? "Clone Larvae" : "none";
-    const cloneReadyEnergy = cloneAbility?.isVisible?.() ? decimalAtLeast(energy, cloneCost) : false;
+    const cloneVisible = isItemVisibleWithScenarioOverride(cloneAbility);
+    const cloneCost = cloneVisible ? decimalFrom(getCostForResource(cloneAbility, "energy")) : newDecimal(0);
+    const cloneCandidate = cloneVisible ? "Clone Larvae" : "none";
+    const cloneReadyEnergy = cloneVisible ? decimalAtLeast(energy, cloneCost) : false;
     const cloneCocoonReady = cloneBufferPlannerState?.cloneBufferRecoveryComplete && !cloneBufferPlannerState?.cloneBufferHardLockActive;
     const cloneBufferSafe = !!cloneCocoonReady;
     const cloneHelpsTarget = /meat|save-meat/i.test(String(smartFocus || "")) || /Meat|Clone Prep/i.test(String(selectedMainAction?.lane || ""));
@@ -2904,13 +3060,14 @@ function getDisplayName(item) {
       ? "Clone Larvae is the best energy support: it can feed the meat chain now, but auto-cast stays off by default."
       : (cloneBlocked[0] || "Clone Larvae is not meaningful right now.");
 
-    const mirrorCost = mirrorAbility?.isVisible?.() ? decimalFrom(getCostForResource(mirrorAbility, "energy")) : newDecimal(0);
-    const mirrorCandidate = mirrorAbility?.isVisible?.() ? "House of Mirrors" : "none";
+    const mirrorVisible = isItemVisibleWithScenarioOverride(mirrorAbility);
+    const mirrorCost = mirrorVisible ? decimalFrom(getCostForResource(mirrorAbility, "energy")) : newDecimal(0);
+    const mirrorCandidate = mirrorVisible ? "House of Mirrors" : "none";
     const mirrorArmyState = getHouseOfMirrorsArmyState(game);
     const mirrorArmyValueRaw = mirrorArmyState.armyValue;
     const missingMirrorUnits = mirrorArmyState.missing.slice();
     const mirrorTerritoryArmyExists = mirrorArmyState.territoryArmyExists;
-    const mirrorReadyEnergy = mirrorAbility?.isVisible?.() ? decimalAtLeast(energy, mirrorCost) : false;
+    const mirrorReadyEnergy = mirrorVisible ? decimalAtLeast(energy, mirrorCost) : false;
     const mirrorPreferredQuality = Math.max(0, (HOUSE_OF_MIRRORS_ARMY_TIERS.length - missingMirrorUnits.length) / HOUSE_OF_MIRRORS_ARMY_TIERS.length);
     const mirrorArmyScale = Math.max(0, Math.min(0.35, decimalLog10(mirrorArmyValueRaw.plus(1)) * 0.05));
     const mirrorBoostRatio = mirrorTerritoryArmyExists ? mirrorPreferredQuality * mirrorArmyScale : 0;
@@ -3022,6 +3179,8 @@ function getDisplayName(item) {
       backgroundAction = lepiRole === "background" ? `Lepidoptera +${lepiChunk}` : "none";
     }
 
+    scenarioHarnessContext.evaluationRevision = (Number(scenarioHarnessContext.evaluationRevision) || 0) + 1;
+
     return {
       energySupportBestUse: bestUse,
       energySupportBestUseDecision: bestDecision,
@@ -3052,6 +3211,8 @@ function getDisplayName(item) {
       energySupportMirrorPreferredUnitsMissing: missingMirrorUnits.length ? missingMirrorUnits.join(", ") : "none",
       energySupportMirrorTerritoryArmyExists: mirrorTerritoryArmyExists ? "yes" : "no",
       energySupportMirrorReadinessState: mirrorReadinessState,
+      energySupportMirrorArmyStateSource: `live-unitlist:${scenarioSourceTag()}`,
+      energySupportMirrorEvaluationRevision: String(scenarioHarnessContext.evaluationRevision),
       energySupportLepidopteraDecision: lepiDecision,
       energySupportLepidopteraRole: lepiRole,
       energySupportLepidopteraReason: lepiReason,
@@ -3702,7 +3863,9 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.11.1",
+      scriptVersion: "0.11.2",
+      source: scenarioSourceTag(),
+      scenarioId: scenarioHarnessContext.active ? scenarioHarnessContext.scenarioId : "none",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -3911,6 +4074,8 @@ function getDisplayName(item) {
       energySupportMirrorPreferredUnitsMissing: strategyInspector?.energySupportMirrorPreferredUnitsMissing || "none",
       energySupportMirrorTerritoryArmyExists: strategyInspector?.energySupportMirrorTerritoryArmyExists || "no",
       energySupportMirrorReadinessState: strategyInspector?.energySupportMirrorReadinessState || "none",
+      energySupportMirrorArmyStateSource: strategyInspector?.energySupportMirrorArmyStateSource || "live-unitlist:live-browser",
+      energySupportMirrorEvaluationRevision: strategyInspector?.energySupportMirrorEvaluationRevision || "0",
       energySupportLepidopteraDecision: strategyInspector?.energySupportLepidopteraDecision || "WAIT",
       energySupportLepidopteraRole: strategyInspector?.energySupportLepidopteraRole || "wait",
       energySupportLepidopteraReason: strategyInspector?.energySupportLepidopteraReason || "none",
@@ -3942,6 +4107,203 @@ function getDisplayName(item) {
     };
   }
 
+  function getScenarioStateSnapshot(game, engine) {
+    const resourceNames = ["meat", "larva", "cocoon", "territory", "energy", "clone", "nexus"];
+    const resources = {};
+    const rates = {};
+
+    for (const name of resourceNames) {
+      resources[name] = formatSwarmNumber(getCurrentResource(game, name));
+      rates[name] = formatSwarmNumber(getVelocity(game, name));
+    }
+
+    return {
+      resources,
+      productionRates: rates,
+      preferredUnitCounts: {
+        "Culicimorph V": formatSwarmNumber(unitCountByArmyPrepLabel(game, "Culicimorph V")),
+        "Arachnomorph V": formatSwarmNumber(unitCountByArmyPrepLabel(game, "Arachnomorph V")),
+        "Stinger V": formatSwarmNumber(unitCountByArmyPrepLabel(game, "Stinger V")),
+      },
+      abilityCosts: {
+        houseOfMirrorsEnergy: formatSwarmNumber(getCostForResource(getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp"), "energy")),
+        cloneLarvaeEnergy: formatSwarmNumber(getCostForResource(getGameUpgrade(game, "clonelarvae"), "energy")),
+      },
+      expansionEtaSeconds: Number.isFinite(engine?.expansionEta) ? Number(engine.expansionEta) : null,
+      territoryPerSecond: formatSwarmNumber(getVelocity(game, "territory")),
+    };
+  }
+
+  function evaluateScenarioExpectations(actual, expectations) {
+    const rows = [];
+    for (const exp of expectations || []) {
+      const field = String(exp?.field || "");
+      const actualValue = field ? String(actual?.[field] ?? "") : "";
+      let pass = false;
+
+      if (exp?.equals !== undefined) {
+        pass = actualValue === String(exp.equals);
+      } else if (exp?.includes !== undefined) {
+        pass = actualValue.includes(String(exp.includes));
+      } else if (exp?.notIncludes !== undefined) {
+        pass = !actualValue.includes(String(exp.notIncludes));
+      } else if (Array.isArray(exp?.oneOf)) {
+        pass = exp.oneOf.map(String).includes(actualValue);
+      }
+
+      rows.push({
+        id: exp?.id || field,
+        pass,
+        field,
+        expected: exp,
+        actual: actualValue,
+      });
+    }
+    return rows;
+  }
+
+  function runDeterministicScenarioHarness(options = {}) {
+    if (!isScenarioHarnessEnabled()) {
+      return {
+        ok: false,
+        error: `Scenario harness is disabled. Enable explicitly with localStorage key ${SCENARIO_HARNESS_ENABLE_KEY}=true.`,
+      };
+    }
+
+    const game = getGame();
+    const commands = getCommands();
+    const scenarios = Array.isArray(options.scenarios) ? options.scenarios : [];
+    const report = {
+      source: "deterministic-scenario",
+      scriptVersion: SCRIPT_VERSION,
+      runAt: new Date().toISOString(),
+      warning: "Scenario harness runs against live browser state but uses deterministic override layers and does not write save state.",
+      scenarios: [],
+    };
+
+    const savedConfig = {
+      advisorOnly: config.advisorOnly,
+      autoBuySafeDecisions: config.autoBuySafeDecisions,
+      smartMaxActionsPerRun: config.smartMaxActionsPerRun,
+    };
+
+    config.advisorOnly = true;
+    config.autoBuySafeDecisions = false;
+    config.smartMaxActionsPerRun = Math.max(1, Number(config.smartMaxActionsPerRun || 1));
+
+    try {
+      for (const scenario of scenarios) {
+        const scenarioId = String(scenario?.id || "scenario");
+        const source = String(scenario?.source || "deterministic-scenario");
+        const cycles = Math.max(1, Number(scenario?.evaluationCycles || 1));
+        const cycleReport = [];
+
+        setScenarioContext({ scenarioId, source, overrides: scenario?.overrides || {} });
+
+        for (let cycle = 1; cycle <= cycles; cycle++) {
+          clearAdvisorLog();
+          clearLaneCandidates();
+          meatFallbackState = null;
+          meatActionUnitPaybackBypassState = null;
+          actionUnitRefillState = null;
+          targetAwareUpgradeState = null;
+          unlockPlannerState = null;
+          parentStepPlannerState = null;
+          twinUnlockPlannerState = null;
+          cloneBufferPlannerState = null;
+          abilityPrepPlannerState = null;
+          postNexusEnergyPlannerState = null;
+          territoryPrepPlannerState = null;
+
+          let engine = analyzeLarvaEngine(game);
+          const engineOverrides = scenarioHarnessContext.overrides?.engine || {};
+          if (Number.isFinite(engineOverrides.expansionEtaSeconds)) engine.expansionEta = engineOverrides.expansionEtaSeconds;
+          if (Number.isFinite(engineOverrides.hatcheryEtaSeconds)) engine.hatcheryEta = engineOverrides.hatcheryEtaSeconds;
+
+          const protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
+          const smartFocus = scenario?.smartFocus || decideSmartFocus(engine);
+
+          safe(`Scenario ${scenarioId} energy`, () => handleEnergyStrategy(game, commands, protectedResources));
+          safe(`Scenario ${scenarioId} clone`, () => runCloneBufferPlanner(game, commands));
+          safe(`Scenario ${scenarioId} unlock`, () => runUnlockPlanner(game, commands, protectedResources));
+          safe(`Scenario ${scenarioId} units`, () => buySmartUnits(game, commands, engine, protectedResources, Math.max(1, Number(scenario?.remainingActions || 1))));
+          runAbilityPrepPlanner(game);
+
+          strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, [], 0, 0, Math.max(1, Number(config.smartMaxActionsPerRun || 1)));
+
+          const payload = buildLogExportPayload();
+          const decisionFields = {
+            energySupportBestUse: payload.energySupportBestUse,
+            energySupportBestUseDecision: payload.energySupportBestUseDecision,
+            energySupportBestUseReason: payload.energySupportBestUseReason,
+            energySupportMirrorDecision: payload.energySupportMirrorDecision,
+            energySupportMirrorReason: payload.energySupportMirrorReason,
+            energySupportMirrorReadinessState: payload.energySupportMirrorReadinessState,
+            energySupportMirrorPreferredUnitsMissing: payload.energySupportMirrorPreferredUnitsMissing,
+            energySupportMirrorArmyStateSource: payload.energySupportMirrorArmyStateSource || "n/a",
+            energySupportMirrorEvaluationRevision: payload.energySupportMirrorEvaluationRevision || "0",
+            energySupportLepidopteraRole: payload.energySupportLepidopteraRole,
+            momentumPrimaryFocus: payload.momentumPrimaryFocus,
+            momentumPrimaryAdvisor: payload.momentumPrimaryAdvisor,
+            momentumBestStep: payload.momentumBestStep,
+            momentumBestStepDecision: payload.momentumBestStepDecision,
+            momentumPrimaryPrioritySource: payload.momentumPrimaryPrioritySource,
+            momentumPrimarySelectionReason: payload.momentumPrimarySelectionReason,
+            activeCouncilSpeaker: payload.activeCouncilSpeaker,
+            doThisNow: payload.momentumBestStep,
+            why: payload.momentumBestStepReason,
+          };
+
+          cycleReport.push({
+            cycle,
+            source,
+            scenarioId,
+            inputOverrides: scenario?.overrides || {},
+            beforeState: getScenarioStateSnapshot(game, engine),
+            decisions: decisionFields,
+            projection: {
+              territoryPerSecondBefore: payload.energySupportMirrorTerritoryPerSecondBefore,
+              territoryPerSecondAfter: payload.energySupportMirrorTerritoryPerSecondAfter,
+              expansionEtaBefore: payload.energySupportMirrorExpansionEtaBefore,
+              expansionEtaAfter: payload.energySupportMirrorExpansionEtaAfter,
+              etaGainSeconds: payload.energySupportMirrorEtaGainSeconds,
+            },
+            invariants: evaluateScenarioExpectations(decisionFields, scenario?.expected || []),
+          });
+
+          const between = Array.isArray(scenario?.betweenEvaluations) ? scenario.betweenEvaluations : [];
+          for (const action of between) {
+            if (Number(action?.afterCycle) !== cycle) continue;
+            const merged = {
+              ...(scenario?.overrides || {}),
+              ...(action?.applyOverrides || {}),
+            };
+            setScenarioContext({ scenarioId, source, overrides: merged });
+          }
+        }
+
+        report.scenarios.push({
+          scenarioId,
+          description: scenario?.description || "",
+          source,
+          cycles: cycleReport,
+        });
+
+        clearScenarioContext();
+      }
+    } finally {
+      clearScenarioContext();
+      config.advisorOnly = savedConfig.advisorOnly;
+      config.autoBuySafeDecisions = savedConfig.autoBuySafeDecisions;
+      config.smartMaxActionsPerRun = savedConfig.smartMaxActionsPerRun;
+    }
+
+    return {
+      ok: true,
+      report,
+    };
+  }
+
   function rankingLine(candidate) {
     return candidate
       ? `${candidate.lane}: ${candidate.candidate}${candidate.wouldBuyAmount ? ` × ${candidate.wouldBuyAmount}` : ""} — ${candidate.reason}`
@@ -3960,6 +4322,8 @@ function getDisplayName(item) {
       ``,
       `- Exported: ${payload.exportedAt}`,
       `- Script: ${payload.scriptVersion}`,
+      `- Source: ${payload.source || "live-browser"}`,
+      `- Scenario ID: ${payload.scenarioId || "none"}`,
       `- Status: ${payload.status}`,
       ``,
       `## Strategy Inspector`,
@@ -4005,6 +4369,8 @@ function getDisplayName(item) {
       `- Clone support: ${payload.energySupportCloneDecision || "HOLD"} ${payload.energySupportCloneCandidate || "none"} (${payload.energySupportCloneReason || "none"})`,
       `- Mirror support: ${payload.energySupportMirrorDecision || "HOLD"} ${payload.energySupportMirrorCandidate || "none"} (${payload.energySupportMirrorReason || "none"})`,
       `- Mirror readiness state: ${payload.energySupportMirrorReadinessState || "none"}`,
+      `- Mirror army state source: ${payload.energySupportMirrorArmyStateSource || "none"}`,
+      `- Mirror evaluation revision: ${payload.energySupportMirrorEvaluationRevision || "0"}`,
       `- Lepidoptera support role: ${payload.energySupportLepidopteraRole || "wait"} (${payload.energySupportLepidopteraDecision || "WAIT"})`,
       `- Momentum primary focus: ${payload.momentumPrimaryFocus || "Methodical progression"}`,
       `- Momentum advisor: ${payload.momentumPrimaryAdvisor || "none"}`,
@@ -4465,6 +4831,11 @@ function getDisplayName(item) {
   }
 
   function getCostForResource(item, resourceName) {
+    if (item && String(resourceName || "").toLowerCase() === "energy") {
+      const override = getScenarioAbilityOverride(item.name);
+      if (override && Number.isFinite(override.energyCost)) return decimalFrom(override.energyCost);
+    }
+
     const cost = getCostList(item).find((entry) => entry?.unit?.name === resourceName);
     return cost?.val || newDecimal(0);
   }
@@ -4621,11 +4992,17 @@ function getDisplayName(item) {
   }
 
   function getCurrentResource(game, resourceName) {
+    const scenarioOverride = getScenarioResourceCountOverride(resourceName);
+    if (Number.isFinite(scenarioOverride)) return decimalFrom(scenarioOverride);
+
     const unit = getGameUnit(game, resourceName);
     return unit?.count?.() || newDecimal(0);
   }
 
   function getVelocity(game, resourceName) {
+    const scenarioOverride = getScenarioResourceVelocityOverride(resourceName);
+    if (Number.isFinite(scenarioOverride)) return decimalFrom(scenarioOverride);
+
     const unit = getGameUnit(game, resourceName);
     return safe(`Velocity ${resourceName}`, () => unit?.velocity?.() || newDecimal(0)) || newDecimal(0);
   }
@@ -6799,7 +7176,7 @@ function getDisplayName(item) {
     let lastState = null;
 
     const clone = getGameUpgrade(game, "clonelarvae");
-    if (clone?.isVisible?.()) {
+    if (isItemVisibleWithScenarioOverride(clone)) {
       const cloneCost = getCostForResource(clone, "energy");
       const energyOk = decimalAtLeast(energy, cloneCost);
       const bufferDebt = decimalFrom(cloneBufferPlannerState?.cloneBufferDebtRaw || 0);
@@ -6834,7 +7211,7 @@ function getDisplayName(item) {
     }
 
     const mirrors = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
-    if (mirrors?.isVisible?.()) {
+    if (isItemVisibleWithScenarioOverride(mirrors)) {
       const mirrorArmyState = getHouseOfMirrorsArmyState(game);
       const missing = mirrorArmyState.missing;
       const armyValue = mirrorArmyState.armyValue;
@@ -7389,7 +7766,7 @@ function getDisplayName(item) {
   function unitMatchesArmyPrepLabel(unit, label) {
     const labelKey = normalizeLabelKey(label);
     if (!labelKey) return false;
-    const text = normalizeLabelKey(`${unit?.name || ""} ${getDisplayName(unit)}`);
+    const text = normalizeLabelKey(`${unit?.name || ""} ${getDisplayName(unit)} ${unit?.suffix || ""}`);
     return text.includes(labelKey);
   }
 
@@ -12924,6 +13301,8 @@ function getDisplayName(item) {
       clearInterval(w[BOT_NAME].timer);
     }
 
+    scenarioHarnessContext.enabled = isScenarioHarnessEnabled();
+
     w[BOT_NAME] = {
       config,
       runOnce,
@@ -12980,6 +13359,19 @@ function getDisplayName(item) {
 
       getLogExport(format = "markdown") {
         return getLogExportText(format);
+      },
+
+      scenarioHarness: {
+        isEnabled: isScenarioHarnessEnabled,
+        enable() {
+          return setScenarioHarnessEnabled(true);
+        },
+        disable() {
+          return setScenarioHarnessEnabled(false);
+        },
+        run(options = {}) {
+          return runDeterministicScenarioHarness(options);
+        },
       },
 
       copyLogExport,
