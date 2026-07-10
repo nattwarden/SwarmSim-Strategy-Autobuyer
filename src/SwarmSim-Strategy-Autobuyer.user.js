@@ -1253,6 +1253,8 @@ function getDisplayName(item) {
         expansionEtaSeconds: Number.isFinite(Number(overrides?.engine?.expansionEtaSeconds)) ? Number(overrides.engine.expansionEtaSeconds) : null,
         hatcheryEtaSeconds: Number.isFinite(Number(overrides?.engine?.hatcheryEtaSeconds)) ? Number(overrides.engine.hatcheryEtaSeconds) : null,
         meatGoalTarget: normalizeLabelKey(overrides?.engine?.meatGoalTarget || overrides?.engine?.meatGoalTargetUnit || ""),
+        forcedActionUnit: normalizeLabelKey(overrides?.engine?.forcedActionUnit || overrides?.engine?.meatActionUnit || ""),
+        forcedParentUnit: normalizeLabelKey(overrides?.engine?.forcedParentUnit || overrides?.engine?.meatParentUnit || ""),
       },
     };
   }
@@ -10501,6 +10503,37 @@ function getDisplayName(item) {
     return null;
   }
 
+  function buildScenarioForcedMeatGoalPlan(game, target) {
+    if (!scenarioHarnessContext.active || !target) return null;
+
+    const engineOverrides = scenarioHarnessContext.overrides?.engine || {};
+    const forcedActionUnit = getScenarioTargetUnitOverride(game, engineOverrides.forcedActionUnit);
+    const forcedParentUnit = getScenarioTargetUnitOverride(game, engineOverrides.forcedParentUnit);
+
+    if (!forcedActionUnit && !forcedParentUnit) return null;
+    if (!forcedActionUnit || !forcedParentUnit) return null;
+    if (!isMeatChainUnit(forcedActionUnit) || !isMeatChainUnit(forcedParentUnit)) return null;
+
+    const path = [];
+    const addPathUnit = (unit) => {
+      if (!unit || path.some((step) => isSameGameItem(step.unit, unit))) return;
+      path.push({ unit, bottleneck: getUnitBottleneckCost(unit) });
+    };
+
+    addPathUnit(target);
+    addPathUnit(forcedParentUnit);
+    addPathUnit(forcedActionUnit);
+
+    return {
+      target,
+      actionUnit: forcedActionUnit,
+      parentUnit: forcedParentUnit,
+      path,
+      bottleneck: getUnitBottleneckCost(forcedActionUnit),
+      reason: `scenario forced goal ${getDisplayName(target)}; path ${formatPlannerPath(path)}`,
+    };
+  }
+
   function formatPlannerPath(path) {
     if (!path?.length) return "no path";
 
@@ -10514,6 +10547,9 @@ function getDisplayName(item) {
 
     const target = getAutoMeatGoalTarget(game);
     if (!target) return null;
+
+    const scenarioForcedPlan = buildScenarioForcedMeatGoalPlan(game, target);
+    if (scenarioForcedPlan) return scenarioForcedPlan;
 
     const maxDepth = Math.max(1, Number(config.meatPlannerDepth || 1));
     const path = [];
