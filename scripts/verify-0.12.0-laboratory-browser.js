@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { execFileSync } = require("child_process");
 const { chromium } = require("playwright");
 
@@ -38,7 +39,622 @@ function passFail(value) {
   return value ? "PASS" : "FAIL";
 }
 
+function parseArgs(argv = process.argv.slice(2)) {
+  const out = {};
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (!arg.startsWith("--")) continue;
+    const key = arg.slice(2);
+    const next = argv[i + 1];
+    if (!next || next.startsWith("--")) {
+      out[key] = true;
+    } else {
+      out[key] = next;
+      i++;
+    }
+  }
+  return out;
+}
+
+function sha256Hex(text) {
+  return crypto.createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+function git(args) {
+  return execFileSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    maxBuffer: 50 * 1024 * 1024,
+  }).trim();
+}
+
+function gitShowAt(commit, file) {
+  const resolved = git(["rev-parse", "--verify", `${commit}^{commit}`]);
+  const spec = `${resolved}:${file}`;
+  git(["cat-file", "-e", spec]);
+  return {
+    commit: resolved,
+    file,
+    blob: git(["rev-parse", spec]),
+    content: execFileSync("git", ["show", spec], {
+      cwd: root,
+      encoding: "utf8",
+      maxBuffer: 50 * 1024 * 1024,
+    }),
+  };
+}
+
+function ensureCleanWorkingTree() {
+  const status = git(["status", "--porcelain"]);
+  if (status) {
+    throw new Error(`Refusing browser regression from dirty working tree:\n${status}`);
+  }
+}
+
+function ensureParentDir(filePath) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+}
+
+function stableCanonical(value) {
+  if (Array.isArray(value)) return value.map(stableCanonical);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const key of Object.keys(value).sort()) out[key] = stableCanonical(value[key]);
+    return out;
+  }
+  return value;
+}
+
+function stableJson(value) {
+  return JSON.stringify(stableCanonical(value));
+}
+
+function parseUserscriptMetadataVersion(userscript) {
+  const match = userscript.match(/^\s*\/\/\s*@version\s+([^\s]+)/m);
+  return match ? match[1] : null;
+}
+
+function getPlaywrightVersion() {
+  try {
+    return require("playwright/package.json").version;
+  } catch (_error) {
+    return "unknown";
+  }
+}
+
+function summarizeRegression(report) {
+  const scenarios = report?.scenarios || [];
+  const cycles = scenarios.flatMap((scenario) => scenario.cycles || []);
+  const invariants = cycles.flatMap((cycle) => cycle.invariants || []);
+  const failedInvariants = invariants.filter((row) => !row.pass);
+  const setupErrors = cycles.filter((cycle) => cycle.setupError);
+  return {
+    scenarioCount: scenarios.length,
+    cycleCount: cycles.length,
+    invariantCount: invariants.length,
+    failedInvariantCount: failedInvariants.length,
+    setupErrorCount: setupErrors.length,
+    failedInvariants,
+  };
+}
+
+function getCycle(report, scenarioId, cycleNumber = 1) {
+  const scenario = (report?.scenarios || []).find((row) => row.scenarioId === scenarioId);
+  return (scenario?.cycles || []).find((cycle) => Number(cycle.cycle) === Number(cycleNumber)) || null;
+}
+
+function getFocus(report) {
+  const focus = {};
+  for (const id of ["H3", "H4", "H5", "R2", "R3", "R8"]) {
+    const scenario = (report?.scenarios || []).find((row) => row.scenarioId === id);
+    const invariants = (scenario?.cycles || []).flatMap((cycle) => cycle.invariants || []);
+    focus[id] = {
+      pass: !!scenario && invariants.every((row) => row.pass),
+      cycles: scenario?.cycles?.length || 0,
+      failedInvariants: invariants.filter((row) => !row.pass).length,
+    };
+  }
+  return focus;
+}
+
+function failureSignature(summary) {
+  return summary.failedInvariants.map((row) => ({
+    id: row.id,
+    field: row.field,
+    actual: String(row.actual),
+  }));
+}
+
+function sameFailureSignature(a, b) {
+  return stableJson(failureSignature(a)) === stableJson(failureSignature(b));
+}
+
+function requiredFailureIdsOnly(summary) {
+  const expected = ["r2-role", "r3-role", "r3-best-use", "r3-advisor", "r3-speaker", "r8-c1-parent-step"];
+  const actual = summary.failedInvariants.map((row) => row.id).sort();
+  return stableJson(actual) === stableJson(expected.slice().sort());
+}
+
+function collectActualDecisionFields(report) {
+  const out = {};
+  for (const id of ["R2", "R3", "R8"]) {
+    const cycle = getCycle(report, id, 1);
+    out[`${id}-cycle-1`] = cycle?.decisions || null;
+  }
+  return out;
+}
+
+function selectComparableFields(cycle) {
+  const decisions = cycle?.decisions || {};
+  const beforeState = cycle?.beforeState || {};
+  const input = cycle?.inputOverrides || {};
+  const setup = cycle?.setupObservability || {};
+  const invariants = cycle?.invariants || [];
+  return {
+    scenarioSetupHash: `sha256:${sha256Hex(stableJson({
+      scenarioId: cycle?.scenarioId,
+      cycle: cycle?.cycle,
+      inputOverrides: input,
+    }))}`,
+    normalizedOverrides: input,
+    resourcesBeforePlanner: beforeState.resources || null,
+    unitsBeforePlanner: {
+      plannerUnits: beforeState.plannerUnits || null,
+      preferredUnitCounts: beforeState.preferredUnitCounts || null,
+    },
+    abilitiesBeforePlanner: {
+      inputAbilities: input.abilities || null,
+      abilityCosts: beforeState.abilityCosts || null,
+      houseOfMirrorsAvailability: setup.houseOfMirrorsAvailability || null,
+      cloneLarvaeAvailability: decisions.cloneLarvaeAvailability || null,
+      houseOfMirrorsAvailabilityDecision: decisions.houseOfMirrorsAvailability || null,
+    },
+    configBeforePlanner: input.config || null,
+    engineOverrides: input.engine || null,
+    selectedPhase: decisions.phase || null,
+    milestone: decisions.momentumPrimaryFocus || null,
+    target: decisions.parentStepTarget || decisions.momentumBestStep || null,
+    meatPlan: {
+      targetUnit: beforeState.plannerUnits?.targetUnit || null,
+      actionUnit: beforeState.plannerUnits?.actionUnit || null,
+      parentUnit: beforeState.plannerUnits?.parentUnit || null,
+    },
+    energySupportRole: decisions.energySupportLepidopteraRole || null,
+    lepidopteraAvailability: decisions.postNexusEnergyCandidate || decisions.energySupportBestUse || null,
+    lepidopteraRole: decisions.energySupportLepidopteraRole || null,
+    bestEnergyUse: decisions.energySupportBestUse || null,
+    advisorTarget: decisions.momentumPrimaryAdvisor || null,
+    speaker: decisions.activeCouncilSpeaker || null,
+    parentStepCandidate: decisions.parentStepCandidate || null,
+    parentStepBuyability: decisions.parentStepCandidateBuyable || null,
+    reserveResult: decisions.reserveResult || decisions.parentStepReserveResult || null,
+    paybackResult: decisions.parentStepPaybackResult || null,
+    parentStepDecision: decisions.parentStepDecision || null,
+    parentRefillDecision: decisions.actionUnitRefillDecision || null,
+    activeAction: decisions.activePlannerAction || null,
+    finalAction: decisions.doThisNow || decisions.momentumBestStep || null,
+    assertionResult: invariants.map((row) => ({
+      id: row.id,
+      pass: !!row.pass,
+      field: row.field,
+      actual: row.actual,
+      expected: row.expected,
+    })),
+  };
+}
+
+function flattenCycles(report) {
+  const out = new Map();
+  for (const scenario of report?.scenarios || []) {
+    for (const cycle of scenario.cycles || []) {
+      out.set(`${scenario.scenarioId}#${cycle.cycle}`, cycle);
+    }
+  }
+  return out;
+}
+
+function buildComparison(a, b) {
+  const aCycles = flattenCycles(a.regression.report);
+  const bCycles = flattenCycles(b.regression.report);
+  const keys = Array.from(new Set([...aCycles.keys(), ...bCycles.keys()])).sort();
+  const rows = [];
+  let firstDifference = null;
+
+  for (const key of keys) {
+    const [scenarioId, cycleText] = key.split("#");
+    const cycle = Number(cycleText);
+    const aFields = selectComparableFields(aCycles.get(key));
+    const bFields = selectComparableFields(bCycles.get(key));
+    const fields = Array.from(new Set([...Object.keys(aFields), ...Object.keys(bFields)]));
+    const fieldRows = [];
+    for (const field of fields) {
+      const aValue = aFields[field];
+      const bValue = bFields[field];
+      const equal = stableJson(aValue) === stableJson(bValue);
+      const row = { field, equal, a: aValue, b: bValue };
+      fieldRows.push(row);
+      if (!equal && !firstDifference) {
+        firstDifference = { scenarioId, cycle, field, a: aValue, b: bValue };
+      }
+    }
+    rows.push({ scenarioId, cycle, fields: fieldRows });
+  }
+
+  let classification = "MIXED BASELINE AND REGRESSION FAILURE";
+  if (
+    requiredFailureIdsOnly(a.regression.summary)
+    && requiredFailureIdsOnly(b.regression.summary)
+    && sameFailureSignature(a.regression.summary, b.regression.summary)
+  ) {
+    classification = "CLEAN-PROFILE BASELINE REPRODUCIBILITY FAILURE";
+  } else if (a.regression.summary.failedInvariantCount === 0 && b.regression.summary.failedInvariantCount > 0) {
+    classification = "0.12.0 REGRESSION CONFIRMED";
+  } else if (a.regression.summary.failedInvariantCount === 0 && b.regression.summary.failedInvariantCount === 0) {
+    classification = "TRANSIENT VERIFIER ENVIRONMENT FAILURE";
+  }
+
+  return {
+    classification,
+    firstDifference,
+    aFailureSignature: failureSignature(a.regression.summary),
+    bFailureSignature: failureSignature(b.regression.summary),
+    rows,
+    rootCause: classification === "CLEAN-PROFILE BASELINE REPRODUCIBILITY FAILURE"
+      ? "The same six failures reproduce with the same actual values in the frozen 0.11.7 runtime and the 0.12.0 Laboratory implementation when both run in the same clean Playwright profile. The Laboratory implementation is not the cause; the previous 0.11.7 browser evidence is not reproducible in this clean verifier."
+      : classification === "0.12.0 REGRESSION CONFIRMED"
+        ? "The frozen 0.11.7 runtime passes in the same clean profile while 0.12.0 fails. The first differing field identifies the regression entry point."
+        : classification === "TRANSIENT VERIFIER ENVIRONMENT FAILURE"
+          ? "Both commits pass in the clean profile. The earlier failure was not reproduced by this verifier pass."
+          : "The clean-profile results differ but do not match a single baseline-only or 0.12-only pattern.",
+    recommendedFix: classification === "CLEAN-PROFILE BASELINE REPRODUCIBILITY FAILURE"
+      ? "Make the deterministic scenario setup self-contained for a clean browser profile, especially Energy/Lepidoptera unlock state for R2/R3 and forced meat-plan runtime availability for R8. Do not change Laboratory snapshot logic."
+      : classification === "0.12.0 REGRESSION CONFIRMED"
+        ? "Apply a narrow 0.12.0 isolation fix at the first differing field after checking gated Laboratory initialization, config normalization, localStorage writes, scenario context, and planner input."
+        : classification === "TRANSIENT VERIFIER ENVIRONMENT FAILURE"
+          ? "Repeat the batch at least three times per commit to check flakiness before changing code."
+          : "Split failures into baseline-existing and 0.12-only buckets before changing planner or scenario setup.",
+  };
+}
+
+async function runRegressionForCommit({ scriptCommit, label, definitionsCommit }) {
+  const scriptObject = gitShowAt(scriptCommit, "src/SwarmSim-Strategy-Autobuyer.user.js");
+  const definitionsObject = gitShowAt(definitionsCommit, "docs/test-data/0.11.7-scenarios/scenario-definitions.json");
+  const userscript = scriptObject.content;
+  const definitions = JSON.parse(definitionsObject.content);
+  const userscriptHash = `sha256:${sha256Hex(userscript)}`;
+  const metadataVersion = parseUserscriptMetadataVersion(userscript);
+  const url = "https://www.swarmsim.com/#/tab/territory";
+  const viewport = { width: 1365, height: 900 };
+  const locale = "en-US";
+  const timezoneId = "UTC";
+  const consoleRows = [];
+
+  const browser = await chromium.launch({ headless: true });
+  let result;
+  try {
+    const context = await browser.newContext({
+      viewport,
+      locale,
+      timezoneId,
+      serviceWorkers: "block",
+    });
+    const page = await context.newPage();
+    page.on("console", (msg) => {
+      const text = msg.text();
+      if (/KBC|SwarmBot|error|warning/i.test(text)) {
+        consoleRows.push({ type: msg.type(), text });
+      }
+    });
+
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem("kbcSwarmBotScenarioHarnessEnabled_v1", "false");
+      localStorage.setItem("kbcSwarmBotLaboratoryEnabled_v1", "false");
+    });
+    await page.addScriptTag({ content: userscript });
+    await page.waitForFunction(() => !!window.kbcSwarmBot, { timeout: 60000 });
+
+    result = await page.evaluate(async ({ definitions }) => {
+      const bot = window.kbcSwarmBot;
+      function resourceSnapshot() {
+        const game = window.angular.element(document.body).injector().get("game");
+        const names = ["meat", "larva", "cocoon", "territory", "energy", "clone", "nexus"];
+        const out = {};
+        for (const name of names) out[name] = String(game.unit(name)?.count?.() || "0");
+        return out;
+      }
+      const before = {
+        resources: resourceSnapshot(),
+        runHistoryLength: bot.getRunHistory().length,
+        hasLaboratory: !!bot.laboratory,
+        scenarioHarnessGate: localStorage.getItem("kbcSwarmBotScenarioHarnessEnabled_v1"),
+        laboratoryGate: localStorage.getItem("kbcSwarmBotLaboratoryEnabled_v1"),
+      };
+      const gatingOff = bot.scenarioHarness.run({ scenarios: [] });
+      localStorage.setItem("kbcSwarmBotScenarioHarnessEnabled_v1", "true");
+      localStorage.setItem("kbcSwarmBotLaboratoryEnabled_v1", "false");
+      const regression = bot.scenarioHarness.run({ scenarios: definitions.scenarios });
+      const after = {
+        resources: resourceSnapshot(),
+        runHistoryLength: bot.getRunHistory().length,
+        hasLaboratory: !!bot.laboratory,
+        scenarioHarnessGate: localStorage.getItem("kbcSwarmBotScenarioHarnessEnabled_v1"),
+        laboratoryGate: localStorage.getItem("kbcSwarmBotLaboratoryEnabled_v1"),
+      };
+      const badgeMatch = document.body.innerText.match(/SwarmBot\s+v([0-9.]+)/i);
+      return {
+        pageUrl: location.href,
+        badgeVersion: badgeMatch ? badgeMatch[1] : null,
+        scriptVersion: bot.scriptVersion,
+        autobuyerVersion: bot.autobuyerVersion,
+        scenarioReportVersion: bot.scenarioReportVersion,
+        gatingOff,
+        regression,
+        safetyDefaults: {
+          autoCastAbilities: bot.config.autoCastAbilities,
+          autoAscend: bot.config.autoAscend,
+          energySupportBrokerAllowAutoCast: bot.config.energySupportBrokerAllowAutoCast,
+        },
+        restorationLeak: {
+          before,
+          after,
+          resourcesUnchanged: JSON.stringify(before.resources) === JSON.stringify(after.resources),
+          runHistoryUnchanged: before.runHistoryLength === after.runHistoryLength,
+          laboratoryStayedOff: after.laboratoryGate === "false" && after.hasLaboratory === false,
+        },
+      };
+    }, { definitions });
+
+    await context.close();
+  } finally {
+    result = result || {};
+    result.browserClosed = true;
+    await browser.close();
+  }
+
+  const browserVersion = await chromium.launch({ headless: true }).then(async (probe) => {
+    const version = probe.version();
+    await probe.close();
+    return version;
+  });
+  const summary = summarizeRegression(result.regression?.report);
+  const versionGate = {
+    metadataVersion,
+    badgeVersion: result.badgeVersion,
+    scriptVersion: result.scriptVersion,
+    autobuyerVersion: result.regression?.report?.autobuyerVersion || result.autobuyerVersion,
+    scenarioReportVersion: result.regression?.report?.scenarioReportVersion || result.scenarioReportVersion,
+    allMatch: [metadataVersion, result.badgeVersion, result.scriptVersion, result.regression?.report?.autobuyerVersion || result.autobuyerVersion]
+      .every((value) => value && value === metadataVersion),
+  };
+
+  return {
+    label,
+    scriptCommit: scriptObject.commit,
+    userscriptSource: {
+      commit: scriptObject.commit,
+      file: scriptObject.file,
+      blob: scriptObject.blob,
+      hash: userscriptHash,
+      metadataVersion,
+      readMethod: "git-show-commit-object",
+    },
+    scenarioDefinitions: {
+      commit: definitionsObject.commit,
+      file: definitionsObject.file,
+      blob: definitionsObject.blob,
+      hash: `sha256:${sha256Hex(definitionsObject.content)}`,
+      scenarioCount: definitions.scenarios.length,
+    },
+    browserEnvironment: {
+      mode: "local-playwright-chromium-clean-profile",
+      profile: "clean",
+      playwrightVersion: getPlaywrightVersion(),
+      chromiumVersion: browserVersion,
+      chromiumExecutablePath: chromium.executablePath(),
+      headless: true,
+      viewport,
+      locale,
+      timezoneId,
+      swarmSimUrl: url,
+      waitUntil: "domcontentloaded",
+      network: "default",
+      serviceWorkers: "block",
+      storageReuse: "none; new browser context per commit",
+      fakeTimePolicy: "none; real browser clock",
+      localStorageInitialization: {
+        beforeInjection: {
+          kbcSwarmBotScenarioHarnessEnabled_v1: "false",
+          kbcSwarmBotLaboratoryEnabled_v1: "false",
+        },
+        beforeRegressionBatch: {
+          kbcSwarmBotScenarioHarnessEnabled_v1: "true",
+          kbcSwarmBotLaboratoryEnabled_v1: "false",
+        },
+      },
+      testOrder: "gating-off, deterministic batch, restoration/leak, safety defaults",
+    },
+    versionGate,
+    gatingOff: {
+      ok: result.gatingOff?.ok === false,
+      error: result.gatingOff?.error || null,
+    },
+    regression: {
+      ok: !!result.regression?.ok,
+      summary,
+      focus: getFocus(result.regression?.report),
+      report: result.regression?.report || null,
+      actualDecisionFields: collectActualDecisionFields(result.regression?.report),
+    },
+    restorationLeak: result.restorationLeak,
+    safetyDefaults: result.safetyDefaults,
+    consoleRows,
+    verdict: summary.failedInvariantCount === 0
+      && summary.scenarioCount === 14
+      && summary.cycleCount === 16
+      && summary.invariantCount === 38
+      && result.gatingOff?.ok === false
+      && result.safetyDefaults?.autoCastAbilities === false
+      && result.safetyDefaults?.autoAscend === false
+      && result.safetyDefaults?.energySupportBrokerAllowAutoCast === false
+      ? "PASS"
+      : "FAIL",
+  };
+}
+
+function writeRegressionEvidence(result, jsonPath) {
+  const mdPath = jsonPath.replace(/\.json$/i, ".md");
+  ensureParentDir(jsonPath);
+  fs.writeFileSync(jsonPath, `${JSON.stringify(result, null, 2)}\n`);
+  const failed = result.regression.summary.failedInvariants;
+  const lines = [
+    `# Browser A/B Regression ${result.label}`,
+    "",
+    `- Script commit: \`${result.scriptCommit}\``,
+    `- Userscript hash: \`${result.userscriptSource.hash}\``,
+    `- Userscript blob: \`${result.userscriptSource.blob}\``,
+    `- Scenario definitions commit: \`${result.scenarioDefinitions.commit}\``,
+    `- Browser mode: \`${result.browserEnvironment.mode}\``,
+    `- Playwright: \`${result.browserEnvironment.playwrightVersion}\``,
+    `- Chromium: \`${result.browserEnvironment.chromiumVersion}\``,
+    `- Viewport: \`${result.browserEnvironment.viewport.width}x${result.browserEnvironment.viewport.height}\``,
+    `- Locale: \`${result.browserEnvironment.locale}\``,
+    `- Timezone: \`${result.browserEnvironment.timezoneId}\``,
+    `- SwarmSim URL: ${result.browserEnvironment.swarmSimUrl}`,
+    `- Version gate: ${passFail(result.versionGate.allMatch)}`,
+    `- Verdict: \`${result.verdict}\``,
+    "",
+    "## Totals",
+    "",
+    `- Scenarios: ${result.regression.summary.scenarioCount}`,
+    `- Cycles: ${result.regression.summary.cycleCount}`,
+    `- Invariants: ${result.regression.summary.invariantCount}`,
+    `- Failed invariants: ${result.regression.summary.failedInvariantCount}`,
+    `- Setup errors: ${result.regression.summary.setupErrorCount}`,
+    `- Gating-off: ${passFail(result.gatingOff.ok)}${result.gatingOff.error ? ` (${result.gatingOff.error})` : ""}`,
+    `- Restoration/leak resources unchanged: ${passFail(result.restorationLeak.resourcesUnchanged)}`,
+    `- Restoration/leak run history unchanged: ${passFail(result.restorationLeak.runHistoryUnchanged)}`,
+    "",
+    "## Failed Invariants",
+    "",
+    ...(failed.length ? failed.map((row) => `- ${row.id}: ${row.field} expected \`${row.expected?.equals || row.expected?.includes || row.expected?.notIncludes || ""}\`, actual \`${row.actual}\``) : ["- none"]),
+    "",
+    "## R2/R3/R8 Cycle 1 Actual Decision Fields",
+    "",
+    "```json",
+    JSON.stringify(result.regression.actualDecisionFields, null, 2),
+    "```",
+    "",
+  ];
+  fs.writeFileSync(mdPath, lines.join("\n"));
+  return { jsonPath, mdPath };
+}
+
+function writeComparisonEvidence(comparison, a, b, jsonPath) {
+  const mdPath = jsonPath.replace(/\.json$/i, ".md");
+  const payload = { a, b, comparison };
+  ensureParentDir(jsonPath);
+  fs.writeFileSync(jsonPath, `${JSON.stringify(payload, null, 2)}\n`);
+  const differingRows = comparison.rows.flatMap((row) =>
+    row.fields.filter((field) => !field.equal).map((field) => ({ scenarioId: row.scenarioId, cycle: row.cycle, field: field.field }))
+  );
+  const lines = [
+    "# Browser A/B 0.11.7 vs 0.12.0",
+    "",
+    `- A commit: \`${a.scriptCommit}\``,
+    `- A userscript hash: \`${a.userscriptSource.hash}\``,
+    `- B commit: \`${b.scriptCommit}\``,
+    `- B userscript hash: \`${b.userscriptSource.hash}\``,
+    `- Shared Playwright: \`${a.browserEnvironment.playwrightVersion}\``,
+    `- Shared Chromium: \`${a.browserEnvironment.chromiumVersion}\``,
+    `- Shared viewport: \`${a.browserEnvironment.viewport.width}x${a.browserEnvironment.viewport.height}\``,
+    `- Shared locale/timezone: \`${a.browserEnvironment.locale}\` / \`${a.browserEnvironment.timezoneId}\``,
+    `- Classification: \`${comparison.classification}\``,
+    "",
+    "## Results",
+    "",
+    `- A failed invariants: ${a.regression.summary.failedInvariantCount}`,
+    `- B failed invariants: ${b.regression.summary.failedInvariantCount}`,
+    `- First differing field: ${comparison.firstDifference ? `${comparison.firstDifference.scenarioId} cycle ${comparison.firstDifference.cycle} \`${comparison.firstDifference.field}\`` : "none"}`,
+    "",
+    "## Root Cause",
+    "",
+    comparison.rootCause,
+    "",
+    "## Recommended Narrow Fix",
+    "",
+    comparison.recommendedFix,
+    "",
+    "## Failure Signatures",
+    "",
+    "```json",
+    JSON.stringify({ a: comparison.aFailureSignature, b: comparison.bFailureSignature }, null, 2),
+    "```",
+    "",
+    "## Differing Comparable Fields",
+    "",
+    ...(differingRows.length ? differingRows.slice(0, 80).map((row) => `- ${row.scenarioId} cycle ${row.cycle}: ${row.field}`) : ["- none"]),
+    "",
+  ];
+  fs.writeFileSync(mdPath, lines.join("\n"));
+  return { jsonPath, mdPath };
+}
+
+async function runRegressionCli(args) {
+  ensureCleanWorkingTree();
+  const scriptCommit = args["script-commit"];
+  if (!scriptCommit) throw new Error("--script-commit is required for regression mode");
+  const output = args.output || path.join(evidenceDir, `browser-ab-${args.label || "commit"}-clean-profile.json`);
+  const result = await runRegressionForCommit({
+    scriptCommit,
+    label: args.label || scriptCommit.slice(0, 7),
+    definitionsCommit: args["definitions-commit"] || "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+  });
+  const written = writeRegressionEvidence(result, output);
+  console.log(JSON.stringify({ verdict: result.verdict, written }, null, 2));
+}
+
+async function runAbCli(args) {
+  ensureCleanWorkingTree();
+  const aCommit = args["script-commit-a"] || "1ee631901cd04a1d97ddb0bcee5efa2499481ecc";
+  const bCommit = args["script-commit-b"] || "366617602f1e25087378d630490cb96df8b25f71";
+  const definitionsCommit = args["definitions-commit"] || "1ee631901cd04a1d97ddb0bcee5efa2499481ecc";
+  const a = await runRegressionForCommit({ scriptCommit: aCommit, label: "0.11.7-clean-profile", definitionsCommit });
+  const b = await runRegressionForCommit({ scriptCommit: bCommit, label: "0.12.0-clean-profile", definitionsCommit });
+  const comparison = buildComparison(a, b);
+
+  const aWritten = writeRegressionEvidence(a, args["output-a"] || path.join(evidenceDir, "browser-ab-0.11.7-clean-profile.json"));
+  const bWritten = writeRegressionEvidence(b, args["output-b"] || path.join(evidenceDir, "browser-ab-0.12.0-clean-profile.json"));
+  const comparisonWritten = writeComparisonEvidence(
+    comparison,
+    a,
+    b,
+    args.output || path.join(evidenceDir, "browser-ab-0.11.7-vs-0.12.0.json")
+  );
+
+  console.log(JSON.stringify({
+    classification: comparison.classification,
+    a: { commit: a.scriptCommit, hash: a.userscriptSource.hash, failedInvariantCount: a.regression.summary.failedInvariantCount },
+    b: { commit: b.scriptCommit, hash: b.userscriptSource.hash, failedInvariantCount: b.regression.summary.failedInvariantCount },
+    firstDifference: comparison.firstDifference,
+    written: { a: aWritten, b: bWritten, comparison: comparisonWritten },
+  }, null, 2));
+}
+
 async function main() {
+  const args = parseArgs();
+  const mode = args.mode
+    || (args["script-commit-a"] || args["script-commit-b"] ? "ab" : (args["script-commit"] ? "regression" : "snapshot"));
+  if (mode === "regression") {
+    await runRegressionCli(args);
+    return;
+  }
+  if (mode === "ab") {
+    await runAbCli(args);
+    return;
+  }
+
   fs.mkdirSync(evidenceDir, { recursive: true });
   fs.mkdirSync(testDataDir, { recursive: true });
 
