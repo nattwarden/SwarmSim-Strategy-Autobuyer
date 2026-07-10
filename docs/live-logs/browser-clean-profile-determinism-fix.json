@@ -1,0 +1,1446 @@
+{
+  "verdict": "0.12.0 LABORATORY PHASE 1A VERIFIED",
+  "classification": "CLEAN-PROFILE DETERMINISM FIX VERIFIED",
+  "baselineCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+  "implementationCommit": "366617602f1e25087378d630490cb96df8b25f71",
+  "scenarioDefinitions": {
+    "commit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+    "hash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f"
+  },
+  "fixedScope": [
+    "R2 clean-profile resource/unit hydration for role selection",
+    "R3 clean-profile Lepidoptera and advisor role reproducibility",
+    "R8 parent-step to parent-refill transition preconditions",
+    "runtime hydration gate before scenario execution",
+    "scenario order and repeatability checks"
+  ],
+  "repeatability": {
+    "aNormalHashesIdentical": true,
+    "bNormalHashesIdentical": true,
+    "reverseOrdersPass": true,
+    "randomOrdersPass": true
+  },
+  "totalsExpected": {
+    "scenarios": 14,
+    "cycles": 16,
+    "invariants": 38,
+    "failures": 0,
+    "setupErrors": 0,
+    "runtimeErrors": 0
+  },
+  "runs": [
+    {
+      "label": "a-normal-1",
+      "scriptCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+      "userscriptHash": "sha256:8a028f012fecd5126d624e933b0684e05ab18ecb40ec6ac9d2c9134958c6cce0",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "normal",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:25229c6c9293a014cd56e3513278ba57da05f5e6c25ec8c66ed27bbdbf9eff40",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 261,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.469",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.469",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (normal), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "a-normal-2",
+      "scriptCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+      "userscriptHash": "sha256:8a028f012fecd5126d624e933b0684e05ab18ecb40ec6ac9d2c9134958c6cce0",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "normal",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:25229c6c9293a014cd56e3513278ba57da05f5e6c25ec8c66ed27bbdbf9eff40",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 264,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.46",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.46",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (normal), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "a-normal-3",
+      "scriptCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+      "userscriptHash": "sha256:8a028f012fecd5126d624e933b0684e05ab18ecb40ec6ac9d2c9134958c6cce0",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "normal",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:25229c6c9293a014cd56e3513278ba57da05f5e6c25ec8c66ed27bbdbf9eff40",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 272,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.491",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.491",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (normal), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "a-reverse",
+      "scriptCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+      "userscriptHash": "sha256:8a028f012fecd5126d624e933b0684e05ab18ecb40ec6ac9d2c9134958c6cce0",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "reverse",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:c2bae64328b9cdcfd049722375669aa3ad45117b0ba0e9fe3fd172297f6af07e",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 259,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.46",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.46",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (reverse), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "a-random",
+      "scriptCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+      "userscriptHash": "sha256:8a028f012fecd5126d624e933b0684e05ab18ecb40ec6ac9d2c9134958c6cce0",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "random",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:93bdb73bd5372cce435e5198b2a65cf037c7a8b18453a37414af1cf4e1923736",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 273,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.479",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.479",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (random), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "b-normal-1",
+      "scriptCommit": "366617602f1e25087378d630490cb96df8b25f71",
+      "userscriptHash": "sha256:c15700944bb1b7bcc0849e228c3cfbea14a4caebd39a5069deddeb18cc46770b",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "normal",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:d5b707196d06dba882b81ea6f73d8ab912401aaf58b42fc6fa172ac4a5782286",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 262,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.475",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.475",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (normal), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "b-normal-2",
+      "scriptCommit": "366617602f1e25087378d630490cb96df8b25f71",
+      "userscriptHash": "sha256:c15700944bb1b7bcc0849e228c3cfbea14a4caebd39a5069deddeb18cc46770b",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "normal",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:d5b707196d06dba882b81ea6f73d8ab912401aaf58b42fc6fa172ac4a5782286",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 274,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.499",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.499",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (normal), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "b-normal-3",
+      "scriptCommit": "366617602f1e25087378d630490cb96df8b25f71",
+      "userscriptHash": "sha256:c15700944bb1b7bcc0849e228c3cfbea14a4caebd39a5069deddeb18cc46770b",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "normal",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:d5b707196d06dba882b81ea6f73d8ab912401aaf58b42fc6fa172ac4a5782286",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 258,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.479",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.479",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (normal), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "b-reverse",
+      "scriptCommit": "366617602f1e25087378d630490cb96df8b25f71",
+      "userscriptHash": "sha256:c15700944bb1b7bcc0849e228c3cfbea14a4caebd39a5069deddeb18cc46770b",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "reverse",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:0174cdf430ce07bd20c59971a87cc1395f420ac7997bdc77baa1a5f0dfd86cde",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 270,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.481",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.481",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (reverse), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    },
+    {
+      "label": "b-random",
+      "scriptCommit": "366617602f1e25087378d630490cb96df8b25f71",
+      "userscriptHash": "sha256:c15700944bb1b7bcc0849e228c3cfbea14a4caebd39a5069deddeb18cc46770b",
+      "scenarioDefinitionsCommit": "8b4c65fd6d76b402a5d8ef05c917bbf198c23f66",
+      "scenarioDefinitionsHash": "sha256:2a8824a9e23c495cb0ba819000f913eedabded0762858164e284eae57bbe5a4f",
+      "scenarioOrder": "random",
+      "verdict": "PASS",
+      "deterministicResultHash": "sha256:a9a3653e9f4a76e72c7852252436b53aef18670efc7f420bf69bbc8150239f09",
+      "runtimeHydration": {
+        "ok": true,
+        "waitedMs": 268,
+        "missing": [],
+        "stableObservations": 2
+      },
+      "summary": {
+        "scenarioCount": 14,
+        "cycleCount": 16,
+        "invariantCount": 38,
+        "failedInvariantCount": 0,
+        "setupErrorCount": 0,
+        "failedInvariants": []
+      },
+      "gatingOffOk": true,
+      "restorationLeak": {
+        "before": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.509",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "false",
+          "laboratoryGate": "false"
+        },
+        "after": {
+          "resources": {
+            "meat": "35",
+            "larva": "10.509",
+            "cocoon": "0",
+            "territory": "0",
+            "energy": "0",
+            "clone": "0",
+            "nexus": "0"
+          },
+          "runHistoryLength": 0,
+          "hasLaboratory": false,
+          "scenarioHarnessGate": "true",
+          "laboratoryGate": "false"
+        },
+        "resourcesUnchanged": true,
+        "runHistoryUnchanged": true,
+        "laboratoryStayedOff": true
+      },
+      "safetyDefaults": {
+        "autoCastAbilities": false,
+        "autoAscend": false,
+        "energySupportBrokerAllowAutoCast": false
+      },
+      "browserEnvironment": {
+        "mode": "local-playwright-chromium-clean-profile",
+        "profile": "clean",
+        "playwrightVersion": "1.61.1",
+        "chromiumVersion": "149.0.7827.55",
+        "chromiumExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+        "headless": true,
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "locale": "en-US",
+        "timezoneId": "UTC",
+        "swarmSimUrl": "https://www.swarmsim.com/#/tab/territory",
+        "waitUntil": "domcontentloaded",
+        "network": "default",
+        "serviceWorkers": "block",
+        "storageReuse": "none; new browser context per commit",
+        "fakeTimePolicy": "none; real browser clock",
+        "localStorageInitialization": {
+          "beforeInjection": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "false",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          },
+          "beforeRegressionBatch": {
+            "kbcSwarmBotScenarioHarnessEnabled_v1": "true",
+            "kbcSwarmBotLaboratoryEnabled_v1": "false"
+          }
+        },
+        "testOrder": "gating-off, deterministic batch (random), restoration/leak, safety defaults"
+      },
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      }
+    }
+  ],
+  "finalSnapshot": {
+    "verdict": "0.12.0 LABORATORY PHASE 1A VERIFIED",
+    "hashA": "sha256:c0391abfd124f1bb394404a2b5bb5072c00e43933d839f8f821d99d43031ef96",
+    "hashB": "sha256:c0391abfd124f1bb394404a2b5bb5072c00e43933d839f8f821d99d43031ef96",
+    "hashC": "sha256:1aed0f99b7feff5be15a9b1e90b79fc22404d71997528848130450d1dacdec70",
+    "regression": {
+      "ok": true,
+      "scenarioCount": 14,
+      "cycleCount": 16,
+      "invariantCount": 38,
+      "failedInvariantCount": 0,
+      "setupErrorCount": 0,
+      "runtimeErrorCount": 0,
+      "focus": {
+        "H3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H4": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "H5": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R2": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R3": {
+          "pass": true,
+          "cycles": 1,
+          "failedInvariants": 0
+        },
+        "R8": {
+          "pass": true,
+          "cycles": 2,
+          "failedInvariants": 0
+        }
+      },
+      "failedInvariants": []
+    },
+    "formulaProvenance": {
+      "formulaSetId": "swarmsim-runtime-formulas",
+      "status": "verified",
+      "sourceRepository": "https://github.com/swarmsim/swarm",
+      "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+      "externalReferenceOnly": true,
+      "runtimeDependency": false,
+      "ratesCapturedFromRuntime": true,
+      "uncertainFields": [
+        "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+        "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+        "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+      ],
+      "warnings": [
+        "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+        "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+        "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+      ],
+      "formulas": {
+        "energy": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "nexus prod -> energy; Unit._getCap/capValue/velocity",
+          "valueSource": "runtime-derived",
+          "verificationStatus": "runtime-derived"
+        },
+        "larvae": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "invisiblehatchery prod -> larva; Unit.velocity",
+          "valueSource": "runtime-derived",
+          "verificationStatus": "runtime-derived"
+        },
+        "cocoons": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "Unit.velocity",
+          "valueSource": "runtime-derived",
+          "verificationStatus": "runtime-derived"
+        },
+        "cloneLarvae": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee; tables/src/unittype/data.ts",
+          "functionOrEffectType": "ability clonelarvae; effect type compoundUnit; power.clonelarvae",
+          "valueSource": "runtime-derived when direct preview is available, otherwise Laboratory recompute from source-verified runtime inputs",
+          "verificationStatus": "source-verified"
+        },
+        "houseOfMirrors": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/upgrade/data.ts; tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "ability clonearmy; compoundUnit effects; Unit.eachProduction/totalProduction",
+          "valueSource": "Laboratory recompute from runtime-derived counts and effective territory/unit",
+          "verificationStatus": "source-verified"
+        },
+        "territoryPerSecond": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "Unit.eachProduction, Unit.totalProduction, Unit.velocity",
+          "valueSource": "runtime-derived",
+          "verificationStatus": "runtime-derived"
+        },
+        "meatProducerCoefficients": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "ProducerPath, ProducerPaths.getCoefficientsNow, factorial polynomial derivative",
+          "valueSource": "runtime-derived coefficients",
+          "verificationStatus": "runtime-derived"
+        },
+        "expansionEta": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "upgrade expansion cost progression; Unit.estimateSecsUntilEarned/bisection",
+          "valueSource": "runtime-derived ETA plus Laboratory consistency check",
+          "verificationStatus": "runtime-derived"
+        }
+      }
+    }
+  }
+}
