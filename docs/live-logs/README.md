@@ -12,6 +12,7 @@ Read these before changing strategy logic:
 2026-07-10-0.10.1-energy-support-counterfactual.md
 2026-07-10-energy-support-counterfactual-0.10.1.json
 2026-07-10-base-game-claims-crosscheck.md
+2026-07-10-base-game-knowledge-bank-refresh.md
 ```
 
 They document:
@@ -25,6 +26,7 @@ They document:
 - Energy support counterfactuals (Lepidoptera, Clone Larvae, House of Mirrors, wait)
 - version-scoped measurements for SwarmBot v0.10.1
 - crosscheck verdicts for community claims versus live mechanics findings
+- periodic refresh checks confirming the knowledge bank status
 
 Recommended naming:
 
