@@ -157,7 +157,8 @@
           "lepidopteraStopAtBoostPercent": 99.9,
           "postNexusEnergyReserveSeconds": 0,
           "postNexusLepidopteraMinBoostGainPercent": 0,
-          "maxLepidopteraPerRun": 5
+          "maxLepidopteraPerRun": 5,
+          "energySupportPreferSafeBackgroundLepidoptera": true
         },
         "engine": { "expansionEtaSeconds": 1200 }
       },
@@ -256,9 +257,39 @@
       "smartFocus": "meat",
       "evaluationCycles": 2,
       "overrides": {
-        "resourceCounts": { "nexus": 5, "meat": 1000000000, "larva": 1000000 },
-        "unitCounts": { "drone": 1000000, "queen": 0, "nest": 0 },
-        "remainingActions": 1
+        "resourceCounts": { "nexus": 5, "meat": 1000000000000, "larva": 1000000000, "energy": 1000000000, "territory": 1000000000 },
+        "unitCounts": {
+          "drone": 1e30,
+          "queen": 0,
+          "nest": 0,
+          "greaterqueen": 0,
+          "hive": 0,
+          "hivequeen": 0,
+          "empress": 0,
+          "prophet": 0,
+          "goddess": 0,
+          "pantheon": 0,
+          "pantheon2": 0,
+          "pantheon3": 0,
+          "pantheon4": 0,
+          "pantheon5": 0
+        },
+        "config": {
+          "saveForHatcherySeconds": 0,
+          "saveForExpansionSeconds": 0,
+          "postNexusEnergyReserveSeconds": 0,
+          "meatGoalPlanner": true,
+          "meatUnlockPlanner": true,
+          "meatParentStepPlanner": true,
+          "meatActionUnitMinReserveRatio": 1,
+          "meatUnlockMinReserveRatio": 1,
+          "meatParentStepMinReserveRatio": 1,
+          "cloneBufferPlanner": false
+        },
+        "remainingActions": 1,
+        "engine": {
+          "meatGoalTarget": "queen"
+        }
       },
       "betweenEvaluations": [
         {

@@ -424,6 +424,23 @@
     { key: "arachnomorph v", label: "Arachnomorph V" },
     { key: "stinger v", label: "Stinger V" },
   ];
+  const SCENARIO_ARMY_ALIAS_TO_CANONICAL_UNIT_ID = {
+    "culicimorph": "unit mosquito v",
+    "culicimorph v": "unit mosquito v",
+    "culicimorph 5": "unit mosquito v",
+    "mosquito": "unit mosquito v",
+    "mosquito v": "unit mosquito v",
+    "mosquito 5": "unit mosquito v",
+    "arachnomorph": "unit spider v",
+    "arachnomorph v": "unit spider v",
+    "arachnomorph 5": "unit spider v",
+    "spider": "unit spider v",
+    "spider v": "unit spider v",
+    "spider 5": "unit spider v",
+    "stinger": "unit stinger v",
+    "stinger v": "unit stinger v",
+    "stinger 5": "unit stinger v",
+  };
 
   let config = loadConfig();
   let lastStatus = "Laddar...";
@@ -1222,6 +1239,7 @@ function getDisplayName(item) {
       engine: {
         expansionEtaSeconds: Number.isFinite(Number(overrides?.engine?.expansionEtaSeconds)) ? Number(overrides.engine.expansionEtaSeconds) : null,
         hatcheryEtaSeconds: Number.isFinite(Number(overrides?.engine?.hatcheryEtaSeconds)) ? Number(overrides.engine.hatcheryEtaSeconds) : null,
+        meatGoalTarget: normalizeLabelKey(overrides?.engine?.meatGoalTarget || overrides?.engine?.meatGoalTargetUnit || ""),
       },
     };
   }
@@ -1231,6 +1249,12 @@ function getDisplayName(item) {
     const suffix = normalizeLabelKey(unit?.suffix || "");
     if (!name) return "";
     return suffix ? `unit ${name} ${suffix}` : `unit ${name}`;
+  }
+
+  function getScenarioCanonicalArmyUnitIdFromAlias(alias) {
+    const key = normalizeLabelKey(alias);
+    if (!key) return "";
+    return SCENARIO_ARMY_ALIAS_TO_CANONICAL_UNIT_ID[key] || "";
   }
 
   function applyScenarioUnitOverrides(game) {
@@ -1283,6 +1307,15 @@ function getDisplayName(item) {
     return Array.from(new Set(aliases.filter(Boolean).map((entry) => normalizeLabelKey(entry))));
   }
 
+  function getScenarioTargetUnitOverride(game, alias) {
+    const key = normalizeLabelKey(alias);
+    if (!key) return null;
+    for (const unit of game?.unitlist?.() || []) {
+      if (getScenarioUnitKeys(unit).includes(key)) return unit;
+    }
+    return null;
+  }
+
   function getTerritoryPerSecondPerUnit(unit) {
     const list = Array.isArray(unit?.prod) ? unit.prod : [];
     const row = list.find((entry) => String(entry?.unit?.name || "").toLowerCase() === "territory");
@@ -1308,9 +1341,33 @@ function getDisplayName(item) {
       const injectedCount = Number(injectedRaw);
       if (!Number.isFinite(injectedCount)) continue;
 
-      const matches = (game?.unitlist?.() || []).filter((unit) => unitMatchesArmyPrepLabel(unit, alias));
+      const canonicalFromAlias = getScenarioCanonicalArmyUnitIdFromAlias(alias);
+      let matches = (game?.unitlist?.() || []).filter((unit) => unitMatchesArmyPrepLabel(unit, alias));
+      if (matches.length > 1 && canonicalFromAlias) {
+        const canonicalMatches = matches.filter((unit) => getScenarioCanonicalUnitKey(unit) === canonicalFromAlias);
+        if (canonicalMatches.length === 1) matches = canonicalMatches;
+      }
+
       if (!matches.length) {
-        errors.push(`army-unit alias '${alias}' could not resolve to any runtime unit`);
+        if (!canonicalFromAlias) {
+          errors.push(`army-unit alias '${alias}' could not resolve to any runtime unit`);
+          continue;
+        }
+
+        resolvedUnitCounts[canonicalFromAlias] = injectedCount;
+        resolved.push({
+          alias,
+          canonicalRuntimeUnitId: canonicalFromAlias,
+          unitName: canonicalFromAlias.replace(/^unit\s+/, ""),
+          label: alias,
+          suffix: "",
+          injectedRawCount: formatSwarmNumber(decimalFrom(injectedCount)),
+          runtimeVisibleEffectiveCount: formatSwarmNumber(decimalFrom(injectedCount)),
+          visible: "no",
+          territoryPerSecondPerUnit: "0",
+          territoryPerSecondContribution: "0",
+          inHouseOfMirrorsPreferredSet: HOUSE_OF_MIRRORS_ARMY_TIERS.some((tier) => normalizeLabelKey(tier.label) === normalizeLabelKey(alias)) ? "yes" : "no",
+        });
         continue;
       }
       if (matches.length > 1) {
@@ -1341,7 +1398,7 @@ function getDisplayName(item) {
         label: getDisplayName(unit),
         suffix: unit?.suffix || "",
         injectedRawCount: formatSwarmNumber(injectedDecimal),
-        runtimeVisibleEffectiveCount: formatSwarmNumber(runtimeCount),
+        runtimeVisibleEffectiveCount: formatSwarmNumber(injectedDecimal),
         visible: unit?.isVisible?.() ? "yes" : "no",
         territoryPerSecondPerUnit: formatSwarmNumber(tpsPerUnit),
         territoryPerSecondContribution: formatSwarmNumber(totalContribution),
@@ -1381,6 +1438,25 @@ function getDisplayName(item) {
     for (const key of getScenarioUnitKeys(unit)) {
       if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
     }
+    return null;
+  }
+
+  function getScenarioArmyTierCountOverride(label) {
+    if (!scenarioHarnessContext.active) return null;
+    const normalizedLabel = normalizeLabelKey(label);
+    if (!normalizedLabel) return null;
+
+    const armyMap = scenarioHarnessContext.overrides?.armyUnitCounts || null;
+    if (armyMap && Object.prototype.hasOwnProperty.call(armyMap, normalizedLabel)) {
+      return armyMap[normalizedLabel];
+    }
+
+    const unitMap = scenarioHarnessContext.overrides?.unitCounts || null;
+    const canonicalId = getScenarioCanonicalArmyUnitIdFromAlias(normalizedLabel);
+    if (unitMap && canonicalId && Object.prototype.hasOwnProperty.call(unitMap, canonicalId)) {
+      return unitMap[canonicalId];
+    }
+
     return null;
   }
 
@@ -3170,6 +3246,11 @@ function getDisplayName(item) {
   }
 
   function unitCountByArmyPrepLabel(game, label) {
+    const tierOverride = getScenarioArmyTierCountOverride(label);
+    if (Number.isFinite(Number(tierOverride))) {
+      return decimalFrom(Number(tierOverride));
+    }
+
     let total = newDecimal(0);
     for (const unit of game.unitlist?.() || []) {
       if (!unitMatchesArmyPrepLabel(unit, label)) continue;
@@ -3196,6 +3277,21 @@ function getDisplayName(item) {
     for (const unit of game.unitlist?.() || []) {
       if (getTabName(unit) !== "territory") continue;
       territoryArmyTotal = territoryArmyTotal.plus(decimalFrom(unit?.count?.() || 0));
+    }
+
+    // In deterministic scenario mode, injected HoM army tiers define the
+    // intended effective territory army state even when live visibility is shallow.
+    let scenarioInjectedArmyTotal = newDecimal(0);
+    for (const tier of HOUSE_OF_MIRRORS_ARMY_TIERS) {
+      const tierOverride = getScenarioArmyTierCountOverride(tier.label);
+      if (Number.isFinite(Number(tierOverride))) {
+        scenarioInjectedArmyTotal = scenarioInjectedArmyTotal.plus(decimalFrom(Number(tierOverride)));
+      }
+    }
+    if (isPositive(scenarioInjectedArmyTotal)) {
+      territoryArmyTotal = scenarioInjectedArmyTotal.greaterThan(territoryArmyTotal)
+        ? scenarioInjectedArmyTotal
+        : territoryArmyTotal;
     }
 
     return {
@@ -4610,6 +4706,28 @@ function getDisplayName(item) {
     }
   }
 
+  function suppressScenarioCommandWrites(commands) {
+    const api = commands && typeof commands === "object" ? commands : null;
+    if (!api) return () => {};
+
+    const methods = ["buyUnit", "buyUpgrade", "buyMaxUnit", "buyMaxUpgrade"];
+    const original = {};
+
+    for (const method of methods) {
+      if (typeof api[method] !== "function") continue;
+      original[method] = api[method];
+      api[method] = function scenarioHarnessNoOp() {
+        return undefined;
+      };
+    }
+
+    return function restoreScenarioCommandWrites() {
+      for (const [method, fn] of Object.entries(original)) {
+        api[method] = fn;
+      }
+    };
+  }
+
   function runDeterministicScenarioHarness(options = {}) {
     if (!isScenarioHarnessEnabled()) {
       return {
@@ -4636,6 +4754,7 @@ function getDisplayName(item) {
       autoBuySafeDecisions: config.autoBuySafeDecisions,
       smartMaxActionsPerRun: config.smartMaxActionsPerRun,
     };
+    const restoreScenarioCommandWrites = suppressScenarioCommandWrites(commands);
 
     config.advisorOnly = true;
     config.autoBuySafeDecisions = false;
@@ -4882,6 +5001,7 @@ function getDisplayName(item) {
       }
     } finally {
       clearScenarioContext();
+      restoreScenarioCommandWrites();
       config.advisorOnly = savedConfig.advisorOnly;
       config.autoBuySafeDecisions = savedConfig.autoBuySafeDecisions;
       config.smartMaxActionsPerRun = savedConfig.smartMaxActionsPerRun;
@@ -10314,6 +10434,12 @@ function getDisplayName(item) {
 
   function getAutoMeatGoalTarget(game) {
     if (!config.meatGoalPlanner) return null;
+
+    if (scenarioHarnessContext.active) {
+      const forcedTargetAlias = scenarioHarnessContext.overrides?.engine?.meatGoalTarget;
+      const forcedTargetUnit = getScenarioTargetUnitOverride(game, forcedTargetAlias);
+      if (forcedTargetUnit) return forcedTargetUnit;
+    }
 
     for (let i = MEAT_CHAIN_NAMES.length - 1; i >= 0; i--) {
       const unit = getGameUnit(game, MEAT_CHAIN_NAMES[i]);
