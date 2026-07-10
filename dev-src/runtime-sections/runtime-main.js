@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.12.0";
+  const AUTOBUYER_VERSION = "0.12.1";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -13,6 +13,7 @@
   const SETTINGS_TAB_STORAGE_KEY = "kbcSwarmBotSettingsActiveTab_v1";
   const SCENARIO_HARNESS_ENABLE_KEY = "kbcSwarmBotScenarioHarnessEnabled_v1";
   const LABORATORY_DEVELOPMENT_ENABLE_KEY = "kbcSwarmBotLaboratoryEnabled_v1";
+  const LABORATORY_LIVE_ENABLE_KEY = "kbcSwarmBotLaboratoryLiveEnabled_v1";
   const LABORATORY_BASE_GAME_SOURCE_REPOSITORY = "https://github.com/swarmsim/swarm";
   const LABORATORY_BASE_GAME_SOURCE_COMMIT = "06b4f404aa324a0b454348508cfa63d5c0f1ff54";
 
@@ -453,6 +454,8 @@
   let laneCandidates = [];
   let runHistory = [];
   let liveDiagnostics = null;
+  let lastLaboratorySnapshot = null;
+  let lastLaboratoryExperiment = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -5371,6 +5374,99 @@ function getDisplayName(item) {
     return enabled;
   }
 
+  function isLaboratoryLiveGateEnabled() {
+    try {
+      return localStorage.getItem(LABORATORY_LIVE_ENABLE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  }
+
+  function setLaboratoryLiveGateEnabled(enabled) {
+    const value = enabled ? "true" : "false";
+    localStorage.setItem(LABORATORY_LIVE_ENABLE_KEY, value);
+    return enabled;
+  }
+
+  function buildLaboratoryLiveStateFingerprint(game) {
+    const resourceNames = ["energy", "larva", "cocoon", "territory", "nexus"];
+    const unitNames = ["moth", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
+    const liveState = {
+      phase: strategyInspector?.phase || null,
+      goal: strategyInspector?.goal || null,
+      activePlannerAction: strategyInspector?.activePlannerAction || null,
+      resources: Object.fromEntries(resourceNames.map((resourceName) => [
+        resourceName,
+        {
+          amount: laboratoryDecimalString(getCurrentResource(game, resourceName)),
+          perSecond: laboratoryDecimalString(getVelocity(game, resourceName)),
+        },
+      ])),
+      units: Object.fromEntries(unitNames.map((unitName) => [
+        unitName,
+        laboratoryDecimalString(getLaboratoryUnitCount(game, unitName)),
+      ])),
+      config: {
+        smartMode: !!config.smartMode,
+        advisorOnly: !!config.advisorOnly,
+        autoBuySafe: !!config.autoBuySafe,
+        strategyInspector: !!config.strategyInspector,
+        councilUi: !!config.councilUi,
+      },
+    };
+    return {
+      state: liveState,
+      fingerprint: laboratoryCanonicalJson(liveState),
+    };
+  }
+
+  async function captureLaboratoryLiveSnapshot(options = {}) {
+    if (!isLaboratoryLiveGateEnabled()) {
+      return {
+        ok: false,
+        error: `Laboratory live gate is disabled. Enable explicitly with localStorage key ${LABORATORY_LIVE_ENABLE_KEY}=true.`,
+      };
+    }
+    const game = getGame();
+    const beforeState = buildLaboratoryLiveStateFingerprint(game);
+    const captureTimestamp = String(options.captureTimestamp || new Date().toISOString());
+    const snapshot = await buildLaboratorySnapshot(game, {
+      snapshotId: options.snapshotId,
+      captureMode: "live-read-only",
+      captureTimestamp,
+      gameBuild: options.gameBuild || "live-browser",
+      liveMetadata: {
+        activePhase: beforeState.state.phase,
+        activeMilestone: beforeState.state.goal,
+        currentPlannerTarget: beforeState.state.activePlannerAction,
+        relevantConfig: beforeState.state.config,
+      },
+      sourceStateFingerprint: beforeState.fingerprint,
+    });
+    const afterState = buildLaboratoryLiveStateFingerprint(game);
+    const nonMutationProof = {
+      beforeFingerprint: beforeState.fingerprint,
+      afterFingerprint: afterState.fingerprint,
+      unchanged: beforeState.fingerprint === afterState.fingerprint,
+    };
+    if (!nonMutationProof.unchanged) {
+      return {
+        ok: false,
+        error: "Laboratory live capture changed live game state, which is not allowed.",
+        nonMutationProof,
+      };
+    }
+    lastLaboratorySnapshot = snapshot;
+    lastLaboratoryExperiment = null;
+    return {
+      ok: true,
+      fileName: `swarm-lab-live-snapshot-${snapshot.snapshotId}.json`,
+      snapshot,
+      nonMutationProof,
+      liveState: beforeState.state,
+    };
+  }
+
   function laboratoryDecimalString(value) {
     const dec = decimalFrom(value);
     try {
@@ -5756,12 +5852,20 @@ function getDisplayName(item) {
     const warnings = [];
     const formulaStatuses = [];
     const formulaStatusByName = {};
-    const scenarioId = String(options.scenarioId || scenarioHarnessContext.scenarioId || "scenario");
-    const scenarioPayload = options.scenarioPayload || {
+    const captureMode = String(options.captureMode || "deterministic-scenario");
+    const captureTimestamp = String(options.captureTimestamp || new Date().toISOString());
+    const liveMetadata = options.liveMetadata || null;
+    const liveCapture = captureMode === "live-read-only";
+    const scenarioId = String(options.scenarioId || scenarioHarnessContext.scenarioId || (liveCapture ? "LIVE-READ-ONLY" : "scenario"));
+    const scenarioPayload = options.scenarioPayload || (liveCapture ? {
+      scenarioId,
+      source: "live-browser",
+      overrides: null,
+    } : {
       scenarioId,
       source: scenarioHarnessContext.source,
       overrides: scenarioHarnessContext.overrides,
-    };
+    });
     const scenarioHash = `sha256:${await laboratorySha256(laboratoryCanonicalJson(scenarioPayload))}`;
     const engine = analyzeLarvaEngine(game);
     const engineOverrides = scenarioHarnessContext.overrides?.engine || {};
@@ -5804,9 +5908,15 @@ function getDisplayName(item) {
         currentCommit,
         scenarioHarnessVersion: SCENARIO_REPORT_VERSION,
         scenarioId,
+        captureMode,
         scenarioHash,
-        gameBuild: "swarm-angular-runtime",
-        capturedAt: new Date().toISOString(),
+        gameBuild: options.gameBuild || "swarm-angular-runtime",
+        capturedAt: captureTimestamp,
+        activePhase: liveMetadata?.activePhase || strategyInspector?.phase || null,
+        activeMilestone: liveMetadata?.activeMilestone || strategyInspector?.goal || null,
+        currentPlannerTarget: liveMetadata?.currentPlannerTarget || strategyInspector?.activePlannerAction || null,
+        relevantConfig: liveMetadata?.relevantConfig || null,
+        sourceStateFingerprint: options.sourceStateFingerprint || null,
       },
       simulation: {
         mode: "deterministic-simulation",
@@ -6434,6 +6544,7 @@ function getDisplayName(item) {
     delete experimentHashPayload.experimentHash;
     delete experimentHashPayload.snapshot;
     result.experimentHash = `sha256:${await laboratorySha256(laboratoryCanonicalJson(experimentHashPayload))}`;
+    lastLaboratoryExperiment = result;
     return laboratoryDeepFreeze(result);
   }
 
@@ -6443,6 +6554,35 @@ function getDisplayName(item) {
 
   function laboratoryExportSnapshotJson(snapshot) {
     return JSON.stringify(snapshot, null, 2);
+  }
+
+  function laboratoryExportSnapshotMarkdown(snapshot) {
+    const lines = [];
+    lines.push("# SwarmSim Laboratory Snapshot");
+    lines.push("");
+    lines.push(`- Snapshot ID: \`${snapshot.snapshotId}\``);
+    lines.push(`- Snapshot hash: \`${snapshot.snapshotHash}\``);
+    lines.push(`- Capture mode: \`${snapshot?.source?.captureMode || "unknown"}\``);
+    lines.push(`- Scenario ID: \`${snapshot?.source?.scenarioId || "unknown"}\``);
+    lines.push(`- Game build: \`${snapshot?.source?.gameBuild || "unknown"}\``);
+    lines.push(`- Captured at: \`${snapshot?.source?.capturedAt || "unknown"}\``);
+    lines.push("");
+    lines.push("## Live proof");
+    lines.push("");
+    lines.push(`- Source state fingerprint: \`${snapshot?.source?.sourceStateFingerprint || "none"}\``);
+    lines.push(`- Live phase: \`${snapshot?.source?.activePhase || "unknown"}\``);
+    lines.push(`- Live milestone: \`${snapshot?.source?.activeMilestone || "unknown"}\``);
+    lines.push(`- Planner target: \`${snapshot?.source?.currentPlannerTarget || "unknown"}\``);
+    lines.push("");
+    lines.push("## Resources");
+    lines.push("");
+    lines.push("| Resource | Amount | Per second | Cap |");
+    lines.push("|---|---|---|---|");
+    for (const [resourceName, resource] of Object.entries(snapshot?.resources || {})) {
+      if (!resource || typeof resource !== "object" || !("amount" in resource)) continue;
+      lines.push(`| ${resourceName} | ${resource.amount ?? ""} | ${resource.perSecond ?? ""} | ${resource.cap ?? ""} |`);
+    }
+    return lines.join("\n");
   }
 
   function laboratoryExportResultCsv(result) {
@@ -6610,6 +6750,7 @@ function getDisplayName(item) {
     if (!capture?.ok) return capture;
     const result = await laboratoryRunPhase1Experiment(capture.snapshot, options);
     if (!result?.ok && result?.error) return result;
+    lastLaboratoryExperiment = result;
     return { ok: true, snapshot: capture.snapshot, result };
   }
 
@@ -6655,6 +6796,8 @@ function getDisplayName(item) {
           overrides: scenarioHarnessContext.overrides,
         },
       });
+      lastLaboratorySnapshot = snapshot;
+      lastLaboratoryExperiment = null;
       return {
         ok: true,
         fileName: `swarm-lab-snapshot-${snapshot.snapshotId}.json`,
@@ -13764,6 +13907,18 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-note" id="kbc-lab-status">Laboratory is enabled. Capture a snapshot to start a Phase 1 run.</div>
+
+      <div class="kbc-row">
+        <button id="kbc-lab-live-toggle" title="Toggle live read-only Laboratory capture">${isLaboratoryLiveGateEnabled() ? "Live on" : "Live off"}</button>
+        <button id="kbc-lab-live-capture" title="Capture a read-only live snapshot">Live capture</button>
+      </div>
+
+      <div class="kbc-row">
+        <button id="kbc-lab-live-download-json" title="Download the latest live snapshot as JSON">Live JSON</button>
+        <button id="kbc-lab-live-download-md" title="Download the latest live snapshot as Markdown">Live MD</button>
+      </div>
+
+      <div class="kbc-note" id="kbc-lab-live-status">Live capture is ${isLaboratoryLiveGateEnabled() ? "enabled" : "disabled"}. It only snapshots the current state and proves non-mutation.</div>
       ` : ""}
 
       <div class="kbc-tabs" title="Dela upp inställningarna i enklare grupper">
@@ -14962,6 +15117,44 @@ function getDisplayName(item) {
       laboratoryDownloadResultMarkdown(result);
     });
 
+    panel?.querySelector("#kbc-lab-live-toggle")?.addEventListener("click", () => {
+      const enabled = !isLaboratoryLiveGateEnabled();
+      setLaboratoryLiveGateEnabled(enabled);
+      refreshPanel();
+    });
+
+    panel?.querySelector("#kbc-lab-live-capture")?.addEventListener("click", async () => {
+      const result = await captureLaboratoryLiveSnapshot();
+      const status = panel?.querySelector("#kbc-lab-live-status");
+      if (!result?.ok) {
+        if (status) status.textContent = result.error || "Laboratory live capture failed.";
+        return;
+      }
+      const proof = result.nonMutationProof?.unchanged ? "non-mutation proven" : "non-mutation not proven";
+      if (status) status.textContent = `Live snapshot ${result.snapshot.snapshotHash} (${proof})`;
+      log(`Laboratory live snapshot captured: ${result.snapshot.snapshotHash}`);
+    });
+
+    panel?.querySelector("#kbc-lab-live-download-json")?.addEventListener("click", async () => {
+      const result = await captureLaboratoryLiveSnapshot();
+      if (!result?.ok) return;
+      laboratoryDownloadText(
+        `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.json`,
+        laboratoryExportSnapshotJson(result.snapshot),
+        "application/json"
+      );
+    });
+
+    panel?.querySelector("#kbc-lab-live-download-md")?.addEventListener("click", async () => {
+      const result = await captureLaboratoryLiveSnapshot();
+      if (!result?.ok) return;
+      laboratoryDownloadText(
+        `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.md`,
+        laboratoryExportSnapshotMarkdown(result.snapshot),
+        "text/markdown"
+      );
+    });
+
     strategyBar?.querySelector("#kbc-hide-strategy-bar")?.addEventListener("click", () => {
       config.strategyBar = false;
       saveConfig();
@@ -15617,17 +15810,38 @@ function getDisplayName(item) {
       ...(isLaboratoryDevelopmentGateEnabled() ? {
         laboratory: {
           isEnabled: isLaboratoryDevelopmentGateEnabled,
+          isLiveEnabled: isLaboratoryLiveGateEnabled,
           enable() {
             return setLaboratoryDevelopmentGateEnabled(true);
           },
           disable() {
             return setLaboratoryDevelopmentGateEnabled(false);
           },
+          enableLive() {
+            return setLaboratoryLiveGateEnabled(true);
+          },
+          disableLive() {
+            return setLaboratoryLiveGateEnabled(false);
+          },
           captureSnapshot(options = {}) {
             return captureLaboratorySnapshot(options);
           },
+          captureLiveSnapshot(options = {}) {
+            return captureLaboratoryLiveSnapshot(options);
+          },
           downloadSnapshot(options = {}) {
             return downloadLaboratorySnapshot(options);
+          },
+          downloadLiveSnapshot(options = {}) {
+            return captureLaboratoryLiveSnapshot(options).then((result) => {
+              if (!result?.ok) return result;
+              laboratoryDownloadText(
+                `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.json`,
+                laboratoryExportSnapshotJson(result.snapshot),
+                "application/json"
+              );
+              return { ok: true, fileName: `swarm-lab-live-snapshot-${result.snapshot.snapshotId}.json`, snapshot: result.snapshot, nonMutationProof: result.nonMutationProof };
+            });
           },
           validateSnapshot(snapshot) {
             return laboratoryValidateSnapshotShape(snapshot);
@@ -15648,6 +15862,12 @@ function getDisplayName(item) {
           exportSnapshotJson(snapshot) {
             return laboratoryExportSnapshotJson(snapshot);
           },
+          exportLiveSnapshotJson(snapshot) {
+            return laboratoryExportSnapshotJson(snapshot);
+          },
+          exportLiveSnapshotMarkdown(snapshot) {
+            return laboratoryExportSnapshotMarkdown(snapshot);
+          },
           exportResultJson(result) {
             return laboratoryExportResultJson(result);
           },
@@ -15665,6 +15885,12 @@ function getDisplayName(item) {
           },
           downloadResultMarkdown(result, fileName) {
             return laboratoryDownloadResultMarkdown(result, fileName);
+          },
+          getLastSnapshot() {
+            return lastLaboratorySnapshot;
+          },
+          getLastExperiment() {
+            return lastLaboratoryExperiment;
           },
           captureAndRunPhase1(options = {}) {
             return laboratoryCaptureAndRunPhase1(options);
