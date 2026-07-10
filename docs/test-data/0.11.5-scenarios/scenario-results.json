@@ -1,9 +1,218 @@
 {
+  "verificationDate": "2026-07-10",
+  "targetVersion": "0.11.5",
   "source": "deterministic-scenario",
   "scriptVersion": "0.11.5",
   "scenarioReportVersion": "0.11.5",
-  "runAt": null,
   "autobuyerVersion": "0.11.5",
-  "note": "NOT RUN YET. Populate by running in browser: kbcSwarmBot.scenarioHarness.enable(); kbcSwarmBot.scenarioHarness.run({ scenarios: <definitions.scenarios> }).",
-  "scenarios": []
+  "runAt": "2026-07-10T03:05:07.130Z",
+  "versionSurfaces": {
+    "userscriptMetadata": "0.11.5",
+    "browserBadge": "0.11.5",
+    "runtimeApiScriptVersion": "0.11.5",
+    "exportScriptVersion": "0.11.5",
+    "scenarioReportAutobuyerVersion": "0.11.5",
+    "hardGate": "PASS"
+  },
+  "harnessGateOff": {
+    "ok": false,
+    "error": "Scenario harness is disabled. Enable explicitly with localStorage key kbcSwarmBotScenarioHarnessEnabled_v1=true."
+  },
+  "batchRun": {
+    "ok": true,
+    "scenarioCount": 14,
+    "invariants": {
+      "pass": 28,
+      "fail": 10
+    }
+  },
+  "scenarioFailures": [
+    {
+      "scenarioId": "H3",
+      "failedInvariants": [
+        {
+          "id": "h3-stinger-missing",
+          "field": "energySupportMirrorPreferredUnitsMissing",
+          "actual": "Culicimorph V, Arachnomorph V, Stinger V",
+          "expected": "Stinger V"
+        }
+      ]
+    },
+    {
+      "scenarioId": "H4",
+      "failedInvariants": [
+        {
+          "id": "h4-payoff-gate",
+          "field": "energySupportMirrorActiveGate",
+          "actual": "relevant-army",
+          "expected": "payoff"
+        },
+        {
+          "id": "h4-reason",
+          "field": "energySupportMirrorReason",
+          "actual": "no relevant territory army exists",
+          "expectedIncludes": "no clear territory/Expansion payoff"
+        }
+      ]
+    },
+    {
+      "scenarioId": "H5",
+      "failedInvariants": [
+        {
+          "id": "h5-mirror-decision",
+          "field": "energySupportMirrorDecision",
+          "actual": "HOLD",
+          "expectedOneOf": [
+            "ADVISE",
+            "READY"
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioId": "R2",
+      "failedInvariants": [
+        {
+          "id": "r2-role",
+          "field": "energySupportLepidopteraRole",
+          "actual": "wait",
+          "expected": "background"
+        }
+      ]
+    },
+    {
+      "scenarioId": "R3",
+      "failedInvariants": [
+        {
+          "id": "r3-role",
+          "field": "energySupportLepidopteraRole",
+          "actual": "wait",
+          "expected": "primary"
+        },
+        {
+          "id": "r3-best-use",
+          "field": "energySupportBestUse",
+          "actual": "wait",
+          "expected": "lepidoptera"
+        },
+        {
+          "id": "r3-advisor",
+          "field": "momentumPrimaryAdvisor",
+          "actual": "Flesh Smith",
+          "expected": "Beetle Magus"
+        },
+        {
+          "id": "r3-speaker",
+          "field": "activeCouncilSpeaker",
+          "actual": "Flesh Smith",
+          "expected": "Beetle Magus"
+        }
+      ]
+    },
+    {
+      "scenarioId": "R8",
+      "failedInvariants": [
+        {
+          "id": "r8-c1-parent-step",
+          "field": "parentStepDecision",
+          "actual": "HOLD",
+          "expected": "BUY"
+        }
+      ]
+    }
+  ],
+  "r8CycleTrace": {
+    "cycle1": {
+      "parentStepDecision": "HOLD",
+      "actionUnitRefillDecision": "OBSERVE",
+      "activePlannerAction": "Meat: drone",
+      "parentStepReason": "no direct parent step above drone on target path to drone",
+      "actionUnitRefillReason": "none",
+      "remainingActions": "1",
+      "betweenCycleApplied": "no",
+      "plannerTransitionMarker": "none",
+      "parentStepCompletedForRefill": "no",
+      "transitionSeenByCycle": "no"
+    },
+    "cycle2": {
+      "parentStepDecision": "HOLD",
+      "actionUnitRefillDecision": "BUY",
+      "activePlannerAction": "Parent Refill: drone",
+      "parentStepReason": "between-cycle transition replay: r8-parent-step-completed",
+      "actionUnitRefillReason": "action-unit refill after parent-step none; buy 5 drone for target path drone; payback/reserve guard ok",
+      "remainingActions": "2",
+      "betweenCycleApplied": "yes",
+      "plannerTransitionMarker": "r8-parent-step-completed",
+      "parentStepCompletedForRefill": "yes",
+      "transitionSeenByCycle": "yes"
+    }
+  },
+  "uiAndExportConsistency": {
+    "H4": {
+      "pass": false,
+      "bestUse": "house-of-mirrors",
+      "energySupportMirrorDecision": "HOLD",
+      "energySupportMirrorActiveGate": "relevant-army",
+      "energySupportMirrorReason": "no relevant territory army exists",
+      "activeCouncilSpeaker": "General Mandible",
+      "hasUndefined": false,
+      "hasNaN": false
+    },
+    "H5": {
+      "pass": false,
+      "bestUse": "house-of-mirrors",
+      "energySupportMirrorDecision": "HOLD",
+      "energySupportMirrorActiveGate": "relevant-army",
+      "energySupportMirrorReason": "house-of-mirrors selected from ranked support candidates (house-of-mirrors:hold:0.20:HOLD | clone-larvae:hold:0:HOLD | lepidoptera:blocked:0:WAIT | wait:blocked:0:WAIT)",
+      "activeCouncilSpeaker": "General Mandible",
+      "hasUndefined": false,
+      "hasNaN": false
+    },
+    "R2": {
+      "pass": false,
+      "bestUse": "clone-larvae",
+      "energySupportLepidopteraRole": "wait",
+      "energySupportCloneDecision": "ADVISE",
+      "momentumPrimaryAdvisor": "Larva Steward",
+      "activeCouncilSpeaker": "Larva Steward",
+      "hasUndefined": false,
+      "hasNaN": false
+    },
+    "R3": {
+      "pass": false,
+      "bestUse": "wait",
+      "energySupportLepidopteraRole": "wait",
+      "momentumPrimaryAdvisor": "Flesh Smith",
+      "activeCouncilSpeaker": "Flesh Smith",
+      "hasUndefined": false,
+      "hasNaN": false
+    },
+    "R5": {
+      "pass": true,
+      "bestUse": "clone-larvae",
+      "energySupportCloneDecision": "ADVISE",
+      "momentumPrimaryAdvisor": "Larva Steward",
+      "activeCouncilSpeaker": "Larva Steward",
+      "hasUndefined": false,
+      "hasNaN": false
+    }
+  },
+  "restorationAndLeakChecks": {
+    "runHistoryBeforeNormalRun": 14,
+    "runHistoryAfterNormalRun": 15,
+    "latestNormalRunSource": null,
+    "latestNormalRunHasScenarioId": false,
+    "leakedScenarioCountInRunHistory": 0
+  },
+  "safetyDefaults": {
+    "autoCastAbilities": false,
+    "autoAscend": false,
+    "energySupportBrokerAllowAutoCast": false
+  },
+  "verdict": "0.11.5 REQUIRES NEXT PATCH",
+  "blockingReasons": [
+    "R8 cycle 1 Parent Step acceptance is still not met.",
+    "Lepidoptera role/selection expectations fail in R2 and R3.",
+    "HoM expectation mismatches remain in H3/H4/H5."
+  ]
 }
