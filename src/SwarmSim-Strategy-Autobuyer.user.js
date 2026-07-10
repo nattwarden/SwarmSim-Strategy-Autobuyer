@@ -16,7 +16,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const SCRIPT_VERSION = "0.11.0";
+  const SCRIPT_VERSION = "0.11.1";
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
