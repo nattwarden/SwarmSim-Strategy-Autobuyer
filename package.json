@@ -1,7 +1,7 @@
 {
   "name": "swarmsim-strategy-autobuyer",
   "private": true,
-  "version": "0.12.2",
+  "version": "0.12.3",
   "description": "SwarmSim Strategy Autobuyer tooling",
   "license": "UNLICENSED",
   "scripts": {
@@ -27,8 +27,10 @@
     "verify:0.12.0:laboratory:phase1": "node scripts/verify-0.12.0-laboratory-phase1.js",
     "check:0.12.1:laboratory": "node scripts/verify-0.12.1-laboratory-live-runner.js",
     "check:0.12.2:laboratory": "node scripts/verify-0.12.1-laboratory-live-runner.js",
+    "check:0.12.3:laboratory": "node scripts/verify-0.12.3-laboratory-effective-count.js",
     "verify:0.12.1:laboratory:live": "node scripts/verify-0.12.1-laboratory-live-runner.js",
     "verify:0.12.2:laboratory:hom-resolver": "node scripts/verify-0.12.1-laboratory-live-runner.js",
+    "verify:0.12.3:laboratory:effective-count": "node scripts/verify-0.12.3-laboratory-effective-count.js",
     "check:0.11.1": "node scripts/check-0.11.1-invariants.js",
     "check:0.11.2": "node scripts/check-0.11.2-invariants.js",
     "check:0.11.3": "node scripts/check-0.11.3-invariants.js",
@@ -36,7 +38,7 @@
     "sync:from-canonical": "node scripts/extract-runtime-source.js",
     "hotfix:canonical": "npm run sync:from-canonical && npm run build && npm run verify",
     "validate:guardrails": "node scripts/validate-repo-guardrails.js",
-    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.2:laboratory && node scripts/validate-repo-guardrails.js"
+    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && node scripts/validate-repo-guardrails.js"
   },
   "dependencies": {
     "playwright": "^1.61.1"

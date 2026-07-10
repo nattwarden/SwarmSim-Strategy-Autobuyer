@@ -19,6 +19,9 @@ docs/release-notes/
 
 ## Version notes
 
+- 0.12.3: Laboratory live effective HoM count capture fix, reason propagation
+  normalization for blocked/legal abilities, and honest verifier gates using
+  unmodified production capture.
 - 0.7.9: Target-aware Upgrade / Twin Planner.
 - 0.8.0: Unlock Planner, Clone Buffer Planner, Ability Prep Planner
   advisor-only.

@@ -1,6 +1,25 @@
 # SwarmSim Laboratory Phase 1
 
-Status: 0.12.0 Phase 1A snapshot foundation plus Phase 1 experiment runtime.
+Status: 0.12.3 Phase 1A snapshot foundation plus live effective-count and reason-propagation hardening.
+
+## 0.12.3 narrow contract update
+
+0.12.3 adds a narrow live-capture hardening patch for House of Mirrors and ability
+reason propagation without widening strategy behavior.
+
+Required 0.12.3 runtime contract:
+
+- House of Mirrors affected army capture remains keyed by exactly eleven canonical
+  base ids.
+- Live count resolution prefers the authoritative `clonearmy.effect[].unit`
+  runtime target and records parity diagnostics versus independent canonical
+  lookup.
+- Ambiguous unresolved count states remain explicit (`count: null`) and are not
+  silently serialized as verified zero.
+- Clone Larvae and House of Mirrors blocked states propagate explicit
+  `INSUFFICIENT_ENERGY` reason code and text through snapshot, run payload, UI,
+  JSON, CSV, Markdown, and copy summary.
+- Legal ability states clear stale unavailable reason/code fields.
 
 ## 0.12.0 Phase 1A implementation scope
 

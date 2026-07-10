@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.12.2";
+  const AUTOBUYER_VERSION = "0.12.3";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -5777,8 +5777,8 @@ function getDisplayName(item) {
     const affordable = unlocked && decimalAtLeast(energyCurrent, energyCost);
     const available = unlocked && visible && affordable;
     const energyDeficit = affordable ? newDecimal(0) : (energyCost.greaterThan(energyCurrent) ? energyCost.minus(energyCurrent) : newDecimal(0));
-    let unavailableReasonCode = "UNKNOWN";
-    let unavailableReason = `${abilityLabel} is unavailable.`;
+    let unavailableReasonCode = null;
+    let unavailableReason = null;
 
     if (!ability) {
       unavailableReasonCode = "RUNTIME_UNAVAILABLE";
@@ -5804,22 +5804,66 @@ function getDisplayName(item) {
     };
   }
 
+  function getLaboratoryUnitSnapshotLabel(unit, fallback) {
+    if (!unit) return fallback || null;
+    return normalizeLabelKey(getDisplayName(unit) || unit?.name || fallback || "");
+  }
+
+  function getLaboratoryUnitRuntimeIdentity(unit, fallbackId) {
+    return {
+      runtimeUnitName: normalizeLabelKey(unit?.name || fallbackId || "") || null,
+      runtimeSuffix: normalizeLabelKey(unit?.suffix || "") || null,
+      runtimeDisplayLabel: getLaboratoryUnitSnapshotLabel(unit, fallbackId) || null,
+    };
+  }
+
+  function getLaboratoryUnitCountValue(unit) {
+    if (!unit || typeof unit.count !== "function") return null;
+    try {
+      const value = decimalFrom(unit.count());
+      return laboratoryDecimalIsFiniteValue(value) ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getLaboratoryUnitRawCountValue(unit) {
+    if (!unit || typeof unit.rawCount !== "function") return null;
+    try {
+      const value = decimalFrom(unit.rawCount());
+      return laboratoryDecimalIsFiniteValue(value) ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
   function getLaboratoryHouseOfMirrorsAffectedUnitIds(game, warnings, formulaStatuses) {
     const mirrorAbility = getLaboratoryHouseOfMirrorsAbility(game);
     const runtimeEffects = Array.isArray(mirrorAbility?.effect) ? mirrorAbility.effect : [];
     const runtimeEffectUnitIds = [];
+    const runtimeEffectDescriptors = [];
     const fallbackUnitIds = LABORATORY_PHASE1_AFFECTED_UNIT_IDS.slice();
 
-    for (const effect of runtimeEffects) {
+    runtimeEffects.forEach((effect, effectIndex) => {
       const typeName = effect?.type?.name || effect?.type || "";
-      if (typeName !== "compoundUnit") continue;
+      if (typeName !== "compoundUnit") return;
       const unitId = normalizeLabelKey(effect?.unit?.name || effect?.unittype || "");
-      if (unitId) runtimeEffectUnitIds.push(unitId);
-    }
+      if (!unitId) return;
+      runtimeEffectUnitIds.push(unitId);
+      runtimeEffectDescriptors.push({
+        unitId,
+        effectIndex,
+      });
+    });
 
     const uniqueRuntimeEffectUnitIds = Array.from(new Set(runtimeEffectUnitIds));
+    const expectedSet = new Set(LABORATORY_PHASE1_AFFECTED_UNIT_IDS);
     const runtimeMatchesExpected = uniqueRuntimeEffectUnitIds.length === LABORATORY_PHASE1_AFFECTED_UNIT_IDS.length
-      && uniqueRuntimeEffectUnitIds.every((unitId, index) => unitId === LABORATORY_PHASE1_AFFECTED_UNIT_IDS[index]);
+      && uniqueRuntimeEffectUnitIds.every((unitId) => expectedSet.has(unitId));
+    const runtimeEffectByUnitId = {};
+    for (const descriptor of runtimeEffectDescriptors) {
+      if (!runtimeEffectByUnitId[descriptor.unitId]) runtimeEffectByUnitId[descriptor.unitId] = descriptor;
+    }
 
     let resolvedUnitIds = fallbackUnitIds.slice();
     let source = "source-verified-fallback";
@@ -5848,6 +5892,7 @@ function getDisplayName(item) {
       unresolvedUnitIds: [],
       positiveCountUnitIds: [],
       runtimeEffectUnitIds: uniqueRuntimeEffectUnitIds,
+      runtimeEffectByUnitId,
       fallbackUnitIds,
       setMatchesExpected,
     };
@@ -5876,53 +5921,196 @@ function getDisplayName(item) {
     return decimalFrom(unit?.count?.() || 0);
   }
 
+  function getLaboratoryAffectedUnitCount(game, descriptor, warnings, formulaStatuses) {
+    const unitId = descriptor?.unitId || "";
+    const effectUnit = descriptor?.effectUnit || null;
+    const resolvedUnit = getLaboratoryResolvedUnit(game, unitId);
+    const effectUnitCount = getLaboratoryUnitCountValue(effectUnit);
+    const resolvedUnitCount = getLaboratoryUnitCountValue(resolvedUnit);
+    const effectUnitRawCount = getLaboratoryUnitRawCountValue(effectUnit);
+    const resolvedUnitRawCount = getLaboratoryUnitRawCountValue(resolvedUnit);
+    const effectIdentity = getLaboratoryUnitRuntimeIdentity(effectUnit, unitId);
+    const resolvedIdentity = getLaboratoryUnitRuntimeIdentity(resolvedUnit, unitId);
+    const scenarioOverrideEffect = getScenarioUnitCountOverride(effectUnit);
+    const scenarioOverrideResolved = getScenarioUnitCountOverride(resolvedUnit);
+    const scenarioOverrideActive = !!(scenarioHarnessContext.active && scenarioHarnessContext.overrides);
+    const scenarioOverrideValue = scenarioOverrideActive
+      ? (Number.isFinite(Number(scenarioOverrideEffect))
+        ? decimalFrom(scenarioOverrideEffect)
+        : (Number.isFinite(Number(scenarioOverrideResolved)) ? decimalFrom(scenarioOverrideResolved) : null))
+      : null;
+
+    const identityParity = effectUnit && resolvedUnit ? effectUnit === resolvedUnit : null;
+    const countParity = effectUnitCount && resolvedUnitCount ? laboratoryDecimalEquals(effectUnitCount, resolvedUnitCount) : null;
+    const effectOutput = typeof descriptor?.effect?.output === "function" ? safe(`Laboratory House of Mirrors effect output ${unitId}`, () => descriptor.effect.output()) : null;
+    const effectOutputDecimal = effectOutput !== null && effectOutput !== undefined ? decimalFrom(effectOutput) : null;
+
+    let count = null;
+    let countSource = null;
+    let resolutionStatus = "count-unavailable";
+    let scenarioOverrideApplied = false;
+
+    if (scenarioOverrideValue) {
+      count = scenarioOverrideValue;
+      countSource = "scenario-override";
+      resolutionStatus = "resolved";
+      scenarioOverrideApplied = true;
+    } else if (effectUnitCount) {
+      count = effectUnitCount;
+      countSource = "clonearmy-effect-unit-count";
+      resolutionStatus = "resolved";
+    } else if (resolvedUnitCount) {
+      count = resolvedUnitCount;
+      countSource = "canonical-lookup-fallback";
+      resolutionStatus = "resolved-fallback";
+      warnings.push(`House of Mirrors affected unit ${unitId} used fallback canonical lookup count because effect target count is unavailable.`);
+      formulaStatuses.push("incomplete");
+    } else {
+      warnings.push(`House of Mirrors affected unit ${unitId} count is unavailable from both effect target and canonical lookup.`);
+      formulaStatuses.push("incomplete");
+    }
+
+    if (identityParity === false) {
+      warnings.push(`House of Mirrors affected unit ${unitId} effect target object differs from canonical lookup object.`);
+    }
+
+    if (countParity === false && !scenarioOverrideApplied) {
+      warnings.push(`House of Mirrors affected unit ${unitId} effect-target count differs from canonical lookup count.`);
+    }
+
+    if (count && count.equals && count.equals(0) && ((identityParity === false) || (countParity === false && resolvedUnitCount && resolvedUnitCount.greaterThan(0)))) {
+      count = null;
+      countSource = "ambiguous-zero-rejected";
+      resolutionStatus = "ambiguous-zero";
+      warnings.push(`House of Mirrors affected unit ${unitId} zero count is ambiguous and was rejected.`);
+      formulaStatuses.push("incomplete");
+    }
+
+    return {
+      unitId,
+      count,
+      countSource,
+      resolutionStatus,
+      scenarioOverrideApplied,
+      identityParity,
+      countParity,
+      effectUnit,
+      resolvedUnit,
+      effectUnitCount,
+      resolvedUnitCount,
+      effectUnitRawCount,
+      resolvedUnitRawCount,
+      effectOutput: effectOutputDecimal,
+      ...effectIdentity,
+      resolvedRuntimeUnitName: resolvedIdentity.runtimeUnitName,
+      resolvedRuntimeSuffix: resolvedIdentity.runtimeSuffix,
+      resolvedRuntimeDisplayLabel: resolvedIdentity.runtimeDisplayLabel,
+    };
+  }
+
   function buildLaboratoryArmySnapshot(game, warnings, formulaStatuses) {
     const resolution = getLaboratoryHouseOfMirrorsAffectedUnitIds(game, warnings, formulaStatuses);
+    const mirrorAbility = getLaboratoryHouseOfMirrorsAbility(game);
+    const runtimeEffects = Array.isArray(mirrorAbility?.effect) ? mirrorAbility.effect : [];
     const units = [];
     let affectedTotal = newDecimal(0);
     const positiveCountUnitIds = [];
     const unresolvedUnitIds = [];
 
+    const countDiagnostics = [];
+
     for (const unitId of resolution.resolvedUnitIds) {
-      const unit = getLaboratoryResolvedUnit(game, unitId);
-      const scenarioCanonicalKey = unit ? getScenarioCanonicalUnitKey(unit) : null;
-      const override = unit ? getScenarioUnitCountOverride(unit) : null;
-      const count = unit ? (Number.isFinite(Number(override)) ? decimalFrom(override) : decimalFrom(unit?.count?.() || 0)) : null;
+      const descriptorBase = resolution.runtimeEffectByUnitId?.[unitId] || { unitId, effectIndex: null };
+      const effect = Number.isInteger(descriptorBase?.effectIndex) ? runtimeEffects[descriptorBase.effectIndex] : null;
+      const descriptor = {
+        unitId,
+        effectIndex: descriptorBase?.effectIndex ?? null,
+        effect,
+        effectUnit: effect?.unit || null,
+      };
+      const countInfo = getLaboratoryAffectedUnitCount(game, descriptor, warnings, formulaStatuses);
+      const unit = countInfo.effectUnit || countInfo.resolvedUnit || null;
+      const scenarioCanonicalKey = countInfo.resolvedUnit ? getScenarioCanonicalUnitKey(countInfo.resolvedUnit) : (unit ? getScenarioCanonicalUnitKey(unit) : null);
+      const count = countInfo.count;
       const perUnit = unit ? getLaboratoryEffectiveProductionPerUnit(unit, "territory") : null;
+      const totalProductionRaw = unit
+        ? safe(`Laboratory total production territory ${unitId}`, () => unit?.totalProduction?.()?.territory)
+        : null;
+      const totalProduction = totalProductionRaw === null || totalProductionRaw === undefined ? null : decimalFrom(totalProductionRaw);
       const hasCount = count !== null && count !== undefined;
       const hasPerUnit = perUnit !== null && perUnit !== undefined;
-      const contribution = hasCount && hasPerUnit ? laboratoryFloorDecimal(count).times(perUnit) : null;
+      let contribution = hasCount && hasPerUnit ? laboratoryFloorDecimal(count).times(perUnit) : null;
+      const productionParity = contribution !== null && totalProduction !== null
+        ? laboratoryDecimalEquals(contribution, totalProduction)
+        : null;
 
       if (!unit) {
         unresolvedUnitIds.push(unitId);
         warnings.push(`House of Mirrors affected unit ${unitId} is unresolved from runtime.`);
         formulaStatuses.push("incomplete");
       } else if (!hasCount) {
-        warnings.push(`House of Mirrors affected unit ${unitId} count is unavailable.`);
+        unresolvedUnitIds.push(unitId);
+        warnings.push(`House of Mirrors affected unit ${unitId} count is unavailable or ambiguous.`);
         formulaStatuses.push("incomplete");
+      } else if (productionParity === false && count.equals && count.equals(0)) {
+        unresolvedUnitIds.push(unitId);
+        contribution = null;
+        warnings.push(`House of Mirrors affected unit ${unitId} has impossible zero-count production parity and is marked unresolved.`);
+        formulaStatuses.push("mismatch");
       } else if (count.greaterThan(0)) {
         positiveCountUnitIds.push(unitId);
       }
 
       if (contribution !== null) affectedTotal = affectedTotal.plus(contribution);
+      countDiagnostics.push({
+        unitId,
+        effectIndex: descriptor.effectIndex,
+        countSource: countInfo.countSource,
+        resolutionStatus: countInfo.resolutionStatus,
+        scenarioOverrideApplied: countInfo.scenarioOverrideApplied,
+        identityParity: countInfo.identityParity,
+        countParity: countInfo.countParity,
+        count: hasCount ? laboratoryDecimalString(count) : null,
+        effectUnitCount: countInfo.effectUnitCount ? laboratoryDecimalString(countInfo.effectUnitCount) : null,
+        resolvedUnitCount: countInfo.resolvedUnitCount ? laboratoryDecimalString(countInfo.resolvedUnitCount) : null,
+        effectUnitRawCount: countInfo.effectUnitRawCount ? laboratoryDecimalString(countInfo.effectUnitRawCount) : null,
+        resolvedUnitRawCount: countInfo.resolvedUnitRawCount ? laboratoryDecimalString(countInfo.resolvedUnitRawCount) : null,
+        effectOutput: countInfo.effectOutput ? laboratoryDecimalString(countInfo.effectOutput) : null,
+      });
       units.push({
         unitId,
         canonicalRuntimeUnitId: unitId,
         scenarioCanonicalKey,
-        label: unit ? (normalizeLabelKey(unit?.name || unitId) || unitId) : unitId,
+        label: getLaboratoryUnitSnapshotLabel(unit, unitId) || unitId,
+        runtimeUnitName: countInfo.runtimeUnitName,
+        runtimeSuffix: countInfo.runtimeSuffix,
+        runtimeDisplayLabel: countInfo.runtimeDisplayLabel,
+        resolvedRuntimeUnitName: countInfo.resolvedRuntimeUnitName,
+        resolvedRuntimeSuffix: countInfo.resolvedRuntimeSuffix,
+        resolvedRuntimeDisplayLabel: countInfo.resolvedRuntimeDisplayLabel,
         count: hasCount ? laboratoryDecimalString(count) : null,
-        resolutionStatus: unit ? "resolved" : "unresolved",
+        countSource: countInfo.countSource,
+        resolutionStatus: unit ? countInfo.resolutionStatus : "unresolved",
+        scenarioOverrideApplied: countInfo.scenarioOverrideApplied,
+        identityParity: countInfo.identityParity,
+        countParity: countInfo.countParity,
         effectiveTerritoryPerSecondPerUnit: hasPerUnit ? laboratoryDecimalString(perUnit) : null,
+        totalTerritoryPerSecondFromRuntime: totalProduction !== null ? laboratoryDecimalString(totalProduction) : null,
+        productionParity,
         territoryPerSecondContribution: contribution !== null ? laboratoryDecimalString(contribution) : null,
         affectedByHouseOfMirrors: true,
       });
     }
 
-    resolution.resolvedUnitCount = units.length;
+    resolution.resolvedUnitCount = units.filter((row) => row.count !== null).length;
     resolution.positiveCountUnitIds = positiveCountUnitIds.slice();
-  resolution.unresolvedUnitIds = unresolvedUnitIds.slice();
+    resolution.unresolvedUnitIds = unresolvedUnitIds.slice();
     const territoryPerSecond = decimalFrom(getVelocity(game, "territory"));
     const unaffected = territoryPerSecond.minus(affectedTotal);
+    if (unaffected.lessThan && unaffected.lessThan(0)) {
+      warnings.push("House of Mirrors unaffected territory/sec became negative; capture parity mismatch.");
+      formulaStatuses.push("mismatch");
+    }
     const recomposed = affectedTotal.plus(unaffected);
     if (!laboratoryDecimalEquals(recomposed, territoryPerSecond)) {
       warnings.push("House of Mirrors affected/unaffected territory split does not sum to runtime territory/sec.");
@@ -5934,6 +6122,7 @@ function getDisplayName(item) {
       affectedTerritoryPerSecondTotal: laboratoryDecimalString(affectedTotal),
       unaffectedTerritoryPerSecond: laboratoryDecimalString(unaffected),
       houseOfMirrorsResolution: resolution,
+      effectiveCountDiagnostics: countDiagnostics,
     };
   }
 
@@ -5973,8 +6162,14 @@ function getDisplayName(item) {
     return {
       gameAbilityId: "clonelarvae",
       available: availability.available,
+      unlocked: availability.unlocked,
+      visible: availability.visible,
+      affordable: availability.affordable,
       unavailableReason: availability.unavailableReason,
+      unavailableReasonCode: availability.unavailableReasonCode,
+      energyCurrent: laboratoryDecimalString(availability.energyCurrent),
       energyCost: laboratoryDecimalString(availability.energyCost),
+      energyDeficit: laboratoryDecimalString(availability.energyDeficit),
       formulaInputs: {
         larvaeBank: laboratoryDecimalString(larvaeBank),
         cocoonBank: laboratoryDecimalString(cocoonBank),
@@ -6203,9 +6398,15 @@ function getDisplayName(item) {
     const cloneLarvae = buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses);
     if (cloneLarvae.runtimePreviewOutput === null) formulaStatusByName.cloneLarvae = "source-verified";
     const houseOfMirrors = buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses);
-    formulaStatusByName.houseOfMirrors = army.houseOfMirrorsResolution?.setMatchesExpected === false || army.houseOfMirrorsResolution?.source === "runtime-effect-mismatch"
+    const unresolvedAffectedUnits = Array.isArray(army?.houseOfMirrorsResolution?.unresolvedUnitIds)
+      && army.houseOfMirrorsResolution.unresolvedUnitIds.length > 0;
+    const hasCountMismatch = Array.isArray(army?.effectiveCountDiagnostics)
+      && army.effectiveCountDiagnostics.some((item) => item?.countParity === false || item?.resolutionStatus === "ambiguous-zero");
+    formulaStatusByName.houseOfMirrors = army.houseOfMirrorsResolution?.setMatchesExpected === false
+      || army.houseOfMirrorsResolution?.source === "runtime-effect-mismatch"
+      || hasCountMismatch
       ? "mismatch"
-      : "source-verified";
+      : (unresolvedAffectedUnits ? "incomplete" : "source-verified");
     const expansion = buildLaboratoryExpansionSnapshot(game, engine, warnings, formulaStatuses);
 
     let topStatus = "verified";
@@ -6820,11 +7021,15 @@ function getDisplayName(item) {
               actionLegal: false,
               actionApplied: false,
               actionSafetySafe: false,
+              invalidReasonCode: immediate.invalidReasonCode || null,
+              invalidReason: immediate.invalidReason || null,
               formulaStatus: "invalid-action",
               warnings: immediate.warnings || [],
             },
             metrics: {},
             comparisonVsWait: null,
+            invalidReasonCode: immediate.invalidReasonCode || null,
+            invalidReason: immediate.invalidReason || null,
             formulaValidation: { status: "invalid-action", warnings: immediate.warnings || [] },
             warnings: immediate.warnings || [],
           });
