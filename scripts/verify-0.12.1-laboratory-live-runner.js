@@ -7,10 +7,10 @@ const root = path.resolve(__dirname, "..");
 const userscriptPath = path.join(root, "src", "SwarmSim-Strategy-Autobuyer.user.js");
 const definitionsPath = path.join(root, "docs", "test-data", "0.11.7-scenarios", "scenario-definitions.json");
 const evidenceDir = path.join(root, "docs", "live-logs");
-const testDataDir = path.join(root, "docs", "test-data", "0.12.1-laboratory");
+const testDataDir = path.join(root, "docs", "test-data", "0.12.2-laboratory");
 
-const evidenceJsonPath = path.join(evidenceDir, "browser-test-0.12.1-laboratory-live-runner-final.json");
-const evidenceMdPath = path.join(evidenceDir, "browser-test-0.12.1-laboratory-live-runner-final.md");
+const evidenceJsonPath = path.join(evidenceDir, "browser-test-0.12.2-laboratory-live-runner-final.json");
+const evidenceMdPath = path.join(evidenceDir, "browser-test-0.12.2-laboratory-live-runner-final.md");
 const exampleLiveResultJsonPath = path.join(testDataDir, "example-live-result.json");
 const exampleLiveResultCsvPath = path.join(testDataDir, "example-live-result.csv");
 const exampleLiveResultMdPath = path.join(testDataDir, "example-live-result.md");
@@ -673,12 +673,12 @@ async function main() {
     && liveSummary.safetyDefaults.autoCastAbilities === false
     && liveSummary.safetyDefaults.autoAscend === false
     && liveSummary.safetyDefaults.energySupportBrokerAllowAutoCast === false
-    ? "0.12.1 LABORATORY LIVE RUNNER VERIFIED"
-    : "0.12.1 LABORATORY LIVE RUNNER REQUIRES PATCH";
+    ? "0.12.2 LABORATORY LIVE RUNNER VERIFIED"
+    : "0.12.2 LABORATORY LIVE RUNNER REQUIRES PATCH";
 
   writeText(evidenceJsonPath, JSON.stringify(liveSummary, null, 2));
   writeText(evidenceMdPath, [
-    "# SwarmSim Strategy Autobuyer 0.12.1 Laboratory Live Runner",
+    "# SwarmSim Strategy Autobuyer 0.12.2 Laboratory Live Runner",
     "",
     "- Verdict: `" + liveSummary.verdict + "`",
     "- Commit: `" + (liveSummary.exactCommit || "unknown") + "`",
@@ -730,7 +730,7 @@ async function main() {
   writeText(exampleLiveResultMdPath, fixtureExports.markdownText);
   writeText(exampleCopySummaryPath, fixtureCopySummary);
 
-  if (liveSummary.verdict !== "0.12.1 LABORATORY LIVE RUNNER VERIFIED") {
+  if (liveSummary.verdict !== "0.12.2 LABORATORY LIVE RUNNER VERIFIED") {
     writeText(evidenceJsonPath, JSON.stringify(liveSummary, null, 2));
   }
 
@@ -738,12 +738,12 @@ async function main() {
   await closeHandle(fixturePage);
   await browser.close();
 
-  if (liveSummary.verdict !== "0.12.1 LABORATORY LIVE RUNNER VERIFIED") {
+  if (liveSummary.verdict !== "0.12.2 LABORATORY LIVE RUNNER VERIFIED") {
     console.error("Live runner verification failed.");
     process.exit(1);
   }
 
-  console.log("0.12.1 LABORATORY LIVE RUNNER VERIFIED");
+  console.log("0.12.2 LABORATORY LIVE RUNNER VERIFIED");
 }
 
 function fixtureSummaryPass(first) {

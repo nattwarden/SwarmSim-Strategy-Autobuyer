@@ -69,6 +69,8 @@ docs/release-notes/
   army alias resolution (early setup-fail on ambiguous/missing alias), richer
   R8/HoM/Clone observability fields, and 0.11.7 scenario/version-surface
   templates for Laboratory Phase 1 baseline work.
+- 0.12.2: Laboratory live House of Mirrors canonical resolver fix, blocked-
+  action observability cleanup, and reserve provenance correction.
 - 0.12.1: Laboratory live read-only capture path with non-mutation proof,
   live-only exports, and browser verification evidence.
 

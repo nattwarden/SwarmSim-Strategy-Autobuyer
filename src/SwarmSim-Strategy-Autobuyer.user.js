@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.12.1
+// @version      0.12.2
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -16,7 +16,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.12.1";
+  const AUTOBUYER_VERSION = "0.12.2";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -5782,6 +5782,90 @@ function getDisplayName(item) {
     }) || null;
   }
 
+  function getLaboratoryAbilityState(game, ability, abilityLabel) {
+    const visible = isItemVisibleWithScenarioOverride(ability);
+    const energyCurrent = decimalFrom(getCurrentResource(game, "energy"));
+    const energyCost = decimalFrom(getCostForResource(ability, "energy"));
+    const unlocked = !!ability;
+    const affordable = unlocked && decimalAtLeast(energyCurrent, energyCost);
+    const available = unlocked && visible && affordable;
+    const energyDeficit = affordable ? newDecimal(0) : (energyCost.greaterThan(energyCurrent) ? energyCost.minus(energyCurrent) : newDecimal(0));
+    let unavailableReasonCode = "UNKNOWN";
+    let unavailableReason = `${abilityLabel} is unavailable.`;
+
+    if (!ability) {
+      unavailableReasonCode = "RUNTIME_UNAVAILABLE";
+      unavailableReason = `${abilityLabel} is unavailable from runtime.`;
+    } else if (!visible) {
+      unavailableReasonCode = "NOT_VISIBLE";
+      unavailableReason = `${abilityLabel} is not visible.`;
+    } else if (!affordable) {
+      unavailableReasonCode = "INSUFFICIENT_ENERGY";
+      unavailableReason = `not enough energy (current Energy ${laboratoryDecimalString(energyCurrent)}, cost ${laboratoryDecimalString(energyCost)}, deficit ${laboratoryDecimalString(energyDeficit)})`;
+    }
+
+    return {
+      unlocked,
+      visible,
+      affordable,
+      available,
+      unavailableReasonCode,
+      unavailableReason,
+      energyCurrent,
+      energyCost,
+      energyDeficit,
+    };
+  }
+
+  function getLaboratoryHouseOfMirrorsAffectedUnitIds(game, warnings, formulaStatuses) {
+    const mirrorAbility = getLaboratoryHouseOfMirrorsAbility(game);
+    const runtimeEffects = Array.isArray(mirrorAbility?.effect) ? mirrorAbility.effect : [];
+    const runtimeEffectUnitIds = [];
+    const fallbackUnitIds = LABORATORY_PHASE1_AFFECTED_UNIT_IDS.slice();
+
+    for (const effect of runtimeEffects) {
+      const typeName = effect?.type?.name || effect?.type || "";
+      if (typeName !== "compoundUnit") continue;
+      const unitId = normalizeLabelKey(effect?.unit?.name || effect?.unittype || "");
+      if (unitId) runtimeEffectUnitIds.push(unitId);
+    }
+
+    const uniqueRuntimeEffectUnitIds = Array.from(new Set(runtimeEffectUnitIds));
+    const runtimeMatchesExpected = uniqueRuntimeEffectUnitIds.length === LABORATORY_PHASE1_AFFECTED_UNIT_IDS.length
+      && uniqueRuntimeEffectUnitIds.every((unitId, index) => unitId === LABORATORY_PHASE1_AFFECTED_UNIT_IDS[index]);
+
+    let resolvedUnitIds = fallbackUnitIds.slice();
+    let source = "source-verified-fallback";
+    let setMatchesExpected = false;
+
+    if (uniqueRuntimeEffectUnitIds.length) {
+      if (runtimeMatchesExpected) {
+        resolvedUnitIds = uniqueRuntimeEffectUnitIds.slice();
+        source = "runtime-effect-definition";
+        setMatchesExpected = true;
+      } else {
+        warnings.push("House of Mirrors runtime effect ids disagree with the source-verified fixed affected-id set.");
+        formulaStatuses.push("mismatch");
+        source = "runtime-effect-mismatch";
+      }
+    } else {
+      warnings.push("House of Mirrors runtime effect ids are unavailable; using the source-verified fixed affected-id set.");
+      formulaStatuses.push("incomplete");
+    }
+
+    return {
+      source,
+      expectedUnitCount: LABORATORY_PHASE1_AFFECTED_UNIT_IDS.length,
+      resolvedUnitIds,
+      resolvedUnitCount: resolvedUnitIds.length,
+      unresolvedUnitIds: [],
+      positiveCountUnitIds: [],
+      runtimeEffectUnitIds: uniqueRuntimeEffectUnitIds,
+      fallbackUnitIds,
+      setMatchesExpected,
+    };
+  }
+
   function getLaboratoryEffectiveProductionPerUnit(unit, producedUnitName) {
     const production = safe(`Laboratory production ${unit?.name || "unknown"}`, () => unit?.eachProduction?.()) || null;
     const value = production?.[producedUnitName];
@@ -5805,45 +5889,51 @@ function getDisplayName(item) {
     return decimalFrom(unit?.count?.() || 0);
   }
 
-  function getLaboratoryAbilityAvailability(game, ability, abilityLabel) {
-    const visible = isItemVisibleWithScenarioOverride(ability);
-    const cost = decimalFrom(getCostForResource(ability, "energy"));
-    const energy = decimalFrom(getCurrentResource(game, "energy"));
-    const enoughEnergy = decimalAtLeast(energy, cost);
-    const available = !!ability && visible && enoughEnergy;
-    let unavailableReason = null;
-    if (!ability || !visible) unavailableReason = `${abilityLabel} locked/unavailable`;
-    else if (!enoughEnergy) unavailableReason = "not enough energy";
-    return { available, unavailableReason, energyCost: cost };
-  }
-
   function buildLaboratoryArmySnapshot(game, warnings, formulaStatuses) {
+    const resolution = getLaboratoryHouseOfMirrorsAffectedUnitIds(game, warnings, formulaStatuses);
     const units = [];
     let affectedTotal = newDecimal(0);
-    const territoryUnits = (game?.unitlist?.() || []).filter((unit) => getTabName(unit) === "territory");
-    if (!territoryUnits.length) {
-      warnings.push("Laboratory territory army units are unavailable from runtime.");
-      formulaStatuses.push("incomplete");
-    }
+    const positiveCountUnitIds = [];
+    const unresolvedUnitIds = [];
 
-    for (const unit of territoryUnits) {
-      const canonicalRuntimeUnitId = getScenarioCanonicalUnitKey(unit) || normalizeLabelKey(unit?.name || "territory-unit");
-      const override = getScenarioUnitCountOverride(unit);
-      const count = Number.isFinite(Number(override)) ? decimalFrom(override) : decimalFrom(unit?.count?.() || 0);
-      const perUnit = getLaboratoryEffectiveProductionPerUnit(unit, "territory");
-      const contribution = laboratoryFloorDecimal(count).times(perUnit);
-      affectedTotal = affectedTotal.plus(contribution);
+    for (const unitId of resolution.resolvedUnitIds) {
+      const unit = getLaboratoryResolvedUnit(game, unitId);
+      const scenarioCanonicalKey = unit ? getScenarioCanonicalUnitKey(unit) : null;
+      const override = unit ? getScenarioUnitCountOverride(unit) : null;
+      const count = unit ? (Number.isFinite(Number(override)) ? decimalFrom(override) : decimalFrom(unit?.count?.() || 0)) : null;
+      const perUnit = unit ? getLaboratoryEffectiveProductionPerUnit(unit, "territory") : null;
+      const hasCount = count !== null && count !== undefined;
+      const hasPerUnit = perUnit !== null && perUnit !== undefined;
+      const contribution = hasCount && hasPerUnit ? laboratoryFloorDecimal(count).times(perUnit) : null;
+
+      if (!unit) {
+        unresolvedUnitIds.push(unitId);
+        warnings.push(`House of Mirrors affected unit ${unitId} is unresolved from runtime.`);
+        formulaStatuses.push("incomplete");
+      } else if (!hasCount) {
+        warnings.push(`House of Mirrors affected unit ${unitId} count is unavailable.`);
+        formulaStatuses.push("incomplete");
+      } else if (count.greaterThan(0)) {
+        positiveCountUnitIds.push(unitId);
+      }
+
+      if (contribution !== null) affectedTotal = affectedTotal.plus(contribution);
       units.push({
-        unitId: canonicalRuntimeUnitId,
-        canonicalRuntimeUnitId,
-        label: getDisplayName(unit) || canonicalRuntimeUnitId,
-        count: laboratoryDecimalString(count),
-        effectiveTerritoryPerSecondPerUnit: laboratoryDecimalString(perUnit),
-        territoryPerSecondContribution: laboratoryDecimalString(contribution),
+        unitId,
+        canonicalRuntimeUnitId: unitId,
+        scenarioCanonicalKey,
+        label: unit ? (normalizeLabelKey(unit?.name || unitId) || unitId) : unitId,
+        count: hasCount ? laboratoryDecimalString(count) : null,
+        resolutionStatus: unit ? "resolved" : "unresolved",
+        effectiveTerritoryPerSecondPerUnit: hasPerUnit ? laboratoryDecimalString(perUnit) : null,
+        territoryPerSecondContribution: contribution !== null ? laboratoryDecimalString(contribution) : null,
         affectedByHouseOfMirrors: true,
       });
     }
 
+    resolution.resolvedUnitCount = units.length;
+    resolution.positiveCountUnitIds = positiveCountUnitIds.slice();
+  resolution.unresolvedUnitIds = unresolvedUnitIds.slice();
     const territoryPerSecond = decimalFrom(getVelocity(game, "territory"));
     const unaffected = territoryPerSecond.minus(affectedTotal);
     const recomposed = affectedTotal.plus(unaffected);
@@ -5856,12 +5946,13 @@ function getDisplayName(item) {
       houseOfMirrorsAffectedUnits: units,
       affectedTerritoryPerSecondTotal: laboratoryDecimalString(affectedTotal),
       unaffectedTerritoryPerSecond: laboratoryDecimalString(unaffected),
+      houseOfMirrorsResolution: resolution,
     };
   }
 
   function buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses) {
     const cloneAbility = getLaboratoryCloneAbility(game);
-    const availability = getLaboratoryAbilityAvailability(game, cloneAbility, "Clone Larvae");
+    const availability = getLaboratoryAbilityState(game, cloneAbility, "Clone Larvae");
     const effect = getLaboratoryCompoundEffect(cloneAbility, "larva");
     const larvaeBank = decimalFrom(getCurrentResource(game, "larva"));
     const cocoonBank = decimalFrom(getCurrentResource(game, "cocoon"));
@@ -5914,11 +6005,12 @@ function getDisplayName(item) {
 
   function buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses) {
     const mirrorAbility = getLaboratoryHouseOfMirrorsAbility(game);
-    const availability = getLaboratoryAbilityAvailability(game, mirrorAbility, "House of Mirrors");
+    const availability = getLaboratoryAbilityState(game, mirrorAbility, "House of Mirrors");
     const affectedUnits = army.houseOfMirrorsAffectedUnits || [];
     let affectedAfter = newDecimal(0);
     for (const row of affectedUnits) {
-      affectedAfter = affectedAfter.plus(decimalFrom(row.territoryPerSecondContribution));
+      const contribution = laboratoryDecimalOrNull(row.territoryPerSecondContribution);
+      if (contribution) affectedAfter = affectedAfter.plus(contribution);
     }
     const sourceVerifiedAfter = decimalFrom(army.unaffectedTerritoryPerSecond).plus(affectedAfter.times(2));
     let runtimePreview = null;
@@ -5933,8 +6025,14 @@ function getDisplayName(item) {
     return {
       gameAbilityId: "clonearmy",
       available: availability.available,
+      unlocked: availability.unlocked,
+      visible: availability.visible,
+      affordable: availability.affordable,
       unavailableReason: availability.unavailableReason,
+      unavailableReasonCode: availability.unavailableReasonCode,
+      energyCurrent: laboratoryDecimalString(availability.energyCurrent),
       energyCost: laboratoryDecimalString(availability.energyCost),
+      energyDeficit: laboratoryDecimalString(availability.energyDeficit),
       affectedUnitIds: affectedUnits.map((row) => row.unitId),
       affectedTerritoryPerSecondBefore: army.affectedTerritoryPerSecondTotal,
       unaffectedTerritoryPerSecond: army.unaffectedTerritoryPerSecond,
@@ -6118,7 +6216,9 @@ function getDisplayName(item) {
     const cloneLarvae = buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses);
     if (cloneLarvae.runtimePreviewOutput === null) formulaStatusByName.cloneLarvae = "source-verified";
     const houseOfMirrors = buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses);
-    formulaStatusByName.houseOfMirrors = "source-verified";
+    formulaStatusByName.houseOfMirrors = army.houseOfMirrorsResolution?.setMatchesExpected === false || army.houseOfMirrorsResolution?.source === "runtime-effect-mismatch"
+      ? "mismatch"
+      : "source-verified";
     const expansion = buildLaboratoryExpansionSnapshot(game, engine, warnings, formulaStatuses);
 
     let topStatus = "verified";
@@ -6193,7 +6293,9 @@ function getDisplayName(item) {
         requiredReserve: laboratoryDecimalString(requiredReserve),
         headroomBefore: laboratoryDecimalString(energyAmount.minus(requiredReserve)),
         ruleId: reserveSeconds > 0 ? "post-nexus-energy-reserve" : null,
-        reserveSource: "scenario-harness",
+        reserveSource: liveCapture
+          ? "live-config:postNexusEnergyReserveSeconds"
+          : (scenarioHarnessContext.active ? "scenario-harness" : "config:postNexusEnergyReserveSeconds"),
       },
       context: {
         nexusCount: laboratoryDecimalString(getCurrentResource(game, "nexus")),
@@ -6334,7 +6436,13 @@ function getDisplayName(item) {
     const energyBefore = laboratoryDecimalOrNull(snapshot?.resources?.energy?.amount) || newDecimal(0);
     const energyCost = laboratoryDecimalOrNull(snapshot?.abilities?.cloneLarvae?.energyCost) || newDecimal(0);
     if (!available || energyBefore.lessThan(energyCost)) {
-      return { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, warnings: warnings.concat(!available ? ["Clone Larvae unavailable"] : ["not enough energy"]) };
+      const invalidReasonCode = !available
+        ? (snapshot?.abilities?.cloneLarvae?.unavailableReasonCode || "UNKNOWN")
+        : "INSUFFICIENT_ENERGY";
+      const invalidReason = !available
+        ? (snapshot?.abilities?.cloneLarvae?.unavailableReason || "Clone Larvae unavailable")
+        : `not enough energy (current Energy ${laboratoryDecimalString(energyBefore)}, cost ${laboratoryDecimalString(energyCost)}, deficit ${laboratoryDecimalString(energyCost.minus(energyBefore))})`;
+      return { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, invalidReasonCode, invalidReason, warnings: warnings.concat([invalidReason]) };
     }
 
     const inputs = snapshot?.abilities?.cloneLarvae?.formulaInputs || {};
@@ -6405,7 +6513,13 @@ function getDisplayName(item) {
     const energyBefore = laboratoryDecimalOrNull(snapshot?.resources?.energy?.amount) || newDecimal(0);
     const energyCost = laboratoryDecimalOrNull(snapshot?.abilities?.houseOfMirrors?.energyCost) || newDecimal(0);
     if (!available || energyBefore.lessThan(energyCost)) {
-      return { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, warnings: warnings.concat(!available ? ["House of Mirrors unavailable"] : ["not enough energy"]) };
+      const invalidReasonCode = !available
+        ? (snapshot?.abilities?.houseOfMirrors?.unavailableReasonCode || "UNKNOWN")
+        : "INSUFFICIENT_ENERGY";
+      const invalidReason = !available
+        ? (snapshot?.abilities?.houseOfMirrors?.unavailableReason || "House of Mirrors unavailable")
+        : `not enough energy (current Energy ${laboratoryDecimalString(energyBefore)}, cost ${laboratoryDecimalString(energyCost)}, deficit ${laboratoryDecimalString(energyCost.minus(energyBefore))})`;
+      return { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, invalidReasonCode, invalidReason, warnings: warnings.concat([invalidReason]) };
     }
 
     const affectedUnits = snapshot?.army?.houseOfMirrorsAffectedUnits || [];
@@ -6417,8 +6531,13 @@ function getDisplayName(item) {
     let status = "ok";
 
     for (const row of affectedUnits) {
-      const beforeCount = laboratoryDecimalOrNull(row.count) || newDecimal(0);
-      const perUnit = laboratoryDecimalOrNull(row.effectiveTerritoryPerSecondPerUnit) || newDecimal(0);
+      const beforeCount = laboratoryDecimalOrNull(row.count);
+      const perUnit = laboratoryDecimalOrNull(row.effectiveTerritoryPerSecondPerUnit);
+      if (!beforeCount || !perUnit) {
+        status = "incomplete-formula";
+        actionWarnings.push(`House of Mirrors affected unit ${row.unitId} has unresolved formula inputs`);
+        continue;
+      }
       const afterCount = beforeCount.times(2);
       const afterContribution = laboratoryFloorDecimal(afterCount).times(perUnit);
       affectedAfterTotal = affectedAfterTotal.plus(afterContribution);
@@ -6835,9 +6954,13 @@ function getDisplayName(item) {
 
   function laboratoryActionTableRow(run, waitRun) {
     const comparison = run?.comparisonVsWait || {};
-    const statusLabel = run?.status === "ok" ? "Valid" : run?.status === "invalid-action" ? "Invalid action" : run?.status === "formula-mismatch" ? "Formula mismatch" : run?.status || "Unknown";
-    const safetyLabel = run?.metrics?.safetyViolation ? "Reserve violation" : (run?.actionSafetySafe ? "Safe" : "Unsafe");
-    const formulaLabel = run?.metrics?.formulaStatus === "mismatch" ? "Formula mismatch" : run?.metrics?.formulaStatus === "incomplete" ? "Formula incomplete" : "Formula verified";
+    const statusLabel = run?.status === "ok" ? "Valid" : run?.status === "invalid-action" ? "Action unavailable" : run?.status === "formula-mismatch" ? "Formula mismatch" : run?.status || "Unknown";
+    const safetyLabel = run?.status === "invalid-action" ? "Not evaluated" : (run?.metrics?.safetyViolation ? "Reserve violation" : (run?.actionSafetySafe ? "Safe" : "Unsafe"));
+    const formulaLabel = run?.status === "invalid-action"
+      ? "Inputs captured"
+      : (run?.metrics?.formulaStatus === "mismatch" ? "Formula mismatch" : run?.metrics?.formulaStatus === "incomplete" ? "Formula incomplete" : "Inputs verified");
+    const reasonCode = run?.immediate?.invalidReasonCode || run?.invalidReasonCode || null;
+    const reasonText = run?.immediate?.invalidReason || run?.invalidReason || "";
     return {
       action: run?.actionId || "",
       status: statusLabel,
@@ -6852,6 +6975,7 @@ function getDisplayName(item) {
       reserveAfter: run?.metrics?.reserveAfterAction ?? "",
       safety: safetyLabel,
       formulaStatus: formulaLabel,
+      reason: reasonCode ? `${reasonCode}: ${reasonText}` : reasonText,
       waitReference: !!waitRun,
     };
   }
@@ -6861,7 +6985,7 @@ function getDisplayName(item) {
     const waitRun = rows.find((run) => run.actionId === "WAIT") || null;
     return rows.map((run) => {
       const row = laboratoryActionTableRow(run, waitRun);
-      return `${row.action}: ${row.status}; Energy ${row.energy}; ΔE ${row.energyDelta}; Larvae ${row.larvae}; ΔL ${row.larvaeDelta}; Terr/sec ${row.territoryPerSecond}; ΔT ${row.territoryPerSecondDelta}; ETA ${row.expansionEta}; ΔETA ${row.etaImprovement}; Reserve ${row.reserveAfter}; ${row.safety}; ${row.formulaStatus}`;
+      return `${row.action}: ${row.status}; Energy ${row.energy}; ΔE ${row.energyDelta}; Larvae ${row.larvae}; ΔL ${row.larvaeDelta}; Terr/sec ${row.territoryPerSecond}; ΔT ${row.territoryPerSecondDelta}; ETA ${row.expansionEta}; ΔETA ${row.etaImprovement}; Reserve ${row.reserveAfter}; ${row.safety}; ${row.formulaStatus}; Reason ${row.reason || "none"}`;
     }).join("\n");
   }
 
@@ -6869,12 +6993,17 @@ function getDisplayName(item) {
     const experiment = result?.experiment || result;
     const warnings = [];
     const lines = [];
+    const snapshot = result?.snapshot || null;
     const wait300 = laboratoryActionRunForExperiment(experiment, "WAIT", 300);
     const clone300 = laboratoryActionRunForExperiment(experiment, "CLONE_LARVAE", 300);
     const hom300 = laboratoryActionRunForExperiment(experiment, "HOUSE_OF_MIRRORS", 300);
 
     if (!experiment?.runs?.length) {
       return { text: "No live experiment runs are available.", warnings: ["no-runs"] };
+    }
+
+    if (wait300?.status === "ok") {
+      lines.push("WAIT is valid at both horizons.");
     }
 
     if (clone300?.status === "ok" && wait300?.status === "ok") {
@@ -6894,6 +7023,25 @@ function getDisplayName(item) {
       }
     }
 
+    const cloneAbility = snapshot?.abilities?.cloneLarvae || {};
+    const mirrorAbility = snapshot?.abilities?.houseOfMirrors || {};
+    if (clone300?.status === "invalid-action") {
+      lines.push(`Clone Larvae is currently energy-blocked: current Energy ${cloneAbility.energyCurrent || snapshot?.resources?.energy?.amount || "unknown"}, cost ${cloneAbility.energyCost || "unknown"}, deficit ${cloneAbility.energyDeficit || "unknown"}.`);
+    }
+    if (hom300?.status === "invalid-action") {
+      lines.push(`House of Mirrors is currently energy-blocked: current Energy ${mirrorAbility.energyCurrent || snapshot?.resources?.energy?.amount || "unknown"}, cost ${mirrorAbility.energyCost || "unknown"}, deficit ${mirrorAbility.energyDeficit || "unknown"}.`);
+    }
+
+    if (snapshot?.validity?.status === "valid-with-warnings") {
+      lines.push("The snapshot is valid with formula provenance warnings.");
+    } else if (snapshot?.validity?.status === "valid") {
+      lines.push("The snapshot is valid.");
+    }
+
+    if ((clone300?.status === "invalid-action" || hom300?.status === "invalid-action") && wait300?.status === "ok") {
+      lines.push("No comparison against the blocked abilities was performed because they were not legal at t=0.");
+    }
+
     if (!lines.length) lines.push("The live snapshot is incomplete or unavailable for metric-specific observation.");
     return { text: lines.join("\n"), warnings };
   }
@@ -6910,10 +7058,13 @@ function getDisplayName(item) {
       const statusTone = run.status === "ok" ? "kbc-ok" : run.status === "invalid-action" ? "kbc-warn" : run.status === "formula-mismatch" ? "kbc-bad" : "";
       const safetyTone = run.metrics?.safetyViolation ? "kbc-bad" : run.actionSafetySafe ? "kbc-ok" : "";
       const formulaTone = run.metrics?.formulaStatus === "mismatch" ? "kbc-bad" : run.metrics?.formulaStatus === "incomplete" ? "kbc-warn" : "kbc-ok";
+      const reason = run.status === "invalid-action"
+        ? `${run.immediate?.invalidReasonCode || run.invalidReasonCode || "UNKNOWN"}: ${run.immediate?.invalidReason || run.invalidReason || ""}`
+        : (run.immediate?.invalidReason || run.invalidReason || "");
       return `
         <tr>
           <td>${escapeHtml(run.actionId || "")}</td>
-          <td>${laboratoryLiveBadge(run.status === "ok" ? "Valid" : run.status === "invalid-action" ? "Invalid action" : run.status === "formula-mismatch" ? "Formula mismatch" : run.status, statusTone)}</td>
+          <td>${laboratoryLiveBadge(run.status === "ok" ? "Valid" : run.status === "invalid-action" ? "Action unavailable" : run.status === "formula-mismatch" ? "Formula mismatch" : run.status, statusTone)}</td>
           <td>${escapeHtml(run.metrics?.energyAfter ?? "")}</td>
           <td>${escapeHtml(comparison.energyAbsoluteDelta ?? "")}</td>
           <td>${escapeHtml(run.metrics?.larvaeAfter ?? "")}</td>
@@ -6923,8 +7074,9 @@ function getDisplayName(item) {
           <td>${escapeHtml(run.metrics?.expansionEtaSecondsAfter ?? "")}</td>
           <td>${escapeHtml(comparison.expansionEtaImprovementSeconds ?? "")}</td>
           <td>${escapeHtml(run.metrics?.reserveAfterAction ?? "")}</td>
-          <td>${laboratoryLiveBadge(run.metrics?.safetyViolation ? "Reserve violation" : run.actionSafetySafe ? "Safe" : "Unsafe", safetyTone)}</td>
-          <td>${laboratoryLiveBadge(run.metrics?.formulaStatus === "mismatch" ? "Formula mismatch" : run.metrics?.formulaStatus === "incomplete" ? "Formula incomplete" : "Formula verified", formulaTone)}</td>
+          <td>${laboratoryLiveBadge(run.status === "invalid-action" ? "Not evaluated" : (run.metrics?.safetyViolation ? "Reserve violation" : run.actionSafetySafe ? "Safe" : "Unsafe"), safetyTone)}</td>
+          <td>${laboratoryLiveBadge(run.status === "invalid-action" ? "Inputs captured" : (run.metrics?.formulaStatus === "mismatch" ? "Formula mismatch" : run.metrics?.formulaStatus === "incomplete" ? "Formula incomplete" : "Inputs verified"), formulaTone)}</td>
+          <td>${escapeHtml(reason || "")}</td>
         </tr>
       `;
     }).join("");
@@ -6934,10 +7086,10 @@ function getDisplayName(item) {
       <table class="kbc-lab-table">
         <thead>
           <tr>
-            <th>Action</th><th>Status</th><th>Energy</th><th>Energy delta vs WAIT</th><th>Larvae</th><th>Larvae delta vs WAIT</th><th>Territory/sec</th><th>Territory/sec delta</th><th>Expansion ETA</th><th>ETA improvement</th><th>Reserve after action</th><th>Safety</th><th>Formula status</th>
+            <th>Action</th><th>Status</th><th>Energy</th><th>Energy delta vs WAIT</th><th>Larvae</th><th>Larvae delta vs WAIT</th><th>Territory/sec</th><th>Territory/sec delta</th><th>Expansion ETA</th><th>ETA improvement</th><th>Reserve after action</th><th>Safety</th><th>Formula status</th><th>Reason</th>
           </tr>
         </thead>
-        <tbody>${rows || `<tr><td colspan="13">No runs</td></tr>`}</tbody>
+        <tbody>${rows || `<tr><td colspan="14">No runs</td></tr>`}</tbody>
       </table>
     `;
   }
@@ -7092,6 +7244,8 @@ function getDisplayName(item) {
       "action_legal",
       "action_applied",
       "action_safety_safe",
+      "action_reason_code",
+      "action_reason",
       "energy_cost",
       "larvae_after",
       "larvae_delta_vs_wait",
@@ -7132,6 +7286,8 @@ function getDisplayName(item) {
         laboratoryBoolean(run.actionLegal),
         laboratoryBoolean(run.actionApplied),
         laboratoryBoolean(run.actionSafetySafe),
+        run.immediate?.invalidReasonCode || run.invalidReasonCode || "",
+        run.immediate?.invalidReason || run.invalidReason || "",
         run.immediate?.energyCost,
         run.metrics?.larvaeAfter,
         comparison.larvaeAbsoluteDelta,
@@ -7176,15 +7332,19 @@ function getDisplayName(item) {
     for (const horizon of LABORATORY_PHASE1_HORIZONS_SECONDS) {
       lines.push(`## ${horizon} seconds`);
       lines.push("");
-      lines.push("| Action | Status | Legal | Applied | Safe | Larvae | Cocoons | Meat/sec | Territory | Territory/sec | Energy | Expansion ETA | Reserve | Safety | Formula | Warnings |");
-      lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+      lines.push("| Action | Status | Legal | Applied | Safe | Reason | Larvae | Cocoons | Meat/sec | Territory | Territory/sec | Energy | Expansion ETA | Reserve | Safety | Formula | Warnings |");
+      lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
       for (const run of (result?.runs || []).filter((run) => run.horizonSeconds === horizon)) {
+        const reason = run.status === "invalid-action"
+          ? `${run.immediate?.invalidReasonCode || run.invalidReasonCode || "UNKNOWN"}: ${run.immediate?.invalidReason || run.invalidReason || ""}`
+          : (run.immediate?.invalidReason || run.invalidReason || "");
         lines.push([
           run.actionId,
           run.status,
           laboratoryBoolean(run.actionLegal),
           laboratoryBoolean(run.actionApplied),
           laboratoryBoolean(run.actionSafetySafe),
+          reason,
           run.metrics?.larvaeAfter ?? "",
           run.metrics?.cocoonsAfter ?? "",
           run.metrics?.meatPerSecondAfter ?? "",

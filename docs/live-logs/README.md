@@ -10,6 +10,7 @@ Read these before changing strategy logic:
 2026-07-09-clean-start-game-observation.md
 2026-07-09-clicked-mechanics-progression.md
 2026-07-10-0.10.1-energy-support-counterfactual.md
+2026-07-10-0.12.1-live-house-of-mirrors-cast.md
 2026-07-10-energy-support-counterfactual-0.10.1.json
 2026-07-10-base-game-claims-crosscheck.md
 ```
@@ -22,6 +23,7 @@ They document:
 - Hatchery/Expansion larva-engine coupling
 - military unit chain, Twin carry-forward limits, and empower/suffix behavior
 - House of Mirrors source-code constraints
+- live House of Mirrors cast effects and energy cost
 - Energy support counterfactuals (Lepidoptera, Clone Larvae, House of Mirrors, wait)
 - version-scoped measurements for SwarmBot v0.10.1
 - crosscheck verdicts for community claims versus live mechanics findings

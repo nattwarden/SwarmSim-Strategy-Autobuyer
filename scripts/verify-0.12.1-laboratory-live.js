@@ -5,9 +5,9 @@ const { chromium } = require("playwright");
 const root = path.resolve(__dirname, "..");
 const userscriptPath = path.join(root, "src", "SwarmSim-Strategy-Autobuyer.user.js");
 const evidenceDir = path.join(root, "docs", "live-logs");
-const testDataDir = path.join(root, "docs", "test-data", "0.12.1-laboratory");
-const evidenceJsonPath = path.join(evidenceDir, "browser-test-0.12.1-laboratory-live.json");
-const evidenceMdPath = path.join(evidenceDir, "browser-test-0.12.1-laboratory-live.md");
+const testDataDir = path.join(root, "docs", "test-data", "0.12.2-laboratory");
+const evidenceJsonPath = path.join(evidenceDir, "browser-test-0.12.2-laboratory-live.json");
+const evidenceMdPath = path.join(evidenceDir, "browser-test-0.12.2-laboratory-live.md");
 const liveSnapshotJsonPath = path.join(testDataDir, "live-snapshot.json");
 const liveSnapshotMdPath = path.join(testDataDir, "live-snapshot.md");
 
@@ -101,7 +101,7 @@ async function main() {
 
   const failures = checks.filter((check) => !check.ok).map((check) => check.name);
   const summary = {
-    version: "0.12.1",
+    version: "0.12.2",
     checks,
     failures,
     before: result.before,
@@ -116,7 +116,7 @@ async function main() {
   writeText(evidenceMdPath, [
     "# SwarmSim Laboratory Live Verification",
     "",
-    `- Version: \`0.12.1\``,
+    `- Version: \`0.12.2\``,
     `- Failures: ${failures.length ? failures.join(", ") : "none"}`,
     `- Snapshot hash: \`${result.snapshot.snapshotHash}\``,
     `- Non-mutation proof: \`${String(result.proof?.unchanged)}\``,
@@ -132,7 +132,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("0.12.1 laboratory live verification passed.");
+  console.log("0.12.2 laboratory live verification passed.");
 }
 
 main().catch((error) => {
