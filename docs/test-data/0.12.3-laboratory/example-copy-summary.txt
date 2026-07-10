@@ -1,0 +1,77 @@
+Script version: 0.12.3
+Capture mode: live-read-only
+Snapshot validity: valid-with-warnings
+Clone Larvae legal/status: legal / ok
+House of Mirrors legal/status: legal / ok
+60s: WAIT:ok | CLONE_LARVAE:ok | HOUSE_OF_MIRRORS:ok
+300s: WAIT:ok | CLONE_LARVAE:ok | HOUSE_OF_MIRRORS:ok
+Snapshot hash: sha256:5c348b6382f051a719e37bbdcedbf57eec99869d289814ef4b0ff07b65df66f7
+Experiment hash: sha256:3e0a2ca0e6a5a54e61b2776ae1d6a5fc7b32b3a8cc1821504d21e0b0ee5b4000
+Non-mutation proof: {
+  "structuralBeforeHash": "sha256:20c555d51a840d7059793dd89a6c2cc162ef6ff2b226f0cabd04862a49250061",
+  "structuralAfterHash": "sha256:20c555d51a840d7059793dd89a6c2cc162ef6ff2b226f0cabd04862a49250061",
+  "structuralUnchanged": true,
+  "elapsedSeconds": "0.005",
+  "resourceDrift": {
+    "energy": {
+      "before": "20000.005281609195402",
+      "perSecond": "0",
+      "elapsedSeconds": "0.005",
+      "expectedAfter": "20000.005281609195402",
+      "actualAfter": "20000.014084291187739",
+      "drift": "0.008802681992337",
+      "tolerance": "2.0000005281609195402e-14",
+      "withinExpectedRange": false,
+      "normalizationMethod": "passive-rate-plus-elapsed-with-energy-cap"
+    },
+    "larva": {
+      "before": "1000000000000",
+      "perSecond": "1",
+      "elapsedSeconds": "0.005",
+      "expectedAfter": "1000000000000.005",
+      "actualAfter": "1000000000000",
+      "drift": "-0.005",
+      "tolerance": "0.05",
+      "withinExpectedRange": true,
+      "normalizationMethod": "passive-rate-plus-elapsed"
+    },
+    "cocoon": {
+      "before": "1000",
+      "perSecond": "0",
+      "elapsedSeconds": "0.005",
+      "expectedAfter": "1000",
+      "actualAfter": "1000",
+      "drift": "0",
+      "tolerance": "1e-15",
+      "withinExpectedRange": true,
+      "normalizationMethod": "passive-rate-plus-elapsed"
+    },
+    "territory": {
+      "before": "1000000000000",
+      "perSecond": "1.9755864572646979379e+27",
+      "elapsedSeconds": "0.005",
+      "expectedAfter": "9.8779322863244896895e+24",
+      "actualAfter": "1000000000000",
+      "drift": "-9.8779322863234896895e+24",
+      "tolerance": "9.8779322863234896895e+25",
+      "withinExpectedRange": true,
+      "normalizationMethod": "passive-rate-plus-elapsed"
+    },
+    "meat": {
+      "before": "35",
+      "perSecond": "0",
+      "elapsedSeconds": "0.005",
+      "expectedAfter": "35",
+      "actualAfter": "35",
+      "drift": "0",
+      "tolerance": "3.5e-17",
+      "withinExpectedRange": true,
+      "normalizationMethod": "passive-rate-plus-elapsed"
+    }
+  },
+  "resourceDriftWithinExpectedRange": false,
+  "warnings": [
+    "Resource drift exceeded the expected time-normalized range."
+  ],
+  "unchanged": false
+}

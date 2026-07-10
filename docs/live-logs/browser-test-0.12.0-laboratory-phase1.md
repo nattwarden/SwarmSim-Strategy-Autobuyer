@@ -1,10 +1,10 @@
 # SwarmSim Laboratory Phase 1 Browser Verification
 
 - Verdict: `0.12.0 LABORATORY PHASE 1 VERIFIED`
-- Snapshot hash: `sha256:40af89ffd2fa2826728aa9082ae43ab391feaa956d90e27f5e6aa5ff8167f7fc`
-- Experiment hash: `sha256:bfbe6ef722c8ff9b2a0a10a84ff9f04eefe0037e98aabca51fde3daa2616fafb`
-- Main SHA: `21622c11e0fd1ae781f718143ce701ce0a13cc4f`
-- Script hash: `sha256:c5395a90900478cb1f0f014538a130d672d5dfe2831ff2deba7040d198bacc66`
+- Snapshot hash: `sha256:9746fb6c67739012710f2a662d078efb0d7baa3dead9d7200ef794555f38a1f3`
+- Experiment hash: `sha256:a326e5b017ed69ebe8ca5fa676422f571cbacf65ddb52ab1985950c3d9edff1e`
+- Main SHA: `c819c7d7adc8ab0280e06d25466f6697fb915409`
+- Script hash: `sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0`
 - Runs: 6
 
 ## Non-Mutation
