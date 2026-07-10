@@ -1,9 +1,9 @@
 # SwarmSim Laboratory Phase 1 Result
 
 - Experiment ID: `LAB-001`
-- Experiment hash: `sha256:08d8c3c0b6f393c6dcc4cdf1b38655088258abcef2725786459e9931a8199503`
+- Experiment hash: `sha256:bfbe6ef722c8ff9b2a0a10a84ff9f04eefe0037e98aabca51fde3daa2616fafb`
 - Snapshot ID: `LAB-001`
-- Snapshot hash: `sha256:9b8cd09388a53c3486f1caf26124693e90025d91bb869866a3e542c763300565`
+- Snapshot hash: `sha256:40af89ffd2fa2826728aa9082ae43ab391feaa956d90e27f5e6aa5ff8167f7fc`
 - Formula set: `swarmsim-runtime-formulas`
 - Post-action policy: `passive-only`
 

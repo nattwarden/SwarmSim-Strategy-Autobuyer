@@ -1,7 +1,7 @@
 # SwarmSim Strategy Autobuyer 0.12.2 Laboratory Live Runner
 
 - Verdict: `0.12.2 LABORATORY LIVE RUNNER VERIFIED`
-- Commit: `unknown`
+- Commit: `21622c11e0fd1ae781f718143ce701ce0a13cc4f`
 - Userscript hash: `sha256:c5395a90900478cb1f0f014538a130d672d5dfe2831ff2deba7040d198bacc66`
 
 ## Gate Matrix
@@ -11,7 +11,7 @@
 - dev on / live on: capture ok, run ok, capture+run ok
 
 ## Empty State
-- Snapshot hash: `sha256:a5d597e1779c1337e18616ca22ce722b5493464aaeea23aa326eeb62e312b1a9`
+- Snapshot hash: `sha256:10c8eb72cf83dc7dabd5932979220fdf39046610de7f1c035629bcfb4f4abed5`
 - Validity: `valid-with-warnings`
 - Runs: `6`
 
@@ -63,12 +63,12 @@ Non-mutation proof: {
   "structuralBeforeHash": "sha256:a39a58d7afc4d7c33ccae5f01c2cdf20bf0a989b4d0eec415558111472f1d798",
   "structuralAfterHash": "sha256:a39a58d7afc4d7c33ccae5f01c2cdf20bf0a989b4d0eec415558111472f1d798",
   "structuralUnchanged": true,
-  "elapsedSeconds": "0.019",
+  "elapsedSeconds": "0.022",
   "resourceDrift": {
     "energy": {
       "before": "1000000",
       "perSecond": "0",
-      "elapsedSeconds": "0.019",
+      "elapsedSeconds": "0.022",
       "expectedAfter": "1000000",
       "actualAfter": "1000000",
       "drift": "0",
@@ -79,7 +79,7 @@ Non-mutation proof: {
     "larva": {
       "before": "1e+400",
       "perSecond": "1",
-      "elapsedSeconds": "0.019",
+      "elapsedSeconds": "0.022",
       "expectedAfter": "1e+400",
       "actualAfter": "1e+400",
       "drift": "0",
@@ -90,7 +90,7 @@ Non-mutation proof: {
     "cocoon": {
       "before": "1e-400",
       "perSecond": "0",
-      "elapsedSeconds": "0.019",
+      "elapsedSeconds": "0.022",
       "expectedAfter": "1e-400",
       "actualAfter": "1e-400",
       "drift": "0",
@@ -99,11 +99,11 @@ Non-mutation proof: {
       "normalizationMethod": "passive-rate-plus-elapsed"
     },
     "territory": {
-      "before": "1162548572.325",
+      "before": "930039857.86",
       "perSecond": "232508714465",
-      "elapsedSeconds": "0.019",
-      "expectedAfter": "5580214147.16",
-      "actualAfter": "5580214147.16",
+      "elapsedSeconds": "0.022",
+      "expectedAfter": "6045231576.09",
+      "actualAfter": "6045231576.09",
       "drift": "0",
       "tolerance": "11625435723.25",
       "withinExpectedRange": true,
@@ -112,7 +112,7 @@ Non-mutation proof: {
     "meat": {
       "before": "1.23456789012345678901234567890123456789e+39",
       "perSecond": "0",
-      "elapsedSeconds": "0.019",
+      "elapsedSeconds": "0.022",
       "expectedAfter": "1.234567890123456789e+39",
       "actualAfter": "1.23456789012345678901234567890123456789e+39",
       "drift": "12345678901234567890",
