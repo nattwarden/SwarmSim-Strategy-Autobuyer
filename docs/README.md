@@ -16,6 +16,20 @@ live-logs/2026-07-10-energy-support-counterfactual-0.10.1.json
 live-logs/2026-07-10-base-game-claims-crosscheck.md
 ```
 
+## AI start here
+
+Use this short sequence to avoid stale context:
+
+1. `../AGENTS.md` for repository guardrails and hard safety defaults.
+2. `../AI.md` for AI workflow rules and reading order.
+3. `SWARMSIM_GAME_MODEL.md` for canonical strategy intent.
+4. `test-data/0.11.3-scenarios/scenario-summary.md` for latest strict verification snapshot.
+5. `live-logs/2026-07-10-base-game-claims-crosscheck.md` for claim-level CONFIRMED/PARTIAL/DEMOTED status.
+
+Current known unresolved verification item:
+
+- `test-data/0.11.3-scenarios/scenario-summary.md`: scenario `R8` cycle 2 expected `BUY`, actual `OBSERVE`.
+
 ## Project posture
 
 The active strategy direction is methodical optimization.

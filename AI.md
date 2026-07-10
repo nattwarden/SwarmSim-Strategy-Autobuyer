@@ -1,6 +1,6 @@
 # AI.md - SwarmSim Strategy Autobuyer
 
-Version: 2026-07-09-methodical-optimizer-posture
+Version: 2026-07-10-ai-orientation-refresh
 Status: Source map, optimization posture, and repo policy for ChatGPT/Codex/Copilot/AI agents.
 
 ## Purpose
@@ -84,35 +84,19 @@ Before code changes, read:
 
 Do not use old dated game-model files as active truth.
 
-## Current state
+## Current state (AI fast-path)
 
-Current script version in `src/`:
+Do not rely on static version text in this file for runtime versioning.
+Always use these as current truth:
 
-```text
-0.8.9
-```
+1. `src/SwarmSim-Strategy-Autobuyer.user.js` metadata/constants for active script version.
+2. `docs/test-data/0.11.3-scenarios/scenario-summary.md` for latest strict deterministic verification snapshot.
+3. `docs/live-logs/2026-07-10-base-game-claims-crosscheck.md` for game-mechanics claim status.
 
-Last live-verified baseline documented in release notes:
+Current unresolved verification item (as of this file version):
 
-```text
-0.8.7 - Twin Upgrade Opportunity Cost Bypass
-```
-
-Current 0.8.9 focus:
-
-```text
-Methodical Lane Follow-through / Visible Progress Fix
-```
-
-Reason:
-
-- Keep the multi-lane coordinator narrow, but make follow-through more visible in
-  live runs.
-- Territory/Army should produce a bounded main or side action when ROI or army
-  seed logic says the move is correct.
-- Energy/Nexus diagnostics should stay protected without surfacing false active
-  blockers before unlock.
-- Top-level inspector reason should match the action that actually ran.
+- 0.11.3 deterministic scenario `R8` cycle 2 still fails expected refill decision.
+- Treat this as an open implementation gap when planning follow-up fixes.
 
 ## Current live/mechanics findings
 
@@ -121,9 +105,11 @@ Before changing strategy logic, read the current observation logs:
 ```text
 docs/live-logs/2026-07-09-clean-start-game-observation.md
 docs/live-logs/2026-07-09-clicked-mechanics-progression.md
+docs/live-logs/2026-07-10-0.10.1-energy-support-counterfactual.md
+docs/live-logs/2026-07-10-base-game-claims-crosscheck.md
 ```
 
-Use these as empirical context for 0.8.8 planning:
+Use these as empirical context for current planning:
 
 - Clean start has only meat, larvae, drones, and base upgrades visible.
 - Early Energy/Nexus diagnostics can appear before Energy/Nexus is unlocked;
