@@ -1,6 +1,206 @@
 # SwarmSim Laboratory Phase 1
 
-Status: design specification for 0.12.0. No runtime implementation is defined by this document.
+Status: 0.12.0 Phase 1A snapshot foundation plus design specification for later Phase 1 work.
+
+## 0.12.0 Phase 1A implementation scope
+
+0.12.0 implements the development-only snapshot foundation. It does not implement WAIT projection, Clone Larvae action application, House of Mirrors action application, 60/300-second experiment runs, CSV/Markdown experiment exports, scoring, recommendations, or normal strategy changes.
+
+Frozen baseline:
+
+- Frozen behavior version: `0.11.7`
+- Verified runtime commit: `1ee631901cd04a1d97ddb0bcee5efa2499481ecc`
+- Baseline repository/evidence commit: `ea999526994c75899b6b1a478e7146f046417803`
+- Browser evidence: `docs/live-logs/browser-test-0.11.7-export.md` and `.json`
+
+Known baseline limitation:
+
+- Scenario `R8` uses harness-only pre-planner input overrides for target, action unit, and parent unit. These overrides do not force BUY/HOLD output fields, but they bypass normal meat-path construction for that scenario. This does not block Phase 1A because Phase 1A captures state and does not simulate Parent Step or meat-plan construction.
+
+## Base-Game Formula Authority
+
+Base game mechanics are verified against Swarm Simulator's external source repository:
+
+```text
+https://github.com/swarmsim/swarm
+```
+
+The pinned source commit is:
+
+```text
+06b4f404aa324a0b454348508cfa63d5c0f1ff54
+```
+
+This repository is an external formula reference only. It is not copied into this project and is not a runtime dependency for the Tampermonkey script.
+
+Phase 1A references these files:
+
+- `swarmsim-coffee/app/scripts/services/effect.coffee`
+- `swarmsim-coffee/app/scripts/services/unit.coffee`
+- `tables/src/upgrade/data.ts`
+- `tables/src/unittype/data.ts`
+
+Formula provenance in every snapshot must include source repository, source commit, source file, relevant function or effect type, whether the value was runtime-derived or recomputed by Laboratory, and one of these verification statuses:
+
+- `runtime-derived`
+- `source-verified`
+- `incomplete`
+- `mismatch`
+
+Priority order:
+
+1. Capture runtime-resolved values when the base game exposes them.
+2. Verify calculation semantics against the pinned base-game source.
+3. Recompute in Laboratory only when runtime values cannot be captured directly.
+4. Never guess missing formulas.
+5. Report uncertainty or mismatch explicitly in `formulaProvenance.warnings`, `uncertainFields`, and per-formula status.
+
+Phase 1A source verification summary:
+
+| Laboratory field | Base-game source | Function/effect | Value source | Status |
+|---|---|---|---|---|
+| Energy amount/rate/cap | `tables/src/unittype/data.ts`; `unit.coffee` | `nexus` prod, `capBase`, `Unit.velocity`, `Unit.capValue` | runtime-derived | `runtime-derived` |
+| Larvae amount/rate | `tables/src/unittype/data.ts`; `unit.coffee` | `invisiblehatchery` prod, `Unit.velocity` | runtime-derived | `runtime-derived` |
+| Cocoons amount/rate | `tables/src/unittype/data.ts`; `unit.coffee` | `Unit.count`, `Unit.velocity` | runtime-derived | `runtime-derived` |
+| Clone Larvae | `tables/src/upgrade/data.ts`; `effect.coffee`; `unit.coffee` | `clonelarvae`, `compoundUnit`, `Effect.power` | runtime preview when available; otherwise source-verified recompute from captured inputs | `runtime-derived` or `source-verified` |
+| House of Mirrors | `tables/src/upgrade/data.ts`; `unit.coffee` | `clonearmy`, eleven `compoundUnit` effects, `Unit.eachProduction` | source-verified recompute from runtime-derived unit counts and effective territory/unit | `source-verified` |
+| Affected army units | `tables/src/upgrade/data.ts` | `clonearmy.effect[]` | source-verified fixed set | `source-verified` |
+| Territory/sec | `tables/src/unittype/data.ts`; `unit.coffee` | army `prod`, `Unit.totalProduction`, `Unit.velocity` | runtime-derived with affected/unaffected consistency check | `runtime-derived` |
+| Meat/sec coefficients | `unit.coffee` | `ProducerPath`, `ProducerPaths.getCoefficientsNow` | runtime-derived coefficients | `runtime-derived` or `mismatch` |
+| Expansion next cost/ETA | `tables/src/upgrade/data.ts`; `unit.coffee` | `expansion` cost factor, `estimateSecsUntilEarned`, bisection | runtime-derived ETA plus Laboratory remaining check | `runtime-derived` |
+
+Base-game `compoundUnit` semantics:
+
+```text
+bank = unit.count + optional secondary unit.count
+cap = (unit.velocity + optional secondary unit.velocity) * val2 * effect.power
+output = min(bank * (val - 1), cap) when cap exists
+```
+
+Clone Larvae uses `compoundUnit` over `larva` plus `cocoon`, with `val: 2`, `val2: 100000`, Nexus requirement `4`, and Energy cost `12000`.
+
+House of Mirrors uses ability id `clonearmy`, Nexus requirement `5`, Energy cost `2500`, and eleven `compoundUnit` effects with `val: 2` for:
+
+```text
+swarmling, stinger, spider, mosquito, locust, roach, giantspider, centipede, wasp, devourer, goon
+```
+
+## Phase 1A Snapshot Schema
+
+Phase 1A exports JSON only:
+
+```json
+{
+  "schemaVersion": "swarmsim-lab.snapshot.v1",
+  "kind": "deterministic-simulation-snapshot",
+  "snapshotId": "LAB-...",
+  "snapshotHash": "sha256:...",
+  "snapshotHashScope": "deterministic-payload-v1",
+  "source": {
+    "scriptVersion": "0.12.0",
+    "frozenBaselineVersion": "0.11.7",
+    "verifiedRuntimeCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+    "baselineRepositoryCommit": "ea999526994c75899b6b1a478e7146f046417803",
+    "currentCommit": null,
+    "scenarioHarnessVersion": "0.12.0",
+    "scenarioId": null,
+    "scenarioHash": null,
+    "gameBuild": null,
+    "capturedAt": null
+  },
+  "simulation": {
+    "mode": "deterministic-simulation",
+    "interventionTimeSeconds": "0",
+    "horizonsSeconds": ["60", "300"],
+    "postActionPolicy": "passive-only",
+    "normalAutobuyerEnabled": false,
+    "liveSaveMutable": false
+  },
+  "resources": {
+    "energy": { "amount": "0", "perSecond": "0", "cap": "0" },
+    "larvae": { "amount": "0", "perSecond": "0" },
+    "cocoons": { "amount": "0", "perSecond": "0" },
+    "territory": { "amount": "0", "perSecond": "0" },
+    "meat": {
+      "perSecond": "0",
+      "rateProjection": {
+        "basis": "factorial-polynomial-derivative",
+        "coefficients": ["0"],
+        "maxDegree": 0,
+        "valueAtZero": "0",
+        "validation": "source-verified"
+      }
+    }
+  },
+  "army": {
+    "houseOfMirrorsAffectedUnits": [],
+    "affectedTerritoryPerSecondTotal": "0",
+    "unaffectedTerritoryPerSecond": "0"
+  },
+  "expansion": {
+    "currentLevel": "0",
+    "nextCost": "0",
+    "territoryRemaining": "0",
+    "etaSeconds": "0",
+    "laboratoryComputedEtaSeconds": "0",
+    "etaComparison": "match"
+  },
+  "abilities": {
+    "cloneLarvae": {},
+    "houseOfMirrors": {}
+  },
+  "safety": {
+    "resource": "energy",
+    "requiredReserve": "0",
+    "headroomBefore": "0",
+    "ruleId": null,
+    "reserveSource": "scenario-harness"
+  },
+  "context": {
+    "nexusCount": "0",
+    "lepidopteraCount": "0",
+    "activePhase": null,
+    "activeMilestone": null,
+    "activeTarget": null
+  },
+  "formulaProvenance": {
+    "formulaSetId": "swarmsim-runtime-formulas",
+    "status": "verified",
+    "sourceRepository": "https://github.com/swarmsim/swarm",
+    "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+    "externalReferenceOnly": true,
+    "runtimeDependency": false,
+    "ratesCapturedFromRuntime": true,
+    "uncertainFields": [],
+    "warnings": [],
+    "formulas": {}
+  }
+}
+```
+
+All large or precise game quantities are serialized as Decimal strings.
+
+## Phase 1A Hash Rules
+
+`snapshotHash` uses `snapshotHashScope: deterministic-payload-v1`.
+
+Excluded from the deterministic payload hash:
+
+- `snapshotHash`
+- `source.capturedAt`
+
+The hash payload uses canonical key ordering before SHA-256. `currentCommit` remains part of the hash as `null` when runtime Git SHA cannot be determined. The snapshot is deep-frozen after construction.
+
+## Phase 1A Development Gate
+
+Snapshot capture is unavailable unless both gates are active:
+
+```text
+localStorage.kbcSwarmBotScenarioHarnessEnabled_v1=true
+localStorage.kbcSwarmBotLaboratoryEnabled_v1=true
+```
+
+When the Laboratory gate is off, no `kbcSwarmBot.laboratory` API is exposed. Normal autobuyer execution never calls snapshot capture, and capture does not buy units, buy upgrades, cast abilities, mutate the save, or append to normal run history.
 
 ## Purpose
 

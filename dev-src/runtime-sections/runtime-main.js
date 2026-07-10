@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.11.7";
+  const AUTOBUYER_VERSION = "0.12.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -12,6 +12,9 @@
   const PURCHASE_LAYOUT_STORAGE_KEY = "kbcSwarmBotPurchasePanelLayout_v1";
   const SETTINGS_TAB_STORAGE_KEY = "kbcSwarmBotSettingsActiveTab_v1";
   const SCENARIO_HARNESS_ENABLE_KEY = "kbcSwarmBotScenarioHarnessEnabled_v1";
+  const LABORATORY_DEVELOPMENT_ENABLE_KEY = "kbcSwarmBotLaboratoryEnabled_v1";
+  const LABORATORY_BASE_GAME_SOURCE_REPOSITORY = "https://github.com/swarmsim/swarm";
+  const LABORATORY_BASE_GAME_SOURCE_COMMIT = "06b4f404aa324a0b454348508cfa63d5c0f1ff54";
 
   const DEFAULT_CONFIG = {
     enabled: true,
@@ -1487,6 +1490,10 @@ function getDisplayName(item) {
     const key = normalizeLabelKey(abilityName);
     if (!key) return null;
     if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
+    if (key === "clonearmy" && Object.prototype.hasOwnProperty.call(map, "houseofmirrors")) return map.houseofmirrors;
+    if (key === "houseofmirrors" && Object.prototype.hasOwnProperty.call(map, "clonearmy")) return map.clonearmy;
+    if (key === "swarmwarp" && Object.prototype.hasOwnProperty.call(map, "clonearmy")) return map.clonearmy;
+    if ((key === "clonearmy" || key === "houseofmirrors" || key === "swarmwarp") && Object.prototype.hasOwnProperty.call(map, "house of mirrors")) return map["house of mirrors"];
     if (key === "swarmwarp" && Object.prototype.hasOwnProperty.call(map, "houseofmirrors")) return map.houseofmirrors;
     if (key === "houseofmirrors" && Object.prototype.hasOwnProperty.call(map, "swarmwarp")) return map.swarmwarp;
     if ((key === "houseofmirrors" || key === "swarmwarp") && Object.prototype.hasOwnProperty.call(map, "house of mirrors")) return map["house of mirrors"];
@@ -5348,6 +5355,581 @@ function getDisplayName(item) {
     recordMessage(`Log export downloaded as ${format}`);
     refreshPanel();
     return text;
+  }
+
+  function isLaboratoryDevelopmentGateEnabled() {
+    try {
+      return localStorage.getItem(LABORATORY_DEVELOPMENT_ENABLE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  }
+
+  function setLaboratoryDevelopmentGateEnabled(enabled) {
+    const value = enabled ? "true" : "false";
+    localStorage.setItem(LABORATORY_DEVELOPMENT_ENABLE_KEY, value);
+    return enabled;
+  }
+
+  function laboratoryDecimalString(value) {
+    const dec = decimalFrom(value);
+    try {
+      return dec?.toString?.() ?? String(value ?? "0");
+    } catch {
+      return String(value ?? "0");
+    }
+  }
+
+  function laboratoryFloorDecimal(value) {
+    const dec = decimalFrom(value);
+    try {
+      return dec.floor ? dec.floor() : decimalFrom(Math.floor(decimalToNumber(dec, 0)));
+    } catch {
+      return decimalFrom(0);
+    }
+  }
+
+  function laboratoryDecimalEquals(a, b) {
+    const left = decimalFrom(a);
+    const right = decimalFrom(b);
+    try {
+      if (left.equals) return left.equals(right);
+      if (left.eq) return left.eq(right);
+      return left.minus(right).abs().lessThanOrEqualTo(0);
+    } catch {
+      return String(a) === String(b);
+    }
+  }
+
+  function laboratoryCanonicalize(value) {
+    if (Array.isArray(value)) return value.map(laboratoryCanonicalize);
+    if (value && typeof value === "object") {
+      const out = {};
+      for (const key of Object.keys(value).sort()) {
+        out[key] = laboratoryCanonicalize(value[key]);
+      }
+      return out;
+    }
+    return value;
+  }
+
+  function laboratoryCanonicalJson(value) {
+    return JSON.stringify(laboratoryCanonicalize(value));
+  }
+
+  async function laboratorySha256(text) {
+    const cryptoApi = w.crypto || (typeof crypto !== "undefined" ? crypto : null);
+    const subtle = cryptoApi?.subtle;
+    const Encoder = w.TextEncoder || (typeof TextEncoder !== "undefined" ? TextEncoder : null);
+    if (!subtle || !Encoder) {
+      throw new Error("SHA-256 is unavailable in this browser context.");
+    }
+    const bytes = new Encoder().encode(String(text));
+    const digest = await subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  function laboratoryDeterministicHashPayload(snapshot) {
+    const clone = JSON.parse(JSON.stringify(snapshot || {}));
+    delete clone.snapshotHash;
+    if (clone.source) delete clone.source.capturedAt;
+    return clone;
+  }
+
+  function laboratoryDeepFreeze(value, seen = new WeakSet()) {
+    if (!value || typeof value !== "object" || seen.has(value)) return value;
+    seen.add(value);
+    for (const child of Object.values(value)) laboratoryDeepFreeze(child, seen);
+    return Object.freeze(value);
+  }
+
+  function laboratoryFormulaSource({ file, functionName, valueSource, status }) {
+    return {
+      sourceRepository: LABORATORY_BASE_GAME_SOURCE_REPOSITORY,
+      sourceCommit: LABORATORY_BASE_GAME_SOURCE_COMMIT,
+      sourceFile: file,
+      functionOrEffectType: functionName,
+      valueSource,
+      verificationStatus: status,
+    };
+  }
+
+  function getLaboratoryHouseOfMirrorsAbility(game) {
+    return getGameUpgrade(game, "clonearmy") || getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+  }
+
+  function getLaboratoryCloneAbility(game) {
+    return getGameUpgrade(game, "clonelarvae");
+  }
+
+  function getLaboratoryCompoundEffect(ability, unitId) {
+    const effects = Array.isArray(ability?.effect) ? ability.effect : [];
+    return effects.find((effect) => {
+      const typeName = effect?.type?.name || effect?.type || "";
+      return typeName === "compoundUnit" && String(effect?.unit?.name || effect?.unittype || "") === unitId;
+    }) || null;
+  }
+
+  function getLaboratoryEffectiveProductionPerUnit(unit, producedUnitName) {
+    const production = safe(`Laboratory production ${unit?.name || "unknown"}`, () => unit?.eachProduction?.()) || null;
+    const value = production?.[producedUnitName];
+    if (value !== undefined && value !== null) return decimalFrom(value);
+    return getTerritoryPerSecondPerUnit(unit);
+  }
+
+  function getLaboratoryUnitCount(game, unitId) {
+    const unit = getGameUnit(game, unitId);
+    if (!unit) return newDecimal(0);
+    const override = getScenarioUnitCountOverride(unit);
+    if (Number.isFinite(Number(override))) return decimalFrom(override);
+    return decimalFrom(unit?.count?.() || 0);
+  }
+
+  function getLaboratoryAbilityAvailability(game, ability, abilityLabel) {
+    const visible = isItemVisibleWithScenarioOverride(ability);
+    const cost = decimalFrom(getCostForResource(ability, "energy"));
+    const energy = decimalFrom(getCurrentResource(game, "energy"));
+    const enoughEnergy = decimalAtLeast(energy, cost);
+    const available = !!ability && visible && enoughEnergy;
+    let unavailableReason = null;
+    if (!ability || !visible) unavailableReason = `${abilityLabel} locked/unavailable`;
+    else if (!enoughEnergy) unavailableReason = "not enough energy";
+    return { available, unavailableReason, energyCost: cost };
+  }
+
+  function buildLaboratoryArmySnapshot(game, warnings, formulaStatuses) {
+    const affectedIds = ["swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
+    const units = [];
+    let affectedTotal = newDecimal(0);
+
+    for (const unitId of affectedIds) {
+      const unit = getGameUnit(game, unitId);
+      const count = getLaboratoryUnitCount(game, unitId);
+      const perUnit = unit ? getLaboratoryEffectiveProductionPerUnit(unit, "territory") : newDecimal(0);
+      if (!unit) {
+        warnings.push(`Laboratory army unit missing from runtime: ${unitId}`);
+        formulaStatuses.push("incomplete");
+      }
+      const contribution = laboratoryFloorDecimal(count).times(perUnit);
+      affectedTotal = affectedTotal.plus(contribution);
+      units.push({
+        unitId,
+        count: laboratoryDecimalString(count),
+        effectiveTerritoryPerSecondPerUnit: laboratoryDecimalString(perUnit),
+        territoryPerSecondContribution: laboratoryDecimalString(contribution),
+        affectedByHouseOfMirrors: true,
+      });
+    }
+
+    const territoryPerSecond = decimalFrom(getVelocity(game, "territory"));
+    const unaffected = territoryPerSecond.minus(affectedTotal);
+    const recomposed = affectedTotal.plus(unaffected);
+    if (!laboratoryDecimalEquals(recomposed, territoryPerSecond)) {
+      warnings.push("House of Mirrors affected/unaffected territory split does not sum to runtime territory/sec.");
+      formulaStatuses.push("mismatch");
+    }
+
+    return {
+      houseOfMirrorsAffectedUnits: units,
+      affectedTerritoryPerSecondTotal: laboratoryDecimalString(affectedTotal),
+      unaffectedTerritoryPerSecond: laboratoryDecimalString(unaffected),
+    };
+  }
+
+  function buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses) {
+    const cloneAbility = getLaboratoryCloneAbility(game);
+    const availability = getLaboratoryAbilityAvailability(game, cloneAbility, "Clone Larvae");
+    const effect = getLaboratoryCompoundEffect(cloneAbility, "larva");
+    const larvaeBank = decimalFrom(getCurrentResource(game, "larva"));
+    const cocoonBank = decimalFrom(getCurrentResource(game, "cocoon"));
+    const combinedBank = larvaeBank.plus(cocoonBank);
+    const larvaePerSecond = decimalFrom(getVelocity(game, "larva"));
+    const cocoonsPerSecond = decimalFrom(getVelocity(game, "cocoon"));
+    const combinedVelocity = larvaePerSecond.plus(cocoonsPerSecond);
+    const capSeconds = decimalFrom(effect?.val2 ?? 100000);
+    const abilityPower = decimalFrom(safe("Laboratory Clone Larvae power", () => effect?.power?.()) || 1);
+    const multiplier = decimalFrom(effect?.val ?? 2).minus(1);
+    const sourceVerifiedCap = combinedVelocity.times(capSeconds).times(abilityPower);
+    const sourceVerifiedOutput = decimalMin(combinedBank.times(multiplier), sourceVerifiedCap);
+    let runtimePreviewOutput = null;
+
+    if (!effect) {
+      warnings.push("Clone Larvae compoundUnit effect is unavailable from runtime.");
+      formulaStatuses.push("incomplete");
+    } else if (scenarioHarnessContext.active && scenarioHarnessContext.overrides) {
+      warnings.push("Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.");
+    } else {
+      runtimePreviewOutput = safe("Laboratory Clone Larvae runtime preview", () => effect.output?.()) || null;
+      if (!runtimePreviewOutput) {
+        warnings.push("Clone Larvae runtime preview output is unavailable.");
+        formulaStatuses.push("incomplete");
+      } else if (!laboratoryDecimalEquals(runtimePreviewOutput, sourceVerifiedOutput)) {
+        warnings.push("Clone Larvae source-verified output does not match runtime preview.");
+        formulaStatuses.push("mismatch");
+      }
+    }
+
+    return {
+      gameAbilityId: "clonelarvae",
+      available: availability.available,
+      unavailableReason: availability.unavailableReason,
+      energyCost: laboratoryDecimalString(availability.energyCost),
+      formulaInputs: {
+        larvaeBank: laboratoryDecimalString(larvaeBank),
+        cocoonBank: laboratoryDecimalString(cocoonBank),
+        combinedBank: laboratoryDecimalString(combinedBank),
+        larvaePerSecond: laboratoryDecimalString(larvaePerSecond),
+        cocoonsPerSecond: laboratoryDecimalString(cocoonsPerSecond),
+        combinedVelocity: laboratoryDecimalString(combinedVelocity),
+        capSeconds: laboratoryDecimalString(capSeconds),
+        abilityPower: laboratoryDecimalString(abilityPower),
+        sourceVerifiedOutput: laboratoryDecimalString(sourceVerifiedOutput),
+      },
+      runtimePreviewOutput: runtimePreviewOutput ? laboratoryDecimalString(runtimePreviewOutput) : null,
+    };
+  }
+
+  function buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses) {
+    const mirrorAbility = getLaboratoryHouseOfMirrorsAbility(game);
+    const availability = getLaboratoryAbilityAvailability(game, mirrorAbility, "House of Mirrors");
+    const affectedUnits = army.houseOfMirrorsAffectedUnits || [];
+    let affectedAfter = newDecimal(0);
+    for (const row of affectedUnits) {
+      affectedAfter = affectedAfter.plus(decimalFrom(row.territoryPerSecondContribution));
+    }
+    const sourceVerifiedAfter = decimalFrom(army.unaffectedTerritoryPerSecond).plus(affectedAfter.times(2));
+    let runtimePreview = null;
+
+    if (!mirrorAbility) {
+      warnings.push("House of Mirrors ability is unavailable from runtime.");
+      formulaStatuses.push("incomplete");
+    } else {
+      warnings.push("House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead.");
+    }
+
+    return {
+      gameAbilityId: "clonearmy",
+      available: availability.available,
+      unavailableReason: availability.unavailableReason,
+      energyCost: laboratoryDecimalString(availability.energyCost),
+      affectedUnitIds: affectedUnits.map((row) => row.unitId),
+      affectedTerritoryPerSecondBefore: army.affectedTerritoryPerSecondTotal,
+      unaffectedTerritoryPerSecond: army.unaffectedTerritoryPerSecond,
+      sourceVerifiedTerritoryPerSecondAfter: laboratoryDecimalString(sourceVerifiedAfter),
+      runtimePreviewTerritoryPerSecondAfter: runtimePreview,
+    };
+  }
+
+  function buildLaboratoryMeatProjection(game, warnings, formulaStatuses) {
+    const meat = getGameUnit(game, "meat");
+    const runtimeRate = decimalFrom(getVelocity(game, "meat"));
+    const coefficients = safe("Laboratory meat producer coefficients", () => meat?._producerPath?.getCoefficientsNow?.()) || null;
+    if (!Array.isArray(coefficients)) {
+      warnings.push("Runtime meat producer coefficients are unavailable.");
+      formulaStatuses.push("incomplete");
+      return {
+        perSecond: laboratoryDecimalString(runtimeRate),
+        rateProjection: {
+          basis: "factorial-polynomial-derivative",
+          coefficients: ["0"],
+          maxDegree: 0,
+          validation: "incomplete",
+        },
+      };
+    }
+
+    const serialized = coefficients.map((coefficient) => laboratoryDecimalString(coefficient || 0));
+    const t0Rate = decimalFrom(coefficients[1] || 0);
+    let validation = "source-verified";
+    if (!laboratoryDecimalEquals(t0Rate, runtimeRate)) {
+      validation = "mismatch";
+      warnings.push("Meat coefficient derivative at t=0 does not match runtime meat/sec.");
+      formulaStatuses.push("mismatch");
+    }
+
+    return {
+      perSecond: laboratoryDecimalString(runtimeRate),
+      rateProjection: {
+        basis: "factorial-polynomial-derivative",
+        coefficients: serialized,
+        maxDegree: Math.max(0, serialized.length - 1),
+        valueAtZero: laboratoryDecimalString(t0Rate),
+        validation,
+      },
+    };
+  }
+
+  function buildLaboratoryExpansionSnapshot(game, engine, warnings, formulaStatuses) {
+    const expansion = getGameUpgrade(game, "expansion");
+    const territory = decimalFrom(getCurrentResource(game, "territory"));
+    const nextCost = decimalFrom(getCostForResource(expansion, "territory"));
+    const remaining = nextCost.minus(territory);
+    const clampedRemaining = remaining.lessThan && remaining.lessThan(0) ? newDecimal(0) : remaining;
+    const runtimeEta = Number.isFinite(engine?.expansionEta) ? decimalFrom(engine.expansionEta) : decimalFrom(estimateUpgradeSeconds(expansion));
+    const computedEta = isPositive(clampedRemaining) && isPositive(getVelocity(game, "territory"))
+      ? clampedRemaining.dividedBy(decimalFrom(getVelocity(game, "territory")))
+      : newDecimal(0);
+
+    if (!expansion) {
+      warnings.push("Expansion upgrade is unavailable from runtime.");
+      formulaStatuses.push("incomplete");
+    } else if (!laboratoryDecimalEquals(clampedRemaining, remaining.lessThan && remaining.lessThan(0) ? newDecimal(0) : remaining)) {
+      warnings.push("Expansion territoryRemaining consistency check failed.");
+      formulaStatuses.push("mismatch");
+    }
+
+    return {
+      currentLevel: laboratoryDecimalString(expansion?.count?.() || 0),
+      nextCost: laboratoryDecimalString(nextCost),
+      territoryRemaining: laboratoryDecimalString(clampedRemaining),
+      etaSeconds: laboratoryDecimalString(runtimeEta),
+      laboratoryComputedEtaSeconds: laboratoryDecimalString(computedEta),
+      etaComparison: laboratoryDecimalEquals(runtimeEta, computedEta) ? "match" : "runtime-differs-or-scenario-overridden",
+    };
+  }
+
+  function buildLaboratoryFormulaProvenance(status, uncertainFields, warnings, formulaStatusByName) {
+    return {
+      formulaSetId: "swarmsim-runtime-formulas",
+      status,
+      sourceRepository: LABORATORY_BASE_GAME_SOURCE_REPOSITORY,
+      sourceCommit: LABORATORY_BASE_GAME_SOURCE_COMMIT,
+      externalReferenceOnly: true,
+      runtimeDependency: false,
+      ratesCapturedFromRuntime: true,
+      uncertainFields,
+      warnings,
+      formulas: {
+        energy: laboratoryFormulaSource({
+          file: "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          functionName: "nexus prod -> energy; Unit._getCap/capValue/velocity",
+          valueSource: "runtime-derived",
+          status: formulaStatusByName.energy || "runtime-derived",
+        }),
+        larvae: laboratoryFormulaSource({
+          file: "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          functionName: "invisiblehatchery prod -> larva; Unit.velocity",
+          valueSource: "runtime-derived",
+          status: formulaStatusByName.larvae || "runtime-derived",
+        }),
+        cocoons: laboratoryFormulaSource({
+          file: "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          functionName: "Unit.velocity",
+          valueSource: "runtime-derived",
+          status: formulaStatusByName.cocoons || "runtime-derived",
+        }),
+        cloneLarvae: laboratoryFormulaSource({
+          file: "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee; tables/src/unittype/data.ts",
+          functionName: "ability clonelarvae; effect type compoundUnit; power.clonelarvae",
+          valueSource: "runtime-derived when direct preview is available, otherwise Laboratory recompute from source-verified runtime inputs",
+          status: formulaStatusByName.cloneLarvae || "source-verified",
+        }),
+        houseOfMirrors: laboratoryFormulaSource({
+          file: "tables/src/upgrade/data.ts; tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          functionName: "ability clonearmy; compoundUnit effects; Unit.eachProduction/totalProduction",
+          valueSource: "Laboratory recompute from runtime-derived counts and effective territory/unit",
+          status: formulaStatusByName.houseOfMirrors || "source-verified",
+        }),
+        territoryPerSecond: laboratoryFormulaSource({
+          file: "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          functionName: "Unit.eachProduction, Unit.totalProduction, Unit.velocity",
+          valueSource: "runtime-derived",
+          status: formulaStatusByName.territoryPerSecond || "runtime-derived",
+        }),
+        meatProducerCoefficients: laboratoryFormulaSource({
+          file: "swarmsim-coffee/app/scripts/services/unit.coffee",
+          functionName: "ProducerPath, ProducerPaths.getCoefficientsNow, factorial polynomial derivative",
+          valueSource: "runtime-derived coefficients",
+          status: formulaStatusByName.meatProducerCoefficients || "runtime-derived",
+        }),
+        expansionEta: laboratoryFormulaSource({
+          file: "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          functionName: "upgrade expansion cost progression; Unit.estimateSecsUntilEarned/bisection",
+          valueSource: "runtime-derived ETA plus Laboratory consistency check",
+          status: formulaStatusByName.expansionEta || "runtime-derived",
+        }),
+      },
+    };
+  }
+
+  async function buildLaboratorySnapshot(game, options = {}) {
+    const warnings = [];
+    const formulaStatuses = [];
+    const formulaStatusByName = {};
+    const scenarioId = String(options.scenarioId || scenarioHarnessContext.scenarioId || "scenario");
+    const scenarioPayload = options.scenarioPayload || {
+      scenarioId,
+      source: scenarioHarnessContext.source,
+      overrides: scenarioHarnessContext.overrides,
+    };
+    const scenarioHash = `sha256:${await laboratorySha256(laboratoryCanonicalJson(scenarioPayload))}`;
+    const engine = analyzeLarvaEngine(game);
+    const engineOverrides = scenarioHarnessContext.overrides?.engine || {};
+    if (Number.isFinite(engineOverrides.expansionEtaSeconds)) engine.expansionEta = engineOverrides.expansionEtaSeconds;
+    const currentCommit = null;
+    warnings.push("Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.");
+
+    const energyUnit = getGameUnit(game, "energy");
+    const energyCap = safe("Laboratory energy cap", () => energyUnit?.capValue?.()) || newDecimal(0);
+    const army = buildLaboratoryArmySnapshot(game, warnings, formulaStatuses);
+    const meat = buildLaboratoryMeatProjection(game, warnings, formulaStatuses);
+    if (meat.rateProjection.validation === "mismatch") formulaStatusByName.meatProducerCoefficients = "mismatch";
+    if (meat.rateProjection.validation === "incomplete") formulaStatusByName.meatProducerCoefficients = "incomplete";
+    const cloneLarvae = buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses);
+    if (cloneLarvae.runtimePreviewOutput === null) formulaStatusByName.cloneLarvae = "source-verified";
+    const houseOfMirrors = buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses);
+    formulaStatusByName.houseOfMirrors = "source-verified";
+    const expansion = buildLaboratoryExpansionSnapshot(game, engine, warnings, formulaStatuses);
+
+    let topStatus = "verified";
+    if (formulaStatuses.includes("mismatch")) topStatus = "mismatch";
+    else if (formulaStatuses.includes("incomplete")) topStatus = "incomplete";
+    const uncertainFields = warnings.length ? warnings.slice() : [];
+
+    const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
+    const requiredReserve = decimalFrom(getVelocity(game, "energy")).times(reserveSeconds);
+    const energyAmount = decimalFrom(getCurrentResource(game, "energy"));
+
+    const snapshot = {
+      schemaVersion: "swarmsim-lab.snapshot.v1",
+      kind: "deterministic-simulation-snapshot",
+      snapshotId: String(options.snapshotId || `LAB-${scenarioId}`),
+      snapshotHash: null,
+      snapshotHashScope: "deterministic-payload-v1",
+      source: {
+        scriptVersion: SCRIPT_VERSION,
+        frozenBaselineVersion: "0.11.7",
+        verifiedRuntimeCommit: "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+        baselineRepositoryCommit: "ea999526994c75899b6b1a478e7146f046417803",
+        currentCommit,
+        scenarioHarnessVersion: SCENARIO_REPORT_VERSION,
+        scenarioId,
+        scenarioHash,
+        gameBuild: "swarm-angular-runtime",
+        capturedAt: new Date().toISOString(),
+      },
+      simulation: {
+        mode: "deterministic-simulation",
+        interventionTimeSeconds: "0",
+        horizonsSeconds: ["60", "300"],
+        postActionPolicy: "passive-only",
+        normalAutobuyerEnabled: false,
+        liveSaveMutable: false,
+      },
+      resources: {
+        energy: {
+          amount: laboratoryDecimalString(energyAmount),
+          perSecond: laboratoryDecimalString(getVelocity(game, "energy")),
+          cap: laboratoryDecimalString(energyCap),
+        },
+        larvae: {
+          amount: laboratoryDecimalString(getCurrentResource(game, "larva")),
+          perSecond: laboratoryDecimalString(getVelocity(game, "larva")),
+        },
+        cocoons: {
+          amount: laboratoryDecimalString(getCurrentResource(game, "cocoon")),
+          perSecond: laboratoryDecimalString(getVelocity(game, "cocoon")),
+        },
+        territory: {
+          amount: laboratoryDecimalString(getCurrentResource(game, "territory")),
+          perSecond: laboratoryDecimalString(getVelocity(game, "territory")),
+        },
+        meat,
+      },
+      army,
+      expansion,
+      abilities: {
+        cloneLarvae,
+        houseOfMirrors,
+      },
+      safety: {
+        resource: "energy",
+        requiredReserve: laboratoryDecimalString(requiredReserve),
+        headroomBefore: laboratoryDecimalString(energyAmount.minus(requiredReserve)),
+        ruleId: reserveSeconds > 0 ? "post-nexus-energy-reserve" : null,
+        reserveSource: "scenario-harness",
+      },
+      context: {
+        nexusCount: laboratoryDecimalString(getCurrentResource(game, "nexus")),
+        lepidopteraCount: laboratoryDecimalString(getLaboratoryUnitCount(game, "moth")),
+        activePhase: strategyInspector?.phase || null,
+        activeMilestone: strategyInspector?.goal || null,
+        activeTarget: strategyInspector?.activePlannerAction || null,
+      },
+      formulaProvenance: buildLaboratoryFormulaProvenance(topStatus, uncertainFields, warnings, formulaStatusByName),
+    };
+
+    const hashPayload = laboratoryDeterministicHashPayload(snapshot);
+    snapshot.snapshotHash = `sha256:${await laboratorySha256(laboratoryCanonicalJson(hashPayload))}`;
+    return laboratoryDeepFreeze(snapshot);
+  }
+
+  async function captureLaboratorySnapshot(options = {}) {
+    if (!isLaboratoryDevelopmentGateEnabled()) {
+      return {
+        ok: false,
+        error: `Laboratory development gate is disabled. Enable explicitly with localStorage key ${LABORATORY_DEVELOPMENT_ENABLE_KEY}=true.`,
+      };
+    }
+    if (!isScenarioHarnessEnabled()) {
+      return {
+        ok: false,
+        error: `Scenario harness is disabled. Enable explicitly with localStorage key ${SCENARIO_HARNESS_ENABLE_KEY}=true.`,
+      };
+    }
+
+    const game = getGame();
+    const scenario = options.scenario || null;
+    const hadActiveScenario = !!scenarioHarnessContext.active;
+    if (!scenario && !hadActiveScenario) {
+      return {
+        ok: false,
+        error: "Laboratory snapshot capture requires an active deterministic scenario or an explicit scenario option.",
+      };
+    }
+
+    if (scenario) {
+      setScenarioContext({
+        scenarioId: String(scenario.id || "LAB-001"),
+        source: String(scenario.source || "deterministic-scenario"),
+        overrides: scenario.overrides || {},
+      });
+    }
+
+    try {
+      const snapshot = await buildLaboratorySnapshot(game, {
+        snapshotId: options.snapshotId,
+        scenarioId: scenario ? String(scenario.id || "LAB-001") : scenarioHarnessContext.scenarioId,
+        scenarioPayload: scenario || {
+          scenarioId: scenarioHarnessContext.scenarioId,
+          source: scenarioHarnessContext.source,
+          overrides: scenarioHarnessContext.overrides,
+        },
+      });
+      return {
+        ok: true,
+        fileName: `swarm-lab-snapshot-${snapshot.snapshotId}.json`,
+        snapshot,
+      };
+    } finally {
+      if (scenario) clearScenarioContext();
+    }
+  }
+
+  async function downloadLaboratorySnapshot(options = {}) {
+    const result = await captureLaboratorySnapshot(options);
+    if (!result.ok) return result;
+    const text = JSON.stringify(result.snapshot, null, 2);
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = result.fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    return result;
   }
 
   function newDecimal(value = 0) {
@@ -14216,6 +14798,24 @@ function getDisplayName(item) {
           return runDeterministicScenarioHarness(options);
         },
       },
+
+      ...(isLaboratoryDevelopmentGateEnabled() ? {
+        laboratory: {
+          isEnabled: isLaboratoryDevelopmentGateEnabled,
+          enable() {
+            return setLaboratoryDevelopmentGateEnabled(true);
+          },
+          disable() {
+            return setLaboratoryDevelopmentGateEnabled(false);
+          },
+          captureSnapshot(options = {}) {
+            return captureLaboratorySnapshot(options);
+          },
+          downloadSnapshot(options = {}) {
+            return downloadLaboratorySnapshot(options);
+          },
+        },
+      } : {}),
 
       copyLogExport,
       downloadLogExport,
