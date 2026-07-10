@@ -1,0 +1,295 @@
+{
+  "schemaVersion": "swarmsim-lab.snapshot.v1",
+  "kind": "deterministic-simulation-snapshot",
+  "snapshotId": "LAB-001",
+  "snapshotHash": "sha256:c0391abfd124f1bb394404a2b5bb5072c00e43933d839f8f821d99d43031ef96",
+  "snapshotHashScope": "deterministic-payload-v1",
+  "source": {
+    "scriptVersion": "0.12.0",
+    "frozenBaselineVersion": "0.11.7",
+    "verifiedRuntimeCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+    "baselineRepositoryCommit": "ea999526994c75899b6b1a478e7146f046417803",
+    "currentCommit": null,
+    "scenarioHarnessVersion": "0.12.0",
+    "scenarioId": "LAB-001",
+    "scenarioHash": "sha256:c454e795658f680fe58f14adbb8a4f48b5c22698a81a98c17c5e4161a95af465",
+    "gameBuild": "swarm-angular-runtime",
+    "capturedAt": "2026-07-10T06:55:09.275Z"
+  },
+  "simulation": {
+    "mode": "deterministic-simulation",
+    "interventionTimeSeconds": "0",
+    "horizonsSeconds": [
+      "60",
+      "300"
+    ],
+    "postActionPolicy": "passive-only",
+    "normalAutobuyerEnabled": false,
+    "liveSaveMutable": false
+  },
+  "resources": {
+    "energy": {
+      "amount": "500000",
+      "perSecond": "12.5",
+      "cap": "0"
+    },
+    "larvae": {
+      "amount": "900719925474099300000",
+      "perSecond": "123456.789"
+    },
+    "cocoons": {
+      "amount": "123456789012345",
+      "perSecond": "0"
+    },
+    "territory": {
+      "amount": "1000000000000",
+      "perSecond": "26759423381502672470"
+    },
+    "meat": {
+      "perSecond": "1000000",
+      "rateProjection": {
+        "basis": "factorial-polynomial-derivative",
+        "coefficients": [
+          "35",
+          "1000000"
+        ],
+        "maxDegree": 1,
+        "valueAtZero": "1000000",
+        "validation": "source-verified"
+      }
+    }
+  },
+  "army": {
+    "houseOfMirrorsAffectedUnits": [
+      {
+        "unitId": "swarmling",
+        "count": "1000",
+        "effectiveTerritoryPerSecondPerUnit": "0.07",
+        "territoryPerSecondContribution": "70",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "stinger",
+        "count": "2000",
+        "effectiveTerritoryPerSecondPerUnit": "3.15",
+        "territoryPerSecondContribution": "6300",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "spider",
+        "count": "3000",
+        "effectiveTerritoryPerSecondPerUnit": "141.75",
+        "territoryPerSecondContribution": "425250",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "mosquito",
+        "count": "4000",
+        "effectiveTerritoryPerSecondPerUnit": "6378.75",
+        "territoryPerSecondContribution": "25515000",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "locust",
+        "count": "5000",
+        "effectiveTerritoryPerSecondPerUnit": "287043.75",
+        "territoryPerSecondContribution": "1435218750",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "roach",
+        "count": "6000",
+        "effectiveTerritoryPerSecondPerUnit": "12916968.75",
+        "territoryPerSecondContribution": "77501812500",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "giantspider",
+        "count": "7000",
+        "effectiveTerritoryPerSecondPerUnit": "581263593.8",
+        "territoryPerSecondContribution": "4068845156600",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "centipede",
+        "count": "8000",
+        "effectiveTerritoryPerSecondPerUnit": "26156861719",
+        "territoryPerSecondContribution": "209254893752000",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "wasp",
+        "count": "9000",
+        "effectiveTerritoryPerSecondPerUnit": "1177058777344",
+        "territoryPerSecondContribution": "10593528996096000",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "devourer",
+        "count": "10000",
+        "effectiveTerritoryPerSecondPerUnit": "52967644980469",
+        "territoryPerSecondContribution": "529676449804690000",
+        "affectedByHouseOfMirrors": true
+      },
+      {
+        "unitId": "goon",
+        "count": "11000",
+        "effectiveTerritoryPerSecondPerUnit": "2383540000000000",
+        "territoryPerSecondContribution": "26218940000000000000",
+        "affectedByHouseOfMirrors": true
+      }
+    ],
+    "affectedTerritoryPerSecondTotal": "26759423381502672470",
+    "unaffectedTerritoryPerSecond": "0"
+  },
+  "expansion": {
+    "currentLevel": "0",
+    "nextCost": "10",
+    "territoryRemaining": "0",
+    "etaSeconds": "3600",
+    "laboratoryComputedEtaSeconds": "0",
+    "etaComparison": "runtime-differs-or-scenario-overridden"
+  },
+  "abilities": {
+    "cloneLarvae": {
+      "gameAbilityId": "clonelarvae",
+      "available": true,
+      "unavailableReason": null,
+      "energyCost": "12000",
+      "formulaInputs": {
+        "larvaeBank": "900719925474099300000",
+        "cocoonBank": "123456789012345",
+        "combinedBank": "900720048930888312350",
+        "larvaePerSecond": "123456.789",
+        "cocoonsPerSecond": "0",
+        "combinedVelocity": "123456.789",
+        "capSeconds": "100000",
+        "abilityPower": "1",
+        "sourceVerifiedOutput": "12345678900"
+      },
+      "runtimePreviewOutput": null
+    },
+    "houseOfMirrors": {
+      "gameAbilityId": "clonearmy",
+      "available": true,
+      "unavailableReason": null,
+      "energyCost": "2500",
+      "affectedUnitIds": [
+        "swarmling",
+        "stinger",
+        "spider",
+        "mosquito",
+        "locust",
+        "roach",
+        "giantspider",
+        "centipede",
+        "wasp",
+        "devourer",
+        "goon"
+      ],
+      "affectedTerritoryPerSecondBefore": "26759423381502672470",
+      "unaffectedTerritoryPerSecond": "0",
+      "sourceVerifiedTerritoryPerSecondAfter": "53518846763005344940",
+      "runtimePreviewTerritoryPerSecondAfter": null
+    }
+  },
+  "safety": {
+    "resource": "energy",
+    "requiredReserve": "375",
+    "headroomBefore": "499625",
+    "ruleId": "post-nexus-energy-reserve",
+    "reserveSource": "scenario-harness"
+  },
+  "context": {
+    "nexusCount": "5",
+    "lepidopteraCount": "0",
+    "activePhase": null,
+    "activeMilestone": null,
+    "activeTarget": null
+  },
+  "formulaProvenance": {
+    "formulaSetId": "swarmsim-runtime-formulas",
+    "status": "verified",
+    "sourceRepository": "https://github.com/swarmsim/swarm",
+    "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+    "externalReferenceOnly": true,
+    "runtimeDependency": false,
+    "ratesCapturedFromRuntime": true,
+    "uncertainFields": [
+      "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+      "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+      "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+    ],
+    "warnings": [
+      "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+      "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+      "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+    ],
+    "formulas": {
+      "energy": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "nexus prod -> energy; Unit._getCap/capValue/velocity",
+        "valueSource": "runtime-derived",
+        "verificationStatus": "runtime-derived"
+      },
+      "larvae": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "invisiblehatchery prod -> larva; Unit.velocity",
+        "valueSource": "runtime-derived",
+        "verificationStatus": "runtime-derived"
+      },
+      "cocoons": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "Unit.velocity",
+        "valueSource": "runtime-derived",
+        "verificationStatus": "runtime-derived"
+      },
+      "cloneLarvae": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee; tables/src/unittype/data.ts",
+        "functionOrEffectType": "ability clonelarvae; effect type compoundUnit; power.clonelarvae",
+        "valueSource": "runtime-derived when direct preview is available, otherwise Laboratory recompute from source-verified runtime inputs",
+        "verificationStatus": "source-verified"
+      },
+      "houseOfMirrors": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/upgrade/data.ts; tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "ability clonearmy; compoundUnit effects; Unit.eachProduction/totalProduction",
+        "valueSource": "Laboratory recompute from runtime-derived counts and effective territory/unit",
+        "verificationStatus": "source-verified"
+      },
+      "territoryPerSecond": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "Unit.eachProduction, Unit.totalProduction, Unit.velocity",
+        "valueSource": "runtime-derived",
+        "verificationStatus": "runtime-derived"
+      },
+      "meatProducerCoefficients": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "ProducerPath, ProducerPaths.getCoefficientsNow, factorial polynomial derivative",
+        "valueSource": "runtime-derived coefficients",
+        "verificationStatus": "runtime-derived"
+      },
+      "expansionEta": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "upgrade expansion cost progression; Unit.estimateSecsUntilEarned/bisection",
+        "valueSource": "runtime-derived ETA plus Laboratory consistency check",
+        "verificationStatus": "runtime-derived"
+      }
+    }
+  }
+}
