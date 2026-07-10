@@ -56,6 +56,9 @@ docs/release-notes/
 - 0.11.3: HoM gate-order/payoff/arbitration patch plus deterministic harness
   cycle-semantics hardening (cycle-specific expectations, clone/report mapping,
   transition observability, and scenario report versioning).
+- 0.11.4: Narrow Parent Step -> Parent Refill transition fix for deterministic
+  scenario R8 with harness transition replay markers and per-cycle transition
+  trace fields; no strategy expansion.
 
 ## Documentation posture note
 

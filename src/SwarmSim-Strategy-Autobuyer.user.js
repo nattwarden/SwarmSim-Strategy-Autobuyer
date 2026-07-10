@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.11.3
+// @version      0.11.4
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -16,8 +16,8 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const SCRIPT_VERSION = "0.11.3";
-  const SCENARIO_REPORT_VERSION = "0.11.3";
+  const SCRIPT_VERSION = "0.11.4";
+  const SCENARIO_REPORT_VERSION = "0.11.4";
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
@@ -465,7 +465,9 @@
     source: "live-browser",
     scenarioId: "none",
     evaluationRevision: 0,
+    cycleRevision: 0,
     overrides: null,
+    transition: null,
     patchedUnits: [],
   };
   let panel = null;
@@ -1290,13 +1292,19 @@ function getDisplayName(item) {
     return !!item?.isVisible?.();
   }
 
-  function setScenarioContext({ scenarioId = "none", source = "deterministic-scenario", overrides = null }) {
+  function setScenarioContext({ scenarioId = "none", source = "deterministic-scenario", overrides = null, preserveEvaluationRevision = false, preserveTransition = false }) {
     clearScenarioUnitOverrides();
     scenarioHarnessContext.active = true;
     scenarioHarnessContext.source = source;
     scenarioHarnessContext.scenarioId = scenarioId;
     scenarioHarnessContext.overrides = normalizeScenarioOverrides(overrides);
-    scenarioHarnessContext.evaluationRevision = 0;
+    scenarioHarnessContext.evaluationRevision = preserveEvaluationRevision
+      ? Number(scenarioHarnessContext.evaluationRevision || 0)
+      : 0;
+    scenarioHarnessContext.cycleRevision = preserveEvaluationRevision
+      ? Number(scenarioHarnessContext.cycleRevision || 0)
+      : 0;
+    if (!preserveTransition) scenarioHarnessContext.transition = null;
     applyScenarioUnitOverrides(getGame());
   }
 
@@ -1307,6 +1315,52 @@ function getDisplayName(item) {
     scenarioHarnessContext.scenarioId = "none";
     scenarioHarnessContext.overrides = null;
     scenarioHarnessContext.evaluationRevision = 0;
+    scenarioHarnessContext.cycleRevision = 0;
+    scenarioHarnessContext.transition = null;
+  }
+
+  function setScenarioTransitionState(fields = {}) {
+    scenarioHarnessContext.transition = {
+      ...(scenarioHarnessContext.transition || {}),
+      ...fields,
+    };
+    return scenarioHarnessContext.transition;
+  }
+
+  function getScenarioTransitionState() {
+    return scenarioHarnessContext.transition || null;
+  }
+
+  function hydrateScenarioParentStepTransitionForRefill(plan) {
+    if (!scenarioHarnessContext.active) return false;
+    const transition = scenarioHarnessContext.transition;
+    if (!transition?.parentStepCompletedForRefill) return false;
+    if (transition.parentStepCompletedForRefillConsumed) return false;
+
+    const targetName = getDisplayName(plan?.target);
+    const actionUnitName = getDisplayName(plan?.actionUnit);
+    const candidateName = transition.transitionParentUnit || parentStepPlannerState?.candidate || "none";
+    const transitionTarget = String(transition.transitionTargetUnit || "none");
+
+    if (transitionTarget !== "none" && transitionTarget !== targetName) return false;
+
+    recordParentStepPlannerState({
+      candidate: candidateName,
+      decision: parentStepPlannerState?.decision || "BUY",
+      reason: `between-cycle transition replay: ${transition.plannerTransitionMarker || "parent-step-completed"}`,
+      target: targetName,
+      actionUnit: actionUnitName,
+      costResource: actionUnitName,
+      reserveRatio: parentStepPlannerState?.reserveRatio ?? NaN,
+      paybackBypassed: !!parentStepPlannerState?.paybackBypassed,
+      supportsActionUnit: true,
+      consumedActionUnit: true,
+      consumedUnit: transition.transitionActionUnit || actionUnitName || "none",
+      executed: true,
+    });
+
+    setScenarioTransitionState({ parentStepCompletedForRefillConsumed: true });
+    return true;
   }
 
   function scenarioSourceTag() {
@@ -4021,7 +4075,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.11.3",
+      scriptVersion: "0.11.4",
       source: scenarioSourceTag(),
       scenarioId: scenarioHarnessContext.active ? scenarioHarnessContext.scenarioId : "none",
       status: lastStatus,
@@ -4280,13 +4334,43 @@ function getDisplayName(item) {
       rates[name] = formatSwarmNumber(getVelocity(game, name));
     }
 
+    const plan = safe("Scenario snapshot meat plan", () => buildMeatGoalPlan(game)) || null;
+    const actionUnit = plan?.actionUnit || null;
+    const parentUnit = getDirectTargetPathParentUnit(plan);
+    const transition = getScenarioTransitionState();
+
     return {
       resources,
       productionRates: rates,
+      remainingActions: Number.isFinite(Number(scenarioHarnessContext.overrides?.remainingActions))
+        ? Number(scenarioHarnessContext.overrides.remainingActions)
+        : null,
       preferredUnitCounts: {
         "Culicimorph V": formatSwarmNumber(unitCountByArmyPrepLabel(game, "Culicimorph V")),
         "Arachnomorph V": formatSwarmNumber(unitCountByArmyPrepLabel(game, "Arachnomorph V")),
         "Stinger V": formatSwarmNumber(unitCountByArmyPrepLabel(game, "Stinger V")),
+      },
+      plannerUnits: {
+        targetUnit: plan?.target ? getDisplayName(plan.target) : "none",
+        actionUnit: actionUnit ? getDisplayName(actionUnit) : "none",
+        parentUnit: parentUnit ? getDisplayName(parentUnit) : "none",
+        actionUnitCount: formatSwarmNumber(actionUnit?.count?.() || 0),
+        parentUnitCount: formatSwarmNumber(parentUnit?.count?.() || 0),
+        actionUnitBuyable: actionUnit?.isVisible?.() && actionUnit?.isBuyable?.() ? "yes" : "no",
+        parentUnitBuyable: parentUnit?.isVisible?.() && parentUnit?.isBuyable?.() ? "yes" : "no",
+      },
+      reserveResult: {
+        parentStepReserveRatio: parentStepPlannerState?.reserveRatioText || "n/a",
+        actionUnitRefillReserveRatio: actionUnitRefillState?.reserveRatioText || "n/a",
+      },
+      activePlannerAction: strategyInspector?.momentumBestStep || "Wait",
+      plannerTransitionState: {
+        betweenCycleApplied: transition?.betweenCycleApplied ? "yes" : "no",
+        plannerTransitionMarker: transition?.plannerTransitionMarker || "none",
+        parentStepCompletedForRefill: transition?.parentStepCompletedForRefill ? "yes" : "no",
+        transitionSeenByCycle: transition?.appliedAfterCycle
+          ? (Number(scenarioHarnessContext.cycleRevision || 0) > Number(transition.appliedAfterCycle) ? "yes" : "no")
+          : "no",
       },
       abilityCosts: {
         houseOfMirrorsEnergy: formatSwarmNumber(getCostForResource(getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp"), "energy")),
@@ -4431,6 +4515,7 @@ function getDisplayName(item) {
         setScenarioContext({ scenarioId, source, overrides: scenarioOverrides });
 
         for (let cycle = 1; cycle <= cycles; cycle++) {
+          scenarioHarnessContext.cycleRevision = Number(scenarioHarnessContext.cycleRevision || 0) + 1;
           const cycleConfigRestore = applyScenarioConfigOverrides(scenarioOverrides);
           clearAdvisorLog();
           clearLaneCandidates();
@@ -4466,6 +4551,10 @@ function getDisplayName(item) {
           strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, [], 0, 0, Math.max(1, Number(config.smartMaxActionsPerRun || 1)));
 
           const payload = buildLogExportPayload();
+          const cyclePlan = safe(`Scenario ${scenarioId} cycle ${cycle} plan`, () => buildMeatGoalPlan(game)) || null;
+          const cycleActionUnit = cyclePlan?.actionUnit || null;
+          const cycleParentUnit = getDirectTargetPathParentUnit(cyclePlan);
+          const cycleTransition = getScenarioTransitionState();
           const decisionFields = {
             energySupportBestUse: payload.energySupportBestUse,
             energySupportBestUseDecision: payload.energySupportBestUseDecision,
@@ -4491,15 +4580,32 @@ function getDisplayName(item) {
             momentumPrimaryPrioritySource: payload.momentumPrimaryPrioritySource,
             momentumPrimarySelectionReason: payload.momentumPrimarySelectionReason,
             parentStepDecision: payload.parentStepDecision,
+            parentStepTargetUnit: payload.parentStepTarget,
+            parentStepParentUnit: payload.parentStepCandidate,
             parentStepCandidate: payload.parentStepCandidate,
             parentStepReason: payload.parentStepReason,
             parentStepTarget: payload.parentStepTarget,
             parentStepActionUnit: payload.parentStepActionUnit,
             parentStepConsumedUnit: payload.parentStepConsumedUnit,
             actionUnitRefillDecision: payload.actionUnitRefillDecision,
+            actionUnitRefillTargetUnit: payload.actionUnitRefillCandidate,
+            actionUnitRefillParentUnit: payload.parentStepCandidate,
             actionUnitRefillReason: payload.actionUnitRefillReason,
             actionUnitRefillBlockedBy: payload.actionUnitRefillBlockedBy,
             actionUnitRefillParentStepConsumedUnit: payload.actionUnitRefillParentStepConsumedUnit,
+            remainingActions: String(Math.max(1, Number(remainingActions || 1))),
+            actionUnitCount: formatSwarmNumber(cycleActionUnit?.count?.() || 0),
+            parentUnitCount: formatSwarmNumber(cycleParentUnit?.count?.() || 0),
+            affordability: `actionUnit=${cycleActionUnit?.isVisible?.() && cycleActionUnit?.isBuyable?.() ? "buyable" : "hold"}; parentUnit=${cycleParentUnit?.isVisible?.() && cycleParentUnit?.isBuyable?.() ? "buyable" : "hold"}`,
+            reserveResult: `parentStep=${payload.parentStepReserveRatio || "n/a"}; refill=${payload.actionUnitRefillReserveRatio || "n/a"}`,
+            activePlannerAction: payload.momentumBestStep || "Wait",
+            plannerTransitionState: cycleTransition?.plannerTransitionMarker || "none",
+            betweenCycleApplied: cycleTransition?.betweenCycleApplied ? "yes" : "no",
+            plannerTransitionMarker: cycleTransition?.plannerTransitionMarker || "none",
+            parentStepCompletedForRefill: cycleTransition?.parentStepCompletedForRefill ? "yes" : "no",
+            transitionSeenByCycle: cycleTransition?.appliedAfterCycle ? (cycle > Number(cycleTransition.appliedAfterCycle) ? "yes" : "no") : "no",
+            plannerEvaluationRevision: String(scenarioHarnessContext.evaluationRevision || 0),
+            harnessCycleRevision: String(scenarioHarnessContext.cycleRevision || 0),
             whyNoFollowUpAction: payload.whyNoFollowUpAction,
             activeCouncilSpeaker: payload.activeCouncilSpeaker,
             doThisNow: payload.momentumBestStep,
@@ -4528,8 +4634,39 @@ function getDisplayName(item) {
           const between = Array.isArray(scenario?.betweenEvaluations) ? scenario.betweenEvaluations : [];
           for (const action of between) {
             if (Number(action?.afterCycle) !== cycle) continue;
+            const beforeApply = getScenarioStateSnapshot(game, engine);
             scenarioOverrides = normalizeScenarioOverrides(mergeScenarioOverrides(scenarioOverrides, action?.applyOverrides || {}));
-            setScenarioContext({ scenarioId, source, overrides: scenarioOverrides });
+            setScenarioContext({
+              scenarioId,
+              source,
+              overrides: scenarioOverrides,
+              preserveEvaluationRevision: true,
+              preserveTransition: true,
+            });
+            const afterApply = getScenarioStateSnapshot(game, engine);
+            const transitionMarker = String(
+              action?.plannerTransitionMarker
+              || action?.transition?.plannerTransitionMarker
+              || `between-cycle-${scenarioId}-${cycle}`
+            );
+            const transition = setScenarioTransitionState({
+              betweenCycleApplied: true,
+              plannerTransitionMarker: transitionMarker,
+              parentStepCompletedForRefill: !!(action?.parentStepCompletedForRefill || action?.transition?.parentStepCompletedForRefill),
+              parentStepCompletedForRefillConsumed: false,
+              transitionActionUnit: action?.transition?.actionUnit || payload.parentStepActionUnit || "none",
+              transitionParentUnit: action?.transition?.parentUnit || payload.parentStepCandidate || "none",
+              transitionTargetUnit: action?.transition?.targetUnit || payload.parentStepTarget || "none",
+              appliedAfterCycle: cycle,
+              beforeApplyState: beforeApply,
+              afterApplyState: afterApply,
+            });
+
+            cycleReport[cycleReport.length - 1].betweenCycleApply = {
+              transition,
+              beforeApply,
+              afterApply,
+            };
           }
         }
 
@@ -10475,11 +10612,14 @@ function getDisplayName(item) {
       resource: bottleneckLabel,
     });
 
+    const scenarioTransitionReady = hydrateScenarioParentStepTransitionForRefill(plan);
     const parentStepExecuted =
-      !config.advisorOnly &&
-      config.autoBuySafeDecisions &&
-      !!parentStepPlannerState?.executed &&
-      parentStepPlannerState?.target === targetLabel;
+      (
+        !config.advisorOnly &&
+        config.autoBuySafeDecisions &&
+        !!parentStepPlannerState?.executed &&
+        parentStepPlannerState?.target === targetLabel
+      ) || scenarioTransitionReady;
 
     const twinUnlockExecuted =
       !config.advisorOnly &&
