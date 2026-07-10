@@ -11,6 +11,8 @@ PR_CHECKLIST.md                           # PR checklist for AI-assisted changes
 prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md
 live-logs/2026-07-09-clean-start-game-observation.md
 live-logs/2026-07-09-clicked-mechanics-progression.md
+live-logs/2026-07-10-0.10.1-energy-support-counterfactual.md
+live-logs/2026-07-10-energy-support-counterfactual-0.10.1.json
 ```
 
 ## Project posture
