@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.10.0
+// @version      0.10.1
 // @description  Methodical smart advisor/autobuyer with Expansion-aware Army Seed Planner, clearer Swarm Council guidance, post-Nexus energy planning, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -16,6 +16,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
+  const SCRIPT_VERSION = "0.10.1";
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
@@ -2212,6 +2213,9 @@ function getDisplayName(item) {
       }
     }
 
+    const companionDecision = selectedSideAction ? `${selectedSideAction.lane} BUY` : "none";
+    const sideTaskDecision = Number(sideActions || 0) > 0 ? "Clone Prep SIDE" : "none";
+
     return {
       time: new Date().toLocaleTimeString(),
       timestamp: new Date().toISOString(),
@@ -2219,8 +2223,8 @@ function getDisplayName(item) {
       goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
       decision,
       mainDecision: mainLaneDecisionLabel(mainActions, sideActions),
-      sideDecision: selectedSideAction ? `${selectedSideAction.lane} BUY` : "none",
-      companionDecision: selectedSideAction ? `${selectedSideAction.lane} BUY` : "none",
+      sideDecision: sideTaskDecision,
+      companionDecision: companionDecision,
       compactStatus,
       reason,
       mainReason: getSelectedLaneActionReason(0),
@@ -2430,7 +2434,7 @@ function getDisplayName(item) {
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
-      futurePlanners: "0.10.0 adds a conservative Expansion-aware Army Seed planner plus clearer companion wording and Council active-speaker guidance while preserving Parent Refill, Twin meaningful gate, clone safety, and no auto-cast defaults.",
+      futurePlanners: "0.10.1 keeps Expansion-aware Army Seed planning and clarifies Companion vs side-task wording while preserving Parent Refill, Twin meaningful gate, clone safety, and no auto-cast defaults.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
   }
@@ -2457,7 +2461,8 @@ function getDisplayName(item) {
       ["Why no companion", strategyInspector.overseerWhyNoSide || "none"],
       ["Blocked by hard guard", strategyInspector.overseerBlockedByHardGuard || "none"],
       ["Main", strategyInspector.mainDecision || strategyInspector.decision],
-      ["Companion", strategyInspector.companionDecision || strategyInspector.sideDecision || "none"],
+      ["Companion", strategyInspector.companionDecision || "none"],
+      ["Side-task", strategyInspector.sideDecision || "none"],
       ["Status", strategyInspector.compactStatus || "n/a"],
       ["Reason", strategyInspector.reason],
       ["Main reason", strategyInspector.mainReason || "none"],
@@ -3169,7 +3174,7 @@ function getDisplayName(item) {
 
     return {
       exportedAt: new Date().toISOString(),
-      scriptVersion: "0.10.0",
+      scriptVersion: "0.10.1",
       status: lastStatus,
       strategyInspector,
       runHistory: runHistory.slice(),
@@ -3382,7 +3387,8 @@ function getDisplayName(item) {
       `- Goal: ${inspector.goal || "n/a"}`,
       `- Decision: ${inspector.decision || "n/a"}`,
       `- Main: ${inspector.mainDecision || "n/a"}`,
-      `- Companion: ${inspector.companionDecision || inspector.sideDecision || "none"}`,
+      `- Companion: ${inspector.companionDecision || "none"}`,
+      `- Side-task: ${inspector.sideDecision || "none"}`,
       `- Status: ${inspector.compactStatus || "n/a"}`,
       `- Reason: ${inspector.reason || "n/a"}`,
       `- Main reason: ${inspector.mainReason || "none"}`,
@@ -10600,7 +10606,7 @@ function getDisplayName(item) {
     panel.className = "kbc-swarmbot-window";
 
     panel.innerHTML = `
-      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v0.9.0 <span class="kbc-title-hint">settings · drag</span></div>
+      <div class="kbc-title" title="Dra här för att flytta inställningarna">SwarmBot v${SCRIPT_VERSION} <span class="kbc-title-hint">settings · drag</span></div>
 
       <div class="kbc-row">
         <button id="kbc-toggle" title="Pausa eller starta hela botten"></button>
@@ -10608,7 +10614,7 @@ function getDisplayName(item) {
       </div>
 
       <div class="kbc-row">
-        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för 0.9.0. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
+        <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för ${SCRIPT_VERSION}. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
         <button id="kbc-reset-log-layout-from-settings" title="Återställ advisor/köp-fönstrens position och storlek">Reset vyer</button>
       </div>
@@ -10714,7 +10720,7 @@ function getDisplayName(item) {
           </select>
         </label>
 
-        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.9.0. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
+        <label title="Hur stor del av maxköpet smartläget får köpa åt gången.">Smart unit chunk % ${helpIcon("25% är Recommended Smart i 0.10.1. Det betyder upp till 25% av safe max per action, men reserve/payback/Nexus-skydd kan fortfarande blockera köp.")}
           <input id="kbc-smart-unit-percent" type="number" min="0.1" max="100" step="1">
         </label>
 
