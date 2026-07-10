@@ -1,0 +1,41 @@
+{
+  "exportedAt": "2026-07-10T06:16:02.592Z",
+  "commitSha": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+  "branch": "main",
+  "scriptVersion": "0.11.7",
+  "scenarioReportVersion": "0.11.7",
+  "batch": {
+    "scenarioCount": 14,
+    "cycleCount": 16,
+    "invariantCount": 38,
+    "failedInvariants": 0,
+    "setupErrors": 0,
+    "runtimeErrors": 0
+  },
+  "focus": {
+    "H3": { "pass": true, "failedInvariants": 0 },
+    "H4": { "pass": true, "failedInvariants": 0 },
+    "H5": { "pass": true, "failedInvariants": 0 },
+    "R2": { "pass": true, "failedInvariants": 0 },
+    "R3": { "pass": true, "failedInvariants": 0 },
+    "R8": { "pass": true, "failedInvariants": 0, "cycle1Pass": true, "cycle2Pass": true }
+  },
+  "gatingOff": {
+    "pass": true,
+    "error": "Scenario harness is disabled. Enable explicitly with localStorage key kbcSwarmBotScenarioHarnessEnabled_v1=true."
+  },
+  "restorationLeak": {
+    "pass": true,
+    "scenarioLeaks": 0,
+    "details": {
+      "runAActionUnitCount": "12.3K",
+      "runBActionUnitCount": "7",
+      "liveStateUnchanged": true
+    }
+  },
+  "notes": [
+    "Deterministic harness command writes are suppressed during scenario runs.",
+    "Forced meat-plan overrides affect pre-planner plan construction only.",
+    "No scenario-id-specific runtime branching for R8/H3/H4/H5/R2/R3 found in runtime-main.js."
+  ]
+}
