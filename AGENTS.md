@@ -2,161 +2,222 @@
 
 ## Role
 
-This is not a gameplay strategy agent. It is a repository/process guard for AI
-coding agents.
+This is the mandatory repository and process guard for AI coding agents working in this repository.
 
 Its job is to:
 
-- start from the correct source of truth
-- preserve repo structure
-- keep hotfixes narrow
+- start from the correct Git source of truth
+- preserve repository structure
+- keep fixes narrow
 - protect hard safety defaults
-- validate before PR
-- avoid duplicate artifacts
+- separate implementation from verification evidence
+- make every final claim reconstructable from Git history
+- avoid duplicate or stale artifacts
 
-## Canonical source
+## Canonical source map
 
-The only executable Tampermonkey script source is:
+The only executable Tampermonkey userscript is:
 
 ```text
 src/SwarmSim-Strategy-Autobuyer.user.js
 ```
 
-The active game model is:
+The configured runtime assembly source is:
+
+```text
+dev-src/runtime-sections/runtime-main.js
+```
+
+Inspect this before editing:
+
+```text
+scripts/canonical-build.config.json
+```
+
+The active game and strategy model is:
 
 ```text
 docs/SWARMSIM_GAME_MODEL.md
 ```
 
-Release history is tracked through Git commits, tags, `docs/HISTORY.md`, and
-`docs/release-notes/`.
-
-Do not create:
-
-- `.txt` script mirrors
-- duplicate `.user.js` files in `releases/`
-- duplicate release-note trees in `releases/`
-- byte-identical script copies outside `src/`
-
-Development modular scaffolds may live under:
+The Laboratory contract is:
 
 ```text
-dev-src/
+docs/laboratory/SWARMSIM_LABORATORY_PHASE_1.md
 ```
 
-but they are non-executable and must not become a byte-identical full copy of
-the canonical userscript.
+Release history is tracked through Git commits, tags, `docs/HISTORY.md`, and `docs/release-notes/`.
+
+Empirical evidence belongs under `docs/live-logs/` and versioned `docs/test-data/` paths.
 
 ## Required reading order
 
-Before code changes, read:
+Before changing code, read:
 
 1. `AGENTS.md`
 2. `AI.md`
 3. `docs/SWARMSIM_GAME_MODEL.md`
-4. `src/SwarmSim-Strategy-Autobuyer.user.js`
-5. relevant `docs/prompts/`
-6. relevant `docs/release-notes/`
-7. relevant `docs/live-logs/`
-8. `reference/` only when needed
+4. `scripts/canonical-build.config.json`
+5. `docs/GIT_VERIFICATION_PROTOCOL.md`
+6. relevant `docs/prompts/`
+7. relevant `docs/release-notes/`
+8. relevant `docs/live-logs/` and `docs/test-data/`
+9. `dev-src/runtime-sections/runtime-main.js`
+10. `src/SwarmSim-Strategy-Autobuyer.user.js`
+11. relevant verifier scripts and `package.json`
+12. `reference/` only when needed for sanity checks
 
-For modularization tasks, also read:
+For modularization tasks, also read `docs/MODULARIZATION_PLAN.md` and relevant `dev-src/` modules.
 
-9. `docs/MODULARIZATION_PLAN.md`
-10. relevant `dev-src/` modules
+Search by function, constant, schema, and test name. Do not rely on line numbers from an older commit.
 
-Do not use old dated game-model files or indexed AI snapshots as active truth.
+Do not use old dated game-model files, uploaded scripts, stale reports, or indexed AI snapshots as current truth.
 
 ## Optimization posture
 
 The project posture is methodical optimization, not passive caution.
 
-The bot should be logical, evidence-based, and transparent. It should optimize
-normal progression when the math and the selected user mode support action.
-Hard safety defaults exist to block irreversible or high-risk automation, not to
-make ordinary progression timid.
+The bot should be logical, evidence-based, and transparent. It should optimize normal reversible progression when the math and selected user mode support action.
 
-User-facing modes should be understood as:
+Hard safety defaults block irreversible or high-risk automation. They are not permission to make ordinary progression timid.
 
-- Advisor Mode: explain opportunities and risks so the user can play manually.
-- Methodical Optimizer: default Smart behavior; goal-driven, rebuild/payback
-  aware, and willing to buy when evidence says the action is correct.
-- High-Tempo Optimizer: future explicit user-selected mode; may push progression
-  harder, but must remain observable and must not bypass hard safety defaults
-  without explicit user choice.
+User-facing modes:
 
-## Hard safety defaults that must not change unless explicitly requested
+- Advisor Mode: explain opportunities, risks, and timing for manual play.
+- Methodical Optimizer: default Smart behavior; goal-driven, rebuild/payback aware, and willing to act when evidence supports it.
+- Higher-tempo modes: explicit future or user-selected behavior only, still observable and still bounded by hard safety rules.
 
-- `autoCastAbilities` must default false
-- `autoAscend` must default false
+## Hard safety defaults
+
+These must not change unless explicitly requested:
+
+- `autoCastAbilities` defaults to false
+- `autoAscend` defaults to false
+- `energySupportBrokerAllowAutoCast` defaults to false
 - no Clone Larvae auto-cast by default
 - no House of Mirrors auto-cast by default
 - no Nightbug/Bat auto-buy by default
-- Nexus/energy protection must remain enabled
-- Smart planners must not use aggressive buyMax behavior by default
+- Nexus and Energy protection remain enabled
+- default Smart planners do not use blind aggressive buyMax behavior
+- Laboratory remains gated, manually triggered, read-only, and simulation-only
 
-These defaults are hard safety guardrails. They are not permission to make the
-bot passive when a normal, reversible, well-scored progression action is clearly
-correct.
+These are hard boundaries, not a directive to under-optimize reversible normal purchases.
 
-## Hotfix rules
+## Repository hygiene
 
-For hotfixes:
+Do not create:
 
-- branch from current `origin/main`
+- `.txt` mirrors of the userscript
+- duplicate executable `.user.js` files
+- duplicate release-note trees
+- byte-identical userscript copies outside `src/`
+
+Development scaffolding may live under `dev-src/`, but it is non-executable and must not become an uncontrolled duplicate of the canonical userscript.
+
+Dependency and transient directories must not pollute Git status. At minimum, `node_modules/` must remain ignored.
+
+Do not force-push or rewrite history.
+
+## Narrow-change rule
+
+For every patch:
+
 - fix only the named issue
 - do not add unrelated strategy
 - do not widen automation unless explicitly requested
+- do not change safety thresholds unless explicitly requested
 - avoid unrelated refactors
-- update version markers only when requested
-- update docs/release notes only when relevant
-- keep PR diff small
-- after squash merge, do not keep working on the old feature branch
+- update observability when behavior changes
+- preserve Decimal precision
+- preserve deterministic hashes and non-mutation guarantees where applicable
+- keep scenario and test fixtures honest
+- never rewrite expectations merely to force a pass
 
-## Branch/PR hygiene
+## Git workflow
 
-Before starting in a Git checkout:
+Use the repository workflow explicitly authorized by the user for the current task.
 
-```bash
-git fetch origin
-git checkout main
-git pull --ff-only origin main
-git checkout -b feature/<short-descriptive-name>
+When the user authorizes direct work on `main`:
+
+- synchronize first
+- keep commits small and scoped
+- push completed implementation work normally
+- never force-push
+
+When a branch or PR workflow is requested, follow that workflow instead.
+
+Do not invent branch, push, HEAD, origin/main, or working-tree status. Read it from Git.
+
+## Mandatory implementation, verification, and evidence separation
+
+Every formal code/version verification must follow:
+
+```text
+docs/GIT_VERIFICATION_PROTOCOL.md
 ```
 
-If the working directory is not a Git checkout, do not invent branch state. Say
-so, keep changes narrow, and list the files changed.
+This is a hard gate, not optional guidance.
 
-If a PR branch was squash-merged:
+The required sequence is:
 
-- checkout `main`
-- pull `main`
-- delete the old feature branch locally
-- do not press Sync Changes on the old feature branch
+1. complete authored implementation, test, verifier, fixture, version, and release-note changes
+2. commit and push the implementation
+3. record the exact full implementation SHA and tree SHA
+4. re-synchronize to that exact SHA with a clean working tree
+5. classify every command as either a pure check or an evidence generator
+6. run the complete required suite against the exact implementation SHA
+7. allow dirty state only in predeclared generated-evidence paths
+8. stop on any unexpected code, verifier, fixture, package, or configuration change
+9. after the full suite passes, commit only generated evidence in a separate evidence commit
+10. push evidence
+11. report completion only when `HEAD == origin/main` and the working tree is clean
 
-Commit/push cadence for AI agents:
+A command named `verify` is not assumed to be read-only. Inspect what it writes before running it.
 
-- keep changes scoped and checkpoint often
-- create small commits per completed sub-task
-- push after each completed sub-task so work is not mixed together
-- do not batch unrelated changes into one large commit
+Expected generated evidence changes, including timestamps, normalized drift, snapshot hashes, experiment hashes, Markdown, CSV, JSON, and Copy Summary files, are allowed only when:
+
+- the command was declared an evidence generator
+- the exact paths were allowlisted before execution
+- no implementation or verifier source changed
+- the entire suite passed
+- the evidence records the exact implementation SHA
+- the outputs are committed separately after verification
+
+Do not stop merely because an evidence generator changed its declared evidence files. Do stop for any change outside the allowlist.
+
+Do not create a final verdict from:
+
+- a dirty implementation tree
+- an unpushed implementation commit
+- tests run before the implementation commit existed
+- tests whose exact SHA is unknown
+- a partial verification suite
+- implementation and final evidence mixed in one commit
+
+Intermediate status is allowed, but it must be labeled intermediate and must not use formal acceptance language.
 
 ## Validation
 
-Always run:
+Always run the checks required by the active work order, `package.json`, and changed subsystem.
+
+At minimum:
 
 ```bash
 node scripts/validate-repo-guardrails.js
+npm run build
+npm run verify
+git diff --check
 ```
 
-If an urgent fix is made directly in `src/SwarmSim-Strategy-Autobuyer.user.js`,
-immediately sync and validate before PR:
+Also run every relevant versioned verifier.
+
+If an urgent direct edit is made in `src/SwarmSim-Strategy-Autobuyer.user.js`, immediately synchronize and validate through the configured build pipeline:
 
 ```bash
 npm run hotfix:canonical
 ```
 
-Equivalent explicit steps:
+Equivalent explicit steps include:
 
 ```bash
 npm run sync:from-canonical
@@ -164,64 +225,61 @@ npm run build
 npm run verify
 ```
 
-The validation script runs the Tampermonkey syntax check and guards against
-unsafe defaults and duplicate script artifacts.
+For formal verification, determine before execution whether each command is a pure check or an evidence generator. Follow the exact-SHA protocol rather than assuming all commands leave the tree clean.
 
-## Release verification hard gates (browser)
+## Release verification hard gates
 
-For any formal version verification (0.x.y):
+For any formal version verification:
 
-- FAIL FAST unless all four version fields match target version:
-  1) userscript metadata `@version`
-  2) browser badge version
-  3) runtime export `scriptVersion`
-  4) scenario report `autobuyerVersion`
-- Scenario reports MUST include non-empty cycles for every executed scenario.
-- Multi-cycle acceptance scenarios (for example R8-style) MUST include cycle
-  transition trace:
-  `betweenCycleApplied`, `plannerTransitionMarker`,
-  `parentStepCompletedForRefill`, `transitionSeenByCycle`, and
-  before/after `remainingActions`.
-- It is forbidden to edit scenario expectations after execution to force pass.
-- Final verdict MUST be downgraded to `REQUIRES NEXT PATCH` if any hard gate
-  fails, even if most scenarios pass.
+- fail fast unless all required version surfaces match the target version
+- scenario reports must include non-empty cycles for every executed scenario
+- multi-cycle acceptance scenarios must include required transition trace fields
+- it is forbidden to edit expectations after execution to force a pass
+- generated evidence must identify the exact implementation SHA
+- final evidence must be in a separate commit after the implementation commit
+- final verdict must be downgraded when any hard gate fails
 
-PR body should include:
+A final report must include:
 
+- implementation SHA
+- evidence SHA
+- exact commands and exit codes
+- evidence paths
+- `HEAD`
+- `origin/main`
+- working-tree status
 - what changed
-- why it is narrow
+- why the change is narrow
 - safety preserved
-- validation run
-- files changed
 - what was intentionally not changed
 
-## Live-log caution
+## Browser and live-log caution
 
-When changing behavior from live logs, check:
+When changing behavior from live logs, inspect at minimum:
 
 - script version
 - decision/main/side
-- best allowed main/side
-- best rejected strategic
+- best allowed and rejected actions
 - active action unit
-- unlock candidate/reason
-- clone buffer mode/current/target/percent/debt/spendable/hard lock/source
-- ability prep reason
+- unlock candidate and reason
+- clone buffer state
+- ability preparation reason
 - purchase log
 - config summary
+- live-state non-mutation proof when Laboratory is involved
 
-Known bug patterns:
+Known recurring bug patterns include:
 
-- clone buffer shows 100% recovered but hard lock remains active
-- BUILDUP makes spendable larvae 0
-- unlock candidate uses final target instead of current action unit
+- clone buffer reports recovery while a hard lock remains
+- BUILDUP makes spendable larvae zero
+- unlock candidate uses a final target instead of the current action unit
 - target/source moves every tick and causes endless chasing
 - config and lane reasons disagree
-- lower filler is bought under active meat action unit
-- PR branch includes already-merged commits after squash merge
+- lower filler is bought under the active meat action unit
+- scenario/UI identity is confused with canonical runtime identity
+- generated evidence is mistaken for implementation source
+- verification is reported from a dirty or unpushed tree
 
 ## Core principle
 
-When in doubt: make the smallest correct fix, preserve hard safety defaults,
-improve observability, and do not invent unrelated strategy. Methodical
-optimization is allowed when it is explicitly scoped and evidence-backed.
+Make the smallest correct fix, preserve hard safety defaults, improve observability, and keep Git history sufficient for the next agent to reconstruct exactly what was implemented, what SHA was tested, what evidence was generated, and what is currently on `origin/main`.
