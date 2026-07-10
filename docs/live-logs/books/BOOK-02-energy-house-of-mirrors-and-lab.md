@@ -147,6 +147,10 @@ Purpose: summarize ability-value findings and lab-capture correctness limits.
 
 ## What to read next
 
+- For base mechanics and historical claim status:
+	`BOOK-01-base-mechanics-and-claims.md`.
+- For verification history and artifact provenance:
+	`BOOK-03-verification-history-and-artifacts.md`.
 - For the active game model: `../../SWARMSIM_GAME_MODEL.md`.
 - For the base-game claims crosscheck: `../2026-07-10-base-game-claims-crosscheck.md`.
 - For the salvaged 0.12.2 raw-evidence inventory: `../../test-data/0.12.2-laboratory/LIVE_EVIDENCE_INDEX.md`.
