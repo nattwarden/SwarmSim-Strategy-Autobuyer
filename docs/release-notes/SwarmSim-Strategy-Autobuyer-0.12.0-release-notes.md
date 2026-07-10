@@ -4,18 +4,21 @@ Date: 2026-07-10
 
 ## Summary
 
-0.12.0 starts SwarmSim Laboratory as a development-only snapshot foundation.
+0.12.0 starts SwarmSim Laboratory as a development-only snapshot foundation and adds the Phase 1 experiment runtime.
 
-This is snapshot-only:
+This remains development-only:
 
-- no action simulation
-- no WAIT projection
-- no Clone Larvae cast
-- no House of Mirrors cast
-- no CSV or Markdown experiment report
 - no total score
 - no recommendation
 - no normal autobuyer behavior change
+
+Phase 1 now includes:
+
+- action simulation for WAIT, Clone Larvae, and House of Mirrors
+- 60/300-second passive projections from the same snapshot
+- JSON, CSV, and Markdown experiment exports
+- deterministic experiment hashing
+- development-only browser/API access
 
 ## Formula Authority
 
@@ -38,10 +41,14 @@ Phase 1A references:
 ## What Changed
 
 - Added a gated `swarmsim-lab.snapshot.v1` JSON capture path.
+- Added a gated `swarmsim-lab.result.v1` experiment path for the three Phase 1 branches.
+- Added pure action applicators, passive projection, comparison, and export helpers.
+- Added a development-only Laboratory browser/API runner.
 - Added `formulaProvenance.sourceCommit` with the pinned base-game commit.
 - Captured Energy, larvae, cocoons, territory, meat producer coefficients, Expansion consistency, Clone Larvae observability, and House of Mirrors army inputs.
 - Added deterministic canonical JSON hash rules with `snapshotHashScope: deterministic-payload-v1`.
 - Added local Laboratory snapshot contract checks to `npm run verify`.
+- Added browser-based Phase 1 verification evidence and example result artifacts.
 - Updated documentation for Phase 1A scope, hash rules, development gating, formula provenance, and known baseline limitations.
 
 ## Safety

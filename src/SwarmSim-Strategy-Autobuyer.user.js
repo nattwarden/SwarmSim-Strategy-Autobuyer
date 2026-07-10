@@ -5877,6 +5877,755 @@ function getDisplayName(item) {
     return laboratoryDeepFreeze(snapshot);
   }
 
+  const LABORATORY_PHASE1_ACTION_SCHEMA_VERSION = "swarmsim-lab.action.v1";
+  const LABORATORY_PHASE1_RESULT_SCHEMA_VERSION = "swarmsim-lab.result.v1";
+  const LABORATORY_PHASE1_ACTION_IDS = ["WAIT", "CLONE_LARVAE", "HOUSE_OF_MIRRORS"];
+  const LABORATORY_PHASE1_HORIZONS_SECONDS = ["60", "300"];
+  const LABORATORY_PHASE1_AFFECTED_UNIT_IDS = ["swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
+
+  function laboratoryCloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function laboratoryDecimalOrNull(value) {
+    if (value === null || value === undefined || value === "") return null;
+    try {
+      return decimalFrom(value);
+    } catch {
+      return null;
+    }
+  }
+
+  function laboratoryStringOrNull(value) {
+    if (value === null || value === undefined) return null;
+    return laboratoryDecimalString(value);
+  }
+
+  function laboratoryBoolean(value) {
+    return !!value;
+  }
+
+  function laboratoryCsvEscape(value) {
+    const text = value === null || value === undefined ? "" : String(value);
+    if (!/[",\n\r]/.test(text)) return text;
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  function laboratoryJoinWarnings(warnings) {
+    return (warnings || []).filter(Boolean).join(" | ");
+  }
+
+  function laboratoryValidateSnapshotShape(snapshot) {
+    const warnings = [];
+    const errors = [];
+    if (!snapshot || typeof snapshot !== "object") errors.push("snapshot is missing");
+    if (snapshot?.schemaVersion !== "swarmsim-lab.snapshot.v1") errors.push("unexpected snapshot schemaVersion");
+    if (snapshot?.kind !== "deterministic-simulation-snapshot") errors.push("unexpected snapshot kind");
+    if (!snapshot?.snapshotId) errors.push("snapshotId is missing");
+    if (!snapshot?.snapshotHash) errors.push("snapshotHash is missing");
+    if (!snapshot?.source?.scriptVersion) errors.push("source.scriptVersion is missing");
+    if (!snapshot?.resources?.energy) errors.push("energy resource is missing");
+    if (!snapshot?.resources?.larvae) errors.push("larvae resource is missing");
+    if (!snapshot?.resources?.cocoons) errors.push("cocoons resource is missing");
+    if (!snapshot?.resources?.territory) errors.push("territory resource is missing");
+    if (!snapshot?.abilities?.cloneLarvae) errors.push("cloneLarvae ability snapshot is missing");
+    if (!snapshot?.abilities?.houseOfMirrors) errors.push("houseOfMirrors ability snapshot is missing");
+    if (!snapshot?.army?.houseOfMirrorsAffectedUnits) errors.push("army snapshot is missing");
+    if (!snapshot?.expansion) errors.push("expansion snapshot is missing");
+    if (!snapshot?.formulaProvenance) errors.push("formulaProvenance is missing");
+    return { ok: errors.length === 0, errors, warnings };
+  }
+
+  function laboratoryActionDefinition(actionId) {
+    const normalized = String(actionId || "").toUpperCase();
+    if (normalized === "WAIT") return { schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION, actionId: "WAIT", requestedAtSeconds: "0", castCount: 0 };
+    if (normalized === "CLONE_LARVAE") return { schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION, actionId: "CLONE_LARVAE", requestedAtSeconds: "0", castCount: 1 };
+    if (normalized === "HOUSE_OF_MIRRORS") return { schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION, actionId: "HOUSE_OF_MIRRORS", requestedAtSeconds: "0", castCount: 1 };
+    return null;
+  }
+
+  function laboratoryValidateActionDefinition(action) {
+    const warnings = [];
+    if (!action || typeof action !== "object") {
+      return { ok: false, error: "action is missing", warnings };
+    }
+    if (action.schemaVersion !== LABORATORY_PHASE1_ACTION_SCHEMA_VERSION) {
+      return { ok: false, error: `unexpected action schemaVersion ${action.schemaVersion || "missing"}`, warnings };
+    }
+    const normalized = laboratoryActionDefinition(action.actionId);
+    if (!normalized) {
+      return { ok: false, error: `unsupported actionId ${String(action.actionId || "")}`, warnings };
+    }
+    if (laboratoryStringOrNull(action.requestedAtSeconds) !== "0") {
+      return { ok: false, error: "requestedAtSeconds must be 0", warnings };
+    }
+    if (Number(action.castCount) !== normalized.castCount) {
+      return { ok: false, error: `castCount must be ${normalized.castCount} for ${normalized.actionId}`, warnings };
+    }
+    return { ok: true, warnings, normalized };
+  }
+
+  function laboratoryTerritoryArmyMap(snapshot) {
+    const rows = snapshot?.army?.houseOfMirrorsAffectedUnits || [];
+    const map = {};
+    for (const row of rows) {
+      map[row.unitId] = {
+        unitId: row.unitId,
+        count: laboratoryStringOrNull(row.count),
+        effectiveTerritoryPerSecondPerUnit: laboratoryStringOrNull(row.effectiveTerritoryPerSecondPerUnit),
+        territoryPerSecondContribution: laboratoryStringOrNull(row.territoryPerSecondContribution),
+        affectedByHouseOfMirrors: true,
+      };
+    }
+    return map;
+  }
+
+  function laboratoryCurrentEnergyCap(snapshot) {
+    const cap = laboratoryDecimalOrNull(snapshot?.resources?.energy?.cap);
+    if (!cap) return null;
+    try {
+      return cap.greaterThan(0) ? cap : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function laboratoryEnergyReserveRequired(snapshot) {
+    return laboratoryDecimalOrNull(snapshot?.safety?.requiredReserve) || newDecimal(0);
+  }
+
+  function laboratoryCloneLarvaeImmediate(snapshot, warnings) {
+    const available = !!snapshot?.abilities?.cloneLarvae?.available;
+    const energyBefore = laboratoryDecimalOrNull(snapshot?.resources?.energy?.amount) || newDecimal(0);
+    const energyCost = laboratoryDecimalOrNull(snapshot?.abilities?.cloneLarvae?.energyCost) || newDecimal(0);
+    if (!available || energyBefore.lessThan(energyCost)) {
+      return { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, warnings: warnings.concat(!available ? ["Clone Larvae unavailable"] : ["not enough energy"]) };
+    }
+
+    const inputs = snapshot?.abilities?.cloneLarvae?.formulaInputs || {};
+    const computed = laboratoryDecimalOrNull(inputs.sourceVerifiedOutput);
+    const preview = laboratoryDecimalOrNull(snapshot?.abilities?.cloneLarvae?.runtimePreviewOutput);
+    const actionWarnings = warnings.slice();
+    let status = "ok";
+    if (!computed) {
+      status = "incomplete-formula";
+      actionWarnings.push("Clone Larvae output is unavailable");
+    } else if (preview && !laboratoryDecimalEquals(preview, computed)) {
+      status = "formula-mismatch";
+      actionWarnings.push("Clone Larvae computed output does not match runtime preview");
+    }
+
+    const larvaeBefore = laboratoryDecimalOrNull(snapshot?.resources?.larvae?.amount) || newDecimal(0);
+    const cocoonsBefore = laboratoryDecimalOrNull(snapshot?.resources?.cocoons?.amount) || newDecimal(0);
+    const reserveRequired = laboratoryEnergyReserveRequired(snapshot);
+    const energyAfterAction = energyBefore.minus(energyCost);
+    const reserveAfterAction = energyAfterAction.minus(reserveRequired);
+    const safetyViolation = reserveAfterAction.lessThan(0);
+    return {
+      ok: true,
+      status,
+      actionLegal: true,
+      actionApplied: true,
+      actionSafetySafe: !safetyViolation,
+      immediate: {
+        schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION,
+        actionId: "CLONE_LARVAE",
+        actionLegal: true,
+        actionApplied: true,
+        actionSafetySafe: !safetyViolation,
+        energyBefore: laboratoryDecimalString(energyBefore),
+        energyCost: laboratoryDecimalString(energyCost),
+        energyAfterAction: laboratoryDecimalString(energyAfterAction),
+        reserveRequired: laboratoryDecimalString(reserveRequired),
+        reserveAfterAction: laboratoryDecimalString(reserveAfterAction),
+        safetyViolation,
+        larvaeBefore: laboratoryDecimalString(larvaeBefore),
+        larvaeAfterAction: laboratoryDecimalString(larvaeBefore.plus(computed || newDecimal(0))),
+        cocoonsBefore: laboratoryDecimalString(cocoonsBefore),
+        cocoonsAfterAction: laboratoryDecimalString(cocoonsBefore),
+        territoryBefore: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
+        territoryPerSecondBefore: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
+        territoryPerSecondAfterAction: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
+        affectedArmyCountsBefore: laboratoryTerritoryArmyMap(snapshot),
+        affectedArmyCountsAfter: laboratoryTerritoryArmyMap(snapshot),
+        formulaStatus: status,
+        warnings: actionWarnings.slice(),
+      },
+      formulaValidation: { status, computed: laboratoryStringOrNull(computed), runtimePreview: laboratoryStringOrNull(preview), warnings: actionWarnings.slice() },
+      warnings: actionWarnings,
+      base: {
+        energyBefore,
+        energyCost,
+        energyAfterAction,
+        reserveRequired,
+        reserveAfterAction,
+        safetyViolation,
+        larvaeBefore,
+      },
+    };
+  }
+
+  function laboratoryHouseOfMirrorsImmediate(snapshot, warnings) {
+    const available = !!snapshot?.abilities?.houseOfMirrors?.available;
+    const energyBefore = laboratoryDecimalOrNull(snapshot?.resources?.energy?.amount) || newDecimal(0);
+    const energyCost = laboratoryDecimalOrNull(snapshot?.abilities?.houseOfMirrors?.energyCost) || newDecimal(0);
+    if (!available || energyBefore.lessThan(energyCost)) {
+      return { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, warnings: warnings.concat(!available ? ["House of Mirrors unavailable"] : ["not enough energy"]) };
+    }
+
+    const affectedUnits = snapshot?.army?.houseOfMirrorsAffectedUnits || [];
+    const affectedBefore = laboratoryTerritoryArmyMap(snapshot);
+    const affectedAfter = laboratoryCloneJson(affectedBefore);
+    const unaffectedTerritoryPerSecond = laboratoryDecimalOrNull(snapshot?.army?.unaffectedTerritoryPerSecond) || newDecimal(0);
+    let affectedAfterTotal = newDecimal(0);
+    const actionWarnings = warnings.slice();
+    let status = "ok";
+
+    for (const row of affectedUnits) {
+      const beforeCount = laboratoryDecimalOrNull(row.count) || newDecimal(0);
+      const perUnit = laboratoryDecimalOrNull(row.effectiveTerritoryPerSecondPerUnit) || newDecimal(0);
+      const afterCount = beforeCount.times(2);
+      const afterContribution = laboratoryFloorDecimal(afterCount).times(perUnit);
+      affectedAfterTotal = affectedAfterTotal.plus(afterContribution);
+      affectedAfter[row.unitId] = {
+        unitId: row.unitId,
+        count: laboratoryDecimalString(afterCount),
+        effectiveTerritoryPerSecondPerUnit: laboratoryDecimalString(perUnit),
+        territoryPerSecondContribution: laboratoryDecimalString(afterContribution),
+        affectedByHouseOfMirrors: true,
+      };
+    }
+
+    const computed = unaffectedTerritoryPerSecond.plus(affectedAfterTotal);
+    const preview = laboratoryDecimalOrNull(snapshot?.abilities?.houseOfMirrors?.runtimePreviewTerritoryPerSecondAfter);
+    if (preview && !laboratoryDecimalEquals(preview, computed)) {
+      status = "formula-mismatch";
+      actionWarnings.push("House of Mirrors computed territory/sec does not match runtime preview");
+    }
+
+    const reserveRequired = laboratoryEnergyReserveRequired(snapshot);
+    const energyAfterAction = energyBefore.minus(energyCost);
+    const reserveAfterAction = energyAfterAction.minus(reserveRequired);
+    const safetyViolation = reserveAfterAction.lessThan(0);
+
+    return {
+      ok: true,
+      status,
+      actionLegal: true,
+      actionApplied: true,
+      actionSafetySafe: !safetyViolation,
+      immediate: {
+        schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION,
+        actionId: "HOUSE_OF_MIRRORS",
+        actionLegal: true,
+        actionApplied: true,
+        actionSafetySafe: !safetyViolation,
+        energyBefore: laboratoryDecimalString(energyBefore),
+        energyCost: laboratoryDecimalString(energyCost),
+        energyAfterAction: laboratoryDecimalString(energyAfterAction),
+        reserveRequired: laboratoryDecimalString(reserveRequired),
+        reserveAfterAction: laboratoryDecimalString(reserveAfterAction),
+        safetyViolation,
+        larvaeBefore: laboratoryDecimalString(snapshot?.resources?.larvae?.amount || 0),
+        larvaeAfterAction: laboratoryDecimalString(snapshot?.resources?.larvae?.amount || 0),
+        cocoonsBefore: laboratoryDecimalString(snapshot?.resources?.cocoons?.amount || 0),
+        cocoonsAfterAction: laboratoryDecimalString(snapshot?.resources?.cocoons?.amount || 0),
+        territoryBefore: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
+        territoryPerSecondBefore: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
+        territoryPerSecondAfterAction: laboratoryDecimalString(computed),
+        affectedArmyCountsBefore: affectedBefore,
+        affectedArmyCountsAfter: affectedAfter,
+        formulaStatus: status,
+        warnings: actionWarnings.slice(),
+      },
+      formulaValidation: { status, computed: laboratoryStringOrNull(computed), runtimePreview: laboratoryStringOrNull(preview), warnings: actionWarnings.slice() },
+      warnings: actionWarnings,
+      base: {
+        energyBefore,
+        energyCost,
+        energyAfterAction,
+        reserveRequired,
+        reserveAfterAction,
+        safetyViolation,
+        territoryPerSecondAfterAction: computed,
+      },
+    };
+  }
+
+  function laboratoryWaitImmediate(snapshot, warnings) {
+    const energyBefore = laboratoryDecimalOrNull(snapshot?.resources?.energy?.amount) || newDecimal(0);
+    const reserveRequired = laboratoryEnergyReserveRequired(snapshot);
+    const energyAfterAction = energyBefore;
+    const reserveAfterAction = energyAfterAction.minus(reserveRequired);
+    const safetyViolation = reserveAfterAction.lessThan(0);
+    return {
+      ok: true,
+      status: "ok",
+      actionLegal: true,
+      actionApplied: true,
+      actionSafetySafe: !safetyViolation,
+      immediate: {
+        schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION,
+        actionId: "WAIT",
+        actionLegal: true,
+        actionApplied: true,
+        actionSafetySafe: !safetyViolation,
+        energyBefore: laboratoryDecimalString(energyBefore),
+        energyCost: "0",
+        energyAfterAction: laboratoryDecimalString(energyAfterAction),
+        reserveRequired: laboratoryDecimalString(reserveRequired),
+        reserveAfterAction: laboratoryDecimalString(reserveAfterAction),
+        safetyViolation,
+        larvaeBefore: laboratoryDecimalString(snapshot?.resources?.larvae?.amount || 0),
+        larvaeAfterAction: laboratoryDecimalString(snapshot?.resources?.larvae?.amount || 0),
+        cocoonsBefore: laboratoryDecimalString(snapshot?.resources?.cocoons?.amount || 0),
+        cocoonsAfterAction: laboratoryDecimalString(snapshot?.resources?.cocoons?.amount || 0),
+        territoryBefore: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
+        territoryPerSecondBefore: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
+        territoryPerSecondAfterAction: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
+        affectedArmyCountsBefore: laboratoryTerritoryArmyMap(snapshot),
+        affectedArmyCountsAfter: laboratoryTerritoryArmyMap(snapshot),
+        formulaStatus: "ok",
+        warnings: warnings.slice(),
+      },
+      formulaValidation: { status: "ok", computed: null, runtimePreview: null, warnings: warnings.slice() },
+      warnings: warnings.slice(),
+      base: {
+        energyBefore,
+        energyCost: newDecimal(0),
+        energyAfterAction,
+        reserveRequired,
+        reserveAfterAction,
+        safetyViolation,
+      },
+    };
+  }
+
+  function laboratoryProjectState(snapshot, postAction, horizonSeconds) {
+    const warnings = [];
+    const horizon = laboratoryDecimalOrNull(horizonSeconds);
+    if (!horizon || !(Number(horizonSeconds) === 60 || Number(horizonSeconds) === 300)) {
+      return { ok: false, status: "simulation-error", warnings: ["unsupported horizon"], metrics: null };
+    }
+
+    const energyCap = laboratoryCurrentEnergyCap(snapshot);
+    const energyPerSecond = laboratoryDecimalOrNull(snapshot?.resources?.energy?.perSecond) || newDecimal(0);
+    const larvaePerSecond = laboratoryDecimalOrNull(snapshot?.resources?.larvae?.perSecond) || newDecimal(0);
+    const cocoonsPerSecond = laboratoryDecimalOrNull(snapshot?.resources?.cocoons?.perSecond) || newDecimal(0);
+    const territoryBefore = laboratoryDecimalOrNull(snapshot?.resources?.territory?.amount) || newDecimal(0);
+    const territoryPerSecondAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.territoryPerSecondAfterAction) || newDecimal(0);
+    const energyAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.energyAfterAction) || newDecimal(0);
+    const larvaeAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.larvaeAfterAction) || newDecimal(0);
+    const cocoonsAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.cocoonsAfterAction) || newDecimal(0);
+    const reserveAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.reserveAfterAction) || newDecimal(0);
+    const territoryAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.territoryBefore) || territoryBefore;
+    const energyAfterHorizonRaw = energyAfterAction.plus(energyPerSecond.times(horizon));
+    const energyAfterHorizon = energyCap ? decimalMin(energyAfterHorizonRaw, energyCap) : energyAfterHorizonRaw;
+    const larvaeAfterHorizon = larvaeAfterAction.plus(larvaePerSecond.times(horizon));
+    const cocoonsAfterHorizon = cocoonsAfterAction.plus(cocoonsPerSecond.times(horizon));
+    const territoryAfterHorizon = territoryAfterAction.plus(territoryPerSecondAfterAction.times(horizon));
+    const nextCost = laboratoryDecimalOrNull(snapshot?.expansion?.nextCost);
+    let expansionTerritoryRemaining = null;
+    let expansionEtaSecondsAfter = null;
+    let expansionEtaReason = null;
+    if (nextCost) {
+      const remaining = nextCost.minus(territoryAfterHorizon);
+      expansionTerritoryRemaining = remaining.greaterThan(0) ? remaining : newDecimal(0);
+      if (remaining.lessThanOrEqualTo(0)) {
+        expansionEtaSecondsAfter = newDecimal(0);
+      } else if (territoryPerSecondAfterAction.greaterThan(0)) {
+        expansionEtaSecondsAfter = remaining.dividedBy(territoryPerSecondAfterAction);
+      } else {
+        expansionEtaSecondsAfter = null;
+        expansionEtaReason = "territory/sec after action is zero or unavailable";
+      }
+    }
+
+    const meatProjection = laboratoryMeatProjectionAtHorizon(snapshot?.resources?.meat?.rateProjection, horizon, warnings, postAction.formulaValidation || { status: "ok" });
+    const formulaStatus = postAction?.status || "ok";
+
+    return {
+      ok: true,
+      status: formulaStatus,
+      warnings,
+      metrics: {
+        larvaeAfter: laboratoryStringOrNull(larvaeAfterHorizon),
+        cocoonsAfter: laboratoryStringOrNull(cocoonsAfterHorizon),
+        meatPerSecondAfter: laboratoryStringOrNull(meatProjection),
+        territoryAfter: laboratoryStringOrNull(territoryAfterHorizon),
+        territoryPerSecondAfter: laboratoryStringOrNull(territoryPerSecondAfterAction),
+        energyAfter: laboratoryStringOrNull(energyAfterHorizon),
+        expansionTerritoryRemaining: laboratoryStringOrNull(expansionTerritoryRemaining),
+        expansionEtaSecondsAfter: laboratoryStringOrNull(expansionEtaSecondsAfter),
+        reserveAfterAction: laboratoryStringOrNull(reserveAfterAction),
+        safetyViolation: laboratoryBoolean(postAction?.immediate?.safetyViolation),
+        formulaStatus,
+      },
+      detailed: {
+        horizonSeconds: laboratoryStringOrNull(horizon),
+        energyCap: laboratoryStringOrNull(energyCap),
+        energyAfterAction: laboratoryStringOrNull(energyAfterAction),
+        energyPerSecond: laboratoryStringOrNull(energyPerSecond),
+        larvaeAfterAction: laboratoryStringOrNull(larvaeAfterAction),
+        larvaePerSecond: laboratoryStringOrNull(larvaePerSecond),
+        cocoonsAfterAction: laboratoryStringOrNull(cocoonsAfterAction),
+        cocoonsPerSecond: laboratoryStringOrNull(cocoonsPerSecond),
+        territoryAfterAction: laboratoryStringOrNull(territoryAfterAction),
+        territoryPerSecondAfterAction: laboratoryStringOrNull(territoryPerSecondAfterAction),
+        expansionEtaReason,
+      },
+    };
+  }
+
+  function laboratoryMeatProjectionAtHorizon(rateProjection, horizonSeconds, warnings, formulaValidation) {
+    const horizon = laboratoryDecimalOrNull(horizonSeconds);
+    const coefficients = Array.isArray(rateProjection?.coefficients) ? rateProjection.coefficients : null;
+    if (!coefficients || !coefficients.length || rateProjection?.validation !== "source-verified") {
+      warnings.push("meat/sec projection is unavailable or unvalidated; keeping meat/sec null");
+      formulaValidation.status = formulaValidation.status === "ok" ? "incomplete-formula" : formulaValidation.status;
+      return null;
+    }
+    if (!horizon) {
+      warnings.push("meat/sec projection horizon is unavailable");
+      formulaValidation.status = formulaValidation.status === "ok" ? "incomplete-formula" : formulaValidation.status;
+      return null;
+    }
+
+    let total = newDecimal(0);
+    for (let degree = 1; degree < coefficients.length; degree++) {
+      const coefficient = laboratoryDecimalOrNull(coefficients[degree]);
+      if (!coefficient) {
+        warnings.push(`meat/sec coefficient ${degree} is unavailable`);
+        formulaValidation.status = formulaValidation.status === "ok" ? "incomplete-formula" : formulaValidation.status;
+        return null;
+      }
+      let power = newDecimal(1);
+      for (let step = 0; step < degree - 1; step++) {
+        power = power.times(horizon);
+      }
+      let factorial = newDecimal(1);
+      for (let step = 2; step <= degree - 1; step++) factorial = factorial.times(step);
+      total = total.plus(coefficient.times(power).dividedBy(factorial));
+    }
+    return total;
+  }
+
+  function laboratoryComparisonVsWait(actionMetrics, waitMetrics) {
+    if (!actionMetrics || !waitMetrics) return null;
+    const waitTerritoryPerSecond = laboratoryDecimalOrNull(waitMetrics.territoryPerSecondAfter);
+    const actionTerritoryPerSecond = laboratoryDecimalOrNull(actionMetrics.territoryPerSecondAfter);
+    const actionEta = laboratoryDecimalOrNull(actionMetrics.expansionEtaSecondsAfter);
+    const waitEta = laboratoryDecimalOrNull(waitMetrics.expansionEtaSecondsAfter);
+    return {
+      larvaeAbsoluteDelta: laboratoryNumericDelta(actionMetrics.larvaeAfter, waitMetrics.larvaeAfter),
+      cocoonsAbsoluteDelta: laboratoryNumericDelta(actionMetrics.cocoonsAfter, waitMetrics.cocoonsAfter),
+      meatPerSecondAbsoluteDelta: laboratoryNumericDelta(actionMetrics.meatPerSecondAfter, waitMetrics.meatPerSecondAfter),
+      territoryAbsoluteDelta: laboratoryNumericDelta(actionMetrics.territoryAfter, waitMetrics.territoryAfter),
+      territoryPerSecondAbsoluteDelta: laboratoryNumericDelta(actionTerritoryPerSecond, waitTerritoryPerSecond),
+      territoryPerSecondPctDelta: waitTerritoryPerSecond && !waitTerritoryPerSecond.equals(0) && actionTerritoryPerSecond
+        ? laboratoryDecimalString(actionTerritoryPerSecond.minus(waitTerritoryPerSecond).dividedBy(waitTerritoryPerSecond).times(100))
+        : null,
+      energyAbsoluteDelta: laboratoryNumericDelta(actionMetrics.energyAfter, waitMetrics.energyAfter),
+      expansionEtaDelta: actionEta && waitEta ? laboratoryDecimalString(actionEta.minus(waitEta)) : null,
+      expansionEtaImprovementSeconds: actionEta && waitEta ? laboratoryDecimalString(waitEta.minus(actionEta)) : null,
+      reserveDelta: laboratoryNumericDelta(actionMetrics.reserveAfterAction, waitMetrics.reserveAfterAction),
+    };
+  }
+
+  function laboratoryNumericDelta(actionValue, waitValue) {
+    const actionDecimal = laboratoryDecimalOrNull(actionValue);
+    const waitDecimal = laboratoryDecimalOrNull(waitValue);
+    if (!actionDecimal || !waitDecimal) return null;
+    return laboratoryDecimalString(actionDecimal.minus(waitDecimal));
+  }
+
+  async function laboratoryRunPhase1Experiment(snapshot, options = {}) {
+    const validation = laboratoryValidateSnapshotShape(snapshot);
+    if (!validation.ok) {
+      return { ok: false, error: validation.errors.join("; "), warnings: validation.warnings.slice() };
+    }
+
+    const actions = Array.isArray(options.actions) && options.actions.length
+      ? options.actions.map((action) => (typeof action === "string" ? laboratoryActionDefinition(action) : action)).filter(Boolean)
+      : LABORATORY_PHASE1_ACTION_IDS.map((actionId) => laboratoryActionDefinition(actionId));
+    const horizons = Array.isArray(options.horizonsSeconds) && options.horizonsSeconds.length ? options.horizonsSeconds.map(String) : LABORATORY_PHASE1_HORIZONS_SECONDS.slice();
+    const experimentId = String(options.experimentId || `${snapshot.snapshotId}-P1`);
+    const formulaSetId = String(options.formulaSetId || snapshot?.formulaProvenance?.formulaSetId || "swarmsim-runtime-formulas");
+    const runs = [];
+
+    for (const action of actions) {
+      const baseWarnings = [];
+      const immediate = action?.actionId === "WAIT"
+        ? laboratoryWaitImmediate(snapshot, baseWarnings)
+        : action?.actionId === "CLONE_LARVAE"
+          ? laboratoryCloneLarvaeImmediate(snapshot, baseWarnings)
+          : action?.actionId === "HOUSE_OF_MIRRORS"
+            ? laboratoryHouseOfMirrorsImmediate(snapshot, baseWarnings)
+            : { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, warnings: ["unsupported action"] };
+
+      if (!immediate.ok) {
+        runs.push({
+          runId: `${experimentId}-${String(action?.actionId || "INVALID")}-0`,
+          actionId: String(action?.actionId || "INVALID"),
+          horizonSeconds: "0",
+          status: "invalid-action",
+          actionLegal: false,
+          actionApplied: false,
+          actionSafetySafe: false,
+          immediate: {},
+          metrics: {},
+          comparisonVsWait: null,
+          formulaValidation: { status: "invalid-action", warnings: immediate.warnings || [] },
+          warnings: immediate.warnings || [],
+        });
+        continue;
+      }
+
+      const projections = {};
+      for (const horizon of horizons) {
+        projections[String(horizon)] = laboratoryProjectState(snapshot, immediate, horizon);
+      }
+
+      for (const horizon of horizons) {
+        const projection = projections[String(horizon)];
+        const status = immediate.status === "formula-mismatch" || projection?.status === "formula-mismatch"
+          ? "formula-mismatch"
+          : projection?.status === "simulation-error"
+            ? "simulation-error"
+            : validation.errors.length
+              ? "incomplete-snapshot"
+              : immediate.status === "incomplete-formula" ? "incomplete-formula" : "ok";
+        runs.push({
+          runId: `${experimentId}-${action.actionId}-${String(horizon)}`,
+          actionId: action.actionId,
+          horizonSeconds: String(horizon),
+          status,
+          actionLegal: immediate.actionLegal,
+          actionApplied: immediate.actionApplied,
+          actionSafetySafe: immediate.actionSafetySafe,
+          immediate: immediate.immediate,
+          metrics: projection?.metrics || {},
+          comparisonVsWait: null,
+          formulaValidation: projection?.detailed ? { ...immediate.formulaValidation, projection: projection.detailed, status } : { ...immediate.formulaValidation, status },
+          warnings: [...(immediate.warnings || []), ...(projection?.warnings || [])],
+        });
+      }
+    }
+
+    const waitByHorizon = new Map();
+    for (const run of runs) {
+      if (run.actionId === "WAIT" && run.status === "ok") waitByHorizon.set(String(run.horizonSeconds), run);
+    }
+
+    for (const run of runs) {
+      if (run.actionId === "WAIT") {
+        run.comparisonVsWait = { isReference: true, referenceRunId: run.runId };
+        continue;
+      }
+      const waitRun = waitByHorizon.get(String(run.horizonSeconds));
+      if (waitRun && run.status === "ok") run.comparisonVsWait = laboratoryComparisonVsWait(run.metrics, waitRun.metrics);
+    }
+
+    const result = {
+      schemaVersion: LABORATORY_PHASE1_RESULT_SCHEMA_VERSION,
+      kind: "deterministic-simulation",
+      experimentId,
+      experimentHash: null,
+      snapshotId: snapshot.snapshotId,
+      snapshotHash: snapshot.snapshotHash,
+      scenarioId: snapshot?.source?.scenarioId || null,
+      actions: LABORATORY_PHASE1_ACTION_IDS.slice(),
+      horizonsSeconds: LABORATORY_PHASE1_HORIZONS_SECONDS.slice(),
+      postActionPolicy: "passive-only",
+      formulaSetId,
+      snapshot,
+      runs,
+      warnings: validation.warnings.slice(),
+    };
+
+    const experimentHashPayload = laboratoryCloneJson(result);
+    delete experimentHashPayload.experimentHash;
+    delete experimentHashPayload.snapshot;
+    result.experimentHash = `sha256:${await laboratorySha256(laboratoryCanonicalJson(experimentHashPayload))}`;
+    return laboratoryDeepFreeze(result);
+  }
+
+  function laboratoryExportResultJson(result) {
+    return JSON.stringify(result, null, 2);
+  }
+
+  function laboratoryExportSnapshotJson(snapshot) {
+    return JSON.stringify(snapshot, null, 2);
+  }
+
+  function laboratoryExportResultCsv(result) {
+    const header = [
+      "snapshot_id",
+      "snapshot_hash",
+      "experiment_id",
+      "experiment_hash",
+      "scenario_id",
+      "mode",
+      "action_id",
+      "horizon_seconds",
+      "status",
+      "action_legal",
+      "action_applied",
+      "action_safety_safe",
+      "energy_cost",
+      "larvae_after",
+      "larvae_delta_vs_wait",
+      "cocoons_after",
+      "cocoons_delta_vs_wait",
+      "meat_per_second_after",
+      "meat_per_second_delta_vs_wait",
+      "territory_after",
+      "territory_delta_vs_wait",
+      "territory_per_second_after",
+      "territory_per_second_delta_vs_wait",
+      "territory_per_second_pct_vs_wait",
+      "energy_after",
+      "energy_delta_vs_wait",
+      "expansion_territory_remaining",
+      "expansion_eta_seconds_after",
+      "expansion_eta_delta_vs_wait",
+      "expansion_eta_improvement_seconds_vs_wait",
+      "reserve_after_action",
+      "reserve_delta_vs_wait",
+      "safety_violation",
+      "formula_status",
+      "warnings",
+    ];
+    const rows = [header.join(",")];
+    for (const run of result?.runs || []) {
+      const comparison = run.comparisonVsWait || {};
+      rows.push([
+        result.snapshotId,
+        result.snapshotHash,
+        result.experimentId,
+        result.experimentHash,
+        result.scenarioId,
+        result.kind,
+        run.actionId,
+        run.horizonSeconds,
+        run.status,
+        laboratoryBoolean(run.actionLegal),
+        laboratoryBoolean(run.actionApplied),
+        laboratoryBoolean(run.actionSafetySafe),
+        run.immediate?.energyCost,
+        run.metrics?.larvaeAfter,
+        comparison.larvaeAbsoluteDelta,
+        run.metrics?.cocoonsAfter,
+        comparison.cocoonsAbsoluteDelta,
+        run.metrics?.meatPerSecondAfter,
+        comparison.meatPerSecondAbsoluteDelta,
+        run.metrics?.territoryAfter,
+        comparison.territoryAbsoluteDelta,
+        run.metrics?.territoryPerSecondAfter,
+        comparison.territoryPerSecondAbsoluteDelta,
+        comparison.territoryPerSecondPctDelta,
+        run.metrics?.energyAfter,
+        comparison.energyAbsoluteDelta,
+        run.metrics?.expansionTerritoryRemaining,
+        run.metrics?.expansionEtaSecondsAfter,
+        comparison.expansionEtaDelta,
+        comparison.expansionEtaImprovementSeconds,
+        run.metrics?.reserveAfterAction,
+        comparison.reserveDelta,
+        laboratoryBoolean(run.metrics?.safetyViolation),
+        run.metrics?.formulaStatus,
+        laboratoryJoinWarnings(run.warnings),
+      ].map(laboratoryCsvEscape).join(","));
+    }
+    return rows.join("\n");
+  }
+
+  function laboratoryExportResultMarkdown(result) {
+    const lines = [];
+    lines.push("# SwarmSim Laboratory Phase 1 Result");
+    lines.push("");
+    lines.push(`- Experiment ID: \`${result.experimentId}\``);
+    lines.push(`- Experiment hash: \`${result.experimentHash}\``);
+    lines.push(`- Snapshot ID: \`${result.snapshotId}\``);
+    lines.push(`- Snapshot hash: \`${result.snapshotHash}\``);
+    lines.push(`- Formula set: \`${result.formulaSetId || "swarmsim-runtime-formulas"}\``);
+    lines.push(`- Post-action policy: \`${result.postActionPolicy}\``);
+    lines.push("");
+    lines.push("WAIT, Clone Larvae, and House of Mirrors are compared from the same immutable snapshot. No total winner or global recommendation is produced.");
+    lines.push("");
+    for (const horizon of LABORATORY_PHASE1_HORIZONS_SECONDS) {
+      lines.push(`## ${horizon} seconds`);
+      lines.push("");
+      lines.push("| Action | Status | Legal | Applied | Safe | Larvae | Cocoons | Meat/sec | Territory | Territory/sec | Energy | Expansion ETA | Reserve | Safety | Formula | Warnings |");
+      lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+      for (const run of (result?.runs || []).filter((run) => run.horizonSeconds === horizon)) {
+        lines.push([
+          run.actionId,
+          run.status,
+          laboratoryBoolean(run.actionLegal),
+          laboratoryBoolean(run.actionApplied),
+          laboratoryBoolean(run.actionSafetySafe),
+          run.metrics?.larvaeAfter ?? "",
+          run.metrics?.cocoonsAfter ?? "",
+          run.metrics?.meatPerSecondAfter ?? "",
+          run.metrics?.territoryAfter ?? "",
+          run.metrics?.territoryPerSecondAfter ?? "",
+          run.metrics?.energyAfter ?? "",
+          run.metrics?.expansionEtaSecondsAfter ?? "",
+          run.metrics?.reserveAfterAction ?? "",
+          laboratoryBoolean(run.metrics?.safetyViolation),
+          run.metrics?.formulaStatus ?? "",
+          laboratoryJoinWarnings(run.warnings),
+        ].map((value) => `| ${String(value).replace(/\|/g, "\\|")} `).join("") + "|");
+      }
+      lines.push("");
+    }
+    const warnings = (result?.runs || []).flatMap((run) => run.warnings || []);
+    if (warnings.length) {
+      lines.push(`Warnings: ${laboratoryJoinWarnings(warnings)}`);
+    }
+    lines.push("No larvae-spending policy is active, so meat/sec is normally identical across branches unless a formula mismatch or incomplete snapshot is reported.");
+    return lines.join("\n");
+  }
+
+  function laboratoryDownloadText(fileName, text, mimeType) {
+    const blob = new Blob([text], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function laboratoryDownloadResultJson(result, fileName = null) {
+    const name = fileName || `swarm-lab-result-${result.experimentId}.json`;
+    laboratoryDownloadText(name, laboratoryExportResultJson(result), "application/json");
+    return { ok: true, fileName: name };
+  }
+
+  function laboratoryDownloadResultCsv(result, fileName = null) {
+    const name = fileName || `swarm-lab-result-${result.experimentId}.csv`;
+    laboratoryDownloadText(name, laboratoryExportResultCsv(result), "text/csv");
+    return { ok: true, fileName: name };
+  }
+
+  function laboratoryDownloadResultMarkdown(result, fileName = null) {
+    const name = fileName || `swarm-lab-result-${result.experimentId}.md`;
+    laboratoryDownloadText(name, laboratoryExportResultMarkdown(result), "text/markdown");
+    return { ok: true, fileName: name };
+  }
+
+  async function laboratoryCaptureAndRunPhase1(options = {}) {
+    const capture = await captureLaboratorySnapshot(options);
+    if (!capture?.ok) return capture;
+    const result = await laboratoryRunPhase1Experiment(capture.snapshot, options);
+    if (!result?.ok && result?.error) return result;
+    return { ok: true, snapshot: capture.snapshot, result };
+  }
+
   async function captureLaboratorySnapshot(options = {}) {
     if (!isLaboratoryDevelopmentGateEnabled()) {
       return {
@@ -13015,6 +13764,21 @@ function getDisplayName(item) {
         <button id="kbc-download-log-json" title="Ladda ner komplett loggexport som JSON">Export JSON</button>
       </div>
 
+      ${isLaboratoryDevelopmentGateEnabled() ? `
+      <div class="kbc-row">
+        <button id="kbc-lab-capture" title="Capture snapshot for Laboratory Phase 1">Lab capture</button>
+        <button id="kbc-lab-run" title="Run Laboratory Phase 1 experiment">Lab run</button>
+      </div>
+
+      <div class="kbc-row">
+        <button id="kbc-lab-download-json" title="Download Laboratory result as JSON">Lab JSON</button>
+        <button id="kbc-lab-download-csv" title="Download Laboratory result as CSV">Lab CSV</button>
+        <button id="kbc-lab-download-md" title="Download Laboratory result as Markdown">Lab MD</button>
+      </div>
+
+      <div class="kbc-note" id="kbc-lab-status">Laboratory is enabled. Capture a snapshot to start a Phase 1 run.</div>
+      ` : ""}
+
       <div class="kbc-tabs" title="Dela upp inställningarna i enklare grupper">
         <button type="button" class="kbc-tab" data-kbc-tab="main">Start</button>
         <button type="button" class="kbc-tab" data-kbc-tab="smart">Smart</button>
@@ -14160,6 +14924,57 @@ function getDisplayName(item) {
     $("#kbc-copy-log-md").addEventListener("click", () => copyLogExport("markdown"));
     $("#kbc-download-log-json").addEventListener("click", () => downloadLogExport("json"));
 
+    panel?.querySelector("#kbc-lab-capture")?.addEventListener("click", async () => {
+      const result = await captureLaboratorySnapshot();
+      const status = panel?.querySelector("#kbc-lab-status");
+      if (!result?.ok) {
+        if (status) status.textContent = result.error || "Laboratory capture failed.";
+        return;
+      }
+      if (status) status.textContent = `Snapshot ${result.snapshot.snapshotHash}`;
+      log(`Laboratory snapshot captured: ${result.snapshot.snapshotHash}`);
+    });
+
+    panel?.querySelector("#kbc-lab-run")?.addEventListener("click", async () => {
+      const capture = await captureLaboratorySnapshot();
+      const status = panel?.querySelector("#kbc-lab-status");
+      if (!capture?.ok) {
+        if (status) status.textContent = capture.error || "Laboratory capture failed.";
+        return;
+      }
+      const result = await laboratoryRunPhase1Experiment(capture.snapshot, {});
+      if (!result?.ok) {
+        if (status) status.textContent = result.error || "Laboratory run failed.";
+        return;
+      }
+      if (status) status.textContent = `Experiment ${result.experimentHash}`;
+      log(`Laboratory experiment complete: ${result.experimentHash}`);
+    });
+
+    panel?.querySelector("#kbc-lab-download-json")?.addEventListener("click", async () => {
+      const capture = await captureLaboratorySnapshot();
+      if (!capture?.ok) return;
+      const result = await laboratoryRunPhase1Experiment(capture.snapshot, {});
+      if (!result?.ok) return;
+      laboratoryDownloadResultJson(result);
+    });
+
+    panel?.querySelector("#kbc-lab-download-csv")?.addEventListener("click", async () => {
+      const capture = await captureLaboratorySnapshot();
+      if (!capture?.ok) return;
+      const result = await laboratoryRunPhase1Experiment(capture.snapshot, {});
+      if (!result?.ok) return;
+      laboratoryDownloadResultCsv(result);
+    });
+
+    panel?.querySelector("#kbc-lab-download-md")?.addEventListener("click", async () => {
+      const capture = await captureLaboratorySnapshot();
+      if (!capture?.ok) return;
+      const result = await laboratoryRunPhase1Experiment(capture.snapshot, {});
+      if (!result?.ok) return;
+      laboratoryDownloadResultMarkdown(result);
+    });
+
     strategyBar?.querySelector("#kbc-hide-strategy-bar")?.addEventListener("click", () => {
       config.strategyBar = false;
       saveConfig();
@@ -14826,6 +15641,46 @@ function getDisplayName(item) {
           },
           downloadSnapshot(options = {}) {
             return downloadLaboratorySnapshot(options);
+          },
+          validateSnapshot(snapshot) {
+            return laboratoryValidateSnapshotShape(snapshot);
+          },
+          applyAction(snapshot, action) {
+            const actionId = String(action?.actionId || action || "").toUpperCase();
+            if (actionId === "WAIT") return { snapshot, ...laboratoryWaitImmediate(snapshot, []) };
+            if (actionId === "CLONE_LARVAE") return { snapshot, ...laboratoryCloneLarvaeImmediate(snapshot, []) };
+            if (actionId === "HOUSE_OF_MIRRORS") return { snapshot, ...laboratoryHouseOfMirrorsImmediate(snapshot, []) };
+            return { snapshot, ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, actionSafetySafe: false, warnings: ["unsupported action"] };
+          },
+          projectState(postActionState, horizonSeconds) {
+            return laboratoryProjectState(postActionState?.snapshot || postActionState, postActionState, horizonSeconds);
+          },
+          async runPhase1Experiment(snapshot, options = {}) {
+            return laboratoryRunPhase1Experiment(snapshot, options);
+          },
+          exportSnapshotJson(snapshot) {
+            return laboratoryExportSnapshotJson(snapshot);
+          },
+          exportResultJson(result) {
+            return laboratoryExportResultJson(result);
+          },
+          exportResultCsv(result) {
+            return laboratoryExportResultCsv(result);
+          },
+          exportResultMarkdown(result) {
+            return laboratoryExportResultMarkdown(result);
+          },
+          downloadResultJson(result, fileName) {
+            return laboratoryDownloadResultJson(result, fileName);
+          },
+          downloadResultCsv(result, fileName) {
+            return laboratoryDownloadResultCsv(result, fileName);
+          },
+          downloadResultMarkdown(result, fileName) {
+            return laboratoryDownloadResultMarkdown(result, fileName);
+          },
+          captureAndRunPhase1(options = {}) {
+            return laboratoryCaptureAndRunPhase1(options);
           },
         },
       } : {}),

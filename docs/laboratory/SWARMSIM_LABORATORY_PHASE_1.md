@@ -1,10 +1,21 @@
 # SwarmSim Laboratory Phase 1
 
-Status: 0.12.0 Phase 1A snapshot foundation plus design specification for later Phase 1 work.
+Status: 0.12.0 Phase 1A snapshot foundation plus Phase 1 experiment runtime.
 
 ## 0.12.0 Phase 1A implementation scope
 
-0.12.0 implements the development-only snapshot foundation. It does not implement WAIT projection, Clone Larvae action application, House of Mirrors action application, 60/300-second experiment runs, CSV/Markdown experiment exports, scoring, recommendations, or normal strategy changes.
+0.12.0 implements the development-only snapshot foundation and the Phase 1 experiment chain. It still does not implement scoring, recommendations, or normal strategy changes.
+
+Phase 1 now covers:
+
+- action schema `swarmsim-lab.action.v1`
+- result schema `swarmsim-lab.result.v1`
+- `WAIT`, `CLONE_LARVAE`, and `HOUSE_OF_MIRRORS`
+- immediate action application at `t=0`
+- passive 60/300-second projections from the same snapshot
+- JSON, CSV, and Markdown exports
+- development-only browser runner/API
+- deterministic experiment hashing
 
 Frozen baseline:
 
@@ -87,7 +98,7 @@ swarmling, stinger, spider, mosquito, locust, roach, giantspider, centipede, was
 
 ## Phase 1A Snapshot Schema
 
-Phase 1A exports JSON only:
+Phase 1A snapshot capture exports JSON only. Phase 1 experiment runs export JSON, CSV, and Markdown.
 
 ```json
 {
@@ -200,7 +211,7 @@ localStorage.kbcSwarmBotScenarioHarnessEnabled_v1=true
 localStorage.kbcSwarmBotLaboratoryEnabled_v1=true
 ```
 
-When the Laboratory gate is off, no `kbcSwarmBot.laboratory` API is exposed. Normal autobuyer execution never calls snapshot capture, and capture does not buy units, buy upgrades, cast abilities, mutate the save, or append to normal run history.
+When the Laboratory gate is off, no `kbcSwarmBot.laboratory` API is exposed. Normal autobuyer execution never calls snapshot capture, runPhase1Experiment, or any export helper. Capture and simulation do not buy units, buy upgrades, cast abilities, mutate the save, or append to normal run history.
 
 ## Purpose
 
