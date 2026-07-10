@@ -227,6 +227,82 @@ blockers pass, the bot should be allowed to act within the selected mode.
 - For clone lane execution work, use `executeCloneGuardAction(...)` as the
   adapter boundary and keep behavior parity unless explicitly changing strategy.
 
+## Deterministic harness transition hotfix playbook
+
+Use this playbook for narrow deterministic scenario transition issues (for
+example Parent Step cycle 1 -> Parent Refill cycle 2):
+
+1. Prove layer ownership before coding.
+  - classify root cause as harness/definition/reporting or production planner.
+  - do not widen strategy gates to force green tests.
+
+2. Keep production path authentic.
+  - scenario expectations must observe real planner outputs.
+  - do not inject direct decision/result overrides in scenario decision fields.
+
+3. Make between-cycle transitions explicit and minimal.
+  - apply only input-state overrides (counts/resources/actions/config).
+  - add compact transition marker fields only when needed for observability.
+
+4. Require cycle-level observability for transition bugs.
+  - cycle 1 step decision + target/parent.
+  - between-cycle applied marker.
+  - cycle 2 refill decision + reason.
+  - revision/snapshot marker proving cycle 2 is fresh.
+
+5. Add a targeted versioned check.
+  - verify transition applied.
+  - verify no stale snapshot/revision reuse.
+  - verify expected cycle order (step first, refill second).
+  - treat OBSERVE/repeated-step/unrelated-action as failure where required.
+
+## Version markers and guardrail compatibility
+
+When bumping patch versions, update all version surfaces together:
+
+- package version in `package.json`
+- userscript metadata version in `src/SwarmSim-Strategy-Autobuyer.user.js`
+- runtime constants (`SCRIPT_VERSION`, `SCENARIO_REPORT_VERSION`)
+- browser badge/version text derived from runtime constants
+- scenario report templates/definitions for the new version
+
+Guardrail compatibility rule:
+
+- keep at least one explicit literal `scriptVersion: "<version>"` in canonical
+  userscript export payload while `scripts/validate-repo-guardrails.js` checks
+  for string-literal matches.
+- do not replace all payload `scriptVersion` literals with constant references
+  unless the guardrail matcher is updated in the same narrow change.
+
+## Browser verification fact-capture protocol
+
+When a browser verification pass discovers new game-mechanics data that is not
+already documented, the agent must write a concise factual note to
+`docs/live-logs/` in the same work cycle.
+
+Required quality bar:
+
+- facts first, conclusions second
+- version-scoped (`scriptVersion`, scenario version, and date)
+- reproducible evidence (where the value came from)
+- short enough to scan quickly
+
+Use this compact entry format:
+
+```md
+## Fact: <short claim>
+- Status: CONFIRMED | PARTIAL | REJECTED
+- Scope: <script/scenario/version/window>
+- Evidence: <payload field(s), scenario id/cycle, or live observation>
+- Why this is factual: <1 sentence>
+- Implication: <1 sentence, optional>
+```
+
+Deduplication rule:
+
+- If the same claim already exists, append a dated update to the existing log
+  instead of creating a new duplicate file.
+
 ## Validation
 
 Always run:

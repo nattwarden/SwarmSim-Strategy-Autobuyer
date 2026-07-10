@@ -39,6 +39,22 @@ Result:
 Repo guardrail validation passed.
 ```
 
+## Version surfaces (when patch/version changed)
+
+- `package.json` version updated.
+- Userscript metadata `@version` updated.
+- Runtime version constants updated.
+- Scenario report/version templates updated for new versioned scenario folder.
+- Canonical export payload still contains explicit literal `scriptVersion:
+	"<version>"` required by current guardrail matcher.
+
+## Deterministic transition fixes (when scenario/cycle bug)
+
+- Root cause classified first: harness/definition/reporting vs production planner.
+- Between-cycle change applied as input-state override (not direct decision override).
+- Cycle 2 proves fresh state (revision/transition marker), not stale snapshot reuse.
+- Targeted transition check added and passing (step-first, refill-second, fail on OBSERVE when required).
+
 ## Intentionally not changed
 
 - Gameplay strategy outside the named issue:

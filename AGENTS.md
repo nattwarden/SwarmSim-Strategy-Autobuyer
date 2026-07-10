@@ -167,6 +167,25 @@ npm run verify
 The validation script runs the Tampermonkey syntax check and guards against
 unsafe defaults and duplicate script artifacts.
 
+## Release verification hard gates (browser)
+
+For any formal version verification (0.x.y):
+
+- FAIL FAST unless all four version fields match target version:
+  1) userscript metadata `@version`
+  2) browser badge version
+  3) runtime export `scriptVersion`
+  4) scenario report `autobuyerVersion`
+- Scenario reports MUST include non-empty cycles for every executed scenario.
+- Multi-cycle acceptance scenarios (for example R8-style) MUST include cycle
+  transition trace:
+  `betweenCycleApplied`, `plannerTransitionMarker`,
+  `parentStepCompletedForRefill`, `transitionSeenByCycle`, and
+  before/after `remainingActions`.
+- It is forbidden to edit scenario expectations after execution to force pass.
+- Final verdict MUST be downgraded to `REQUIRES NEXT PATCH` if any hard gate
+  fails, even if most scenarios pass.
+
 PR body should include:
 
 - what changed

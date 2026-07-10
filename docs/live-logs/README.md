@@ -27,6 +27,28 @@ They document:
 - crosscheck verdicts for community claims versus live mechanics findings
 - periodic refresh checkpoints are appended to the crosscheck log to avoid duplicate docs
 
+## New facts must be captured
+
+If a browser test reveals new mechanics data not already documented, add a
+short factual entry in `docs/live-logs/` in the same update.
+
+Use this compact template:
+
+```md
+## Fact: <short claim>
+- Status: CONFIRMED | PARTIAL | REJECTED
+- Scope: <script/scenario/version/window>
+- Evidence: <payload fields, scenario id/cycle, or direct observation>
+- Why this is factual: <1 sentence>
+- Implication: <1 sentence, optional>
+```
+
+Keep it concise:
+
+- 4-8 lines per fact block
+- no broad essay text in fact blocks
+- append updates to existing claim logs instead of creating duplicates
+
 Recommended naming:
 
 ```text
