@@ -4826,18 +4826,25 @@ function getDisplayName(item) {
   function calibrateAbilityOutcome(actionRun = {}, waitRun = {}, context = {}) {
     const action = laboratoryCloneJson(actionRun || {});
     const baseline = laboratoryCloneJson(waitRun || {});
-    const actionValueRaw = action?.projectedGain ?? action?.sharedComparableValue ?? action?.milestoneEtaImprovementSeconds;
-    const baselineValueRaw = baseline?.projectedGain ?? baseline?.sharedComparableValue ?? baseline?.milestoneEtaImprovementSeconds;
-    const usingLegacyEtaImprovement = action?.milestoneEtaImprovementSeconds !== undefined
-      || baseline?.milestoneEtaImprovementSeconds !== undefined;
+    const usingMilestoneEta = action?.milestoneEtaSeconds !== undefined
+      || baseline?.milestoneEtaSeconds !== undefined;
+    const actionValueRaw = usingMilestoneEta
+      ? action?.milestoneEtaSeconds
+      : (action?.projectedGain ?? action?.sharedComparableValue ?? action?.milestoneEtaImprovementSeconds);
+    const baselineValueRaw = usingMilestoneEta
+      ? baseline?.milestoneEtaSeconds
+      : (baseline?.projectedGain ?? baseline?.sharedComparableValue ?? baseline?.milestoneEtaImprovementSeconds);
+    const usingLegacyEtaImprovement = !usingMilestoneEta && (action?.milestoneEtaImprovementSeconds !== undefined
+      || baseline?.milestoneEtaImprovementSeconds !== undefined);
     const hasExplicitFormulaStatus = action?.formulaStatus !== undefined || baseline?.formulaStatus !== undefined;
     const inferredFormulaStatus = hasExplicitFormulaStatus
       ? strategicCalibrationFormulaStatus(action?.formulaStatus || baseline?.formulaStatus || "incomplete")
       : ((strategicCalibrationHasFinite(actionValueRaw) || strategicCalibrationHasFinite(baselineValueRaw) || usingLegacyEtaImprovement)
         ? "runtime-derived"
         : "incomplete");
-    const metricUnit = String(action?.metricUnit || baseline?.metricUnit || (usingLegacyEtaImprovement ? "seconds" : (action?.targetResource || "value")));
-    const metricId = String(action?.metricId || baseline?.metricId || (usingLegacyEtaImprovement ? "milestoneEtaImprovementSeconds" : `${metricUnit}-progress`));
+    const metricUnit = String(usingMilestoneEta ? "seconds" : (action?.metricUnit || baseline?.metricUnit || (usingLegacyEtaImprovement ? "seconds" : (action?.targetResource || "value"))));
+    const metricId = String(usingMilestoneEta ? (action?.milestoneMetricId || baseline?.milestoneMetricId || "expansion-eta") : (action?.metricId || baseline?.metricId || (usingLegacyEtaImprovement ? "milestoneEtaImprovementSeconds" : `${metricUnit}-progress`)));
+    const direction = usingMilestoneEta ? "LOWER_IS_BETTER" : String(action?.direction || baseline?.direction || "HIGHER_IS_BETTER");
     const actionFormulaStatus = hasExplicitFormulaStatus
       ? strategicCalibrationFormulaStatus(action?.formulaStatus || inferredFormulaStatus)
       : inferredFormulaStatus;
@@ -4860,7 +4867,7 @@ function getDisplayName(item) {
         activeTarget: context?.activeTarget,
         metricId,
         metricUnit,
-        direction: String(action?.direction || baseline?.direction || "HIGHER_IS_BETTER"),
+        direction,
         horizonId: context?.horizonId || "medium",
         horizonSeconds: context?.horizonSeconds || 1800,
         formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
@@ -4875,7 +4882,7 @@ function getDisplayName(item) {
         activeTarget: context?.activeTarget,
         metricId,
         metricUnit,
-        direction: String(action?.direction || baseline?.direction || "HIGHER_IS_BETTER"),
+        direction,
         horizonId: context?.horizonId || "medium",
         horizonSeconds: context?.horizonSeconds || 1800,
         formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
@@ -4894,7 +4901,7 @@ function getDisplayName(item) {
         activeTarget: context?.activeTarget,
         metricId,
         metricUnit,
-        direction: String(action?.direction || baseline?.direction || "HIGHER_IS_BETTER"),
+        direction,
         horizonId: context?.horizonId || "medium",
         horizonSeconds: context?.horizonSeconds || 1800,
         formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
@@ -4972,7 +4979,15 @@ function getDisplayName(item) {
       fingerprint: `advisor:${selectedActionId}`,
     };
     const comparable = calibration?.comparabilityStatus === "COMPARABLE";
-    const rankComparable = comparable && selectedActionId !== "WAIT" && !unsupported;
+    // M7 has no generic resource-score conversion.  Until every candidate carries
+    // the same named progress metric, only a shared milestone ETA in seconds can
+    // enter the six-domain ranking.
+    const rankComparable = comparable
+      && selectedActionId !== "WAIT"
+      && !unsupported
+      && String(calibration?.direction || "").toUpperCase() === "LOWER_IS_BETTER"
+      && String(calibration?.metricUnit || "") === "seconds"
+      && /eta/i.test(String(calibration?.metricId || ""));
     const delta = strategicCalibrationToNumber(calibration?.delta, null);
     const effectMetric = String(calibration?.metricId || (comparable ? "projectedMilestoneProgressDelta" : "missingConversion"));
     const effectUnit = String(calibration?.metricUnit || "value");
@@ -5580,6 +5595,7 @@ function getDisplayName(item) {
     const horizonSeconds = Math.max(0, energyAbilityTimingNumber(snapshot?.horizonSeconds, 300));
     const formulaSetId = String(snapshot.formulaSetId || "energy-ability-source-formulas.v1");
     const sourceRevision = String(snapshot.sourceRevision || LABORATORY_BASE_GAME_SOURCE_COMMIT);
+    const sharedMilestoneMetric = snapshot?.sharedMilestoneMetric || null;
     const energyBefore = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.amount));
     const energyPerSecond = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.perSecond));
     const reserveRequired = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.reserveRequired));
@@ -5605,6 +5621,10 @@ function getDisplayName(item) {
       reserveRequired,
       reserveAfterAction: energyBefore - reserveRequired,
       projectedGain: 0,
+      ...(sharedMilestoneMetric ? {
+        milestoneEtaSeconds: sharedMilestoneMetric.waitEtaSeconds,
+        milestoneMetricId: sharedMilestoneMetric.metricId,
+      } : {}),
       targetResource: "energy",
       metricId: "ability-target-progress",
       metricUnit: "value",
@@ -5679,6 +5699,10 @@ function getDisplayName(item) {
         reserveAfterAction,
         reserveRecoverySeconds,
         projectedGain,
+        ...(ability.milestoneEtaSeconds !== undefined ? {
+          milestoneEtaSeconds: ability.milestoneEtaSeconds,
+          milestoneMetricId: ability.milestoneMetricId || sharedMilestoneMetric?.metricId || "expansion-eta",
+        } : {}),
         gainRatio,
         targetResource: ability.targetResource || "unknown",
         metricId: `ability-${String(ability.targetResource || "value").replace(/\s+/g, "-")}-progress`,
@@ -5743,6 +5767,7 @@ function getDisplayName(item) {
     const army = buildLaboratoryArmySnapshot(game, warnings, formulaStatuses);
     const clone = buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses);
     const mirror = buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses);
+    const engine = analyzeLarvaEngine(game);
     const rushDefinitions = [
       { actionId: "LARVA_RUSH", gameAbilityId: "larvarush", label: "Larva Rush", resourceId: "larva", resourceKey: "larvae", velocitySeconds: 2400, flatAddition: 100000 },
       { actionId: "MEAT_RUSH", gameAbilityId: "meatrush", label: "Meat Rush", resourceId: "meat", resourceKey: "meat", velocitySeconds: 7200, flatAddition: 100000000000 },
@@ -5758,6 +5783,16 @@ function getDisplayName(item) {
       meat: decimalFrom(getVelocity(game, "meat")),
       territory: decimalFrom(getVelocity(game, "territory")),
     };
+    const expansion = getGameUpgrade(game, "expansion");
+    const expansionCost = expansion ? decimalFrom(getCostForResource(expansion, "territory")) : null;
+    const expansionEtaFromTerritory = expansionCost && rates.territory.greaterThan(0)
+      ? Math.max(0, decimalToNumber((expansionCost.minus(current.territory).greaterThan(0) ? expansionCost.minus(current.territory) : newDecimal(0)).dividedBy(rates.territory), NaN))
+      : null;
+    const territoryRushEtaAfter = (gain) => {
+      if (expansionCost === null || !Number.isFinite(expansionEtaFromTerritory)) return null;
+      const remaining = expansionCost.minus(current.territory.plus(decimalFrom(gain || 0)));
+      return Math.max(0, decimalToNumber((remaining.greaterThan(0) ? remaining : newDecimal(0)).dividedBy(rates.territory), NaN));
+    };
     const ratioAgainstHorizon = (gain, resourceKey) => {
       const bankBaseline = current[resourceKey] || newDecimal(0);
       const horizonBaseline = (rates[resourceKey] || newDecimal(0)).times(300);
@@ -5771,6 +5806,15 @@ function getDisplayName(item) {
     const rawMirrorGain = mirrorAfter.minus(mirrorBefore);
     const mirrorGain = rawMirrorGain.greaterThan(0) ? rawMirrorGain : newDecimal(0);
     const mirrorBaseline = mirrorBefore.greaterThan(1) ? mirrorBefore : newDecimal(1);
+    const expansionEtaBeforeSeconds = Number.isFinite(Number(engine?.expansionEta)) && Number(engine.expansionEta) >= 0
+      ? Number(engine.expansionEta)
+      : null;
+    const expansionEtaAfterSeconds = expansionEtaBeforeSeconds !== null
+      && mirrorBefore.greaterThan(0)
+      && mirrorAfter.greaterThan(0)
+      && mirrorGain.greaterThan(0)
+      ? expansionEtaBeforeSeconds * decimalToNumber(mirrorBefore.dividedBy(mirrorAfter), 0)
+      : null;
     const abilities = [
       {
         actionId: "CLONE_LARVAE", label: "Clone Larvae", targetResource: "larvae", available: clone.available,
@@ -5781,14 +5825,23 @@ function getDisplayName(item) {
         actionId: "HOUSE_OF_MIRRORS", label: "House of Mirrors", targetResource: "territory rate", available: mirror.available,
         unavailableReason: mirror.unavailableReason, energyCost: mirror.energyCost, projectedGain: laboratoryDecimalString(mirrorGain),
         gainRatio: decimalToNumber(mirrorGain.dividedBy(mirrorBaseline), 0), formulaStatus: "source-verified",
+        ...(expansionEtaAfterSeconds !== null ? {
+          milestoneEtaSeconds: expansionEtaAfterSeconds,
+          milestoneMetricId: "expansion-eta",
+        } : {}),
       },
       ...rushDefinitions.map((definition) => {
         const rush = buildLaboratoryRushSnapshot(game, definition, warnings, formulaStatuses);
         const gain = rush?.formulaInputs?.sourceVerifiedOutput || "0";
+        const milestoneEtaSeconds = definition.actionId === "TERRITORY_RUSH" ? territoryRushEtaAfter(gain) : null;
         return {
           actionId: definition.actionId, label: definition.label, targetResource: definition.resourceKey, available: rush.available,
           unavailableReason: rush.unavailableReason, energyCost: rush.energyCost, projectedGain: gain,
           gainRatio: ratioAgainstHorizon(gain, definition.resourceKey), formulaStatus: "source-verified",
+          ...(Number.isFinite(milestoneEtaSeconds) ? {
+            milestoneEtaSeconds,
+            milestoneMetricId: "expansion-eta",
+          } : {}),
         };
       }),
     ];
@@ -5808,6 +5861,15 @@ function getDisplayName(item) {
       sourceRevision: LABORATORY_BASE_GAME_SOURCE_COMMIT,
       activeMilestone: strategyInspector?.goal || smartFocus || "current strategy milestone",
       activeTarget: selectedMainAction?.target || smartFocus || "current strategy target",
+      ...((Number.isFinite(expansionEtaFromTerritory) ? expansionEtaFromTerritory : expansionEtaBeforeSeconds) !== null ? {
+        sharedMilestoneMetric: {
+          metricId: "expansion-eta",
+          metricUnit: "seconds",
+          direction: "LOWER_IS_BETTER",
+          waitEtaSeconds: Number.isFinite(expansionEtaFromTerritory) ? expansionEtaFromTerritory : expansionEtaBeforeSeconds,
+          formulaStatus: "runtime-derived",
+        },
+      } : {}),
       energy: {
         amount: laboratoryDecimalString(getCurrentResource(game, "energy")),
         perSecond: laboratoryDecimalString(getVelocity(game, "energy")),

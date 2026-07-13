@@ -158,18 +158,22 @@ async function main() {
             actionId: "WAIT",
             label: "Save Energy",
             projectedGain: 0,
-            metricId: "ability-larvae-progress",
-            metricUnit: "larvae",
-            direction: "HIGHER_IS_BETTER",
+            milestoneEtaSeconds: 1000,
+            milestoneMetricId: "expansion-eta",
+            metricId: "expansion-eta",
+            metricUnit: "seconds",
+            direction: "LOWER_IS_BETTER",
             formulaStatus: "source-verified",
           },
           {
             actionId: "CLONE_LARVAE",
             label: "Clone Larvae",
             projectedGain: 900,
-            metricId: "ability-larvae-progress",
-            metricUnit: "larvae",
-            direction: "HIGHER_IS_BETTER",
+            milestoneEtaSeconds: 100,
+            milestoneMetricId: "expansion-eta",
+            metricId: "expansion-eta",
+            metricUnit: "seconds",
+            direction: "LOWER_IS_BETTER",
             formulaStatus: "source-verified",
             targetAligned: true,
             blockers: [],
@@ -197,8 +201,8 @@ async function main() {
           ...comparableAbilitySnapshot,
           snapshotId: "M7-ZERO-DELTA-ABILITY",
           branches: [
-            { ...comparableAbilitySnapshot.branches[0], projectedGain: 0 },
-            { ...comparableAbilitySnapshot.branches[1], projectedGain: 0 },
+            { ...comparableAbilitySnapshot.branches[0], milestoneEtaSeconds: 1000 },
+            { ...comparableAbilitySnapshot.branches[1], milestoneEtaSeconds: 1000 },
           ],
         },
       }));
@@ -210,8 +214,8 @@ async function main() {
           ...comparableAbilitySnapshot,
           snapshotId: "M7-NEGATIVE-DELTA-ABILITY",
           branches: [
-            { ...comparableAbilitySnapshot.branches[0], projectedGain: 0 },
-            { ...comparableAbilitySnapshot.branches[1], projectedGain: -10 },
+            { ...comparableAbilitySnapshot.branches[0], milestoneEtaSeconds: 1000 },
+            { ...comparableAbilitySnapshot.branches[1], milestoneEtaSeconds: 1010 },
           ],
         },
       }));
@@ -223,8 +227,8 @@ async function main() {
           ...comparableAbilitySnapshot,
           snapshotId: "M7-MISSING-METRIC-ABILITY",
           branches: [
-            { ...comparableAbilitySnapshot.branches[0], projectedGain: 0 },
-            { ...comparableAbilitySnapshot.branches[1], projectedGain: null },
+            { ...comparableAbilitySnapshot.branches[0], milestoneEtaSeconds: 1000 },
+            { ...comparableAbilitySnapshot.branches[1], milestoneEtaSeconds: null },
           ],
         },
       }));
@@ -388,7 +392,9 @@ async function main() {
         },
       });
 
-      // Production-parity-ish capture: derive one real source-verified clone formula from live snapshot.
+      // Production capture proves the current source-verified ability formula is
+      // available to the adapter. Raw resource gain stays deliberately unranked;
+      // the positive shared-ETA contract is exercised by the explicit fixture.
       localStorage.setItem("kbcSwarmBotLaboratoryEnabled_v1", "true");
       localStorage.setItem("kbcSwarmBotLaboratoryLiveEnabled_v1", "true");
       const liveCapture = await bot.laboratory.captureLiveSnapshot({ snapshotId: "M7-LIVE-PARITY" });
@@ -408,14 +414,14 @@ async function main() {
           horizonSeconds: 1800,
           formulaSetId: "energy-ability-source-formulas.v1",
           sourceRevision: "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
-          activeMilestone: "M7 live ability parity",
+          activeMilestone: "M7 live ability capture",
           activeTarget: "clone larvae window",
           energy: { amount: energyAmount, perSecond: Number(liveCapture.snapshot.resources?.energy?.perSecond || 0), reserveRequired },
           recommendation: "CAST_NOW",
           recommendedActionId: "CLONE_LARVAE",
           recommendedLabel: "Clone Larvae",
           confidence: "high",
-          reason: "live source-derived clone formula",
+          reason: "live source-derived Clone Larvae formula",
           reconsiderCondition: "reconsider on energy/rate change",
           energyOpportunityCost: "none",
           excludedActionIds: ["SWARMWARP"],
@@ -502,7 +508,8 @@ async function main() {
     assert(report.defaults.autoAscend === false, "autoAscend default changed");
     assert(report.defaults.energySupportBrokerAllowAutoCast === false, "energySupportBrokerAllowAutoCast default changed");
 
-    assert(report.liveParity && report.liveParity.domainOutcomes.find((row) => row.domainId === "ENERGY_ABILITIES")?.calibration?.comparabilityStatus === "COMPARABLE", "production-parity ability calibration did not produce a real comparable conversion");
+    const liveAbility = report.liveParity?.domainOutcomes.find((row) => row.domainId === "ENERGY_ABILITIES");
+    assert(liveAbility?.calibration?.comparabilityStatus === "COMPARABLE" && liveAbility?.comparability?.status === "UNRANKED", "raw production ability gain must stay visible but unranked without a shared milestone ETA");
 
     console.log("BOOK00 M7 CALIBRATED SHARED OUTCOMES CHECK PASSED");
   } finally {
