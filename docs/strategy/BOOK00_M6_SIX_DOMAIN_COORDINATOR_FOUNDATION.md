@@ -658,4 +658,3 @@ Stop rather than guess when:
 - [ ] Hard defaults and Laboratory contract remain unchanged.
 - [ ] Version surfaces consistently report `6.0.0`.
 - [ ] Focused and full exact-SHA verification pass with separate evidence.
-

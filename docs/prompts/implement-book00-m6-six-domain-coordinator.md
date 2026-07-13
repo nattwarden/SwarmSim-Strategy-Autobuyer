@@ -525,4 +525,3 @@ remains exact and revalidated, double counting is audited, decision cycles stay
 consistent, player-facing surfaces and mechanic coverage are complete, focused
 and full checks pass on the exact implementation SHA, separate evidence is
 pushed, and the branch is clean and synchronized.
-
