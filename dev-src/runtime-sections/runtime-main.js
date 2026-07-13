@@ -8,7 +8,9 @@
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
-  const COUNCIL_LAYOUT_STORAGE_KEY = "kbcSwarmBotCouncilPanelLayout_v1";
+  const COUNCIL_LAYOUT_STORAGE_KEY = "kbcSwarmBotCouncilPanelLayout_v2";
+  const COUNCIL_FIXED_WIDTH = 1180;
+  const COUNCIL_FIXED_HEIGHT = 700;
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
   const PURCHASE_LAYOUT_STORAGE_KEY = "kbcSwarmBotPurchasePanelLayout_v1";
   const SETTINGS_TAB_STORAGE_KEY = "kbcSwarmBotSettingsActiveTab_v1";
@@ -990,8 +992,8 @@
     return {
       left: 12,
       top: 8,
-      width: Math.min(1000, Math.max(320, window.innerWidth - 350)),
-      height: 310,
+      width: Math.min(COUNCIL_FIXED_WIDTH, Math.max(320, window.innerWidth - 24)),
+      height: Math.min(COUNCIL_FIXED_HEIGHT, Math.max(120, window.innerHeight - 24)),
     };
   }
 
@@ -1024,6 +1026,31 @@
     element.style.height = `${safeLayout.height}px`;
     element.style.right = "auto";
     element.style.bottom = "auto";
+  }
+
+  function applyCouncilWindowLayout() {
+    if (!strategyBar) return;
+
+    const defaults = defaultCouncilLayout();
+    const saved = loadWindowLayout(COUNCIL_LAYOUT_STORAGE_KEY);
+    const safeLayout = clampWindowLayout(
+      {
+        left: saved.left,
+        top: saved.top,
+        width: defaults.width,
+        height: defaults.height,
+      },
+      defaults,
+      320,
+      120
+    );
+
+    strategyBar.style.left = `${safeLayout.left}px`;
+    strategyBar.style.top = `${safeLayout.top}px`;
+    strategyBar.style.width = `${safeLayout.width}px`;
+    strategyBar.style.height = `${safeLayout.height}px`;
+    strategyBar.style.right = "auto";
+    strategyBar.style.bottom = "auto";
   }
 
   function resetSettingsPanelLayout() {
@@ -1176,7 +1203,7 @@
 
   function applyAllWindowLayouts() {
     applyWindowLayout(panel, SETTINGS_LAYOUT_STORAGE_KEY, defaultSettingsLayout(), 260, 240);
-    applyWindowLayout(strategyBar, COUNCIL_LAYOUT_STORAGE_KEY, defaultCouncilLayout(), 320, 120);
+    applyCouncilWindowLayout();
     applyWindowLayout(logPanel, LOG_LAYOUT_STORAGE_KEY, defaultLogLayout(), 320, 200);
     applyWindowLayout(purchasePanel, PURCHASE_LAYOUT_STORAGE_KEY, defaultPurchaseLayout(), 300, 160);
   }
@@ -19276,14 +19303,14 @@ function getDisplayName(item) {
         left: 12px;
         right: auto;
         top: 8px;
-        width: min(1180px, calc(100vw - 24px));
-        height: min(700px, calc(100vh - 24px));
+        width: 1180px;
+        height: 700px;
         min-width: 320px;
         min-height: 120px;
         max-width: calc(100vw - 24px);
         max-height: calc(100vh - 24px);
         overflow: auto;
-        resize: both;
+        resize: none;
         padding: 8px 10px;
         background: rgba(20, 20, 20, 0.94);
         color: white;

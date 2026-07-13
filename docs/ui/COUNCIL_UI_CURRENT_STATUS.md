@@ -82,6 +82,8 @@ failures before accepting UI3.
 ## Known decisions
 
 - the reference art is a stable layer; live information remains HTML/CSS
+- the Council window is fixed at 1180 x 700 on desktop and remains draggable,
+  while viewport constraints provide the only smaller responsive fallback
 - the central parchment owns the current whole-economy decision
 - the Chronicle uses emitted structured events, not reconstructed text logs
 - compact and expert views remain available

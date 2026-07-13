@@ -189,6 +189,9 @@ async function main() {
             laneColumns: getComputedStyle(lanes).gridTemplateColumns,
             shellOverflowX: shell.scrollWidth > shell.clientWidth + 2,
             barBeyondViewport: bar.getBoundingClientRect().right > document.documentElement.clientWidth + 2,
+            barWidth: Math.round(bar.getBoundingClientRect().width),
+            barHeight: Math.round(bar.getBoundingClientRect().height),
+            barResize: getComputedStyle(bar).resize,
             frameArt: getComputedStyle(shell, "::after").backgroundImage,
             parchmentArt: getComputedStyle(document.querySelector(".kbc-council-decision")).backgroundImage,
             laneArt: getComputedStyle(document.querySelector(".kbc-council-lane-art")).backgroundImage,
@@ -204,6 +207,11 @@ async function main() {
         if (columnCount(result.laneColumns) !== testCase.laneColumns) failures.push(`${prefix}: expected ${testCase.laneColumns} lane columns, got ${result.laneColumns}`);
         if (result.shellOverflowX) failures.push(`${prefix}: Council shell overflows horizontally`);
         if (result.barBeyondViewport) failures.push(`${prefix}: Council bar extends beyond viewport`);
+        const expectedBarWidth = Math.min(1180, testCase.width - 24);
+        const expectedBarHeight = Math.min(700, testCase.height - 24);
+        if (Math.abs(result.barWidth - expectedBarWidth) > 2) failures.push(`${prefix}: expected fixed bar width ${expectedBarWidth}, got ${result.barWidth}`);
+        if (Math.abs(result.barHeight - expectedBarHeight) > 2) failures.push(`${prefix}: expected fixed bar height ${expectedBarHeight}, got ${result.barHeight}`);
+        if (result.barResize !== "none") failures.push(`${prefix}: manual Council resize remains enabled`);
         if (testCase.width > 1100 && !result.frameArt.includes("image/webp")) failures.push(`${prefix}: ornate frame art did not resolve`);
         if (testCase.width <= 1100 && result.frameArt.includes("image/webp")) failures.push(`${prefix}: responsive frame fallback did not activate`);
         if (!result.parchmentArt.includes("image/webp")) failures.push(`${prefix}: parchment art did not resolve`);

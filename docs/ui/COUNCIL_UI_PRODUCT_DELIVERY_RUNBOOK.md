@@ -73,6 +73,7 @@ Goal: reach the Council Chamber art direction without sacrificing clarity.
 - [ ] Record source, generation prompt where available, hash, and license status
 - [x] Separate background, parchment, ornament, icons, and optional effects
 - [x] Add responsive crops or fallbacks
+- [x] Lock the desktop Council window to the production-art aspect and disable manual resizing
 - [ ] Validate contrast and text-safe regions over real runtime states
 - [x] Establish asset-size and load-time budgets
 
