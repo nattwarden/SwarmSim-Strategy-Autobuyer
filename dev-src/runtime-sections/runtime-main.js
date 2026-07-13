@@ -19452,13 +19452,16 @@ function getDisplayName(item) {
       .kbc-council-shell::after {
         content: "";
         position: absolute;
-        z-index: 5;
+        /* The production artwork has a transparent outer bleed.  Let it run
+           beyond the clipped shell so the chamber does not gain a black moat,
+           and keep it below live text and controls. */
+        z-index: 0;
         inset: 0;
         pointer-events: none;
         background-image: var(--kbc-art-frame);
         background-position: center;
         background-repeat: no-repeat;
-        background-size: 100% 100%;
+        background-size: calc(100% + 96px) calc(100% + 72px);
       }
 
       .kbc-council-shell > * {

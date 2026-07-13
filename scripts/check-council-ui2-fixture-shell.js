@@ -201,6 +201,9 @@ async function main() {
             decisionContentTopInset: Math.round(eyebrowRect.top - decisionRect.top),
             decisionContentBottomInset: Math.round(decisionRect.bottom - executionRect.bottom),
             frameArt: getComputedStyle(shell, "::after").backgroundImage,
+            frameZIndex: getComputedStyle(shell, "::after").zIndex,
+            frameBackgroundSize: getComputedStyle(shell, "::after").backgroundSize,
+            shellClientWidth: shell.clientWidth,
             parchmentArt: getComputedStyle(document.querySelector(".kbc-council-decision")).backgroundImage,
             laneArt: getComputedStyle(document.querySelector(".kbc-council-lane-art")).backgroundImage,
           };
@@ -223,6 +226,8 @@ async function main() {
         if (testCase.width <= 700 && result.decisionContentTopInset < 34) failures.push(`${prefix}: parchment decision text enters the top ornament (${result.decisionContentTopInset}px inset)`);
         if (testCase.width <= 700 && result.decisionContentBottomInset < 28) failures.push(`${prefix}: parchment decision text enters the bottom ornament (${result.decisionContentBottomInset}px inset)`);
         if (testCase.width > 1100 && !result.frameArt.includes("image/webp")) failures.push(`${prefix}: ornate frame art did not resolve`);
+        if (testCase.width > 1100 && result.frameZIndex !== "0") failures.push(`${prefix}: ornate frame must remain behind readable Council content`);
+        if (testCase.width > 1100 && Number.parseFloat(result.frameBackgroundSize) < result.shellClientWidth + 80) failures.push(`${prefix}: ornate frame does not extend far enough to remove its transparent outer gutter`);
         if (testCase.width <= 1100 && result.frameArt.includes("image/webp")) failures.push(`${prefix}: responsive frame fallback did not activate`);
         if (!result.parchmentArt.includes("image/webp")) failures.push(`${prefix}: parchment art did not resolve`);
         if (!result.laneArt.includes("image/webp")) failures.push(`${prefix}: lane art did not resolve`);
