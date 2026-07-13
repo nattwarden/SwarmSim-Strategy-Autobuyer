@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.14.1";
+  const AUTOBUYER_VERSION = "5.0.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -2992,6 +2992,10 @@ function getDisplayName(item) {
     const councilWinningLane = selectedMainAction?.lane || "none";
     const councilWinningCandidate = selectedMainAction?.candidate || "none";
     const energySupport = buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction);
+    const ascensionMutagenSnapshot = captureAscensionMutagenSnapshot(game, { smartFocus, selectedMainAction, goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus) });
+    const ascensionMutagenAdvisor = evaluateAscensionMutagenSnapshot(ascensionMutagenSnapshot);
+    const ascensionAdvisorMutagenPlan = laboratoryCloneJson(ascensionMutagenAdvisor?.mutagenPlan || null);
+    const ascensionNowBranch = (ascensionMutagenAdvisor?.branches || []).find((branch) => branch?.actionId === "ASCEND_NOW") || null;
     const waitingSummary = getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries);
     const upcomingMilestone = getNextLikelyBuy(game, engine, protectedResources, candidateSummary);
     const momentum = buildMomentumSnapshot({
@@ -3172,6 +3176,26 @@ function getDisplayName(item) {
       blockedBySummary: candidateSummary.blockedBySummary,
       nextLikelyBuy: momentum.momentumNextMilestone || upcomingMilestone,
       ...energySupport,
+      ascensionMutagenAdvisor,
+      ascensionAdvisorRecommendation: ascensionMutagenAdvisor?.recommendation || "CONTINUE_RUN",
+      ascensionAdvisorConfidence: ascensionMutagenAdvisor?.confidence || "low",
+      ascensionAdvisorFormulaConfidence: ascensionMutagenAdvisor?.formulaConfidence || "source-verified",
+      ascensionAdvisorReason: ascensionMutagenAdvisor?.reason || "none",
+      ascensionAdvisorReconsiderCondition: ascensionMutagenAdvisor?.reconsiderCondition || "none",
+      ascensionAdvisorSnapshotId: ascensionMutagenAdvisor?.snapshotId || ascensionMutagenSnapshot?.snapshotId || "none",
+      ascensionAdvisorCost: ascensionMutagenSnapshot?.ascension?.cost || "0",
+      ascensionAdvisorCostPercent: ascensionMutagenSnapshot?.ascension?.costPercent || "0",
+      ascensionAdvisorEnergyEtaSeconds: ascensionMutagenSnapshot?.ascension?.energyEtaSeconds ?? null,
+      ascensionAdvisorEnergyCapBlocked: ascensionMutagenSnapshot?.ascension?.energyCapBlocked ? "yes" : "no",
+      ascensionAdvisorBreakEvenSeconds: ascensionMutagenAdvisor?.breakEvenSeconds ?? null,
+      ascensionAdvisorBreakEvenRange: ascensionMutagenAdvisor?.breakEvenRange || { lowSeconds: null, highSeconds: null },
+      ascensionAdvisorNextRunHorizonSeconds: ascensionMutagenAdvisor?.nextRunHorizonSeconds ?? null,
+      ascensionAdvisorCurrentRunOpportunity: ascensionMutagenAdvisor?.currentRunOpportunityCost || "unknown",
+      ascensionAdvisorInactiveMutagen: ascensionMutagenSnapshot?.mutagen?.inactive || "0",
+      ascensionAdvisorActiveAfterAscend: ascensionMutagenSnapshot?.mutagen?.activeAfterAscend || "0",
+      ascensionAdvisorNewLarvaPerSecond: ascensionNowBranch?.newLarvaPerSecondAfterAscend || ascensionMutagenSnapshot?.mutagen?.newLarvaPerSecondAfterAscend || "0",
+      ascensionAdvisorMutagenPlan,
+      ascensionAdvisorExecutionAuthority: ascensionMutagenAdvisor?.executionAuthority === true ? "enabled" : "advisor-only",
       ...momentum,
       momentumPrimaryPrioritySource: momentum.momentumPrimaryPrioritySource || "default",
       momentumPrimarySelectionReason: momentum.momentumPrimarySelectionReason || "default lane priority",
@@ -3434,6 +3458,10 @@ function getDisplayName(item) {
       ["Energy support best use", `${strategyInspector.energySupportBestUse || "none"} (${strategyInspector.energySupportBestUseDecision || "HOLD"})`],
       ["Energy support reason", strategyInspector.energySupportBestUseReason || "none"],
       ["Energy support blocked by", strategyInspector.energySupportBestUseBlockedBy || "none"],
+      ["Ability timing", `${strategyInspector.abilityTimingRecommendation || "SAVE"}: ${strategyInspector.abilityTimingRecommendedAction || "Save Energy"}`],
+      ["Ability timing reason", strategyInspector.abilityTimingReason || "none"],
+      ["Ability timing reconsider", strategyInspector.abilityTimingReconsiderCondition || "none"],
+      ["Ability timing authority", strategyInspector.abilityTimingExecutionAuthority || "advisor-only"],
       ["Clone support", `${strategyInspector.energySupportCloneDecision || "HOLD"} ${strategyInspector.energySupportCloneCandidate || "none"}`],
       ["Mirror support", `${strategyInspector.energySupportMirrorDecision || "HOLD"} ${strategyInspector.energySupportMirrorCandidate || "none"}`],
       ["Lepidoptera support role", `${strategyInspector.energySupportLepidopteraRole || "wait"} (${strategyInspector.energySupportLepidopteraDecision || "WAIT"})`],
@@ -3743,6 +3771,795 @@ function getDisplayName(item) {
     };
   }
 
+  const ENERGY_ABILITY_TIMING_SCHEMA_VERSION = "energy-ability-timing-advisor.v1";
+  const ENERGY_ABILITY_TIMING_ACTION_IDS = ["CLONE_LARVAE", "HOUSE_OF_MIRRORS", "LARVA_RUSH", "MEAT_RUSH", "TERRITORY_RUSH"];
+  const ASCENSION_MUTAGEN_SNAPSHOT_SCHEMA_VERSION = "ascension-mutagen-snapshot.v1";
+  const ASCENSION_MUTAGEN_ADVISOR_SCHEMA_VERSION = "ascension-mutagen-advisor.v1";
+  const ASCENSION_MUTAGEN_MUTATIONS = [
+    {
+      unitId: "mutanthatchery",
+      unlockUpgradeId: "mutatehatchery",
+      label: "Hatchery Mutation",
+      initialM5RankingStatus: "supported-direct-larva-comparison",
+      effects: [
+        { type: "logStat", targetUnit: "invisiblehatchery", stat: "prod", val: 1, val2: 10, val3: 1 },
+      ],
+    },
+    {
+      unitId: "mutantbat",
+      unlockUpgradeId: "mutatebat",
+      label: "Bat Mutation",
+      initialM5RankingStatus: "effect-visible-unranked-cross-domain",
+      effects: [
+        { type: "logStat", targetUnit: "energy", stat: "power", val: 0.1, val2: 10, val3: 1 },
+      ],
+    },
+    {
+      unitId: "mutantclone",
+      unlockUpgradeId: "mutateclone",
+      label: "Clone Mutation",
+      initialM5RankingStatus: "effect-visible-unranked-ability-model",
+      effects: [
+        { type: "logStat", targetUnit: "energy", stat: "power.clonelarvae", val: 1, val2: 10, val3: 1.8 },
+      ],
+    },
+    {
+      unitId: "mutantswarmwarp",
+      unlockUpgradeId: "mutateswarmwarp",
+      label: "Warp Mutation",
+      initialM5RankingStatus: "unsupported-unranked-swarmwarp",
+      effects: [
+        { type: "logStat", targetUnit: "energy", stat: "power.swarmwarp", val: 1, val2: 10, val3: 2 },
+      ],
+    },
+    {
+      unitId: "mutantrush",
+      unlockUpgradeId: "mutaterush",
+      label: "Rush Mutation",
+      initialM5RankingStatus: "effect-visible-unranked-ability-model",
+      effects: [
+        { type: "logStat", targetUnit: "energy", stat: "power.larvarush", val: 1, val2: 10, val3: 3 },
+      ],
+    },
+    {
+      unitId: "mutanteach",
+      unlockUpgradeId: "mutateeach",
+      label: "Meta-Mutation",
+      initialM5RankingStatus: "effect-visible-unranked-stochastic-future-mutagen",
+      effects: [
+        { type: "logStat", targetUnit: "invisiblehatchery", stat: "random.each", val: 0.1, val2: 10, val3: 0.5 },
+      ],
+    },
+    {
+      unitId: "mutantfreq",
+      unlockUpgradeId: "mutatefreq",
+      label: "Mutation Frequency",
+      initialM5RankingStatus: "effect-visible-unranked-stochastic-future-mutagen",
+      effects: [
+        { type: "asympStat", targetUnit: "invisiblehatchery", stat: "random.freq", val: 5, val2: 0.001 },
+      ],
+    },
+    {
+      unitId: "mutantnexus",
+      unlockUpgradeId: "mutatenexus",
+      label: "Lepidoptera Mutation",
+      initialM5RankingStatus: "effect-visible-unranked-energy-and-ascension-coupling",
+      effects: [
+        { type: "asympStat", targetUnit: "mutagen", stat: "ascendCost", val: 1.6, val2: 0.0005 },
+      ],
+    },
+    {
+      unitId: "mutantarmy",
+      unlockUpgradeId: "mutatearmy",
+      label: "Territory Mutation",
+      initialM5RankingStatus: "effect-visible-unranked-territory-model",
+      effects: [
+        { type: "expStat", targetUnit: "swarmling", stat: "prod", val: 0.2, val2: 0.001 },
+      ],
+    },
+    {
+      unitId: "mutantmeat",
+      unlockUpgradeId: "mutatemeat",
+      label: "Meat Mutation",
+      initialM5RankingStatus: "effect-visible-unranked-meat-chain-model",
+      effects: [
+        { type: "logStat", targetUnit: "drone", stat: "prod", val: 0.1, val2: 10, val3: 0.48 },
+      ],
+    },
+  ];
+
+  function ascensionMutagenToDecimal(value, fallback = 0) {
+    return decimalFrom(value, fallback);
+  }
+
+  function ascensionMutagenToNumber(value, fallback = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function ascensionMutagenDecimalString(value, fallback = "0") {
+    const dec = ascensionMutagenToDecimal(value, 0);
+    if (!dec || typeof dec !== "object" || typeof dec.toString !== "function") return String(fallback);
+    return dec.toString();
+  }
+
+  function ascensionMutagenPow(base, exponent) {
+    const D = getDecimalCtor();
+    const b = ascensionMutagenToDecimal(base, 0);
+    const e = ascensionMutagenToDecimal(exponent, 0);
+    if (D?.pow) {
+      try {
+        return D.pow(b, e);
+      } catch {
+        // Fall through to Number fallback.
+      }
+    }
+    return ascensionMutagenToDecimal(Math.pow(ascensionMutagenToNumber(b, 0), ascensionMutagenToNumber(e, 0)), 0);
+  }
+
+  function sourceVerifiedLogStat(level, val, val2, val3 = 1) {
+    const L = Math.max(0, ascensionMutagenToNumber(level, 0));
+    const V = ascensionMutagenToNumber(val, 0);
+    const V2 = Math.max(1e-12, ascensionMutagenToNumber(val2, 1));
+    const V3 = ascensionMutagenToNumber(val3, 1);
+    const value = 1 + V3 * ((Math.log(V * L + V2) / Math.log(V2)) - 1);
+    return ascensionMutagenToDecimal(value, 1);
+  }
+
+  function sourceVerifiedAsympStat(level, val, val2) {
+    const L = Math.max(0, ascensionMutagenToNumber(level, 0));
+    const V = ascensionMutagenToNumber(val, 1);
+    const V2 = ascensionMutagenToNumber(val2, 0);
+    const value = 1 + (V - 1) * (1 - 1 / (1 + L * V2));
+    return ascensionMutagenToDecimal(value, 1);
+  }
+
+  function sourceVerifiedExpStat(level, val, val2) {
+    const L = Math.max(0, ascensionMutagenToNumber(level, 0));
+    const V = ascensionMutagenToNumber(val, 1);
+    const V2 = ascensionMutagenToNumber(val2, 0);
+    const value = 1 + Math.pow(L, V) * V2;
+    return ascensionMutagenToDecimal(value, 1);
+  }
+
+  function evaluateSourceVerifiedMutationEffect(effect, level) {
+    const normalized = effect || {};
+    const kind = String(normalized.type || "");
+    if (kind === "logStat") {
+      return {
+        kind,
+        value: sourceVerifiedLogStat(level, normalized.val, normalized.val2, normalized.val3),
+        formulaStatus: "source-verified",
+      };
+    }
+    if (kind === "asympStat") {
+      return {
+        kind,
+        value: sourceVerifiedAsympStat(level, normalized.val, normalized.val2),
+        formulaStatus: "source-verified",
+      };
+    }
+    if (kind === "expStat") {
+      return {
+        kind,
+        value: sourceVerifiedExpStat(level, normalized.val, normalized.val2),
+        formulaStatus: "source-verified",
+      };
+    }
+    if (kind === "initStat") {
+      return {
+        kind,
+        value: ascensionMutagenToDecimal(normalized.val || 1, 1),
+        formulaStatus: "source-verified",
+      };
+    }
+    return {
+      kind: kind || "unknown",
+      value: ascensionMutagenToDecimal(1, 1),
+      formulaStatus: "unsupported",
+    };
+  }
+
+  function ascensionMutagenUnlockCost(unlockedCount) {
+    const normalized = Math.max(0, Math.floor(ascensionMutagenToNumber(unlockedCount, 0)));
+    return ascensionMutagenPow(15625, normalized);
+  }
+
+  function buildMutagenPlan(snapshot) {
+    const horizonSeconds = Math.max(0, ascensionMutagenToNumber(snapshot?.recoveryModel?.nextRunHorizonSeconds, 0));
+    const activeAfterAscend = ascensionMutagenToDecimal(snapshot?.mutagen?.activeAfterAscend || 0, 0);
+    const hatcheryRate = ascensionMutagenToDecimal(snapshot?.currentRun?.hatcheryLarvaePerSecond || 0, 0);
+    const hatcheryLevel = Math.max(0, Math.floor(ascensionMutagenToNumber(snapshot?.mutagen?.hatcheryLevel || 0, 0)));
+    const requestedAmount = Math.floor(Math.max(0, ascensionMutagenToNumber(snapshot?.mutagen?.analysisAmount || 1, 1)));
+    const analysisAmount = Math.max(0, Math.min(requestedAmount, Math.floor(ascensionMutagenToNumber(activeAfterAscend, 0))));
+    const lostLarvaPerSecond = ascensionMutagenToDecimal(analysisAmount, 0).times(0.1);
+    const lostLarvaeOverHorizon = lostLarvaPerSecond.times(horizonSeconds);
+
+    const keepCandidate = {
+      mutationId: "KEEP_UNALLOCATED",
+      label: "Keep Mutagen unallocated",
+      unlockState: "n/a",
+      currentLevel: "0",
+      proposedAllocationAmount: "0",
+      unlockCostIfNeeded: "0",
+      totalMutagenSpent: "0",
+      levelAfter: "0",
+      effectBefore: "1",
+      effectAfter: "1",
+      effectDelta: "0",
+      incrementalHatcheryLarvaePerSecond: "0",
+      lostMutagenLarvaPerSecond: "0",
+      lostMutagenLarvaeOverHorizon: "0",
+      netLarvaeOverHorizon: "0",
+      targetMetric: "larvae-over-horizon",
+      targetAligned: true,
+      verificationStatus: "source-verified",
+      rankingStatus: "ranked-baseline",
+      analysisAmountBasis: "productive-baseline",
+      blockedBy: "none",
+      unrankedBecause: "none",
+    };
+
+    const hatcheryDefinition = ASCENSION_MUTAGEN_MUTATIONS.find((row) => row.unitId === "mutanthatchery");
+    const hatcheryUnlocked = !!snapshot?.mutagen?.hatcheryUnlocked;
+    const hatcheryResolvable = hatcheryUnlocked && isPositive(hatcheryRate) && analysisAmount > 0;
+    const hatcheryEffect = hatcheryDefinition?.effects?.[0] || null;
+    const beforeEval = evaluateSourceVerifiedMutationEffect(hatcheryEffect, hatcheryLevel);
+    const afterEval = evaluateSourceVerifiedMutationEffect(hatcheryEffect, hatcheryLevel + analysisAmount);
+    const beforeEffect = ascensionMutagenToDecimal(beforeEval.value || 1, 1);
+    const afterEffect = ascensionMutagenToDecimal(afterEval.value || 1, 1);
+    const incrementalRatio = beforeEffect.greaterThan(0) ? afterEffect.dividedBy(beforeEffect).minus(1) : ascensionMutagenToDecimal(0, 0);
+    const incrementalHatcheryLarvaePerSecond = hatcheryRate.times(incrementalRatio);
+    const netLarvaeOverHorizon = incrementalHatcheryLarvaePerSecond.minus(lostLarvaPerSecond).times(horizonSeconds);
+    const hatcheryCandidate = {
+      mutationId: "HATCHERY_MUTATION",
+      label: "Hatchery Mutation",
+      unlockState: hatcheryUnlocked ? "unlocked" : "locked",
+      currentLevel: String(hatcheryLevel),
+      proposedAllocationAmount: String(analysisAmount),
+      unlockCostIfNeeded: hatcheryUnlocked ? "0" : ascensionMutagenDecimalString(snapshot?.mutagen?.nextUnlockCost || 0),
+      totalMutagenSpent: String(analysisAmount),
+      levelAfter: String(hatcheryLevel + analysisAmount),
+      effectBefore: ascensionMutagenDecimalString(beforeEffect),
+      effectAfter: ascensionMutagenDecimalString(afterEffect),
+      effectDelta: ascensionMutagenDecimalString(afterEffect.minus(beforeEffect)),
+      incrementalHatcheryLarvaePerSecond: ascensionMutagenDecimalString(incrementalHatcheryLarvaePerSecond),
+      lostMutagenLarvaPerSecond: ascensionMutagenDecimalString(lostLarvaPerSecond),
+      lostMutagenLarvaeOverHorizon: ascensionMutagenDecimalString(lostLarvaeOverHorizon),
+      netLarvaeOverHorizon: ascensionMutagenDecimalString(netLarvaeOverHorizon),
+      targetMetric: "larvae-over-horizon",
+      targetAligned: hatcheryResolvable,
+      verificationStatus: hatcheryResolvable ? "source-verified" : "incomplete",
+      rankingStatus: hatcheryResolvable ? "ranked" : "effect-visible-unranked-cross-domain",
+      analysisAmountBasis: snapshot?.mutagen?.analysisAmountBasis || "bounded-direct-larva-comparison",
+      blockedBy: hatcheryResolvable ? "none" : (hatcheryUnlocked ? "missing direct hatchery larvae inputs" : "mutation not unlocked"),
+      unrankedBecause: hatcheryResolvable ? "none" : "direct-larva-inputs-unavailable",
+    };
+
+    const unranked = (snapshot?.mutagen?.mutations || [])
+      .filter((row) => String(row?.mutationId || "") !== "mutanthatchery")
+      .map((row) => ({
+        mutationId: row.mutationId,
+        label: row.label,
+        unlockState: row.unlocked ? "unlocked" : "locked",
+        currentLevel: String(row.level || 0),
+        proposedAllocationAmount: "0",
+        unlockCostIfNeeded: row.unlocked ? "0" : ascensionMutagenDecimalString(row.unlockCostIfNeeded || 0),
+        totalMutagenSpent: "0",
+        levelAfter: String(row.level || 0),
+        effectBefore: ascensionMutagenDecimalString(row.effectBefore || 1),
+        effectAfter: ascensionMutagenDecimalString(row.effectAfter || row.effectBefore || 1),
+        effectDelta: ascensionMutagenDecimalString(row.effectDelta || 0),
+        incrementalHatcheryLarvaePerSecond: "0",
+        lostMutagenLarvaPerSecond: "0",
+        lostMutagenLarvaeOverHorizon: "0",
+        netLarvaeOverHorizon: "0",
+        targetMetric: row.targetMetric || "cross-domain",
+        targetAligned: false,
+        verificationStatus: row.verificationStatus || "source-verified",
+        rankingStatus: row.rankingStatus || "effect-visible-unranked-cross-domain",
+        analysisAmountBasis: "visibility-only",
+        blockedBy: "none",
+        unrankedBecause: row.rankingStatus || "effect-visible-unranked-cross-domain",
+      }));
+
+    const rankedCandidates = [keepCandidate, hatcheryCandidate]
+      .filter((candidate) => candidate.rankingStatus === "ranked" || candidate.rankingStatus === "ranked-baseline");
+    const bestRanked = rankedCandidates
+      .slice()
+      .sort((a, b) => ascensionMutagenToNumber(b.netLarvaeOverHorizon, 0) - ascensionMutagenToNumber(a.netLarvaeOverHorizon, 0))[0] || keepCandidate;
+
+    return {
+      baselineActionId: "KEEP_UNALLOCATED",
+      recommendedActionId: bestRanked.mutationId,
+      analysisAmount: String(analysisAmount),
+      analysisAmountBasis: hatcheryCandidate.analysisAmountBasis,
+      candidates: [keepCandidate, hatcheryCandidate, ...unranked],
+      rankedCandidateIds: rankedCandidates.map((candidate) => candidate.mutationId),
+      warnings: hatcheryResolvable ? [] : ["Hatchery ranking unavailable: direct hatchery larvae inputs unresolved or mutation locked."],
+    };
+  }
+
+  function buildAscensionContinueBranch(snapshot) {
+    const opportunity = snapshot?.currentRun?.nextBoundedOpportunity || {};
+    return {
+      actionId: "CONTINUE_RUN",
+      snapshotId: snapshot?.snapshotId || "unknown",
+      activeMilestone: snapshot?.source?.activeMilestone || "unknown",
+      activeTarget: snapshot?.source?.activeTarget || "unknown",
+      horizonSeconds: ascensionMutagenToNumber(snapshot?.recoveryModel?.nextRunHorizonSeconds, 0),
+      legal: true,
+      projectedOpportunityLabel: opportunity.label || "unknown",
+      projectedOpportunityEtaSeconds: opportunity.etaSeconds ?? null,
+      projectedOpportunityValue: ascensionMutagenDecimalString(opportunity.value || 0),
+      opportunityBasis: opportunity.basis || "runtime-derived",
+    };
+  }
+
+  function buildAscensionNowBranch(snapshot) {
+    const legal = snapshot?.ascension?.legal === true;
+    const inactiveGain = ascensionMutagenToDecimal(snapshot?.mutagen?.inactive || 0, 0);
+    const currentUnallocatedLarvaPerSecond = ascensionMutagenToDecimal(snapshot?.mutagen?.active || 0, 0).times(0.1);
+    const afterUnallocatedLarvaPerSecond = ascensionMutagenToDecimal(snapshot?.mutagen?.activeAfterAscend || 0, 0).times(0.1);
+    const horizon = Math.max(0, ascensionMutagenToNumber(snapshot?.recoveryModel?.nextRunHorizonSeconds, 0));
+    return {
+      actionId: "ASCEND_NOW",
+      snapshotId: snapshot?.snapshotId || "unknown",
+      activeMilestone: snapshot?.source?.activeMilestone || "unknown",
+      activeTarget: snapshot?.source?.activeTarget || "unknown",
+      horizonSeconds: horizon,
+      legal,
+      energyCapBlocked: snapshot?.ascension?.energyCapBlocked === true,
+      inactiveMutagenGain: ascensionMutagenDecimalString(inactiveGain),
+      currentUnallocatedLarvaPerSecond: ascensionMutagenDecimalString(currentUnallocatedLarvaPerSecond),
+      newLarvaPerSecondAfterAscend: ascensionMutagenDecimalString(afterUnallocatedLarvaPerSecond),
+      newLarvaPerSecondGain: ascensionMutagenDecimalString(afterUnallocatedLarvaPerSecond.minus(currentUnallocatedLarvaPerSecond)),
+      projectedValueOverHorizon: ascensionMutagenDecimalString(afterUnallocatedLarvaPerSecond.times(horizon)),
+      recoveryEvidenceBasis: snapshot?.recoveryModel?.basis || "unavailable",
+      breakEvenSeconds: snapshot?.recoveryModel?.breakEvenSeconds ?? null,
+      breakEvenRange: {
+        lowSeconds: snapshot?.recoveryModel?.rangeLowSeconds ?? null,
+        highSeconds: snapshot?.recoveryModel?.rangeHighSeconds ?? null,
+      },
+    };
+  }
+
+  function evaluateAscensionMutagenSnapshot(inputSnapshot = {}) {
+    const snapshot = laboratoryDeepFreeze(laboratoryCloneJson(inputSnapshot || {}));
+    const continueBranch = buildAscensionContinueBranch(snapshot);
+    const ascendBranch = buildAscensionNowBranch(snapshot);
+    const mutagenPlan = buildMutagenPlan(snapshot);
+    const horizonSeconds = Math.max(0, ascensionMutagenToNumber(snapshot?.recoveryModel?.nextRunHorizonSeconds, 0));
+    const breakEvenSeconds = snapshot?.recoveryModel?.breakEvenSeconds ?? null;
+    const breakEvenKnown = breakEvenSeconds !== null && breakEvenSeconds !== undefined && Number.isFinite(Number(breakEvenSeconds));
+    const breakEvenInsideHorizon = breakEvenKnown && Number(breakEvenSeconds) <= horizonSeconds;
+    const confidenceRaw = String(snapshot?.recoveryModel?.confidence || "low").toLowerCase();
+    const confidence = ["low", "medium", "high"].includes(confidenceRaw) ? confidenceRaw : "low";
+    const formulaConfidence = String(snapshot?.formulaProvenance?.status || "source-verified");
+    const continueOpportunity = ascensionMutagenToDecimal(continueBranch.projectedOpportunityValue || 0, 0);
+    const ascendOpportunity = ascensionMutagenToDecimal(ascendBranch.projectedValueOverHorizon || 0, 0);
+    const positiveVerifiedBenefit = ascensionMutagenToDecimal(ascendBranch.newLarvaPerSecondGain || 0, 0).greaterThan(0)
+      || ascensionMutagenToDecimal(ascendBranch.inactiveMutagenGain || 0, 0).greaterThan(0);
+    const betterThanContinue = ascendOpportunity.greaterThan(continueOpportunity);
+
+    let recommendation = "CONTINUE_RUN";
+    let reason = "Current run opportunity remains the safest supported option.";
+    let reconsiderCondition = "Reconsider when Ascension becomes legal, break-even evidence is available, or supported next-run benefit increases.";
+
+    if (!ascendBranch.legal) {
+      recommendation = "CONTINUE_RUN";
+      reason = "Ascension is illegal on current Energy.";
+      reconsiderCondition = "Reconsider when Energy reaches Ascension cost.";
+    } else if (ascendBranch.energyCapBlocked) {
+      recommendation = "CONTINUE_RUN";
+      reason = "Ascension cost is currently blocked by Energy cap.";
+      reconsiderCondition = "Reconsider after Energy cap increases or cost decreases below cap.";
+    } else if (!breakEvenKnown) {
+      recommendation = "UNCERTAIN";
+      reason = "Recovery evidence is unavailable; Ascension cannot be honestly ranked yet.";
+      reconsiderCondition = "Reconsider after observed-run milestone recovery evidence is available.";
+    } else if (
+      positiveVerifiedBenefit
+      && breakEvenInsideHorizon
+      && betterThanContinue
+      && (confidence === "medium" || confidence === "high")
+      && !String(formulaConfidence).includes("mismatch")
+    ) {
+      recommendation = "ASCEND_NOW";
+      reason = "Ascension is legal, source-verified benefit is positive, and recovery fits the declared horizon.";
+      reconsiderCondition = "Reconsider immediately if milestone target, horizon, or observed recovery evidence changes.";
+    }
+
+    const recommendedActionId = recommendation === "ASCEND_NOW" ? "ASCEND_NOW" : "CONTINUE_RUN";
+    const strategicConfidence = recommendation === "ASCEND_NOW"
+      ? (confidence === "high" ? "high" : "medium")
+      : (recommendation === "UNCERTAIN" ? "low" : confidence);
+
+    const warnings = [];
+    if (recommendation === "UNCERTAIN") warnings.push("Recovery evidence unavailable or incomplete; advisor remains conservative.");
+    if (ascendBranch.energyCapBlocked) warnings.push("Ascension cost is currently Energy-cap blocked.");
+    for (const warning of mutagenPlan.warnings || []) warnings.push(warning);
+
+    return laboratoryDeepFreeze({
+      schemaVersion: ASCENSION_MUTAGEN_ADVISOR_SCHEMA_VERSION,
+      mode: "advisor-only",
+      executionAuthority: false,
+      snapshotId: snapshot?.snapshotId || "M5-SNAPSHOT-UNKNOWN",
+      activeMilestone: snapshot?.source?.activeMilestone || "unknown",
+      activeTarget: snapshot?.source?.activeTarget || "unknown",
+      recommendation,
+      recommendedActionId,
+      confidence: strategicConfidence,
+      formulaConfidence,
+      reason,
+      reconsiderCondition,
+      breakEvenSeconds: breakEvenKnown ? Number(breakEvenSeconds) : null,
+      breakEvenRange: {
+        lowSeconds: snapshot?.recoveryModel?.rangeLowSeconds ?? null,
+        highSeconds: snapshot?.recoveryModel?.rangeHighSeconds ?? null,
+      },
+      nextRunHorizonSeconds: horizonSeconds,
+      currentRunOpportunityCost: continueBranch.projectedOpportunityLabel || "unknown",
+      mutagenPlan,
+      branches: [continueBranch, ascendBranch],
+      warnings,
+    });
+  }
+
+  function captureAscensionMutagenSnapshot(game, strategyContext = {}) {
+    const energyUnit = getGameUnit(game, "energy");
+    const currentEnergy = ascensionMutagenToDecimal(getCurrentResource(game, "energy"), 0);
+    const energyPerSecond = ascensionMutagenToDecimal(getVelocity(game, "energy"), 0);
+    const energyCap = ascensionMutagenToDecimal(safe("Ascension energy cap", () => energyUnit?.capValue?.()) || 0, 0);
+    const spentEnergy = ascensionMutagenToDecimal(safe("Ascension spent energy", () => game.ascendEnergySpent?.()) || 0, 0);
+    const ascensionCount = ascensionMutagenToDecimal(getCurrentResource(game, "ascension"), 0);
+    const activeMutagen = ascensionMutagenToDecimal(getCurrentResource(game, "mutagen"), 0);
+    const inactiveMutagen = ascensionMutagenToDecimal(getCurrentResource(game, "premutagen"), 0);
+    const activeAfterAscend = activeMutagen.plus(inactiveMutagen);
+    const hatcheryUnit = getGameUnit(game, "invisiblehatchery");
+    const hatcheryLarvaePerSecond = ascensionMutagenToDecimal(safe("Hatchery larvae per second", () => hatcheryUnit?.velocity?.()) || 0, 0);
+    const runtimeAscendCost = ascensionMutagenToDecimal(safe("Ascend cost", () => game.ascendCost?.()) || 0, 0);
+    const runtimeAscendPercent = ascensionMutagenToDecimal(safe("Ascend cost percent", () => game.ascendCostPercent?.()) || 0, 0);
+    const energyCapBlocked = energyCap.greaterThan(0) ? runtimeAscendCost.greaterThanOrEqualTo(energyCap) : false;
+    const runtimeEnergyEtaRaw = safe("Ascend energy ETA", () => game.ascendCostDurationSecs?.(runtimeAscendCost));
+    const runtimeEnergyEta = energyCapBlocked ? null : (Number.isFinite(Number(runtimeEnergyEtaRaw)) ? Number(runtimeEnergyEtaRaw) : null);
+    const sessionRestart = safe("Session restarted time", () => game?.session?.state?.date?.restarted);
+    const now = Date.now();
+    const elapsedSeconds = Number.isFinite(Number(sessionRestart)) ? Math.max(0, Math.floor((now - Number(sessionRestart)) / 1000)) : null;
+
+    const unlockedCount = ASCENSION_MUTAGEN_MUTATIONS
+      .filter((definition) => {
+        const upgrade = getGameUpgrade(game, definition.unlockUpgradeId);
+        const count = upgrade?.count?.();
+        return count && count.greaterThan && count.greaterThan(0);
+      })
+      .length;
+
+    const mutations = ASCENSION_MUTAGEN_MUTATIONS.map((definition) => {
+      const unit = getGameUnit(game, definition.unitId);
+      const upgrade = getGameUpgrade(game, definition.unlockUpgradeId);
+      const level = Math.max(0, Math.floor(ascensionMutagenToNumber(unit?.count?.() || 0, 0)));
+      const unlocked = !!(upgrade?.count?.() && upgrade.count().greaterThan && upgrade.count().greaterThan(0));
+      const effect = definition.effects?.[0] || null;
+      const before = evaluateSourceVerifiedMutationEffect(effect, level);
+      const after = evaluateSourceVerifiedMutationEffect(effect, level + 1);
+      const beforeValue = ascensionMutagenToDecimal(before.value || 1, 1);
+      const afterValue = ascensionMutagenToDecimal(after.value || 1, 1);
+      return {
+        mutationId: definition.unitId,
+        label: definition.label,
+        level,
+        unlocked,
+        unlockCostIfNeeded: unlocked ? "0" : ascensionMutagenDecimalString(ascensionMutagenUnlockCost(unlockedCount)),
+        effectBefore: ascensionMutagenDecimalString(beforeValue),
+        effectAfter: ascensionMutagenDecimalString(afterValue),
+        effectDelta: ascensionMutagenDecimalString(afterValue.minus(beforeValue)),
+        verificationStatus: "source-verified",
+        rankingStatus: definition.initialM5RankingStatus,
+        targetMetric: definition.unitId === "mutanthatchery" ? "larvae-over-horizon" : "cross-domain",
+      };
+    });
+
+    const milestone = strategyContext?.goal || strategyContext?.smartFocus || "M5 Ascension and Mutagen advisor";
+    const target = strategyContext?.selectedMainAction?.candidate || strategyContext?.selectedMainAction?.target || strategyContext?.smartFocus || "current strategic target";
+    const revision = (Number(scenarioHarnessContext.evaluationRevision) || 0) + 1;
+    const snapshotId = `M5-LIVE-${revision}`;
+    return laboratoryDeepFreeze({
+      schemaVersion: ASCENSION_MUTAGEN_SNAPSHOT_SCHEMA_VERSION,
+      snapshotId,
+      snapshotHash: `sha256:${snapshotId}`,
+      source: {
+        scriptVersion: SCRIPT_VERSION,
+        baseGameCommit: LABORATORY_BASE_GAME_SOURCE_COMMIT,
+        capturedAt: new Date().toISOString(),
+        activeMilestone: milestone,
+        activeTarget: target,
+      },
+      authority: {
+        mode: "advisor-only",
+        executionAuthority: false,
+        autoAscend: false,
+        liveStateMutable: false,
+      },
+      currentRun: {
+        elapsedSeconds,
+        hatcheryLarvaePerSecond: ascensionMutagenDecimalString(hatcheryLarvaePerSecond),
+        energy: {
+          amount: ascensionMutagenDecimalString(currentEnergy),
+          perSecond: ascensionMutagenDecimalString(energyPerSecond),
+          cap: ascensionMutagenDecimalString(energyCap),
+          spent: ascensionMutagenDecimalString(spentEnergy),
+        },
+        nextBoundedOpportunity: {
+          label: "inactive Mutagen gain if current run continues",
+          etaSeconds: runtimeEnergyEta,
+          value: ascensionMutagenDecimalString(inactiveMutagen.times(0.1).times(300)),
+          basis: "runtime-derived",
+        },
+      },
+      ascension: {
+        count: ascensionMutagenDecimalString(ascensionCount),
+        cost: ascensionMutagenDecimalString(runtimeAscendCost),
+        costPercent: ascensionMutagenDecimalString(runtimeAscendPercent),
+        legal: currentEnergy.greaterThanOrEqualTo(runtimeAscendCost),
+        energyEtaSeconds: runtimeEnergyEta,
+        energyCapBlocked,
+      },
+      mutagen: {
+        active: ascensionMutagenDecimalString(activeMutagen),
+        inactive: ascensionMutagenDecimalString(inactiveMutagen),
+        activeAfterAscend: ascensionMutagenDecimalString(activeAfterAscend),
+        newLarvaPerSecondAfterAscend: ascensionMutagenDecimalString(activeAfterAscend.times(0.1)),
+        nextUnlockCost: ascensionMutagenDecimalString(ascensionMutagenUnlockCost(unlockedCount)),
+        hatcheryUnlocked: !!mutations.find((row) => row.mutationId === "mutanthatchery")?.unlocked,
+        hatcheryLevel: mutations.find((row) => row.mutationId === "mutanthatchery")?.level || 0,
+        analysisAmount: 1,
+        analysisAmountBasis: "single-step-sensitivity",
+        mutations,
+      },
+      recoveryModel: {
+        basis: "unavailable",
+        breakEvenSeconds: null,
+        rangeLowSeconds: null,
+        rangeHighSeconds: null,
+        nextRunHorizonSeconds: 1800,
+        confidence: "low",
+        warnings: ["Observed recovery evidence is unavailable in live snapshot mode."],
+      },
+      formulaProvenance: {
+        status: "source-verified",
+        ascendCostPenaltyBase: "1.12",
+        nextUnlockCostFormula: "15625^n",
+        activeMutagenLarvaPerSecondPerUnit: "0.1",
+        effectHelpers: {
+          logStatL5: ascensionMutagenDecimalString(sourceVerifiedLogStat(5, 1, 10, 1)),
+          asympStatL100: ascensionMutagenDecimalString(sourceVerifiedAsympStat(100, 5, 0.001)),
+          expStatL10: ascensionMutagenDecimalString(sourceVerifiedExpStat(10, 0.2, 0.001)),
+        },
+      },
+    });
+  }
+
+  function energyAbilityTimingNumber(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function energyAbilityTimingTargetAligned(actionId, smartFocus, selectedMainAction) {
+    const context = `${String(smartFocus || "")} ${String(selectedMainAction?.lane || "")} ${String(selectedMainAction?.target || "")}`.toLowerCase();
+    if (actionId === "CLONE_LARVAE" || actionId === "LARVA_RUSH") return /larva|meat|clone/.test(context);
+    if (actionId === "MEAT_RUSH") return /meat/.test(context);
+    if (actionId === "HOUSE_OF_MIRRORS" || actionId === "TERRITORY_RUSH") return /territory|expansion|army|engine/.test(context);
+    return false;
+  }
+
+  function evaluateEnergyAbilityTimingSnapshot(inputSnapshot = {}) {
+    const snapshot = laboratoryDeepFreeze(laboratoryCloneJson(inputSnapshot || {}));
+    const snapshotId = String(snapshot.snapshotHash || snapshot.snapshotId || "M4-SNAPSHOT-UNKNOWN");
+    const energyBefore = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.amount));
+    const energyPerSecond = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.perSecond));
+    const reserveRequired = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.reserveRequired));
+    const supported = (Array.isArray(snapshot.abilities) ? snapshot.abilities : [])
+      .filter((ability) => ENERGY_ABILITY_TIMING_ACTION_IDS.includes(String(ability?.actionId || "")));
+    const waitBranch = {
+      actionId: "WAIT",
+      label: "Save Energy",
+      snapshotId,
+      activeMilestone: snapshot.activeMilestone || "unknown",
+      activeTarget: snapshot.activeTarget || "unknown",
+      actionLegal: true,
+      actionSafetySafe: true,
+      energyBefore,
+      energyCost: 0,
+      energyAfterAction: energyBefore,
+      reserveRequired,
+      reserveAfterAction: energyBefore - reserveRequired,
+      projectedGain: 0,
+      targetResource: "energy",
+      targetAligned: true,
+      opportunityCost: "none",
+      postActionPolicy: "passive-only; no downstream purchases or casts are assumed",
+      reconsiderCondition: "Reconsider when Energy, milestone target, resource rates, or supported ability availability changes.",
+      score: 30,
+      confidence: "high",
+      blockers: [],
+    };
+
+    const branches = supported.map((ability) => {
+      const actionId = String(ability.actionId);
+      const energyCost = Math.max(0, energyAbilityTimingNumber(ability.energyCost));
+      const energyAfterAction = energyBefore - energyCost;
+      const reserveAfterAction = energyAfterAction - reserveRequired;
+      const projectedGain = Math.max(0, energyAbilityTimingNumber(ability.projectedGain));
+      const gainRatio = Math.max(0, energyAbilityTimingNumber(ability.gainRatio));
+      const targetAligned = ability.targetAligned === true;
+      const formulaStatus = String(ability.formulaStatus || "unknown");
+      const blockers = [];
+      if (ability.available !== true) blockers.push(ability.unavailableReason || "ability unavailable");
+      if (energyBefore < energyCost) blockers.push("insufficient Energy");
+      if (reserveAfterAction < 0) blockers.push("Energy reserve would be violated");
+      if (!targetAligned) blockers.push("ability does not advance the active milestone target");
+      if (!(projectedGain > 0) || !(gainRatio > 0)) blockers.push("no meaningful projected gain");
+      if (!/source-verified|runtime-verified/.test(formulaStatus)) blockers.push("formula is not verified");
+
+      const nextOtherCost = supported
+        .filter((other) => other !== ability && other.available === true && other.targetAligned === true)
+        .map((other) => Math.max(0, energyAbilityTimingNumber(other.energyCost)))
+        .filter((cost) => cost > 0)
+        .sort((a, b) => a - b)[0];
+      const delayToNextSupportedAbilitySeconds = Number.isFinite(nextOtherCost) && energyAfterAction < nextOtherCost
+        ? (energyPerSecond > 0 ? Math.max(0, (nextOtherCost - energyAfterAction) / energyPerSecond) : null)
+        : 0;
+      const reserveRecoverySeconds = reserveAfterAction >= 0
+        ? 0
+        : (energyPerSecond > 0 ? Math.abs(reserveAfterAction) / energyPerSecond : null);
+      const delayPenalty = Number.isFinite(delayToNextSupportedAbilitySeconds)
+        ? Math.min(30, delayToNextSupportedAbilitySeconds / 60)
+        : 30;
+      const benefitScore = Math.min(60, Math.log10(1 + gainRatio * 1000) * 24);
+      const score = blockers.length ? 0 : Math.max(0, 35 + benefitScore - delayPenalty);
+      const reconsiderCondition = blockers.includes("insufficient Energy")
+        ? `Reconsider when Energy reaches ${trimNumber(energyCost + reserveRequired)}.`
+        : (blockers.includes("Energy reserve would be violated")
+          ? `Reconsider when Energy reaches ${trimNumber(energyCost + reserveRequired)} so the reserve remains intact.`
+          : (!targetAligned
+            ? `Reconsider when the active milestone target benefits from ${ability.targetResource || ability.label}.`
+            : `Reconsider after the manual cast, or when Energy, rates, or milestone target changes.`));
+      return {
+        actionId,
+        label: ability.label || actionId,
+        snapshotId,
+        activeMilestone: snapshot.activeMilestone || "unknown",
+        activeTarget: snapshot.activeTarget || "unknown",
+        actionLegal: ability.available === true && energyBefore >= energyCost,
+        actionSafetySafe: reserveAfterAction >= 0,
+        energyBefore,
+        energyCost,
+        energyAfterAction,
+        reserveRequired,
+        reserveAfterAction,
+        reserveRecoverySeconds,
+        projectedGain,
+        gainRatio,
+        targetResource: ability.targetResource || "unknown",
+        targetAligned,
+        delayToNextSupportedAbilitySeconds,
+        opportunityCost: Number.isFinite(delayToNextSupportedAbilitySeconds) && delayToNextSupportedAbilitySeconds > 0
+          ? `${trimNumber(delayToNextSupportedAbilitySeconds)}s delay to the next aligned supported ability`
+          : "no measured delay to another aligned supported ability",
+        postActionPolicy: "apply the immediate ability effect, then passive production only; no downstream purchases or casts are assumed",
+        reconsiderCondition,
+        formulaStatus,
+        score,
+        confidence: blockers.length ? "low" : (formulaStatus === "source-verified" ? "high" : "medium"),
+        blockers,
+      };
+    });
+
+    const eligibleBranches = branches.filter((branch) => branch.score > waitBranch.score && !branch.blockers.length);
+    eligibleBranches.sort((a, b) => b.score - a.score || a.actionId.localeCompare(b.actionId));
+    const winner = eligibleBranches[0] || waitBranch;
+    const recommendation = winner.actionId === "WAIT" ? "SAVE" : "CAST_NOW";
+    const reason = winner.actionId === "WAIT"
+      ? (branches.find((branch) => branch.blockers.length)?.blockers?.[0] || "Saving Energy is the best supported alternative on this snapshot.")
+      : `${winner.label} best advances ${winner.activeTarget} after Energy reserve and ability-delay costs.`;
+    return laboratoryDeepFreeze({
+      schemaVersion: ENERGY_ABILITY_TIMING_SCHEMA_VERSION,
+      mode: "advisor-only",
+      executionAuthority: false,
+      snapshotId,
+      activeMilestone: snapshot.activeMilestone || "unknown",
+      activeTarget: snapshot.activeTarget || "unknown",
+      supportedActionIds: ENERGY_ABILITY_TIMING_ACTION_IDS.slice(),
+      excludedActionIds: ["SWARMWARP"],
+      bestNonCastAlternative: {
+        ...waitBranch,
+        productionAlternative: snapshot?.bestNonCastAlternative || "WAIT / preserve Energy for the current production plan",
+      },
+      branches: [waitBranch, ...branches],
+      recommendation,
+      recommendedActionId: winner.actionId,
+      recommendedLabel: winner.label,
+      projectedGain: winner.projectedGain,
+      energyOpportunityCost: winner.opportunityCost,
+      confidence: winner.confidence,
+      reason,
+      reconsiderCondition: winner.reconsiderCondition,
+      postActionPolicy: winner.postActionPolicy,
+    });
+  }
+
+  function captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction) {
+    const warnings = [];
+    const formulaStatuses = [];
+    const army = buildLaboratoryArmySnapshot(game, warnings, formulaStatuses);
+    const clone = buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses);
+    const mirror = buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses);
+    const rushDefinitions = [
+      { actionId: "LARVA_RUSH", gameAbilityId: "larvarush", label: "Larva Rush", resourceId: "larva", resourceKey: "larvae", velocitySeconds: 2400, flatAddition: 100000 },
+      { actionId: "MEAT_RUSH", gameAbilityId: "meatrush", label: "Meat Rush", resourceId: "meat", resourceKey: "meat", velocitySeconds: 7200, flatAddition: 100000000000 },
+      { actionId: "TERRITORY_RUSH", gameAbilityId: "territoryrush", label: "Territory Rush", resourceId: "territory", resourceKey: "territory", velocitySeconds: 7200, flatAddition: 1000000000 },
+    ];
+    const current = {
+      larvae: decimalFrom(getCurrentResource(game, "larva")),
+      meat: decimalFrom(getCurrentResource(game, "meat")),
+      territory: decimalFrom(getCurrentResource(game, "territory")),
+    };
+    const rates = {
+      larvae: decimalFrom(getVelocity(game, "larva")),
+      meat: decimalFrom(getVelocity(game, "meat")),
+      territory: decimalFrom(getVelocity(game, "territory")),
+    };
+    const ratioAgainstHorizon = (gain, resourceKey) => {
+      const bankBaseline = current[resourceKey] || newDecimal(0);
+      const horizonBaseline = (rates[resourceKey] || newDecimal(0)).times(300);
+      let baseline = bankBaseline.greaterThan(horizonBaseline) ? bankBaseline : horizonBaseline;
+      if (baseline.lessThan(1)) baseline = newDecimal(1);
+      return decimalToNumber(decimalFrom(gain || 0).dividedBy(baseline), 0);
+    };
+    const cloneGain = clone?.formulaInputs?.sourceVerifiedOutput || "0";
+    const mirrorBefore = decimalFrom(mirror?.affectedTerritoryPerSecondBefore || 0).plus(decimalFrom(mirror?.unaffectedTerritoryPerSecond || 0));
+    const mirrorAfter = decimalFrom(mirror?.sourceVerifiedTerritoryPerSecondAfter || 0);
+    const rawMirrorGain = mirrorAfter.minus(mirrorBefore);
+    const mirrorGain = rawMirrorGain.greaterThan(0) ? rawMirrorGain : newDecimal(0);
+    const mirrorBaseline = mirrorBefore.greaterThan(1) ? mirrorBefore : newDecimal(1);
+    const abilities = [
+      {
+        actionId: "CLONE_LARVAE", label: "Clone Larvae", targetResource: "larvae", available: clone.available,
+        unavailableReason: clone.unavailableReason, energyCost: clone.energyCost, projectedGain: cloneGain,
+        gainRatio: ratioAgainstHorizon(cloneGain, "larvae"), formulaStatus: "source-verified",
+      },
+      {
+        actionId: "HOUSE_OF_MIRRORS", label: "House of Mirrors", targetResource: "territory rate", available: mirror.available,
+        unavailableReason: mirror.unavailableReason, energyCost: mirror.energyCost, projectedGain: laboratoryDecimalString(mirrorGain),
+        gainRatio: decimalToNumber(mirrorGain.dividedBy(mirrorBaseline), 0), formulaStatus: "source-verified",
+      },
+      ...rushDefinitions.map((definition) => {
+        const rush = buildLaboratoryRushSnapshot(game, definition, warnings, formulaStatuses);
+        const gain = rush?.formulaInputs?.sourceVerifiedOutput || "0";
+        return {
+          actionId: definition.actionId, label: definition.label, targetResource: definition.resourceKey, available: rush.available,
+          unavailableReason: rush.unavailableReason, energyCost: rush.energyCost, projectedGain: gain,
+          gainRatio: ratioAgainstHorizon(gain, definition.resourceKey), formulaStatus: "source-verified",
+        };
+      }),
+    ];
+    for (const ability of abilities) ability.targetAligned = energyAbilityTimingTargetAligned(ability.actionId, smartFocus, selectedMainAction);
+    const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
+    return laboratoryDeepFreeze({
+      snapshotId: `M4-LIVE-${Number(scenarioHarnessContext.evaluationRevision || 0) + 1}`,
+      activeMilestone: strategyInspector?.goal || smartFocus || "current strategy milestone",
+      activeTarget: selectedMainAction?.target || smartFocus || "current strategy target",
+      energy: {
+        amount: laboratoryDecimalString(getCurrentResource(game, "energy")),
+        perSecond: laboratoryDecimalString(getVelocity(game, "energy")),
+        reserveRequired: laboratoryDecimalString(decimalFrom(getVelocity(game, "energy")).times(reserveSeconds)),
+      },
+      bestNonCastAlternative: postNexusEnergyPlannerState?.postNexusEnergyReason || "WAIT / preserve Energy for bounded Nexus or Lepidoptera production",
+      abilities,
+    });
+  }
+
   function buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction) {
     if (!config.energySupportBroker) {
       return {
@@ -4050,6 +4867,9 @@ function getDisplayName(item) {
     }
 
     const bestUseSelectionReason = `${topSupport?.key || "wait"} selected from ranked support candidates (${candidateRanking})`;
+    const abilityTimingAdvisor = evaluateEnergyAbilityTimingSnapshot(
+      captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction)
+    );
 
     scenarioHarnessContext.evaluationRevision = (Number(scenarioHarnessContext.evaluationRevision) || 0) + 1;
 
@@ -4098,6 +4918,19 @@ function getDisplayName(item) {
       energySupportLepidopteraReserveAfter: lepidopteraPlan.postNexusEnergyReserve || "0",
       energySupportCandidateRanking: candidateRanking,
       energySupportBestUseSelectionReason: bestUseSelectionReason,
+      abilityTimingAdvisor,
+      abilityTimingSchemaVersion: abilityTimingAdvisor.schemaVersion,
+      abilityTimingMode: abilityTimingAdvisor.mode,
+      abilityTimingExecutionAuthority: abilityTimingAdvisor.executionAuthority ? "enabled" : "advisor-only",
+      abilityTimingSnapshotId: abilityTimingAdvisor.snapshotId,
+      abilityTimingRecommendation: abilityTimingAdvisor.recommendation,
+      abilityTimingRecommendedAction: abilityTimingAdvisor.recommendedLabel,
+      abilityTimingProjectedGain: formatSwarmNumber(abilityTimingAdvisor.projectedGain || 0),
+      abilityTimingEnergyOpportunityCost: abilityTimingAdvisor.energyOpportunityCost,
+      abilityTimingConfidence: abilityTimingAdvisor.confidence,
+      abilityTimingReason: abilityTimingAdvisor.reason,
+      abilityTimingReconsiderCondition: abilityTimingAdvisor.reconsiderCondition,
+      abilityTimingPostActionPolicy: abilityTimingAdvisor.postActionPolicy,
     };
   }
 
@@ -5342,6 +6175,39 @@ function getDisplayName(item) {
       energySupportBestUseSelectionReason: strategyInspector?.energySupportBestUseSelectionReason || "none",
       energySupportBackgroundAction: strategyInspector?.energySupportBackgroundAction || "none",
       energySupportCandidateRanking: strategyInspector?.energySupportCandidateRanking || "none",
+      abilityTimingAdvisor: strategyInspector?.abilityTimingAdvisor || null,
+      abilityTimingSchemaVersion: strategyInspector?.abilityTimingSchemaVersion || "none",
+      abilityTimingMode: strategyInspector?.abilityTimingMode || "advisor-only",
+      abilityTimingExecutionAuthority: strategyInspector?.abilityTimingExecutionAuthority || "advisor-only",
+      abilityTimingSnapshotId: strategyInspector?.abilityTimingSnapshotId || "none",
+      abilityTimingRecommendation: strategyInspector?.abilityTimingRecommendation || "SAVE",
+      abilityTimingRecommendedAction: strategyInspector?.abilityTimingRecommendedAction || "Save Energy",
+      abilityTimingProjectedGain: strategyInspector?.abilityTimingProjectedGain || "0",
+      abilityTimingEnergyOpportunityCost: strategyInspector?.abilityTimingEnergyOpportunityCost || "none",
+      abilityTimingConfidence: strategyInspector?.abilityTimingConfidence || "low",
+      abilityTimingReason: strategyInspector?.abilityTimingReason || "none",
+      abilityTimingReconsiderCondition: strategyInspector?.abilityTimingReconsiderCondition || "none",
+      abilityTimingPostActionPolicy: strategyInspector?.abilityTimingPostActionPolicy || "passive-only",
+      ascensionMutagenAdvisor: strategyInspector?.ascensionMutagenAdvisor || null,
+      ascensionAdvisorRecommendation: strategyInspector?.ascensionAdvisorRecommendation || "CONTINUE_RUN",
+      ascensionAdvisorConfidence: strategyInspector?.ascensionAdvisorConfidence || "low",
+      ascensionAdvisorFormulaConfidence: strategyInspector?.ascensionAdvisorFormulaConfidence || "source-verified",
+      ascensionAdvisorReason: strategyInspector?.ascensionAdvisorReason || "none",
+      ascensionAdvisorReconsiderCondition: strategyInspector?.ascensionAdvisorReconsiderCondition || "none",
+      ascensionAdvisorSnapshotId: strategyInspector?.ascensionAdvisorSnapshotId || "none",
+      ascensionAdvisorCost: strategyInspector?.ascensionAdvisorCost || "0",
+      ascensionAdvisorCostPercent: strategyInspector?.ascensionAdvisorCostPercent || "0",
+      ascensionAdvisorEnergyEtaSeconds: strategyInspector?.ascensionAdvisorEnergyEtaSeconds ?? null,
+      ascensionAdvisorEnergyCapBlocked: strategyInspector?.ascensionAdvisorEnergyCapBlocked || "no",
+      ascensionAdvisorBreakEvenSeconds: strategyInspector?.ascensionAdvisorBreakEvenSeconds ?? null,
+      ascensionAdvisorBreakEvenRange: strategyInspector?.ascensionAdvisorBreakEvenRange || { lowSeconds: null, highSeconds: null },
+      ascensionAdvisorNextRunHorizonSeconds: strategyInspector?.ascensionAdvisorNextRunHorizonSeconds ?? null,
+      ascensionAdvisorCurrentRunOpportunity: strategyInspector?.ascensionAdvisorCurrentRunOpportunity || "unknown",
+      ascensionAdvisorInactiveMutagen: strategyInspector?.ascensionAdvisorInactiveMutagen || "0",
+      ascensionAdvisorActiveAfterAscend: strategyInspector?.ascensionAdvisorActiveAfterAscend || "0",
+      ascensionAdvisorNewLarvaPerSecond: strategyInspector?.ascensionAdvisorNewLarvaPerSecond || "0",
+      ascensionAdvisorMutagenPlan: strategyInspector?.ascensionAdvisorMutagenPlan || null,
+      ascensionAdvisorExecutionAuthority: strategyInspector?.ascensionAdvisorExecutionAuthority || "advisor-only",
       energySupportCloneCandidate: strategyInspector?.energySupportCloneCandidate || "none",
       energySupportCloneDecision: strategyInspector?.energySupportCloneDecision || "HOLD",
       energySupportCloneReason: strategyInspector?.energySupportCloneReason || "none",
@@ -5919,12 +6785,35 @@ function getDisplayName(item) {
       `- Energy support autobuyer instruction: ${payload.energySupportBestUseAutobuyerInstruction || "none"}`,
       `- Energy support blocked by: ${payload.energySupportBestUseBlockedBy || "none"}`,
       `- Energy support background action: ${payload.energySupportBackgroundAction || "none"}`,
+      `- Ability timing: ${payload.abilityTimingRecommendation || "SAVE"} ${payload.abilityTimingRecommendedAction || "Save Energy"}`,
+      `- Ability timing snapshot: ${payload.abilityTimingSnapshotId || "none"}`,
+      `- Ability timing projected gain: ${payload.abilityTimingProjectedGain || "0"}`,
+      `- Ability timing opportunity cost: ${payload.abilityTimingEnergyOpportunityCost || "none"}`,
+      `- Ability timing confidence: ${payload.abilityTimingConfidence || "low"}`,
+      `- Ability timing reason: ${payload.abilityTimingReason || "none"}`,
+      `- Ability timing reconsider: ${payload.abilityTimingReconsiderCondition || "none"}`,
+      `- Ability timing post-action policy: ${payload.abilityTimingPostActionPolicy || "passive-only"}`,
+      `- Ability timing execution authority: ${payload.abilityTimingExecutionAuthority || "advisor-only"}`,
       `- Clone support: ${payload.energySupportCloneDecision || "HOLD"} ${payload.energySupportCloneCandidate || "none"} (${payload.energySupportCloneReason || "none"})`,
       `- Mirror support: ${payload.energySupportMirrorDecision || "HOLD"} ${payload.energySupportMirrorCandidate || "none"} (${payload.energySupportMirrorReason || "none"})`,
       `- Mirror readiness state: ${payload.energySupportMirrorReadinessState || "none"}`,
       `- Mirror army state source: ${payload.energySupportMirrorArmyStateSource || "none"}`,
       `- Mirror evaluation revision: ${payload.energySupportMirrorEvaluationRevision || "0"}`,
       `- Lepidoptera support role: ${payload.energySupportLepidopteraRole || "wait"} (${payload.energySupportLepidopteraDecision || "WAIT"})`,
+      `- Ascension advisor recommendation: ${payload.ascensionAdvisorRecommendation || "CONTINUE_RUN"} (${payload.ascensionAdvisorExecutionAuthority || "advisor-only"})`,
+      `- Ascension advisor confidence: ${payload.ascensionAdvisorConfidence || "low"} (formula ${payload.ascensionAdvisorFormulaConfidence || "source-verified"})`,
+      `- Ascension advisor reason: ${payload.ascensionAdvisorReason || "none"}`,
+      `- Ascension advisor reconsider condition: ${payload.ascensionAdvisorReconsiderCondition || "none"}`,
+      `- Ascension snapshot: ${payload.ascensionAdvisorSnapshotId || "none"}`,
+      `- Ascension cost/cost%: ${payload.ascensionAdvisorCost || "0"} / ${payload.ascensionAdvisorCostPercent || "0"}`,
+      `- Ascension energy ETA seconds: ${payload.ascensionAdvisorEnergyEtaSeconds ?? "n/a"} (cap blocked ${payload.ascensionAdvisorEnergyCapBlocked || "no"})`,
+      `- Ascension break-even seconds: ${payload.ascensionAdvisorBreakEvenSeconds ?? "n/a"}`,
+      `- Ascension break-even range: ${payload.ascensionAdvisorBreakEvenRange?.lowSeconds ?? "n/a"}..${payload.ascensionAdvisorBreakEvenRange?.highSeconds ?? "n/a"}`,
+      `- Ascension horizon seconds: ${payload.ascensionAdvisorNextRunHorizonSeconds ?? "n/a"}`,
+      `- Ascension continue opportunity: ${payload.ascensionAdvisorCurrentRunOpportunity || "unknown"}`,
+      `- Ascension inactive mutagen: ${payload.ascensionAdvisorInactiveMutagen || "0"}`,
+      `- Ascension active after ascend: ${payload.ascensionAdvisorActiveAfterAscend || "0"}`,
+      `- Ascension larvae/sec after ascend: ${payload.ascensionAdvisorNewLarvaPerSecond || "0"}`,
       `- Momentum primary focus: ${payload.momentumPrimaryFocus || "Methodical progression"}`,
       `- Momentum advisor: ${payload.momentumPrimaryAdvisor || "none"}`,
       `- Momentum best step: ${payload.momentumBestStep || "Wait"} (${payload.momentumBestStepDecision || "WAIT"})`,
@@ -19436,6 +20325,56 @@ function getDisplayName(item) {
             decision = applyWholeEconomyExecutionRevalidationV1({ decision, revalidationState, actionBudget });
           }
           return laboratoryCloneJson(decision);
+        },
+      },
+
+      abilityTimingAdvisor: {
+        schemaVersion: ENERGY_ABILITY_TIMING_SCHEMA_VERSION,
+        supportedActionIds: ENERGY_ABILITY_TIMING_ACTION_IDS.slice(),
+        evaluate(snapshot = {}) {
+          return laboratoryCloneJson(evaluateEnergyAbilityTimingSnapshot(snapshot));
+        },
+        getCurrent() {
+          return laboratoryCloneJson(strategyInspector?.abilityTimingAdvisor || null);
+        },
+      },
+
+      ascensionMutagenAdvisor: {
+        schemaVersion: ASCENSION_MUTAGEN_ADVISOR_SCHEMA_VERSION,
+        evaluate(snapshot = {}) {
+          return laboratoryCloneJson(evaluateAscensionMutagenSnapshot(snapshot));
+        },
+        getCurrent() {
+          return laboratoryCloneJson(strategyInspector?.ascensionMutagenAdvisor || null);
+        },
+        formulaManifest() {
+          return laboratoryCloneJson({
+            schemaVersion: "book00-m5-source-formula-manifest.v1",
+            ascensionPenaltyBase: "1.12",
+            activeMutagenLarvaPerSecondPerUnit: "0.1",
+            nextUnlockCostFormula: "15625^alreadyUnlockedMutationCount",
+            unlockCostExamples: {
+              zeroUnlocked: ascensionMutagenDecimalString(ascensionMutagenUnlockCost(0)),
+              oneUnlocked: ascensionMutagenDecimalString(ascensionMutagenUnlockCost(1)),
+              twoUnlocked: ascensionMutagenDecimalString(ascensionMutagenUnlockCost(2)),
+            },
+            effectHelpers: {
+              logStat: "1 + val3 * (log(val * level + val2) / log(val2) - 1)",
+              asympStat: "1 + (val - 1) * (1 - 1 / (1 + level * val2))",
+              expStat: "1 + (level ^ val) * val2",
+              parityExamples: {
+                logStatL5: ascensionMutagenDecimalString(sourceVerifiedLogStat(5, 1, 10, 1)),
+                asympStatL100: ascensionMutagenDecimalString(sourceVerifiedAsympStat(100, 5, 0.001)),
+                expStatL10: ascensionMutagenDecimalString(sourceVerifiedExpStat(10, 0.2, 0.001)),
+              },
+            },
+            mutationCatalog: ASCENSION_MUTAGEN_MUTATIONS.map((row) => ({
+              unitId: row.unitId,
+              unlockUpgradeId: row.unlockUpgradeId,
+              label: row.label,
+              initialM5RankingStatus: row.initialM5RankingStatus,
+            })),
+          });
         },
       },
 
