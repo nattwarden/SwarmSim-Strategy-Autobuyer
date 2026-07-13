@@ -4982,11 +4982,20 @@ function getDisplayName(item) {
   function evaluateSixDomainStrategicCoordinator(inputSnapshot = {}) {
     const snapshot = laboratoryDeepFreeze(laboratoryCloneJson(inputSnapshot || {}));
     const manifest = snapshot.manifest || SIX_DOMAIN_MANIFEST;
-    const purchaseRows = Array.isArray(snapshot.purchaseProposalState?.evaluation?.evaluated)
+    const proposalRows = Array.isArray(snapshot.purchaseProposalState?.proposals)
+      ? snapshot.purchaseProposalState.proposals
+      : [];
+    const evaluatedPurchaseRows = Array.isArray(snapshot.purchaseProposalState?.evaluation?.evaluated)
       ? snapshot.purchaseProposalState.evaluation.evaluated
       : (Array.isArray(snapshot.purchaseEvaluation?.evaluated)
         ? snapshot.purchaseEvaluation.evaluated
         : (Array.isArray(snapshot.purchaseRows) ? snapshot.purchaseRows : []));
+    const purchaseRows = evaluatedPurchaseRows.map((evaluatedRow) => {
+      const proposalRow = proposalRows.find((proposal) => proposal?.lane === evaluatedRow?.lane
+        && proposal?.candidate === evaluatedRow?.candidate
+        && String(proposal?.target || proposal?.candidate || "none") === String(evaluatedRow?.target || evaluatedRow?.candidate || "none"));
+      return proposalRow ? { ...proposalRow, ...evaluatedRow } : evaluatedRow;
+    });
     const purchaseRowByDomain = {
       MEAT: purchaseRows.find((row) => row.lane === "Meat") || null,
       LARVA_ENGINE: purchaseRows.find((row) => row.lane === "Engine") || null,

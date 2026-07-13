@@ -155,6 +155,7 @@ async function main() {
             { horizonId: "long", horizonSeconds: 7200 },
           ],
           purchaseRows: options.purchaseRows || [],
+          purchaseProposalState: options.purchaseProposalState || undefined,
           abilitySnapshot: options.abilitySnapshot || buildAbilitySnapshot({ recommendedActionId: "WAIT", recommendation: "SAVE", milestoneEtaImprovementSeconds: null, sharedComparableValue: null }),
           ascensionSnapshot: options.ascensionSnapshot || buildAscensionSnapshot({ recommendedActionId: "CONTINUE_RUN", recommendation: "CONTINUE_RUN", breakEvenSeconds: null, projectedMilestoneProgressDelta: null }),
           selectedMainAction: options.selectedMainAction || null,
@@ -380,6 +381,12 @@ async function main() {
       const executionPlan = api.buildExecutionPlan(executionResult, executionState);
       const revalidatedExecutionPlan = api.revalidateExecutionPlan(executionPlan, executionState, { decisionCycleId: executionResult.decisionCycleId });
       const cycleDriftPlan = api.revalidateExecutionPlan(executionPlan, executionState, { decisionCycleId: "different-cycle" });
+      const evaluatedIdentityResult = api.evaluate(buildSnapshot({
+        snapshotId: "M6-EVALUATED-IDENTITY",
+        purchaseRows: [],
+        purchaseProposalState: executionState,
+      }));
+      const evaluatedIdentityPlan = api.buildExecutionPlan(evaluatedIdentityResult, executionState);
 
       const driftRows = clone(executionRows);
       driftRows[0].boundedAmount = "2";
@@ -456,6 +463,8 @@ async function main() {
           executionPlan,
           revalidatedExecutionPlan,
           cycleDriftPlan,
+          evaluatedIdentityResult,
+          evaluatedIdentityPlan,
           fingerprintDriftPlan,
           mismatchedWinnerPlan,
           advisorWinnerPlan,
@@ -539,6 +548,9 @@ async function main() {
     assert(report.execution.revalidatedExecutionPlan.executionAuthority === true, "exact same-cycle revalidation must authorize the bounded winner");
     assert(report.execution.revalidatedExecutionPlan.identityStatus === "matched", "revalidated identity must remain matched");
     assert(report.execution.cycleDriftPlan.executionAuthority === false && report.execution.cycleDriftPlan.revalidationStatus === "failed", "decision-cycle drift must deny authority");
+    assert(report.execution.evaluatedIdentityResult.winner?.action?.executionId === "drone", "evaluated purchase metrics must retain the proposal execution id");
+    assert(report.execution.evaluatedIdentityPlan.identityStatus === "matched", "evaluated purchase metrics must retain exact proposal execution identity");
+    assert(report.execution.evaluatedIdentityPlan.preRevalidationEligible === true, "merged evaluated/proposal identity must remain eligible for revalidation");
     assert(report.execution.fingerprintDriftPlan.executionAuthority === false, "amount/fingerprint drift must deny authority");
     assert(report.execution.mismatchedWinnerPlan.executionAuthority === false && report.execution.mismatchedWinnerPlan.identityStatus === "mismatch", "purchase-coordinator runner-up must not replace the global winner");
     assert(report.execution.advisorWinnerPlan.executionAuthority === false && !report.execution.advisorWinnerPlan.boundedCandidate, "advisor winner must not fall through to a purchase");
