@@ -2837,6 +2837,30 @@ function getDisplayName(item) {
     return count;
   }
 
+  function countConsecutiveMainHoldRunsMatching(predicate, history = runHistory, maxLookback = 50) {
+    const recent = (history || []).slice(-Math.max(1, Number(maxLookback) || 50));
+    let count = 0;
+
+    for (let i = recent.length - 1; i >= 0; i--) {
+      const run = recent[i] || {};
+      if (Number(run.mainActions || 0) !== 0) break;
+      if (!predicate || predicate(run)) {
+        count++;
+      } else {
+        break;
+      }
+    }
+
+    return count;
+  }
+
+  function countConsecutiveReserveAbilityBlockedMainHolds(history = runHistory) {
+    return countConsecutiveMainHoldRunsMatching((run) => {
+      const blocked = String(run?.blockedBySummary || "").toLowerCase();
+      return blocked.includes("reserve") && blocked.includes("ability disabled");
+    }, history);
+  }
+
   function buildLiveDiagnostics(history = runHistory) {
     const recent = (history || []).slice(-20);
     const sideOnlyRuns = recent.filter((run) => Number(run.mainActions || 0) === 0 && Number(run.sideActions || 0) > 0).length;
@@ -15091,7 +15115,13 @@ function getDisplayName(item) {
   function canActivateMeatStallBreaker(engine, protectedResources) {
     if (!config.meatFallbackEnabled) return false;
     const recentMainHoldRuns = countConsecutiveRecentMainHoldRuns();
-    if (recentMainHoldRuns < config.meatFallbackMinHoldRuns) return false;
+    const repeatedReserveAbilityBlockedHolds = countConsecutiveReserveAbilityBlockedMainHolds();
+    const acceleratedHoldThreshold = Math.min(Number(config.meatFallbackMinHoldRuns || 0), 2);
+    const standardGatePassed = recentMainHoldRuns >= config.meatFallbackMinHoldRuns;
+    const acceleratedGatePassed = acceleratedHoldThreshold > 0
+      && recentMainHoldRuns >= acceleratedHoldThreshold
+      && repeatedReserveAbilityBlockedHolds >= acceleratedHoldThreshold;
+    if (!standardGatePassed && !acceleratedGatePassed) return false;
     if (engine?.expansionBuyable || engine?.hatcheryBuyable) return false;
     if (protectedResources?.has("meat") || protectedResources?.has("territory")) return false;
     return true;
@@ -17478,6 +17508,9 @@ function getDisplayName(item) {
           ? getSmartUnitBuyNum(unit)
           : candidate.num;
 
+      const fallbackAllowedByEnergyGuard = !protectedResources?.has("energy") || !costUsesResource(unit, "energy");
+      const stallBreakerActiveForCandidate = isFallbackMeat && canStallBreak && fallbackAllowedByEnergyGuard;
+
       let block = getUnitCandidateBlock(
         candidate,
         num,
@@ -17491,6 +17524,11 @@ function getDisplayName(item) {
           actionPaybackBypassNote = bypass.reason;
           block = null;
         }
+      }
+
+      if (block && stallBreakerActiveForCandidate && block.type === "payback") {
+        actionPaybackBypassNote = `stall breaker bypassed payback guard after ${recentMainHoldRuns} main HOLD cycles; reserve/protected guards still enforced`;
+        block = null;
       }
 
       if (block) {
@@ -17519,7 +17557,6 @@ function getDisplayName(item) {
       }
 
       const guardReason = meatChainPurchaseOkReason(unit, num);
-      const fallbackAllowedByEnergyGuard = !protectedResources?.has("energy") || !costUsesResource(unit, "energy");
       const stallBreakerActive = isFallbackMeat && canStallBreak && fallbackAllowedByEnergyGuard;
       const fallbackReason = isFallbackMeat
         ? `${stallBreakerActive ? "meat stall breaker" : "meat fallback"}: top target ${getDisplayName(topMeatCandidate.unit)} blocked by ${topMeatBlockedBy}; ${actionPaybackBypassNote || "safe lower-chain buy keeps production moving"}`

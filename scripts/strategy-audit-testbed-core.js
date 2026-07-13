@@ -1624,6 +1624,7 @@ function buildCli(argv, mode) {
   const args = argMap(argv);
   const scenario = String(args.get("--scenario") || "canary").toLowerCase();
   const scenarioDefinition = getScenarioDefinition(scenario);
+  const browserChannel = String(args.get("--browser-channel") || args.get("--channel") || "").trim();
   return {
     mode,
     scenario,
@@ -1640,8 +1641,18 @@ function buildCli(argv, mode) {
     captureScreenshots: parseBool(args.get("--screenshots"), mode === "watch"),
     strictDeterminism: parseBool(args.get("--strict-determinism"), mode === "fast"),
     scenarioRuns: parseNumber(args.get("--scenario-runs"), 1),
-    expectedUserscriptSha: args.get("--expected-userscript-sha") || null
+    expectedUserscriptSha: args.get("--expected-userscript-sha") || null,
+    browserChannel: browserChannel || null
   };
+}
+
+function browserLaunchOptions(cli) {
+  const options = {
+    headless: !cli.headed,
+    slowMo: cli.slowMoMs
+  };
+  if (cli?.browserChannel) options.channel = cli.browserChannel;
+  return options;
 }
 
 function completeNullReasons(row, reasonMap) {
@@ -2747,7 +2758,7 @@ async function runOneExecution(cli, options = {}) {
   }
 
   const ownsBrowser = !options.browser;
-  const browser = options.browser || await chromium.launch({ headless: !cli.headed, slowMo: cli.slowMoMs });
+  const browser = options.browser || await chromium.launch(browserLaunchOptions(cli));
   const browserInfo = await browserProvenance(browser);
   const ownsContext = !options.context;
 
@@ -3103,8 +3114,11 @@ async function runScenarioMatrix(mode, matrixOptions) {
   const cycles = Math.max(1, Number(matrixOptions?.cycles) || 1);
   if (!scenarios.length) throw new Error("scenario matrix requires at least one scenario");
 
-  const baseCli = buildCli([], mode);
-  const browser = await chromium.launch({ headless: !baseCli.headed, slowMo: baseCli.slowMoMs });
+  const baseCliArgs = matrixOptions?.browserChannel
+    ? ["--browser-channel", String(matrixOptions.browserChannel)]
+    : [];
+  const baseCli = buildCli(baseCliArgs, mode);
+  const browser = await chromium.launch(browserLaunchOptions(baseCli));
   const executions = [];
   let context = null;
   let page = null;
@@ -3114,7 +3128,8 @@ async function runScenarioMatrix(mode, matrixOptions) {
     const bootstrapCli = buildCli([
       "--scenario", scenarios[0],
       "--cycles", String(cycles),
-      "--run-id", bootstrapRunId
+      "--run-id", bootstrapRunId,
+      ...(baseCli.browserChannel ? ["--browser-channel", baseCli.browserChannel] : [])
     ], mode);
     const bootstrapDir = selectedArtifactDir(mode, scenarios[0], bootstrapRunId);
     fs.mkdirSync(bootstrapDir, { recursive: true });
@@ -3128,7 +3143,8 @@ async function runScenarioMatrix(mode, matrixOptions) {
         const cli = buildCli([
           "--scenario", scenario,
           "--cycles", String(cycles),
-          "--run-id", runId
+          "--run-id", runId,
+          ...(baseCli.browserChannel ? ["--browser-channel", baseCli.browserChannel] : [])
         ], mode);
         const outcome = await runOneExecution(cli, { browser, context, page });
         executions.push(outcome);

@@ -44,7 +44,7 @@ function parseList(value) {
     .filter(Boolean);
 }
 
-function runScenario(scenarioId, cycles, repeatIndex) {
+function runScenario(scenarioId, cycles, repeatIndex, browserChannel) {
   const args = [
     "scripts/strategy-audit-testbed-live.js",
     "--scenario",
@@ -52,6 +52,9 @@ function runScenario(scenarioId, cycles, repeatIndex) {
     "--cycles",
     String(cycles),
   ];
+  if (browserChannel) {
+    args.push("--browser-channel", String(browserChannel));
+  }
 
   console.log(`\n[SA1 matrix] ${scenarioId} run ${repeatIndex}`);
   const result = spawnSync("node", args, { stdio: "inherit", shell: false });
@@ -65,6 +68,7 @@ async function main() {
   const only = parseList(args.get("--only"));
   const isolated = args.get("--isolated") === "true";
   const sweep150 = args.get("--sweep150") === "true";
+  const browserChannel = args.get("--browser-channel") || args.get("--channel") || null;
 
   const scenarios = only.length
     ? only
@@ -72,7 +76,7 @@ async function main() {
 
   if (!isolated) {
     console.log(`[SA1 matrix] Reusing one Chrome window, context, and page for ${scenarios.length * repeats} sequential runs.`);
-    const result = await runScenarioMatrix("live", { scenarios, repeats, cycles });
+    const result = await runScenarioMatrix("live", { scenarios, repeats, cycles, browserChannel });
     if (result.exitCode !== 0) process.exit(1);
     console.log("\n[SA1 matrix] Completed successfully.");
     return;
@@ -81,7 +85,7 @@ async function main() {
   let failures = 0;
   for (const scenario of scenarios) {
     for (let run = 1; run <= repeats; run += 1) {
-      const ok = runScenario(scenario, cycles, run);
+      const ok = runScenario(scenario, cycles, run, browserChannel);
       if (!ok) {
         failures += 1;
         console.error(`[SA1 matrix] FAILED: ${scenario} run ${run}`);
