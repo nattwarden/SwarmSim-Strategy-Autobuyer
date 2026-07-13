@@ -19,6 +19,12 @@ docs/release-notes/
 
 ## Version notes
 
+- M6 foundation (unreleased): Defined the implementation-ready six-domain
+  strategic coordinator contract for `6.0.0`, including one immutable decision
+  identity, honest shared-outcome comparability, hard-safety separation,
+  advisor authority isolation, causal effect double-count prevention, bounded
+  reversible revalidation, mechanic-based coverage, focused acceptance, and a
+  complete Copilot work order. No runtime behavior or authority changed.
 - 5.0.0: Added an advisor-only Ascension and Mutagen advisor that compares
   CONTINUE_RUN and ASCEND_NOW from one immutable snapshot, includes
   recovery-aware uncertainty gates, keeps Mutagen allocation execution disabled,

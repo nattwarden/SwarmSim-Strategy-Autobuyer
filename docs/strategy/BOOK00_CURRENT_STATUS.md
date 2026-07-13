@@ -33,15 +33,14 @@ git rev-parse origin/main
 git log -8 --oneline --decorate
 ```
 
-Observed at the start of the Milestone 2 closure fix:
+Observed immediately before the Milestone 6 foundation package:
 
-- verified 0.13.0 implementation commit: `3896ad5`
-- verified 0.13.0 evidence commit / `origin/main`: `bcd1910`
-- current feature workspace starting HEAD: `e7730ad05853134faca3c1f24161182bdf695150`
-- current feature branch: `feature/strategy-audit-testbed-runners`
-- feature branch remote status before the closure commit: ahead 9
-- working tree became dirty only with the authored Milestone 2 closure scope
-  recorded in the handoff log below
+- branch: `main`;
+- integrated M5 implementation: `c10d8c5a9160708e1d657ad5f08496dfb8e2e698`;
+- integrated M5 evidence / starting `HEAD` / `origin/main`:
+  `af6a41b9534b6ff682a2903d938fa17686a3a9d2`;
+- runtime version: `5.0.0`;
+- working tree: clean before the authored M6 foundation scope.
 
 If observed Git state differs, update this board before implementation.
 
@@ -54,56 +53,42 @@ If observed Git state differs, update this board before implementation.
 
 ## Milestone snapshot (2026-07-13)
 
-- Milestone 1 (Whole-Economy Shadow Preview): implemented and accepted on
-  `21adb7a`.
-- Milestone 2 (Bounded Whole-Economy Coordinator Execution): locally accepted
-  in `808f9e1` and packaged as the local 0.14.0 release candidate. Formal
-  published-release verification remains separate work.
-- The original `sa1-02` Engine regression now resolves `upgrade:expansion`,
-  executes exactly one Expansion, and reports `matchedExecution=yes`.
-- Focused product acceptance `book00-m2-coordinator` compares one preserved
-  pre-execution snapshot: legacy ordering selects `Engine: Hatchery`, while the
-  whole-economy coordinator selects and buys `Territory: Stinger V x9` through
-  canonical identity `unit:stinger:v`.
-- Milestone 3 is now active. Energy production must join in shadow comparison
-  before it can receive any bounded reversible execution authority.
-- The first Milestone 3 shadow slice is implemented in the current work package:
-  Energy is the fourth whole-economy domain, emits `whole-economy-outcome.v2`,
-  and remains excluded from coordinator execution authority. Exact-SHA branch
-  checks passed against `42847a4258ba299132f0c7c8c85489371fe68a12`;
-  the feature history was fast-forwarded to `main` at `e9918dd` on 2026-07-13.
-- The shadow slice was formally accepted on `main` by implementation
-  `6d5a020f7d47713f7abdb980a0b8324efce846a3` and evidence
-  `ec3aea2221fb5600e41a74bb476f16c9fea292ea`.
-- The bounded Milestone 3 execution slice is implemented on `main` at
-  `df402cea59da8bd3cb7591c2ce7117f2b1bd57ce`: only the current Nexus target or
-  Lepidoptera may receive Energy execution authority, after the whole-economy
-  winner, evidence, Nexus gate, identity, amount, and immediate Energy proposal
-  revalidation all pass.
-- Milestone 3 is formally closed by implementation
-  `45d989c31e1e802edcf80bfcfda3922fd5cdd6c4` and evidence
-  `7ef846d29e52a6a43bc67564b663a8e390687692`.
-- Starting with Milestone 4, the release major version matches the active
-  BOOK-00 milestone. M4 starts at `4.0.0`; historical M3 evidence remains
-  correctly identified as `0.14.1`.
+- Milestone 1 established the three-domain whole-economy shadow preview.
+- Milestone 2 established bounded, exact, revalidated execution for supported
+  Meat, Larva/Engine, and Army/Territory winners.
+- Milestone 3 added Energy production to `whole-economy-outcome.v2` and bounded
+  execution for the accepted current Nexus target or Lepidoptera production.
+  Formal closure: implementation `45d989c31e1e802edcf80bfcfda3922fd5cdd6c4`,
+  evidence `7ef846d29e52a6a43bc67564b663a8e390687692`.
+- Milestone 4 added the advisor-only Energy ability timing contract at `4.0.0`.
+  Branch implementation `f2db145e368f77e1b348a6cb70e1f8ef2f6a0a90`,
+  evidence `b9040d5943e621e6f41c6d247794e6866859ff64`.
+- Milestone 5 added the advisor-only Ascension/Mutagen contract at `5.0.0`.
+  Branch implementation `060a5654fe409db54d196b0368533d6696bb3361`,
+  evidence `fdd278c4788495f1e9ab4058b1f61b5d9240552f`.
+- Council UI, M4, and M5 were integrated on `main` at
+  `c10d8c5a9160708e1d657ad5f08496dfb8e2e698` and formally accepted by separate
+  integration evidence `af6a41b9534b6ff682a2903d938fa17686a3a9d2`.
+- Starting with Milestone 4, release major version follows the active BOOK-00
+  milestone. M6 therefore starts at `6.0.0`.
 
 ## Active milestone
 
-**Milestone 5 — Ascension and Mutagen advisor (implementation in progress on M5 branch)**
+**Milestone 6 — Six-domain strategic coordinator (foundation and implementation handoff)**
 
-Milestone 4 is implementation- and exact-SHA evidence-complete on the stacked
-M4 branch: implementation `f2db145e368f77e1b348a6cb70e1f8ef2f6a0a90`,
-evidence `b9040d5943e621e6f41c6d247794e6866859ff64`. It is not yet integrated into
-`origin/main` because a parallel UI workstream owns the primary worktree.
+M6 must bind the four purchase domains, M4 Energy ability advisor, and M5
+Ascension/Mutagen advisor into one immutable decision identity and one coherent
+recommendation without comparing incompatible local scores.
 
-Milestone 5 player-visible target:
+Milestone 6 player-visible target:
 
-> The player sees whether to continue the current run or ascend now, with
-> current-run opportunity cost, recovery/break-even, next-run benefit, a
-> supported Mutagen plan, and explicit uncertainty.
+> The player sees the active milestone, best allowed action, important
+> alternatives, projected outcomes, blockers, confidence, authority, and the
+> trigger for reconsideration in one Council/Inspector view.
 
-Authority begins and remains advisor-only. Auto-ascend and Mutagen spending stay
-disabled.
+Existing bounded reversible authority may be reused only for the exact global
+purchase winner after immediate revalidation. Energy abilities, Ascension,
+Mutagen, WAIT, and uncertainty remain non-executable.
 
 ## Milestone 2 completion checklist
 
@@ -127,15 +112,48 @@ disabled.
       shadow slice, sufficient evidence, exact identity/amount revalidation,
       and the production-only Nexus gate pass.
 
+## Milestone 4 completion checklist
+
+- [x] Ability and WAIT branches share one immutable M4 snapshot.
+- [x] Clone Larvae, House of Mirrors, and supported Rush abilities can be
+      recommended with explicit Energy opportunity cost and reconsideration.
+- [x] Swarmwarp remains excluded and ability execution authority remains false.
+- [x] Exact-SHA implementation and separate evidence are integrated on `main`.
+
+## Milestone 5 completion checklist
+
+- [x] `CONTINUE_RUN` and `ASCEND_NOW` share one immutable M5 snapshot.
+- [x] Recovery/break-even, next-run horizon, Mutagen gain, and uncertainty are
+      explicit.
+- [x] `KEEP_UNALLOCATED` is always present; only supported Hatchery analysis is
+      directly rankable and unsupported mutation effects remain unranked.
+- [x] Ascension and Mutagen execution authority remains false.
+- [x] Exact-SHA implementation and separate evidence are integrated on `main`.
+
+## Milestone 6 completion checklist
+
+- [ ] Exactly six canonical domains use the shared versioned M6 outcome.
+- [ ] All domains share one immutable decision identity.
+- [ ] Global rank uses a real shared milestone outcome, not local scores.
+- [ ] Hard safety remains independent from economic ranking.
+- [ ] Advisor-only winners cannot gain authority or silently fall through.
+- [ ] Existing reversible execution remains exact, bounded, and revalidated.
+- [ ] Cross-domain causal effects cannot be double counted.
+- [ ] Decision and execution remain consistent across cycles.
+- [ ] Mechanic-based coverage, observability, focused acceptance, and exact-SHA
+      evidence are complete.
+
 ## Current work package
 
-Implementation status: the complete M5 source/contract handoff is prepared on
-`codex/m5-ascension-mutagen-advisor`. No M5 runtime behavior has been authored.
+Implementation status: the complete M6 contract/acceptance handoff is authored
+on `main`. No M6 runtime behavior or `6.0.0` version change is included in this
+foundation package.
 
 Product capability:
 
-- Prepare Copilot to implement `CONTINUE_RUN` versus `ASCEND_NOW` and supported
-  Mutagen effects from verified mechanics without irreversible authority.
+- Prepare Copilot to combine all six BOOK-00 domains into one explainable
+  strategic coordinator without mixing incompatible local scores or widening
+  irreversible authority.
 
 Player-visible change:
 
@@ -143,54 +161,71 @@ Player-visible change:
 
 Included:
 
-- pinned Ascension and Mutagen source formulas;
-- runtime data map and immutable snapshot/result contracts;
-- recovery-evidence policy and uncertainty gates;
-- supported/unranked mutation matrix;
-- fourteen-scenario acceptance matrix;
+- current M1–M5 adapter and authority map;
+- shared six-domain identity and outcome contracts;
+- honest comparability and uncertainty rules;
+- causal effect ledger and double-count prevention;
+- execution/fallback/cycle consistency rules;
+- mechanic-based coverage contract;
+- twelve-group focused acceptance matrix;
 - complete Copilot implementation prompt.
 
 Explicitly excluded:
 
-- runtime implementation or version bump to `5.0.0` in this foundation package;
-- any Ascension or Mutagen execution;
-- global portfolio ranking across unsupported cross-domain mutation effects;
-- UI work owned by the parallel UI agent.
+- runtime implementation or version bump to `6.0.0` in this foundation package;
+- any new execution key or wider reversible execution scope;
+- any Energy ability, Ascension, or Mutagen execution;
+- Swarmwarp or unsupported cross-domain mutation conversions;
+- Council artwork redesign.
 
 Authority:
 
-- documentation only; future M5 runtime authority is advisor-only;
+- documentation only;
+- future M6 authority may reuse only existing exact bounded purchase execution;
 - auto-Ascension, Mutagen spending, ability casts, Nightbug/Bat remain outside
   authority.
 
 Expected changed areas:
 
-- `docs/strategy/BOOK00_M5_ASCENSION_MUTAGEN_FOUNDATION.md`
-- `docs/test-data/5.0.0-book00-m5-ascension-mutagen/m5-source-formula-manifest.json`
-- `docs/prompts/implement-book00-m5-ascension-mutagen-advisor.md`
+- `docs/strategy/BOOK00_M6_SIX_DOMAIN_COORDINATOR_FOUNDATION.md`
+- `docs/test-data/6.0.0-book00-m6-six-domain/m6-domain-contract-manifest.json`
+- `docs/prompts/implement-book00-m6-six-domain-coordinator.md`
+- `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md`
 - this status board
 
 Stop condition:
 
-- source facts can be reconstructed from the pinned commit;
-- unknown recovery/cross-domain value is explicitly separated from exact math;
-- Copilot has unambiguous implementation, safety, testing, version, and Git
-  instructions.
+- every domain adapter, shared field, ranking rule, authority gate, acceptance
+  group, version surface, and Git/evidence step is explicit;
+- missing cross-domain conversion remains unranked rather than guessed;
+- Copilot can implement the bounded vertical slice without another planning
+  round.
 
 ## Immediate next actions
 
 Execute these in order:
 
-1. Give Copilot the M5 prompt in `docs/prompts/`.
-2. Implement the advisor on the isolated M5 branch.
-3. Release the implementation as `5.0.0`.
-4. Run focused/full exact-SHA verification and separate M5 evidence.
+1. Create isolated branch/worktree `codex/m6-six-domain-coordinator` from the
+   clean M6 foundation on `origin/main`.
+2. Give Copilot
+   `docs/prompts/implement-book00-m6-six-domain-coordinator.md`.
+3. Implement and release the coordinator as `6.0.0`.
+4. Run focused/full exact-SHA verification and push separate M6 evidence.
+5. Integrate to `main` only after the branch is accepted and explicitly
+   authorized.
 
 ## Known current blockers and cautions
 
-- M4 is branch-verified but not integrated into `origin/main`.
-- Honest live recovery/break-even may be unavailable; M5 must return
-  `UNCERTAIN`, not invent a fixed time.
+- Current purchase comparison covers four domains while M4 and M5 remain
+  separate advisor contracts; M6 must adapt, not rewrite, them.
+- Purchase `economicScore`, M4 ability `score`, and M5 qualitative outputs are
+  incompatible cross-domain rank inputs.
+- Honest live ability milestone conversion and Ascension recovery may remain
+  unavailable; those outcomes must stay visible but unranked/uncertain.
+- Advisor-only global winners must not silently fall through to a lower-ranked
+  purchase in the same decision cycle.
+- Cross-domain effects require an auditable causal ledger to prevent duplicate
+  benefit counting.
 - The focused testbed is deterministic only when staged count, command deltas,
   and `velocity()` describe the same state; preserve that invariant.
 - Territory suffix tiers require canonical name plus variant identity. Do not
@@ -199,23 +234,29 @@ Execute these in order:
 ## Do not do next
 
 - Do not widen Energy execution beyond Nexus/Lepidoptera production.
-- Do not grant any Energy ability or Ascension execution authority.
+- Do not add an execution key or grant Energy ability, Ascension, or Mutagen
+  execution authority.
+- Do not sort local lane/advisor scores together.
+- Do not treat missing cross-domain conversion as zero.
+- Do not execute a runner-up when an advisor-only action wins.
 - Do not globally rank mutation effects whose future-run conversion is missing.
 - Do not change hard safety defaults.
 
 ## Next product milestone
 
-**Milestone 5 — Ascension and Mutagen advisor**
+**Milestone 6 — Six-domain strategic coordinator**
 
 Required product outcome:
 
-- compare `CONTINUE_RUN` and `ASCEND_NOW` from one immutable snapshot;
-- show legality, current-run opportunity, recovery/break-even, next-run horizon,
-  Mutagen effects, and uncertainty;
-- keep Ascension and Mutagen execution disabled.
+- emit exactly six domain outcomes from one immutable decision identity;
+- select the best allowed comparable action for one milestone/horizon;
+- keep hard blockers independent from economic rank;
+- prevent cross-domain double counting;
+- reuse only existing exact bounded reversible execution;
+- keep Energy abilities, Ascension, and Mutagen non-executable.
 
-Implementation starts from the M5 foundation and Copilot work order prepared in
-this branch.
+Implementation starts from the M6 foundation, authored manifest, and Copilot
+work order prepared on `main`.
 
 ## Handoff update template
 
@@ -236,6 +277,32 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 — Milestone 6 foundation and Copilot handoff
+
+- Agent: Codex
+- Worktree/branch: primary workspace, `main`
+- Baseline: integrated M5 evidence commit
+  `af6a41b9534b6ff682a2903d938fa17686a3a9d2`.
+- Product capability changed: none; this is the implementation-ready M6 shared
+  identity, domain outcome, comparability, effect-ledger, authority, execution,
+  observability, coverage, acceptance, version, and Git/evidence package.
+- Player-visible result: none until the M6 work order is implemented as
+  `6.0.0`.
+- Authored foundation paths:
+  - `docs/strategy/BOOK00_M6_SIX_DOMAIN_COORDINATOR_FOUNDATION.md`
+  - `docs/test-data/6.0.0-book00-m6-six-domain/m6-domain-contract-manifest.json`
+  - `docs/prompts/implement-book00-m6-six-domain-coordinator.md`
+- Generated evidence paths: none; the M6 manifest is authored contract data,
+  not execution evidence.
+- Safety: no runtime change, no new execution key, and no authority change.
+- Milestone checklist items completed: implementation prerequisites and the
+  twelve-group focused acceptance contract are defined.
+- Remaining blocker: M6 runtime implementation, `6.0.0` release surfaces,
+  focused acceptance, and exact-SHA evidence.
+- Exact next action: create `codex/m6-six-domain-coordinator` from the clean
+  foundation commit and execute
+  `docs/prompts/implement-book00-m6-six-domain-coordinator.md`.
 
 ### 2026-07-13 — Milestone 5 implementation foundation and Copilot handoff
 

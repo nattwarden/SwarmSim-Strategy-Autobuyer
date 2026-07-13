@@ -1,0 +1,173 @@
+{
+  "schemaVersion": "m6-domain-contract-manifest.v1",
+  "targetVersion": "6.0.0",
+  "status": "authored-foundation-not-execution-evidence",
+  "baseline": {
+    "mainIntegrationImplementationSha": "c10d8c5a9160708e1d657ad5f08496dfb8e2e698",
+    "mainIntegrationEvidenceSha": "af6a41b9534b6ff682a2903d938fa17686a3a9d2",
+    "currentRuntimeVersion": "5.0.0"
+  },
+  "schemas": {
+    "domainOutcome": "strategic-domain-outcome.v1",
+    "effect": "strategic-effect.v1",
+    "coordinator": "six-domain-strategic-coordinator.v1"
+  },
+  "domains": [
+    {
+      "domainId": "MEAT",
+      "label": "Meat chain",
+      "sourceContract": "whole-economy-outcome.v2",
+      "authorityClass": "BOUNDED_REVERSIBLE",
+      "allowedExecutionKeys": ["meat"]
+    },
+    {
+      "domainId": "LARVA_ENGINE",
+      "label": "Larva/Engine",
+      "sourceContract": "whole-economy-outcome.v2",
+      "authorityClass": "BOUNDED_REVERSIBLE",
+      "allowedExecutionKeys": ["engine"]
+    },
+    {
+      "domainId": "ARMY_TERRITORY",
+      "label": "Army/Territory",
+      "sourceContract": "whole-economy-outcome.v2",
+      "authorityClass": "BOUNDED_REVERSIBLE",
+      "allowedExecutionKeys": ["territory"]
+    },
+    {
+      "domainId": "ENERGY_PRODUCTION",
+      "label": "Energy production",
+      "sourceContract": "whole-economy-outcome.v2",
+      "authorityClass": "BOUNDED_REVERSIBLE",
+      "allowedExecutionKeys": ["energy"],
+      "executionRestriction": "accepted Nexus target or bounded Lepidoptera production only"
+    },
+    {
+      "domainId": "ENERGY_ABILITIES",
+      "label": "Energy abilities",
+      "sourceContract": "energy-ability-timing-advisor.v1",
+      "authorityClass": "ADVISOR_ONLY",
+      "allowedExecutionKeys": [],
+      "supportedActionIds": [
+        "WAIT",
+        "CLONE_LARVAE",
+        "HOUSE_OF_MIRRORS",
+        "LARVA_RUSH",
+        "MEAT_RUSH",
+        "TERRITORY_RUSH"
+      ],
+      "unsupportedActionIds": ["SWARMWARP"]
+    },
+    {
+      "domainId": "ASCENSION_MUTAGEN",
+      "label": "Ascension/Mutagen",
+      "sourceContract": "ascension-mutagen-advisor.v1",
+      "authorityClass": "ADVISOR_ONLY",
+      "allowedExecutionKeys": [],
+      "supportedActionIds": ["CONTINUE_RUN", "ASCEND_NOW", "KEEP_UNALLOCATED", "HATCHERY_MUTATION"]
+    }
+  ],
+  "sharedIdentityFields": [
+    "snapshotId",
+    "snapshotHash",
+    "decisionCycleId",
+    "activeMilestone",
+    "activeTarget",
+    "horizonId",
+    "horizonSeconds",
+    "scriptVersion"
+  ],
+  "allowedComparisonBases": [
+    "milestone-eta-seconds",
+    "same-unit-milestone-progress-delta",
+    "versioned-source-or-runtime-derived-common-value"
+  ],
+  "forbiddenComparisonInputs": [
+    "raw-lane-score",
+    "m4-ability-score",
+    "priority-bonus",
+    "urgency-bonus",
+    "incompatible-local-roi",
+    "scenario-name",
+    "expected-winner"
+  ],
+  "allowedExecutionKeys": ["meat", "engine", "territory", "energy"],
+  "forbiddenExecutionClasses": ["ENERGY_ABILITIES", "ASCENSION_MUTAGEN", "WAIT", "UNCERTAIN"],
+  "effectCausalRoles": ["DIRECT", "INTERMEDIATE", "FINAL", "OPPORTUNITY_COST"],
+  "requiredMechanics": [
+    {
+      "mechanicId": "M6-SIX-DOMAIN-IDENTITY",
+      "domainId": "ALL",
+      "productionContract": "six-domain-strategic-coordinator.v1",
+      "invariants": ["exactly-six-domains", "shared-snapshot", "shared-cycle", "shared-milestone-target-horizon"]
+    },
+    {
+      "mechanicId": "M6-HARD-SAFETY",
+      "domainId": "ALL",
+      "productionContract": "strategic-domain-outcome.v1.safety",
+      "invariants": ["safety-before-rank", "blocked-cannot-win", "safety-not-score"]
+    },
+    {
+      "mechanicId": "M6-COMPARABILITY",
+      "domainId": "ALL",
+      "productionContract": "strategic-domain-outcome.v1.comparability",
+      "invariants": ["shared-basis-only", "missing-is-not-zero", "local-scores-forbidden"]
+    },
+    {
+      "mechanicId": "M6-ABILITY-AUTHORITY",
+      "domainId": "ENERGY_ABILITIES",
+      "productionContract": "energy-ability-timing-advisor.v1",
+      "invariants": ["advisor-only", "no-cast", "no-purchase-fallback-when-selected"]
+    },
+    {
+      "mechanicId": "M6-ASCENSION-AUTHORITY",
+      "domainId": "ASCENSION_MUTAGEN",
+      "productionContract": "ascension-mutagen-advisor.v1",
+      "invariants": ["advisor-only", "no-ascend", "no-mutagen-spend", "no-purchase-fallback-when-selected"]
+    },
+    {
+      "mechanicId": "M6-DOUBLE-COUNT-AUDIT",
+      "domainId": "ALL",
+      "productionContract": "strategic-effect.v1",
+      "invariants": ["unique-effect-id", "one-final-causal-effect", "compatible-units", "no-causal-cycle"]
+    },
+    {
+      "mechanicId": "M6-BOUNDED-EXECUTION",
+      "domainId": "REVERSIBLE_PURCHASES",
+      "productionContract": "whole-economy-execution-decision.v1",
+      "invariants": ["existing-keys-only", "exact-fingerprint", "immediate-revalidation", "bounded-amount"]
+    },
+    {
+      "mechanicId": "M6-CYCLE-CONSISTENCY",
+      "domainId": "ALL",
+      "productionContract": "six-domain-strategic-coordinator.v1.executionPlan",
+      "invariants": ["one-main-action-per-decision", "new-cycle-after-action", "no-stale-authority"]
+    },
+    {
+      "mechanicId": "M6-NON-MUTATION",
+      "domainId": "ALL",
+      "productionContract": "six-domain-strategic-coordinator.v1",
+      "invariants": ["input-unchanged", "live-state-unchanged-by-evaluator"]
+    },
+    {
+      "mechanicId": "M6-OBSERVABILITY",
+      "domainId": "ALL",
+      "productionContract": "Council/Inspector/export/API",
+      "invariants": ["winner-visible", "alternatives-visible", "blockers-visible", "confidence-visible", "reconsideration-visible", "authority-visible"]
+    }
+  ],
+  "acceptanceGroups": [
+    "six-domain-identity",
+    "meat-winner",
+    "larva-engine-winner",
+    "army-territory-winner",
+    "energy-production-winner",
+    "energy-ability-winner-advisor-only",
+    "ascension-winner-advisor-only",
+    "hard-safety-outranks-value",
+    "comparability-and-uncertainty",
+    "effect-ledger-and-resource-conflicts",
+    "bounded-execution-and-cycle-drift",
+    "observability-coverage-and-safety-regression"
+  ]
+}

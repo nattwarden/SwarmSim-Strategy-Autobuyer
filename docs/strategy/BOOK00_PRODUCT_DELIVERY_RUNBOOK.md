@@ -433,6 +433,12 @@ Player-facing release sentence:
 
 ### Milestone 6 - Six-domain strategic coordinator
 
+Implementation foundation:
+
+- `docs/strategy/BOOK00_M6_SIX_DOMAIN_COORDINATOR_FOUNDATION.md`
+- `docs/test-data/6.0.0-book00-m6-six-domain/m6-domain-contract-manifest.json`
+- `docs/prompts/implement-book00-m6-six-domain-coordinator.md`
+
 Product capability:
 
 All six BOOK-00 domains participate in one explainable strategic decision loop.
@@ -475,6 +481,7 @@ If question 1 or 2 has no concrete answer, do not declare the milestone done.
 
 ## Immediate next action
 
-Read `BOOK00_CURRENT_STATUS.md`, complete Milestone 0 once, then start Milestone
-1. Do not begin another broad Territory score sweep before the shared outcome
-preview exists.
+Read `BOOK00_CURRENT_STATUS.md`, create an isolated M6 worktree from the clean
+foundation on `origin/main`, and execute the M6 Copilot work order. Do not rank
+the six domains by combining their local scores, and do not widen irreversible
+authority while building the shared coordinator.
