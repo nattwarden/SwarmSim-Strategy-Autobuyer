@@ -466,6 +466,7 @@
   let strategyInspector = null;
   let laneCandidates = [];
   let unifiedPurchaseProposalState = null;
+  let wholeEconomyExecutionDecisionState = null;
   let runHistory = [];
   let liveDiagnostics = null;
   let lastLaboratorySnapshot = null;
@@ -2884,6 +2885,7 @@ function getDisplayName(item) {
     const wholeEconomyPreview = purchaseEvaluator.wholeEconomyPreview || null;
     const wholeEconomyWinner = wholeEconomyPreview?.winner || null;
     const wholeEconomyLosers = wholeEconomyPreview?.losers || [];
+    const coordinatorExecution = wholeEconomyExecutionDecisionState || createWholeEconomyExecutionDecisionBase(Math.max(0, Number(maxActions || 0) - Number(mainActions || 0)));
     const noSideReason = selectedSideAction?.reason
       ? selectedSideAction.reason
       : (refillState?.decision === "HOLD" && refillState?.whyNoFollowUpAction && refillState.whyNoFollowUpAction !== "none"
@@ -3001,6 +3003,32 @@ function getDisplayName(item) {
       wholeEconomySwitchSignal: wholeEconomyPreview?.switchSignal || "none",
       wholeEconomyAdvisorOnlyReason: wholeEconomyPreview?.advisorOnlyReason || "shadow preview is advisory",
       wholeEconomyLosingCandidates: wholeEconomyLosers,
+      coordinatorExecutionSchema: coordinatorExecution.schemaVersion || "whole-economy-execution-decision.v1",
+      coordinatorAuthoritySource: coordinatorExecution.authoritySource || "whole-economy-coordinator.v2",
+      coordinatorExecutionAuthority: coordinatorExecution.executionAuthority === true ? "true" : "false",
+      coordinatorSelectedDomain: coordinatorExecution.selectedDomain || "none",
+      coordinatorSelectedLane: coordinatorExecution.selectedLane || "none",
+      coordinatorSelectedCandidate: coordinatorExecution.selectedCandidate || "none",
+      coordinatorSelectedExecutionKey: coordinatorExecution.selectedExecutionKey || "none",
+      coordinatorSelectedAmount: coordinatorExecution.selectedAmount || "0",
+      coordinatorSelectedReason: coordinatorExecution.selectedReason || "none",
+      coordinatorExecutionConfidence: coordinatorExecution.confidence || "low",
+      coordinatorExecutionScoreMargin: coordinatorExecution.scoreMargin ?? null,
+      coordinatorGatesPassed: (coordinatorExecution.gatesPassed || []).join("; ") || "none",
+      coordinatorGatesFailed: (coordinatorExecution.gatesFailed || []).join("; ") || "none",
+      coordinatorRevalidationStatus: coordinatorExecution.revalidationStatus || "not-run",
+      coordinatorFallbackReason: coordinatorExecution.fallbackReason || "none",
+      coordinatorFallbackPlanner: coordinatorExecution.executionAuthority === true
+        ? "none"
+        : (selectedMainAction ? `${selectedMainAction.lane}: ${selectedMainAction.candidate}` : "none"),
+      coordinatorFallbackPlannerReason: coordinatorExecution.executionAuthority === true
+        ? "none"
+        : (selectedMainAction?.reason || reason || "none"),
+      coordinatorActionBudget: String(coordinatorExecution.actionBudget ?? 0),
+      coordinatorExecuted: coordinatorExecution.executed ? "yes" : "no",
+      coordinatorExecutionResult: coordinatorExecution.executionResult || "none",
+      coordinatorExecutionLabel: coordinatorExecution.executionLabel || "none",
+      coordinatorMatchedExecution: coordinatorExecution.matchedExecution || "no",
       purchaseProposalSnapshot: unifiedPurchaseProposalState,
       laneCoordinatorDecision: coordinatorState?.coordinatorDecision || mainLaneDecisionLabel(mainActions, sideActions),
       laneCoordinatorSelectedActions: coordinatorState?.selectedLaneActions || [],
@@ -3232,6 +3260,24 @@ function getDisplayName(item) {
       ["Why others wait", strategyInspector.wholeEconomyWhyOthersWait || "none"],
       ["Decision switch signal", strategyInspector.wholeEconomySwitchSignal || "none"],
       ["Advisor-only reason", strategyInspector.wholeEconomyAdvisorOnlyReason || "none"],
+      ["Coordinator contract", strategyInspector.coordinatorExecutionSchema || "none"],
+      ["Coordinator authority", `${strategyInspector.coordinatorExecutionAuthority || "false"} (${strategyInspector.coordinatorAuthoritySource || "none"})`],
+      ["Coordinator selected", `${strategyInspector.coordinatorSelectedDomain || "none"} · ${strategyInspector.coordinatorSelectedLane || "none"}: ${strategyInspector.coordinatorSelectedCandidate || "none"}`],
+      ["Coordinator execution key", strategyInspector.coordinatorSelectedExecutionKey || "none"],
+      ["Coordinator amount", strategyInspector.coordinatorSelectedAmount || "0"],
+      ["Coordinator reason", strategyInspector.coordinatorSelectedReason || "none"],
+      ["Coordinator confidence", strategyInspector.coordinatorExecutionConfidence || "low"],
+      ["Coordinator margin", strategyInspector.coordinatorExecutionScoreMargin ?? "n/a"],
+      ["Coordinator gates passed", strategyInspector.coordinatorGatesPassed || "none"],
+      ["Coordinator gates failed", strategyInspector.coordinatorGatesFailed || "none"],
+      ["Coordinator revalidation", strategyInspector.coordinatorRevalidationStatus || "not-run"],
+      ["Coordinator fallback", strategyInspector.coordinatorFallbackReason || "none"],
+      ["Fallback planner takeover", strategyInspector.coordinatorFallbackPlanner || "none"],
+      ["Fallback planner reason", strategyInspector.coordinatorFallbackPlannerReason || "none"],
+      ["Coordinator budget", strategyInspector.coordinatorActionBudget || "0"],
+      ["Bot executed", strategyInspector.coordinatorExecuted || "no"],
+      ["Execution result", strategyInspector.coordinatorExecutionResult || "none"],
+      ["Execution matched decision", strategyInspector.coordinatorMatchedExecution || "no"],
       ["Why no companion", strategyInspector.overseerWhyNoSide || "none"],
       ["Blocked by hard guard", strategyInspector.overseerBlockedByHardGuard || "none"],
       ["Main", strategyInspector.mainDecision || strategyInspector.decision],
@@ -4165,6 +4211,12 @@ function getDisplayName(item) {
     if (usefulCouncilText(strategyInspector.energySupportBestUseReason)) {
       items.push(`Energy support: ${strategyInspector.energySupportBestUse || "wait"} - ${strategyInspector.energySupportBestUseReason}.`);
     }
+    if (usefulCouncilText(strategyInspector.coordinatorSelectedCandidate) && strategyInspector.coordinatorSelectedCandidate !== "none") {
+      items.push(`Coordinator selected: ${strategyInspector.coordinatorSelectedLane || "none"}: ${strategyInspector.coordinatorSelectedCandidate} (authority ${strategyInspector.coordinatorExecutionAuthority || "false"}).`);
+    }
+    if (usefulCouncilText(strategyInspector.coordinatorFallbackReason) && strategyInspector.coordinatorFallbackReason !== "none") {
+      items.push(`Coordinator fallback: ${strategyInspector.coordinatorFallbackReason}.`);
+    }
     if (usefulCouncilText(strategyInspector.momentumBackgroundActions) && strategyInspector.momentumBackgroundActions !== "none") {
       items.push(`Background: ${strategyInspector.momentumBackgroundActions}.`);
     }
@@ -4173,7 +4225,7 @@ function getDisplayName(item) {
       items.push(strategyInspector.nextLikelyBuy ? `Watch next likely buy: ${strategyInspector.nextLikelyBuy}.` : "No urgent focus; observe the next Smart run.");
     }
 
-    return items.slice(0, 5);
+    return items.slice(0, 6);
   }
 
   function buildCouncilSpeakerState() {
@@ -4257,11 +4309,19 @@ function getDisplayName(item) {
     }
 
     return {
-      doThisNow: strategyInspector.wholeEconomyBestAction && strategyInspector.wholeEconomyBestAction !== "none"
-        ? `Manual advisor: consider ${strategyInspector.wholeEconomyBestAction}`
-        : strategyInspector.momentumBestStep || "Wait",
-      why: strategyInspector.wholeEconomyBestReason || strategyInspector.momentumBestStepReason || strategyInspector.energySupportBestUseReason || "No safe bounded action yet.",
-      botIsDoing: strategyInspector.momentumAutobuyerInstruction || "Bounded Smart actions only.",
+      doThisNow: strategyInspector.coordinatorSelectedCandidate && strategyInspector.coordinatorSelectedCandidate !== "none"
+        ? `Coordinator selected ${strategyInspector.coordinatorSelectedLane || "lane"}: ${strategyInspector.coordinatorSelectedCandidate}`
+        : (strategyInspector.wholeEconomyBestAction && strategyInspector.wholeEconomyBestAction !== "none"
+          ? `Manual advisor: consider ${strategyInspector.wholeEconomyBestAction}`
+          : strategyInspector.momentumBestStep || "Wait"),
+      why: strategyInspector.coordinatorSelectedReason || strategyInspector.wholeEconomyBestReason || strategyInspector.momentumBestStepReason || strategyInspector.energySupportBestUseReason || "No safe bounded action yet.",
+      botIsDoing: strategyInspector.coordinatorExecuted === "yes"
+        ? `${strategyInspector.coordinatorExecutionLabel || "Coordinator"}: ${strategyInspector.coordinatorExecutionResult || "executed"}`
+        : (strategyInspector.coordinatorExecutionAuthority === "true"
+          ? "Coordinator selected an action but no purchase executed this tick."
+          : (strategyInspector.coordinatorFallbackReason && strategyInspector.coordinatorFallbackReason !== "none"
+            ? `Coordinator refused execution: ${strategyInspector.coordinatorFallbackReason}`
+            : (strategyInspector.momentumAutobuyerInstruction || "Bounded Smart actions only."))),
       playerShouldAvoid: strategyInspector.momentumPlayerInstruction || "Treat the whole-economy suggestion as manual advice; automation still follows existing guardrails.",
     };
   }
@@ -4501,6 +4561,8 @@ function getDisplayName(item) {
         <div class="kbc-council-summary">
           ${councilSummaryTile("Phase", strategyInspector.phase || "n/a")}
           ${councilSummaryTile("Whole economy", strategyInspector.wholeEconomyBestOpportunity || "none")}
+          ${councilSummaryTile("Coordinator", strategyInspector.coordinatorExecutionAuthority === "true" ? "authorized" : "refused", strategyInspector.coordinatorExecutionAuthority === "true" ? "" : "warn")}
+          ${councilSummaryTile("Executed", strategyInspector.coordinatorExecuted === "yes" ? "yes" : "no", strategyInspector.coordinatorExecuted === "yes" ? "" : "warn")}
           ${councilSummaryTile("Primary", strategyInspector.momentumPrimaryFocus || "n/a")}
           ${councilSummaryTile("Advisor", strategyInspector.momentumPrimaryAdvisor || activeSpeaker.speaker || "none")}
           ${councilSummaryTile("Main", strategyInspector.overseerMainSelected || "none")}
@@ -4621,6 +4683,28 @@ function getDisplayName(item) {
       wholeEconomySwitchSignal: strategyInspector?.wholeEconomySwitchSignal || "none",
       wholeEconomyAdvisorOnlyReason: strategyInspector?.wholeEconomyAdvisorOnlyReason || "none",
       wholeEconomyLosingCandidates: strategyInspector?.wholeEconomyLosingCandidates || [],
+      coordinatorExecutionSchema: strategyInspector?.coordinatorExecutionSchema || "whole-economy-execution-decision.v1",
+      coordinatorAuthoritySource: strategyInspector?.coordinatorAuthoritySource || "whole-economy-coordinator.v2",
+      coordinatorExecutionAuthority: strategyInspector?.coordinatorExecutionAuthority || "false",
+      coordinatorSelectedDomain: strategyInspector?.coordinatorSelectedDomain || "none",
+      coordinatorSelectedLane: strategyInspector?.coordinatorSelectedLane || "none",
+      coordinatorSelectedCandidate: strategyInspector?.coordinatorSelectedCandidate || "none",
+      coordinatorSelectedExecutionKey: strategyInspector?.coordinatorSelectedExecutionKey || "none",
+      coordinatorSelectedAmount: strategyInspector?.coordinatorSelectedAmount || "0",
+      coordinatorSelectedReason: strategyInspector?.coordinatorSelectedReason || "none",
+      coordinatorExecutionConfidence: strategyInspector?.coordinatorExecutionConfidence || "low",
+      coordinatorExecutionScoreMargin: strategyInspector?.coordinatorExecutionScoreMargin ?? null,
+      coordinatorGatesPassed: strategyInspector?.coordinatorGatesPassed || "none",
+      coordinatorGatesFailed: strategyInspector?.coordinatorGatesFailed || "none",
+      coordinatorRevalidationStatus: strategyInspector?.coordinatorRevalidationStatus || "not-run",
+      coordinatorFallbackReason: strategyInspector?.coordinatorFallbackReason || "none",
+      coordinatorFallbackPlanner: strategyInspector?.coordinatorFallbackPlanner || "none",
+      coordinatorFallbackPlannerReason: strategyInspector?.coordinatorFallbackPlannerReason || "none",
+      coordinatorActionBudget: strategyInspector?.coordinatorActionBudget || "0",
+      coordinatorExecuted: strategyInspector?.coordinatorExecuted || "no",
+      coordinatorExecutionResult: strategyInspector?.coordinatorExecutionResult || "none",
+      coordinatorExecutionLabel: strategyInspector?.coordinatorExecutionLabel || "none",
+      coordinatorMatchedExecution: strategyInspector?.coordinatorMatchedExecution || "no",
       // Legacy 0.7.3 names kept for compatibility.
       bestRejectedCandidate: strategyInspector?.bestRejectedCandidate || summary.bestRejectedCandidate,
       bestAllowedCandidate: strategyInspector?.bestAllowedCandidate || summary.bestAllowedCandidate,
@@ -14841,7 +14925,184 @@ function getDisplayName(item) {
       snapshotPhase: getCurrentStrategyPhase(game, engine),
       proposals,
       evaluation: { ...evaluation, comparisonBasis: "single-pre-execution-snapshot" },
-      selectedExecutionKey: evaluation.winner?.safeEligible ? proposals.find((proposal) => proposal.lane === evaluation.winner.lane && proposal.candidate === evaluation.winner.candidate)?.executionKey || null : null,
+      selectedExecutionKey: null,
+    };
+  }
+
+  function isWholeEconomyExecutionLaneAllowed(lane) {
+    return ["Meat", "Engine", "Territory"].includes(String(lane || ""));
+  }
+
+  function isWholeEconomyExecutionKeyAllowed(executionKey) {
+    return ["meat", "engine", "territory"].includes(String(executionKey || ""));
+  }
+
+  function confidenceAtLeastMedium(confidence) {
+    return confidence === "medium" || confidence === "high";
+  }
+
+  function createWholeEconomyExecutionDecisionBase(actionBudget = 0) {
+    return {
+      schemaVersion: "whole-economy-execution-decision.v1",
+      executionAuthority: false,
+      authoritySource: "whole-economy-coordinator.v2",
+      selectedDomain: "none",
+      selectedLane: "none",
+      selectedCandidate: "none",
+      selectedExecutionKey: null,
+      selectedAmount: "0",
+      selectedReason: "none",
+      confidence: "low",
+      scoreMargin: null,
+      gatesPassed: [],
+      gatesFailed: [],
+      revalidationStatus: "not-run",
+      fallbackReason: "no selected candidate",
+      actionBudget: Number.isFinite(actionBudget) ? actionBudget : 0,
+      executed: false,
+      executionResult: "none",
+      executionLabel: "none",
+      matchedExecution: "no",
+      preRevalidationEligible: false,
+    };
+  }
+
+  function buildWholeEconomyExecutionDecisionV1({ proposalState, actionBudget }) {
+    const base = createWholeEconomyExecutionDecisionBase(actionBudget);
+    const proposals = proposalState?.proposals || [];
+    const evaluation = proposalState?.evaluation || null;
+    const winner = evaluation?.winner || null;
+    if (!winner) {
+      return {
+        ...base,
+        fallbackReason: "no safe winner from unified evaluation",
+        scoreMargin: evaluation?.scoreMargin ?? null,
+      };
+    }
+
+    const proposal = proposals.find((row) => row.lane === winner.lane && row.candidate === winner.candidate)
+      || proposals.find((row) => row.lane === winner.lane)
+      || null;
+    const domain = wholeEconomyDomainForLane(winner.lane);
+    const selectedKey = proposal?.executionKey || null;
+    const blockers = proposal?.blockers || [];
+    const gatesPassed = [];
+    const gatesFailed = [];
+
+    const gate = (name, condition, failReason) => {
+      if (condition) gatesPassed.push(name);
+      else gatesFailed.push(`${name}: ${failReason}`);
+    };
+
+    gate("reversible-scope", isWholeEconomyExecutionLaneAllowed(winner.lane) && isWholeEconomyExecutionKeyAllowed(selectedKey), "outside Meat/Engine/Territory reversible scope");
+    gate("decision-buy", winner.decision === "BUY", `winner decision ${winner.decision || "unknown"}`);
+    gate("safe-eligible", winner.safeEligible === true, "winner is not safeEligible");
+    gate("no-hard-blockers", blockers.length === 0, blockers[0] || "candidate has blockers");
+    gate("confidence-medium-plus", confidenceAtLeastMedium(winner.confidence), `confidence ${winner.confidence || "unknown"}`);
+    const scoreMargin = Number.isFinite(Number(evaluation?.scoreMargin))
+      ? Number(evaluation.scoreMargin)
+      : (evaluation?.runnerUp ? null : Number.POSITIVE_INFINITY);
+    gate("economic-evidence-sufficient", winner.evidenceFields >= 3 && (scoreMargin === Number.POSITIVE_INFINITY || scoreMargin > 0), "insufficient evidence or score margin");
+    gate("known-execution-key", !!selectedKey, "executionKey missing");
+    gate("action-budget", Number(actionBudget || 0) >= 1, `budget ${Number(actionBudget || 0)} < 1`);
+    gate("no-ability-or-ascension-automation", isWholeEconomyExecutionLaneAllowed(winner.lane), "candidate implies ability/ascension scope");
+
+    const preEligible = gatesFailed.length === 0;
+    return {
+      ...base,
+      selectedDomain: domain?.label || "none",
+      selectedLane: winner.lane || "none",
+      selectedCandidate: winner.candidate || "none",
+      selectedExecutionKey: selectedKey,
+      selectedAmount: proposal?.wouldBuyAmount || winner.amount || "0",
+      selectedReason: proposal?.reason || winner.reason || "none",
+      confidence: winner.confidence || "low",
+      scoreMargin: scoreMargin === Number.POSITIVE_INFINITY ? null : roundWholeEconomy(scoreMargin),
+      gatesPassed,
+      gatesFailed,
+      revalidationStatus: preEligible ? "required" : "skipped-precheck-failed",
+      fallbackReason: preEligible ? "revalidation required before execution" : (gatesFailed[0] || "precheck failed"),
+      preRevalidationEligible: preEligible,
+    };
+  }
+
+  function applyWholeEconomyExecutionRevalidationV1({ decision, revalidationState, actionBudget }) {
+    const base = {
+      ...(decision || createWholeEconomyExecutionDecisionBase(actionBudget)),
+      actionBudget: Number.isFinite(Number(actionBudget)) ? Number(actionBudget) : Number(decision?.actionBudget || 0),
+      executionAuthority: false,
+      executed: false,
+      executionResult: "none",
+      executionLabel: "none",
+      matchedExecution: "no",
+    };
+    if (!base.preRevalidationEligible) {
+      return {
+        ...base,
+        revalidationStatus: "skipped-precheck-failed",
+      };
+    }
+
+    const proposals = revalidationState?.proposals || [];
+    const evaluation = revalidationState?.evaluation || null;
+    const matchedProposal = proposals.find((row) =>
+      row.executionKey === base.selectedExecutionKey
+      && row.lane === base.selectedLane
+      && row.candidate === base.selectedCandidate
+    ) || null;
+    const matchedRow = (evaluation?.evaluated || []).find((row) =>
+      row.lane === base.selectedLane && row.candidate === base.selectedCandidate
+    ) || null;
+
+    const gatesPassed = [];
+    const gatesFailed = [];
+    const gate = (name, condition, failReason) => {
+      if (condition) gatesPassed.push(name);
+      else gatesFailed.push(`${name}: ${failReason}`);
+    };
+
+    gate("selected-candidate-present", !!matchedProposal && !!matchedRow, "selected candidate missing from revalidation snapshot");
+    gate("still-buy", matchedProposal?.decision === "BUY" && matchedRow?.decision === "BUY", `decision ${matchedRow?.decision || matchedProposal?.decision || "unknown"}`);
+    gate("still-safe-eligible", matchedRow?.safeEligible === true, "candidate no longer safeEligible");
+    gate("still-no-hard-blockers", (matchedProposal?.blockers || []).length === 0 && (matchedRow?.blockers || []).length === 0, (matchedProposal?.blockers || matchedRow?.blockers || ["blocker"])[0]);
+    gate("still-confidence-medium-plus", confidenceAtLeastMedium(matchedRow?.confidence), `confidence ${matchedRow?.confidence || "unknown"}`);
+    const scoreMargin = Number.isFinite(Number(evaluation?.scoreMargin))
+      ? Number(evaluation.scoreMargin)
+      : (evaluation?.runnerUp ? null : Number.POSITIVE_INFINITY);
+    gate("still-economic-evidence-sufficient", (matchedRow?.evidenceFields || 0) >= 3 && (scoreMargin === Number.POSITIVE_INFINITY || scoreMargin > 0), "insufficient evidence or score margin after revalidation");
+    gate("still-known-execution-key", isWholeEconomyExecutionKeyAllowed(base.selectedExecutionKey), "execution key moved outside allowed scope");
+    gate("still-within-budget", Number(base.actionBudget || 0) >= 1, `budget ${Number(base.actionBudget || 0)} < 1`);
+    gate("still-reversible-scope", isWholeEconomyExecutionLaneAllowed(base.selectedLane), "selected lane moved outside scope");
+    gate("still-no-ability-or-ascension", isWholeEconomyExecutionLaneAllowed(base.selectedLane), "selected candidate moved outside scope");
+
+    const passed = gatesFailed.length === 0;
+    return {
+      ...base,
+      selectedReason: matchedProposal?.reason || base.selectedReason,
+      selectedAmount: matchedProposal?.wouldBuyAmount || base.selectedAmount,
+      confidence: matchedRow?.confidence || base.confidence,
+      scoreMargin: scoreMargin === Number.POSITIVE_INFINITY ? null : roundWholeEconomy(scoreMargin),
+      gatesPassed: Array.from(new Set([...(base.gatesPassed || []), ...gatesPassed])),
+      gatesFailed,
+      revalidationStatus: passed ? "passed" : "failed",
+      executionAuthority: passed,
+      fallbackReason: passed ? "none" : (gatesFailed[0] || "revalidation failed"),
+    };
+  }
+
+  function finalizeWholeEconomyExecutionDecisionResult(decision, executionAction) {
+    const result = executionAction?.result || { actionTaken: false, bought: 0, summary: "no execution" };
+    const bought = Number(result?.bought || 0);
+    const executed = bought > 0;
+    const matched = executionAction?.executionKey && decision?.selectedExecutionKey
+      ? executionAction.executionKey === decision.selectedExecutionKey
+      : false;
+    return {
+      ...(decision || createWholeEconomyExecutionDecisionBase(0)),
+      executed,
+      executionLabel: executionAction?.label || "Unified",
+      executionResult: result?.summary || (executed ? "executed" : "not executed"),
+      matchedExecution: matched ? "yes" : "no",
     };
   }
 
@@ -14890,6 +15151,7 @@ function getDisplayName(item) {
     twinUnlockPlannerState = null;
     cloneBufferPlannerState = null;
     unifiedPurchaseProposalState = null;
+    wholeEconomyExecutionDecisionState = null;
     abilityPrepPlannerState = null;
     postNexusEnergyPlannerState = null;
     territoryPrepPlannerState = null;
@@ -14977,26 +15239,54 @@ function getDisplayName(item) {
     let engine = analyzeLarvaEngine(game);
     let protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
     unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
-    const unifiedFirstExecutionKey = unifiedPurchaseProposalState?.selectedExecutionKey || null;
+    let coordinatorExecutedKey = null;
 
-    if (canDoMoreMainActions() && unifiedFirstExecutionKey) {
+    wholeEconomyExecutionDecisionState = buildWholeEconomyExecutionDecisionV1({
+      proposalState: unifiedPurchaseProposalState,
+      actionBudget: Math.max(0, maxActions - mainActions),
+    });
+
+    if (wholeEconomyExecutionDecisionState.preRevalidationEligible) {
+      const revalidationProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
+      wholeEconomyExecutionDecisionState = applyWholeEconomyExecutionRevalidationV1({
+        decision: wholeEconomyExecutionDecisionState,
+        revalidationState: revalidationProposalState,
+        actionBudget: Math.max(0, maxActions - mainActions),
+      });
+      unifiedPurchaseProposalState = revalidationProposalState;
+    }
+
+    if (canDoMoreMainActions() && wholeEconomyExecutionDecisionState.executionAuthority === true) {
       const unifiedAction = executeUnifiedPurchaseWinner({
-        executionKey: unifiedFirstExecutionKey,
+        executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey,
         game,
         engine,
         commands,
         protectedResources,
         remainingActions: Math.max(0, maxActions - mainActions),
       });
+      wholeEconomyExecutionDecisionState = finalizeWholeEconomyExecutionDecisionResult(
+        wholeEconomyExecutionDecisionState,
+        { ...unifiedAction, executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey }
+      );
       addMainResult(unifiedAction.label, unifiedAction.result);
       if (unifiedAction.result?.actionTaken) {
+        coordinatorExecutedKey = wholeEconomyExecutionDecisionState.selectedExecutionKey;
         engine = analyzeLarvaEngine(game);
         protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
-        if (unifiedFirstExecutionKey !== "territory") territoryPrepPlannerState = null;
+        if (coordinatorExecutedKey !== "territory") territoryPrepPlannerState = null;
       }
+    } else if (!wholeEconomyExecutionDecisionState.executionAuthority) {
+      wholeEconomyExecutionDecisionState = {
+        ...wholeEconomyExecutionDecisionState,
+        executed: false,
+        executionResult: "execution refused; fallback to existing planners",
+        executionLabel: "Unified",
+        matchedExecution: "no",
+      };
     }
 
-    if (canDoMoreMainActions() && unifiedFirstExecutionKey !== "engine") {
+    if (canDoMoreMainActions() && coordinatorExecutedKey !== "engine") {
       const engineAction = executeEngineGuardAction({ game, commands, engine });
       addMainResult("Larva engine", engineAction);
 
@@ -15011,7 +15301,7 @@ function getDisplayName(item) {
       addMainResult("Critical upgrades", criticalUpgradeAction);
     }
 
-    if (canDoMoreMainActions() && unifiedFirstExecutionKey !== "energy") {
+    if (canDoMoreMainActions() && coordinatorExecutedKey !== "energy") {
       const energyAction = executeEnergyGuardAction({ game, commands, protectedResources });
       addMainResult("Energy", energyAction);
     }
@@ -15023,7 +15313,7 @@ function getDisplayName(item) {
       executeCloneGuardAction({ game, commands });
     }
 
-    if (canDoMoreMainActions() && unifiedFirstExecutionKey !== "meat") {
+    if (canDoMoreMainActions() && coordinatorExecutedKey !== "meat") {
       const unlockAction = runUnlockPlanner(game, commands, protectedResources);
       addMainResult("Unlock planner", unlockAction);
     }
@@ -15091,7 +15381,7 @@ function getDisplayName(item) {
         engine,
         protectedResources,
         Math.max(1, maxActions - mainActions),
-        { skipMeatFirst: unifiedFirstExecutionKey === "meat" }
+        { skipMeatFirst: coordinatorExecutedKey === "meat" }
       )) || 0;
       if (units === "paused-ascension") {
         summaries.push("units paused near ascension");
@@ -17604,6 +17894,30 @@ function getDisplayName(item) {
       purchaseEvaluator: {
         evaluate(candidates = [], selectedMainAction = null) {
           return laboratoryCloneJson(buildUnifiedPurchaseEvaluator(candidates, selectedMainAction));
+        },
+        buildExecutionDecision(candidates = [], options = {}) {
+          const proposals = (candidates || []).map((candidate, index) => ({
+            ...candidate,
+            executionKey: candidate?.executionKey || `${String(candidate?.lane || "lane").toLowerCase()}-${index}`,
+          }));
+          const proposalState = {
+            proposals,
+            evaluation: buildUnifiedPurchaseEvaluator(proposals, null),
+          };
+          const actionBudget = Number.isFinite(Number(options?.actionBudget)) ? Number(options.actionBudget) : 1;
+          let decision = buildWholeEconomyExecutionDecisionV1({ proposalState, actionBudget });
+          if (Array.isArray(options?.revalidationCandidates)) {
+            const revalidationProposals = options.revalidationCandidates.map((candidate, index) => ({
+              ...candidate,
+              executionKey: candidate?.executionKey || `${String(candidate?.lane || "lane").toLowerCase()}-${index}`,
+            }));
+            const revalidationState = {
+              proposals: revalidationProposals,
+              evaluation: buildUnifiedPurchaseEvaluator(revalidationProposals, null),
+            };
+            decision = applyWholeEconomyExecutionRevalidationV1({ decision, revalidationState, actionBudget });
+          }
+          return laboratoryCloneJson(decision);
         },
       },
 
