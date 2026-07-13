@@ -3,11 +3,12 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.14.0";
+  const AUTOBUYER_VERSION = "0.14.1";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
+  const COUNCIL_LAYOUT_STORAGE_KEY = "kbcSwarmBotCouncilPanelLayout_v1";
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
   const PURCHASE_LAYOUT_STORAGE_KEY = "kbcSwarmBotPurchasePanelLayout_v1";
   const SETTINGS_TAB_STORAGE_KEY = "kbcSwarmBotSettingsActiveTab_v1";
@@ -492,6 +493,7 @@
   let purchasePanel = null;
   let timer = null;
   let settingsPanelLayoutSaveTimer = null;
+  let councilPanelLayoutSaveTimer = null;
   let logPanelLayoutSaveTimer = null;
   let lastClonePrepAt = 0;
 
@@ -813,6 +815,16 @@
     log("Recommended Smart settings applied");
   }
 
+  function setOperatingMode(mode) {
+    const advisorMode = mode === "advisor";
+    config.smartMode = true;
+    config.advisorOnly = advisorMode;
+    config.autoBuySafeDecisions = !advisorMode;
+    saveConfig();
+    recordMessage(advisorMode ? "Advisor mode enabled" : "Autobuyer mode enabled");
+    refreshPanel();
+  }
+
   function escapeHtml(value) {
     return String(value)
       .replaceAll("&", "&amp;")
@@ -854,6 +866,12 @@
       return;
     }
 
+    if (timerName === "council") {
+      clearTimeout(councilPanelLayoutSaveTimer);
+      councilPanelLayoutSaveTimer = setTimeout(() => saveWindowLayout(element, storageKey), 150);
+      return;
+    }
+
     clearTimeout(logPanelLayoutSaveTimer);
     logPanelLayoutSaveTimer = setTimeout(() => saveWindowLayout(element, storageKey), 150);
   }
@@ -883,6 +901,15 @@
       top: 88,
       width: 420,
       height: 260,
+    };
+  }
+
+  function defaultCouncilLayout() {
+    return {
+      left: 12,
+      top: 8,
+      width: Math.min(1000, Math.max(320, window.innerWidth - 350)),
+      height: 310,
     };
   }
 
@@ -968,8 +995,26 @@
     saveWindowLayout(purchasePanel, PURCHASE_LAYOUT_STORAGE_KEY);
   }
 
+  function resetCouncilPanelLayout() {
+    localStorage.removeItem(COUNCIL_LAYOUT_STORAGE_KEY);
+    if (!strategyBar) return;
+
+    const defaults = defaultCouncilLayout();
+    const safeLayout = clampWindowLayout(defaults, defaults, 320, 120);
+
+    strategyBar.style.left = `${safeLayout.left}px`;
+    strategyBar.style.top = `${safeLayout.top}px`;
+    strategyBar.style.width = `${safeLayout.width}px`;
+    strategyBar.style.height = `${safeLayout.height}px`;
+    strategyBar.style.right = "auto";
+    strategyBar.style.bottom = "auto";
+
+    saveWindowLayout(strategyBar, COUNCIL_LAYOUT_STORAGE_KEY);
+  }
+
   function resetAllPanelLayouts() {
     resetSettingsPanelLayout();
+    resetCouncilPanelLayout();
     resetLogPanelLayout();
     resetPurchasePanelLayout();
   }
@@ -1049,6 +1094,7 @@
 
   function applyAllWindowLayouts() {
     applyWindowLayout(panel, SETTINGS_LAYOUT_STORAGE_KEY, defaultSettingsLayout(), 260, 240);
+    applyWindowLayout(strategyBar, COUNCIL_LAYOUT_STORAGE_KEY, defaultCouncilLayout(), 320, 120);
     applyWindowLayout(logPanel, LOG_LAYOUT_STORAGE_KEY, defaultLogLayout(), 320, 200);
     applyWindowLayout(purchasePanel, PURCHASE_LAYOUT_STORAGE_KEY, defaultPurchaseLayout(), 300, 160);
   }
@@ -16076,6 +16122,16 @@ function getDisplayName(item) {
         <button id="kbc-run" title="Kör en analys/köprunda direkt">Kör nu</button>
       </div>
 
+      <div class="kbc-mode-picker" role="group" aria-label="Operating mode">
+        <button type="button" id="kbc-mode-advisor">Advisor</button>
+        <button type="button" id="kbc-mode-autobuyer">Autobuyer</button>
+      </div>
+      <div id="kbc-mode-summary" class="kbc-mode-summary"></div>
+
+      <details class="kbc-advanced-settings">
+        <summary>Avancerade inställningar och verktyg</summary>
+        <div class="kbc-advanced-settings-body">
+
       <div class="kbc-row">
         <button id="kbc-reset-recommended" title="Återställ till rekommenderat Smart-läge för ${SCRIPT_VERSION}. Detta skriver över sparade bot-inställningar men inte fönsterpositioner.">Recommended</button>
         <button id="kbc-reset-settings-layout" title="Återställ inställningsfönstrets position och storlek">Reset inst.</button>
@@ -16490,6 +16546,9 @@ function getDisplayName(item) {
         </label>
       </div>
 
+        </div>
+      </details>
+
       <div id="kbc-status"></div>
     `;
 
@@ -16498,7 +16557,7 @@ function getDisplayName(item) {
     strategyBar.className = "kbc-strategy-bar";
 
     strategyBar.innerHTML = `
-      <div class="kbc-strategy-bar-head">
+      <div class="kbc-strategy-bar-head kbc-title" title="Dra här för att flytta Swarm Council">
         <strong>The Swarm Council</strong>
         <button id="kbc-hide-strategy-bar" title="Dölj Strategy Bar">×</button>
       </div>
@@ -16605,9 +16664,16 @@ function getDisplayName(item) {
         position: fixed;
         z-index: 1000000;
         left: 12px;
-        right: 326px;
+        right: auto;
         top: 8px;
-        min-height: 54px;
+        width: min(1000px, calc(100vw - 350px));
+        height: 310px;
+        min-width: 320px;
+        min-height: 120px;
+        max-width: calc(100vw - 24px);
+        max-height: calc(100vh - 24px);
+        overflow: auto;
+        resize: both;
         padding: 8px 10px;
         background: rgba(20, 20, 20, 0.94);
         color: white;
@@ -16624,11 +16690,17 @@ function getDisplayName(item) {
         align-items: center;
         margin-bottom: 6px;
         opacity: 0.92;
+        cursor: move;
+        user-select: none;
       }
 
       .kbc-strategy-bar-head button {
         max-width: 28px;
         cursor: pointer;
+        border: 1px solid rgba(255,255,255,0.28);
+        border-radius: 4px;
+        background: #263241;
+        color: #f8fafc;
       }
 
       #kbc-strategy-bar-cards {
@@ -17021,6 +17093,63 @@ function getDisplayName(item) {
       .kbc-swarmbot-window button {
         flex: 1;
         cursor: pointer;
+        min-height: 30px;
+        border: 1px solid #64748b;
+        border-radius: 5px;
+        background: #263241;
+        color: #f8fafc;
+        font-weight: 700;
+        text-shadow: none;
+      }
+
+      .kbc-swarmbot-window button:hover {
+        background: #334155;
+        border-color: #94a3b8;
+      }
+
+      .kbc-swarmbot-window button:disabled {
+        background: #1f2937;
+        color: #94a3b8;
+        opacity: 0.7;
+      }
+
+      .kbc-mode-picker {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin: 8px 0 6px;
+      }
+
+      .kbc-mode-picker button.is-active {
+        border-color: #7ce38b;
+        background: #14532d;
+        color: #f0fdf4;
+        box-shadow: 0 0 0 1px rgba(124, 227, 139, 0.35);
+      }
+
+      .kbc-mode-summary {
+        margin-bottom: 8px;
+        color: rgba(255,255,255,0.82);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+
+      .kbc-advanced-settings {
+        margin-top: 8px;
+        border: 1px solid rgba(255,255,255,0.16);
+        border-radius: 6px;
+        background: rgba(0,0,0,0.16);
+      }
+
+      .kbc-advanced-settings > summary {
+        padding: 8px;
+        cursor: pointer;
+        color: #e2e8f0;
+        font-weight: 700;
+      }
+
+      .kbc-advanced-settings-body {
+        padding: 0 8px 8px;
       }
 
       .kbc-swarmbot-window label {
@@ -17229,12 +17358,14 @@ function getDisplayName(item) {
 
     applyAllWindowLayouts();
     installWindowDragAndResize(panel, SETTINGS_LAYOUT_STORAGE_KEY, defaultSettingsLayout(), "settings", 260, 240);
+    installWindowDragAndResize(strategyBar, COUNCIL_LAYOUT_STORAGE_KEY, defaultCouncilLayout(), "council", 320, 120);
     installWindowDragAndResize(logPanel, LOG_LAYOUT_STORAGE_KEY, defaultLogLayout(), "log", 320, 200);
     installWindowDragAndResize(purchasePanel, PURCHASE_LAYOUT_STORAGE_KEY, defaultPurchaseLayout(), "log", 300, 160);
 
     window.addEventListener("resize", () => {
       applyAllWindowLayouts();
       scheduleSaveWindowLayout(panel, SETTINGS_LAYOUT_STORAGE_KEY, "settings");
+      scheduleSaveWindowLayout(strategyBar, COUNCIL_LAYOUT_STORAGE_KEY, "council");
       scheduleSaveWindowLayout(logPanel, LOG_LAYOUT_STORAGE_KEY, "log");
       scheduleSaveWindowLayout(purchasePanel, PURCHASE_LAYOUT_STORAGE_KEY, "log");
     });
@@ -17256,6 +17387,9 @@ function getDisplayName(item) {
 
     $("#kbc-run").addEventListener("click", () => safe("Manuell körning", runOnce));
 
+    $("#kbc-mode-advisor").addEventListener("click", () => setOperatingMode("advisor"));
+    $("#kbc-mode-autobuyer").addEventListener("click", () => setOperatingMode("autobuyer"));
+
     $("#kbc-reset-recommended").addEventListener("click", () => {
       resetToRecommendedSettings();
     });
@@ -17265,6 +17399,7 @@ function getDisplayName(item) {
     });
 
     $("#kbc-reset-log-layout-from-settings").addEventListener("click", () => {
+      resetCouncilPanelLayout();
       resetLogPanelLayout();
       resetPurchasePanelLayout();
     });
@@ -17945,6 +18080,13 @@ function getDisplayName(item) {
 
     $("#kbc-toggle").textContent = config.enabled ? "Pausa" : "Starta";
     $("#kbc-toggle").style.opacity = config.enabled ? "1" : "0.65";
+
+    const advisorMode = !!config.advisorOnly || !config.autoBuySafeDecisions;
+    $("#kbc-mode-advisor").classList.toggle("is-active", advisorMode);
+    $("#kbc-mode-autobuyer").classList.toggle("is-active", !advisorMode);
+    $("#kbc-mode-summary").textContent = advisorMode
+      ? "Advisor analyserar och rekommenderar, men köper ingenting."
+      : "Autobuyer får genomföra säkra, reversibla beslut. Riskfunktioner är fortfarande avstängda.";
 
     $("#kbc-preset").value = config.preset;
     $("#kbc-smart-mode").checked = !!config.smartMode;

@@ -157,7 +157,7 @@ Execute these in order:
 
 ## Known current blockers and cautions
 
-- Runtime/package surfaces now identify as 0.14.0. The accepted Milestone 2
+- Runtime/package surfaces now identify as 0.14.1. The accepted Milestone 2
   branch is still not a published release until it is pushed and the formal
   exact-SHA protocol is completed against that published implementation.
 - The current branch is ahead of its remote and has not been merged or pushed.
@@ -208,6 +208,21 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 — 0.14.1 control-surface cleanup
+
+- Agent: Codex
+- Worktree/branch: `feature/strategy-audit-testbed-runners`
+- Implementation SHA: the commit containing this handoff entry
+- Product capability changed: the default settings surface now exposes only
+  Advisor and Autobuyer as primary modes; detailed controls and Laboratory are
+  preserved under one collapsed advanced section.
+- Player-visible result: readable high-contrast buttons and a movable,
+  resizable Swarm Council with persisted layout.
+- Strategy behavior changed: none; the two modes map to existing Smart authority
+  flags and hard safety defaults remain unchanged.
+- Generated evidence paths: none.
+- Exact next action: visually smoke-test 0.14.1, then continue Milestone 3.
 
 ### 2026-07-13 — Milestone 2 packaged as local 0.14.0 release candidate
 

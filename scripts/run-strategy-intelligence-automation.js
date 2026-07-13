@@ -69,7 +69,7 @@ function main() {
 
   const steps = [
     { name: "build-check", classification: "PURE CHECK", command: "npm run build:check" },
-    { name: "version-surfaces", classification: "PURE CHECK", command: "npm run check:0.14.0:versions" },
+    { name: "version-surfaces", classification: "PURE CHECK", command: "npm run check:0.14.1:versions" },
     { name: "lab-phase2a", classification: "PURE CHECK", command: "npm run check:laboratory:phase2a" },
     { name: "purchase-evaluator", classification: "PURE CHECK", command: "npm run check:purchase-evaluator" },
     {
@@ -140,7 +140,7 @@ function main() {
 
   const report = {
     generatedAt: new Date().toISOString(),
-    implementationVersionTarget: "0.14.0",
+    implementationVersionTarget: "0.14.1",
     steps: stepResults,
     summary: {
       allPassed: stepResults.every((s) => s.exitCode === 0),

@@ -19,6 +19,9 @@ docs/release-notes/
 
 ## Version notes
 
+- 0.14.1: Simplified the default control surface to Advisor or Autobuyer,
+  collapsed expert settings and Laboratory tools, fixed button contrast, and
+  made Swarm Council movable and resizable with a persisted layout.
 - 0.14.0: Whole-Economy Coordinator compares Meat, Larva/Engine, and
   Army/Territory from one snapshot, then may execute exactly one bounded,
   reversible winner after identity-preserving revalidation. Council, Inspector,
