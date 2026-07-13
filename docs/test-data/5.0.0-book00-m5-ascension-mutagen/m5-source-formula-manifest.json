@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "book00-m5-source-formula-manifest.v1",
+  "purpose": "Pinned source facts for the advisor-only M5 Ascension and Mutagen implementation",
+  "source": {
+    "repository": "https://github.com/swarmsim/swarm",
+    "commit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+    "files": [
+      "swarmsim-coffee/app/scripts/services/game.coffee",
+      "swarmsim-coffee/app/scripts/services/effect.coffee",
+      "swarmsim-coffee/app/scripts/services/unit.coffee",
+      "swarmsim-coffee/app/scripts/services/upgrade.coffee",
+      "tables/src/unittype/data.ts",
+      "tables/src/upgrade/data.ts"
+    ]
+  },
+  "ascension": {
+    "runtimeMethods": [
+      "game.ascendEnergySpent()",
+      "game.ascendCost()",
+      "game.ascendCostPercent()",
+      "game.ascendCostDurationSecs()"
+    ],
+    "costFormula": "ceil((1.12 ^ ascensionCount) * 5000000 / (2 ^ (spentEnergy / (50000 * mutagenAscendCostMultiplier))))",
+    "warning": "The adjacent source comment says 20% per past ascension, but executable code uses Decimal.pow(1.12, ascends). Treat 1.12 as authoritative.",
+    "legalWhen": "currentEnergy >= ascendCost",
+    "onAscend": [
+      "activeMutagen += inactivePremutagen",
+      "inactivePremutagen = 0",
+      "ascensionCount += 1",
+      "grant one free respec when new ascensionCount is divisible by 3",
+      "reset every unit without ascendPreserve to its init value",
+      "reset every upgrade whose unit tab is not mutagen"
+    ]
+  },
+  "mutagenEconomy": {
+    "activeMutagenLarvaPerSecondPerUnit": 0.1,
+    "inactivePremutagenBecomesActiveAtAscension": true,
+    "mutationAllocationUnitCost": {
+      "resource": "mutagen",
+      "amountPerAllocatedUnit": 1
+    },
+    "mutationUnlockCost": {
+      "resource": "mutagen",
+      "formula": "15625 ^ alreadyUnlockedMutationCount",
+      "base": 1,
+      "factor": 15625,
+      "mechanism": "Every unlock spends the geometric Mutagen cost, adds +1 mutagen.upgradecost, adds one mutatehidden level, and grants one unit of the corresponding mutation through addUnit. Later mutation levels cost one Mutagen each."
+    },
+    "allocationOpportunityCost": "Every active Mutagen spent on either an unlock or a later mutation level removes 0.1 larva/second from unallocated active-Mutagen production before considering the granted mutation benefit."
+  },
+  "effectTypes": {
+    "logStat": {
+      "formula": "1 + val3 * (log(val * level + val2) / log(val2) - 1)",
+      "defaultVal3": 1,
+      "verificationStatus": "source-verified"
+    },
+    "asympStat": {
+      "formula": "1 + (val - 1) * (1 - 1 / (1 + level * val2))",
+      "verificationStatus": "source-verified"
+    },
+    "expStat": {
+      "formula": "1 + (level ^ val) * val2",
+      "verificationStatus": "source-verified"
+    },
+    "initStat": {
+      "formula": "multiply the current/default stat by val",
+      "verificationStatus": "source-verified"
+    }
+  },
+  "mutations": [
+    {
+      "unitId": "mutanthatchery",
+      "unlockUpgradeId": "mutatehatchery",
+      "label": "Hatchery Mutation",
+      "effects": [
+        { "type": "logStat", "targetUnit": "invisiblehatchery", "stat": "prod", "val": 1, "val2": 10, "val3": 1 }
+      ],
+      "initialM5RankingStatus": "supported-direct-larva-comparison"
+    },
+    {
+      "unitId": "mutantbat",
+      "unlockUpgradeId": "mutatebat",
+      "label": "Bat Mutation",
+      "effects": [
+        { "type": "logStat", "targetUnit": "energy", "stat": "power", "val": 0.1, "val2": 10, "val3": 1 }
+      ],
+      "initialM5RankingStatus": "effect-visible-unranked-cross-domain"
+    },
+    {
+      "unitId": "mutantclone",
+      "unlockUpgradeId": "mutateclone",
+      "label": "Clone Mutation",
+      "effects": [
+        { "type": "logStat", "targetUnit": "energy", "stat": "power.clonelarvae", "val": 1, "val2": 10, "val3": 1.8 }
+      ],
+      "initialM5RankingStatus": "effect-visible-unranked-ability-model"
+    },
+    {
+      "unitId": "mutantswarmwarp",
+      "unlockUpgradeId": "mutateswarmwarp",
+      "label": "Warp Mutation",
+      "effects": [
+        { "type": "logStat", "targetUnit": "energy", "stat": "power.swarmwarp", "val": 1, "val2": 10, "val3": 2 }
+      ],
+      "initialM5RankingStatus": "unsupported-unranked-swarmwarp"
+    },
+    {
+      "unitId": "mutantrush",
+      "unlockUpgradeId": "mutaterush",
+      "label": "Rush Mutation",
+      "effects": [
+        { "type": "logStat", "targetUnit": "energy", "stat": "power.larvarush", "val": 1, "val2": 10, "val3": 3 },
+        { "type": "logStat", "targetUnit": "energy", "stat": "power.meatrush", "val": 1, "val2": 10, "val3": 13 },
+        { "type": "logStat", "targetUnit": "energy", "stat": "power.territoryrush", "val": 1, "val2": 10, "val3": 13 }
+      ],
+      "initialM5RankingStatus": "effect-visible-unranked-ability-model"
+    },
+    {
+      "unitId": "mutanteach",
+      "unlockUpgradeId": "mutateeach",
+      "label": "Meta-Mutation",
+      "effects": [
+        { "type": "logStat", "targetUnit": "invisiblehatchery", "stat": "random.each", "val": 0.1, "val2": 10, "val3": 0.5 },
+        { "type": "initStat", "targetUnit": "invisiblehatchery", "stat": "random.minlevel.hatchery", "val": 40 },
+        { "type": "initStat", "targetUnit": "invisiblehatchery", "stat": "random.minlevel.expansion", "val": 80 }
+      ],
+      "initialM5RankingStatus": "effect-visible-unranked-stochastic-future-mutagen"
+    },
+    {
+      "unitId": "mutantfreq",
+      "unlockUpgradeId": "mutatefreq",
+      "label": "Mutation Frequency",
+      "effects": [
+        { "type": "asympStat", "targetUnit": "invisiblehatchery", "stat": "random.freq", "val": 5, "val2": 0.001, "val3": 5 },
+        { "type": "initStat", "targetUnit": "invisiblehatchery", "stat": "random.freq", "val": 0.2 }
+      ],
+      "combinedFormula": "0.2 * (1 + 4 * (1 - 1 / (1 + 0.001 * level)))",
+      "asymptoticProbability": 1,
+      "initialM5RankingStatus": "effect-visible-unranked-stochastic-future-mutagen"
+    },
+    {
+      "unitId": "mutantnexus",
+      "unlockUpgradeId": "mutatenexus",
+      "label": "Lepidoptera Mutation",
+      "effects": [
+        { "type": "asympStat", "targetUnit": "nexus", "stat": "prod", "val": 2, "val2": 0.0005, "val3": 5 },
+        { "type": "asympStat", "targetUnit": "energy", "stat": "capMult", "val": 2, "val2": 0.0005, "val3": 5 },
+        { "type": "asympStat", "targetUnit": "mutagen", "stat": "ascendCost", "val": 1.6, "val2": 0.0005, "val3": 5 }
+      ],
+      "initialM5RankingStatus": "effect-visible-unranked-energy-and-ascension-coupling"
+    },
+    {
+      "unitId": "mutantarmy",
+      "unlockUpgradeId": "mutatearmy",
+      "label": "Territory Mutation",
+      "affectedUnits": ["swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"],
+      "effects": [
+        { "type": "expStat", "targetStat": "prod", "val": 0.2, "val2": 0.001 }
+      ],
+      "initialM5RankingStatus": "effect-visible-unranked-territory-model"
+    },
+    {
+      "unitId": "mutantmeat",
+      "unlockUpgradeId": "mutatemeat",
+      "label": "Meat Mutation",
+      "affectedUnits": ["drone", "queen", "nest", "greaterqueen", "hive", "hivequeen", "empress", "prophet", "goddess", "pantheon", "pantheon2", "pantheon3", "pantheon4", "pantheon5", "overmind", "overmind2", "overmind3", "overmind4", "overmind5", "overmind6"],
+      "effects": [
+        { "type": "logStat", "targetStat": "prod", "val": 0.1, "val2": 10, "val3ByUnit": { "drone": 0.48, "queen": 0.408, "nest": 0.3468, "greaterqueen": 0.29478, "hive": 0.250563, "hivequeen": 0.21297855, "empress": 0.1810317675, "prophet": 0.1538770024, "goddess": 0.130795452, "pantheon": 0.1111761342, "pantheon2": 0.09449971408, "pantheon3": 0.08032475697, "pantheon4": 0.06827604343, "pantheon5": 0.05803463691, "overmind": 0.04932944137, "overmind2": 0.04193002517, "overmind3": 0.03564052139, "overmind4": 0.03029444318, "overmind5": 0.02575027671, "overmind6": 0.0218877352 } }
+      ],
+      "initialM5RankingStatus": "effect-visible-unranked-meat-chain-model"
+    }
+  ],
+  "implementationBoundaries": {
+    "autoAscendMustRemainFalse": true,
+    "advisorExecutionAuthority": false,
+    "mutagenAllocationExecutionAuthority": false,
+    "legacyFixedAllocationNumbersAllowed": false,
+    "unsupportedMutationsMustRemainUnranked": true,
+    "decimalPrecisionRequired": true,
+    "liveStateMutationAllowed": false
+  }
+}

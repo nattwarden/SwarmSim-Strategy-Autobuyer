@@ -89,20 +89,21 @@ If observed Git state differs, update this board before implementation.
 
 ## Active milestone
 
-**Milestone 4 — Energy ability timing advisor (active; 4.0.0 implementation)**
+**Milestone 5 — Ascension and Mutagen advisor (foundation ready; implementation next)**
 
-Milestone 3 is implementation- and evidence-complete. The first Milestone 4
-slice compares supported Energy abilities against explicit WAIT/save from one
-immutable snapshot and remains advisor-only.
+Milestone 4 is implementation- and exact-SHA evidence-complete on the stacked
+M4 branch: implementation `f2db145e368f77e1b348a6cb70e1f8ef2f6a0a90`,
+evidence `b9040d5943e621e6f41c6d247794e6866859ff64`. It is not yet integrated into
+`origin/main` because a parallel UI workstream owns the primary worktree.
 
-Milestone 4 player-visible target:
+Milestone 5 player-visible target:
 
-> The player sees whether to cast or save a supported Energy ability, with
-> projected gain, Energy opportunity cost, milestone impact, horizon, and
-> confidence.
+> The player sees whether to continue the current run or ascend now, with
+> current-run opportunity cost, recovery/break-even, next-run benefit, a
+> supported Mutagen plan, and explicit uncertainty.
 
-Authority begins and remains advisor-only. Ability auto-cast stays disabled by
-default.
+Authority begins and remains advisor-only. Auto-ascend and Mutagen spending stay
+disabled.
 
 ## Milestone 2 completion checklist
 
@@ -128,72 +129,68 @@ default.
 
 ## Current work package
 
-Implementation status: `4.0.0` Milestone 4 ability timing advisor is in its
-implementation and verification package. Formal exact-SHA verification and a
-separate evidence/provenance commit remain the acceptance gate.
+Implementation status: the complete M5 source/contract handoff is prepared on
+`codex/m5-ascension-mutagen-advisor`. No M5 runtime behavior has been authored.
 
 Product capability:
 
-- Recommend whether to cast or save a supported Energy ability using one shared
-  snapshot, explicit Energy opportunity cost, and the current milestone target.
+- Prepare Copilot to implement `CONTINUE_RUN` versus `ASCEND_NOW` and supported
+  Mutagen effects from verified mechanics without irreversible authority.
 
 Player-visible change:
 
-- Inspector and exports show CAST_NOW or SAVE, the supported action, projected
-  gain, opportunity cost, confidence, and what should trigger reconsideration.
+- None yet. This work package is implementation foundation and work order only.
 
 Included:
 
-- Clone Larvae and House of Mirrors;
-- source-verified Larva Rush, Meat Rush, and Territory Rush;
-- explicit WAIT/save as the best non-cast alternative;
-- one snapshot identity and milestone model for every branch;
-- passive-only post-action projection with no invented downstream spending.
+- pinned Ascension and Mutagen source formulas;
+- runtime data map and immutable snapshot/result contracts;
+- recovery-evidence policy and uncertainty gates;
+- supported/unranked mutation matrix;
+- fourteen-scenario acceptance matrix;
+- complete Copilot implementation prompt.
 
 Explicitly excluded:
 
-- ability auto-cast or any ability execution authority;
-- Swarmwarp until its formula is source-verified;
-- Ascension or Mutagen logic;
-- Nightbug or Bat auto-buy;
-- broad score tuning or sweeps;
-- new Laboratory formulas unless separately authorized;
-- unrelated release work beyond the milestone-aligned `4.0.0` version.
+- runtime implementation or version bump to `5.0.0` in this foundation package;
+- any Ascension or Mutagen execution;
+- global portfolio ranking across unsupported cross-domain mutation effects;
+- UI work owned by the parallel UI agent.
 
 Authority:
 
-- advisor-only timing recommendations with `executionAuthority: false`;
-- no ability, Nightbug/Bat, Ascension, or Mutagen authority.
+- documentation only; future M5 runtime authority is advisor-only;
+- auto-Ascension, Mutagen spending, ability casts, Nightbug/Bat remain outside
+  authority.
 
 Expected changed areas:
 
-- `dev-src/runtime-sections/runtime-main.js`
-- canonical userscript produced by `npm run build`
-- focused M4 ability timing acceptance
-- version `4.0.0` surfaces and release notes
-- this status board at handoff
+- `docs/strategy/BOOK00_M5_ASCENSION_MUTAGEN_FOUNDATION.md`
+- `docs/test-data/5.0.0-book00-m5-ascension-mutagen/m5-source-formula-manifest.json`
+- `docs/prompts/implement-book00-m5-ascension-mutagen-advisor.md`
+- this status board
 
 Stop condition:
 
-- Clone, House of Mirrors, and a source-verified Rush can honestly win aligned
-  deterministic states;
-- WAIT/save wins when Energy reserve would be violated;
-- every branch shares one snapshot/milestone and remains advisor-only;
-- Swarmwarp remains excluded;
-- canonical build, full verify, guardrails, and exact-SHA evidence pass.
+- source facts can be reconstructed from the pinned commit;
+- unknown recovery/cross-domain value is explicitly separated from exact math;
+- Copilot has unambiguous implementation, safety, testing, version, and Git
+  instructions.
 
 ## Immediate next actions
 
 Execute these in order:
 
-1. Complete focused and full checks for the `4.0.0` M4 implementation.
-2. Commit and push the implementation.
-3. Verify the exact immutable implementation SHA in an isolated clean tree.
-4. Commit only the predeclared M4 provenance record.
+1. Give Copilot the M5 prompt in `docs/prompts/`.
+2. Implement the advisor on the isolated M5 branch.
+3. Release the implementation as `5.0.0`.
+4. Run focused/full exact-SHA verification and separate M5 evidence.
 
 ## Known current blockers and cautions
 
-- M4 cannot be formally accepted until its exact-SHA evidence commit exists.
+- M4 is branch-verified but not integrated into `origin/main`.
+- Honest live recovery/break-even may be unavailable; M5 must return
+  `UNCERTAIN`, not invent a fixed time.
 - The focused testbed is deterministic only when staged count, command deltas,
   and `velocity()` describe the same state; preserve that invariant.
 - Territory suffix tiers require canonical name plus variant identity. Do not
@@ -202,24 +199,23 @@ Execute these in order:
 ## Do not do next
 
 - Do not widen Energy execution beyond Nexus/Lepidoptera production.
-- Do not grant any Energy ability execution authority in Milestone 4.
-- Do not build Ascension/Mutagen yet.
+- Do not grant any Energy ability or Ascension execution authority.
+- Do not globally rank mutation effects whose future-run conversion is missing.
 - Do not change hard safety defaults.
 
 ## Next product milestone
 
-**Milestone 4 — Energy ability timing advisor**
+**Milestone 5 — Ascension and Mutagen advisor**
 
 Required product outcome:
 
-- advise cast-versus-save timing for supported abilities from the same shared
-  outcome contract;
-- keep ability execution disabled by default;
-- show projected gain, Energy opportunity cost, reserve recovery, and the next
-  condition that would change the recommendation.
+- compare `CONTINUE_RUN` and `ASCEND_NOW` from one immutable snapshot;
+- show legality, current-run opportunity, recovery/break-even, next-run horizon,
+  Mutagen effects, and uncertainty;
+- keep Ascension and Mutagen execution disabled.
 
-The next M4 slice should refine timing evidence only after the `4.0.0` exact-SHA
-acceptance package is complete.
+Implementation starts from the M5 foundation and Copilot work order prepared in
+this branch.
 
 ## Handoff update template
 
@@ -240,6 +236,28 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 — Milestone 5 implementation foundation and Copilot handoff
+
+- Agent: Codex
+- Worktree/branch: isolated `codex/m5-ascension-mutagen-advisor`
+- Baseline: verified M4 evidence commit
+  `b9040d5943e621e6f41c6d247794e6866859ff64`.
+- Product capability changed: none; this is the implementation-ready M5 source,
+  contract, acceptance, safety, version, and Git/evidence package.
+- Source verification: SwarmSim commit
+  `06b4f404aa324a0b454348508cfa63d5c0f1ff54`; Ascension/reset semantics,
+  Mutagen production/unlock costs, and mutation effect functions/constants are
+  captured in a machine-readable manifest.
+- Player-visible result: none until Copilot implements the work order.
+- Generated evidence paths: none; the formula manifest is authored foundation,
+  not execution evidence.
+- Milestone checklist items completed: implementation prerequisites and focused
+  acceptance matrix defined.
+- Remaining blocker: runtime implementation and exact-SHA M5 acceptance.
+- Exact next action: execute
+  `docs/prompts/implement-book00-m5-ascension-mutagen-advisor.md` in the isolated
+  M5 worktree.
 
 ### 2026-07-13 — Milestone 3 bounded Energy-production execution
 
