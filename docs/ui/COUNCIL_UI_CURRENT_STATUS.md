@@ -98,8 +98,13 @@ closing UI2 and beginning UI3 integration.
 
 The first two generated ornate-frame candidates received on 2026-07-13 were
 rejected before repository intake. Both were 1672 × 941 `Format24bppRgb`, had
-no alpha channel, and contained a baked checkerboard. A corrected asset must be
-a true 1920 × 1080 RGBA PNG with transparent center and exterior.
+no alpha channel, and contained a baked checkerboard.
+
+The user-corrected Photoshop version is accepted as the UI3 source candidate at
+`assets/council/council-ornate-frame-source-v1.png`. It is 1672 × 941
+`Format32bppArgb`; the exterior and center have alpha `0`, and a sampled frame
+pixel has alpha `255`. UI3 will derive any optimized or resized runtime variant
+from this unchanged source.
 
 ## Validation snapshot
 
