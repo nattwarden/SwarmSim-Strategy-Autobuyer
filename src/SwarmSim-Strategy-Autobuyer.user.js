@@ -20224,7 +20224,7 @@ function getDisplayName(item) {
         }
 
         .kbc-council-decision {
-          padding: 12px;
+          padding: 40px 18px 34px;
         }
 
         .kbc-council-lane {
