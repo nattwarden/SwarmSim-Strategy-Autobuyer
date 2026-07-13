@@ -13,6 +13,10 @@ This file defines:
 - game principles every planner must respect
 - the lane architecture the bot is built around
 
+The durable product vision and the six cross-system strategic questions live
+in `BOOK-00-vision-goals-and-dreams.md`. This game model remains the active
+contract for current rules, planner behavior, and safety defaults.
+
 ## 0. Optimization posture
 
 The bot is not conservative by identity. It is a methodical optimizer and advisor.

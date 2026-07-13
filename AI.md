@@ -50,6 +50,12 @@ Active strategy model:
 docs/SWARMSIM_GAME_MODEL.md
 ```
 
+Strategic north star:
+
+```text
+docs/BOOK-00-vision-goals-and-dreams.md
+```
+
 Repo/process guard:
 
 ```text
@@ -74,15 +80,18 @@ Before code changes, read:
 
 1. `AGENTS.md`
 2. `AI.md`
-3. `docs/SWARMSIM_GAME_MODEL.md`
-4. Relevant book in `docs/BOOK-01` through `docs/BOOK-05`
-5. `src/SwarmSim-Strategy-Autobuyer.user.js`
-6. Relevant prompt in `docs/prompts/`
-7. Relevant release notes; open `docs/live-logs/` or `docs/test-data/` only
+3. `docs/strategy/BOOK00_CURRENT_STATUS.md`
+4. `docs/BOOK-00-vision-goals-and-dreams.md` for strategy, architecture, or roadmap work
+5. `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` for product milestone work
+6. `docs/SWARMSIM_GAME_MODEL.md`
+7. Relevant evidence book in `docs/BOOK-01` through `docs/BOOK-05`
+8. `src/SwarmSim-Strategy-Autobuyer.user.js`
+9. Relevant prompt in `docs/prompts/`
+10. Relevant release notes; open `docs/live-logs/` or `docs/test-data/` only
    when the active verifier needs payload-level support
-8. `reference/` only for strategy/math sanity checks
-9. `docs/process/MODULARIZATION_PLAN.md` for lane/overseer extraction work
-10. Relevant `dev-src/` modules for scaffold/contract context
+11. `reference/` only for strategy/math sanity checks
+12. `docs/process/MODULARIZATION_PLAN.md` for lane/overseer extraction work
+13. Relevant `dev-src/` modules for scaffold/contract context
 
 Do not use old dated game-model files as active truth.
 

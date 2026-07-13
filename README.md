@@ -4,8 +4,9 @@ Methodical Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
 Current script version in `src/`: **0.13.0**.
 
-The active game model and distilled strategy knowledge live in
-`docs/SWARMSIM_GAME_MODEL.md` and `docs/BOOK-01` through `docs/BOOK-05`.
+The product vision, active game model, and distilled strategy knowledge live in
+`docs/BOOK-00-vision-goals-and-dreams.md`, `docs/SWARMSIM_GAME_MODEL.md`, and
+`docs/BOOK-01` through `docs/BOOK-05`.
 
 ## Repository layout
 
@@ -18,6 +19,7 @@ dev-src/
   overseer/                                 # modular coordinator scaffold (non-executable)
   contracts/                                # shared proposal contract scaffold
 docs/
+  BOOK-00-vision-goals-and-dreams.md       # strategic product north star
   SWARMSIM_GAME_MODEL.md                    # canonical active game model
   HISTORY.md                                # summarized historical cleanup/version context
   MODULARIZATION_PLAN.md                    # phased lane/overseer modularization plan
@@ -154,6 +156,7 @@ This keeps guardrails strict while still allowing fast app development when need
 
 ## Knowledge workflow
 
-Read the relevant Book before opening verifier payloads or starting a new run.
+Start with `docs/strategy/BOOK00_CURRENT_STATUS.md`, then read the relevant Book
+before opening verifier payloads or starting a new run.
 Keep only the active verifier fixture and current claim-level evidence in Git;
 distill new conclusions into the Books.

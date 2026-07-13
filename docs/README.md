@@ -2,10 +2,14 @@
 
 ## Start here
 
-Two primary references. Read both before touching anything.
+Four primary references define the current milestone, vision, active strategy
+contract, and formal verification process. Read the relevant ones before
+changing the project.
 
 | File | What it is |
 |------|-----------|
+| `strategy/BOOK00_CURRENT_STATUS.md` | Start here — active milestone, checklist, blockers, and exact next action |
+| `BOOK-00-vision-goals-and-dreams.md` | Strategic north star — the six questions and whole-economy product vision |
 | `SWARMSIM_GAME_MODEL.md` | Active strategy contract — game rules, planner intent, hard safety defaults |
 | `GIT_VERIFICATION_PROTOCOL.md` | Mandatory protocol for formal version verification |
 
@@ -13,12 +17,13 @@ Two primary references. Read both before touching anything.
 
 ## Books
 
-Books are the knowledge layer. Distilled findings, classified claims, and
-behavioral verdicts. Read a book first — go to a subfolder only when you need
-the raw source behind a specific claim.
+Books are the vision and knowledge layer. Read BOOK-00 first for product
+direction, then the relevant evidence book before opening lower-level source
+material.
 
 | Book | Topic | Read when |
 |------|-------|-----------|
+| `BOOK-00-vision-goals-and-dreams.md` | Product vision and strategic north star | Before strategy, architecture, or roadmap decisions |
 | `BOOK-01-base-mechanics-and-claims.md` | Base mechanics and claims | Before changing planner logic or claim verdicts |
 | `BOOK-02-energy-house-of-mirrors-and-lab.md` | Energy, abilities, Laboratory | Before touching energy/ability logic or Lab captures |
 | `BOOK-03-verification-history-and-artifacts.md` | Verification history | Before claiming a version is verified; for forensics |
@@ -27,8 +32,9 @@ the raw source behind a specific claim.
 
 ### Book rules
 
-A book entry is a **distilled, classified, stable finding** — not raw data,
-not a work order, not an architecture decision.
+BOOK-00 is the durable product vision. Books 01 through 05 contain
+**distilled, classified, stable findings** — not raw data, work orders, or
+architecture decisions.
 
 **Classification labels used in books:**
 
@@ -77,12 +83,15 @@ Before any code change:
 
 1. `../AGENTS.md` — repo guardrails and hard safety defaults
 2. `../AI.md` — AI workflow rules
-3. `SWARMSIM_GAME_MODEL.md` — active strategy contract
-4. Relevant book (BOOK-01 through BOOK-05)
-5. `strategy/` document if the work is architecture-level
-6. `prompts/` work order if one exists for the task
-7. `live-logs/` only when current claim-level evidence needs payload verification
-8. `test-data/` only when the active verifier needs its fixture
+3. `strategy/BOOK00_CURRENT_STATUS.md` — active milestone and next action
+4. `BOOK-00-vision-goals-and-dreams.md` for strategy, architecture, or roadmap work
+5. `strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` for product milestone work
+6. `SWARMSIM_GAME_MODEL.md` — active strategy contract
+7. Relevant evidence book (BOOK-01 through BOOK-05)
+8. Other `strategy/` document if the work requires it
+9. `prompts/` work order if one exists for the task
+10. `live-logs/` only when current claim-level evidence needs payload verification
+11. `test-data/` only when the active verifier needs its fixture
 
 Do not read `live-logs/` or `test-data/` before the books. The books tell you
 what the source material already concluded.
