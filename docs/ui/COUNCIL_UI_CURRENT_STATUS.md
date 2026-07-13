@@ -106,6 +106,12 @@ The user-corrected Photoshop version is accepted as the UI3 source candidate at
 pixel has alpha `255`. UI3 will derive any optimized or resized runtime variant
 from this unchanged source.
 
+Ten user-named and user-cut shield images are also accepted under
+`assets/council/`: six Council advisor shields and four economic-lane shields.
+Their semantic mapping, dimensions, and SHA-256 hashes are recorded in the
+asset README. All have real alpha transparency. The visible magenta edge fringe
+is explicitly accepted by the user and must not block UI3 integration.
+
 ## Validation snapshot
 
 UI0 is committed at `3b434a3`. The UI1 documentation and fixtures passed the
