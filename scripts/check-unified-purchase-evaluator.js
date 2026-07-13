@@ -42,17 +42,17 @@ async function main() {
 
       const validCandidates = [
         {
-          lane: "Territory", executionKey: "territory", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
+          lane: "Territory", executionKey: "territory", executionId: "stinger", executionKind: "unit", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
           reason: "improves Expansion ETA", score: 72000, blockers: [], costResources: ["meat", "larva"],
           raw: { etaBeforeSeconds: 500, etaImprovementSeconds: 200, reserveRatio: 3, progressPercent: 65 },
         },
         {
-          lane: "Meat", executionKey: "meat", decision: "BUY", candidate: "Drone", target: "Nest", wouldBuyAmount: "60",
+          lane: "Meat", executionKey: "meat", executionId: "drone", executionKind: "unit", decision: "BUY", candidate: "Drone", target: "Nest", wouldBuyAmount: "60",
           reason: "target unlock step", score: 68000, blockers: [], costResources: ["meat", "larva"],
           raw: { paybackSeconds: 900, paybackLimitSeconds: 1800, reserveRatio: 2, progressPercent: 45 },
         },
         {
-          lane: "Engine", executionKey: "engine", decision: "BUY", candidate: "Hatchery", target: "Hatchery", wouldBuyAmount: "1",
+          lane: "Engine", executionKey: "engine", executionId: "hatchery", executionKind: "upgrade", decision: "BUY", candidate: "Hatchery", target: "Hatchery", wouldBuyAmount: "1",
           reason: "hatchery near", score: 65000, blockers: [], costResources: ["meat", "larva"],
           raw: { etaSeconds: 240, reserveRatio: 2, progressPercent: 55 },
         },
@@ -68,28 +68,28 @@ async function main() {
 
       const holdDeniedDecision = api.buildExecutionDecision([
         {
-          lane: "Meat", executionKey: "meat", decision: "HOLD", candidate: "Drone", target: "Nest", wouldBuyAmount: "60",
+          lane: "Meat", executionKey: "meat", executionId: "drone", executionKind: "unit", decision: "HOLD", candidate: "Drone", target: "Nest", wouldBuyAmount: "60",
           reason: "waiting", score: 70000, blockers: ["reserve"], raw: { reserveRatio: 1.2 },
         },
       ], { actionBudget: 1, revalidationCandidates: [] });
 
       const blockedDeniedDecision = api.buildExecutionDecision([
         {
-          lane: "Territory", executionKey: "territory", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
+          lane: "Territory", executionKey: "territory", executionId: "stinger", executionKind: "unit", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
           reason: "candidate blocked", score: 73000, blockers: ["territory protected for Expansion"], raw: { etaBeforeSeconds: 400, etaImprovementSeconds: 150 },
         },
       ], { actionBudget: 1, revalidationCandidates: [] });
 
       const lowConfidenceDeniedDecision = api.buildExecutionDecision([
         {
-          lane: "Engine", executionKey: "engine", decision: "BUY", candidate: "Hatchery", target: "Hatchery", wouldBuyAmount: "1",
+          lane: "Engine", executionKey: "engine", executionId: "hatchery", executionKind: "upgrade", decision: "BUY", candidate: "Hatchery", target: "Hatchery", wouldBuyAmount: "1",
           reason: "sparse evidence", score: 61000, blockers: [], raw: {},
         },
       ], { actionBudget: 1, revalidationCandidates: [] });
 
       const unknownKeyDeniedDecision = api.buildExecutionDecision([
         {
-          lane: "Territory", executionKey: "unknown-key", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
+          lane: "Territory", executionKey: "unknown-key", executionId: "stinger", executionKind: "unit", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
           reason: "improves Expansion ETA", score: 72000, blockers: [], raw: { etaBeforeSeconds: 500, etaImprovementSeconds: 200, reserveRatio: 3, progressPercent: 65 },
         },
       ], { actionBudget: 1, revalidationCandidates: [] });
@@ -98,7 +98,7 @@ async function main() {
         actionBudget: 1,
         revalidationCandidates: [
           {
-            lane: "Territory", executionKey: "territory", decision: "HOLD", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
+            lane: "Territory", executionKey: "territory", executionId: "stinger", executionKind: "unit", decision: "HOLD", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
             reason: "no longer buyable", score: 72000, blockers: ["territory protected for Expansion"], raw: { etaBeforeSeconds: 500, etaImprovementSeconds: 200, reserveRatio: 3, progressPercent: 65 },
           },
           validCandidates[1],
@@ -110,7 +110,7 @@ async function main() {
         actionBudget: 1,
         revalidationCandidates: [
           {
-            lane: "Territory", executionKey: "territory", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "6",
+            lane: "Territory", executionKey: "territory", executionId: "stinger", executionKind: "unit", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "6",
             reason: "improves Expansion ETA", score: 72000, blockers: [], costResources: ["meat", "larva"],
             raw: { etaBeforeSeconds: 500, etaImprovementSeconds: 200, reserveRatio: 3, progressPercent: 65 },
           },

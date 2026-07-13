@@ -3010,6 +3010,11 @@ function getDisplayName(item) {
       coordinatorSelectedLane: coordinatorExecution.selectedLane || "none",
       coordinatorSelectedCandidate: coordinatorExecution.selectedCandidate || "none",
       coordinatorSelectedExecutionKey: coordinatorExecution.selectedExecutionKey || "none",
+      coordinatorSelectedExecutionId: coordinatorExecution.selectedExecutionId || "none",
+      coordinatorSelectedExecutionKind: coordinatorExecution.selectedExecutionKind || "none",
+      coordinatorSelectedExecutionVariant: coordinatorExecution.selectedExecutionVariant || "base",
+      coordinatorSelectedFingerprint: coordinatorExecution.selectedFingerprint || "none",
+      coordinatorExecutedFingerprint: coordinatorExecution.executedFingerprint || "none",
       coordinatorSelectedAmount: coordinatorExecution.selectedAmount || "0",
       coordinatorSelectedReason: coordinatorExecution.selectedReason || "none",
       coordinatorExecutionConfidence: coordinatorExecution.confidence || "low",
@@ -3264,6 +3269,8 @@ function getDisplayName(item) {
       ["Coordinator authority", `${strategyInspector.coordinatorExecutionAuthority || "false"} (${strategyInspector.coordinatorAuthoritySource || "none"})`],
       ["Coordinator selected", `${strategyInspector.coordinatorSelectedDomain || "none"} · ${strategyInspector.coordinatorSelectedLane || "none"}: ${strategyInspector.coordinatorSelectedCandidate || "none"}`],
       ["Coordinator execution key", strategyInspector.coordinatorSelectedExecutionKey || "none"],
+      ["Coordinator execution identity", `${strategyInspector.coordinatorSelectedExecutionKind || "none"}:${strategyInspector.coordinatorSelectedExecutionId || "none"}:${strategyInspector.coordinatorSelectedExecutionVariant || "base"}`],
+      ["Coordinator fingerprint", `${strategyInspector.coordinatorSelectedFingerprint || "none"} -> ${strategyInspector.coordinatorExecutedFingerprint || "none"}`],
       ["Coordinator amount", strategyInspector.coordinatorSelectedAmount || "0"],
       ["Coordinator reason", strategyInspector.coordinatorSelectedReason || "none"],
       ["Coordinator confidence", strategyInspector.coordinatorExecutionConfidence || "low"],
@@ -4690,6 +4697,11 @@ function getDisplayName(item) {
       coordinatorSelectedLane: strategyInspector?.coordinatorSelectedLane || "none",
       coordinatorSelectedCandidate: strategyInspector?.coordinatorSelectedCandidate || "none",
       coordinatorSelectedExecutionKey: strategyInspector?.coordinatorSelectedExecutionKey || "none",
+      coordinatorSelectedExecutionId: strategyInspector?.coordinatorSelectedExecutionId || "none",
+      coordinatorSelectedExecutionKind: strategyInspector?.coordinatorSelectedExecutionKind || "none",
+      coordinatorSelectedExecutionVariant: strategyInspector?.coordinatorSelectedExecutionVariant || "base",
+      coordinatorSelectedFingerprint: strategyInspector?.coordinatorSelectedFingerprint || "none",
+      coordinatorExecutedFingerprint: strategyInspector?.coordinatorExecutedFingerprint || "none",
       coordinatorSelectedAmount: strategyInspector?.coordinatorSelectedAmount || "0",
       coordinatorSelectedReason: strategyInspector?.coordinatorSelectedReason || "none",
       coordinatorExecutionConfidence: strategyInspector?.coordinatorExecutionConfidence || "low",
@@ -14848,6 +14860,9 @@ function getDisplayName(item) {
           target: row.target,
           resource: row.resource,
           costResources: getCostList(row.upgrade).map((cost) => cost?.unit?.name).filter(Boolean),
+          executionId: row.upgrade?.name || "",
+          executionKind: "upgrade",
+          executionVariant: "base",
           boundedAmount: "1",
           wouldBuyAmount: buyable ? "1" : "",
           raw: { etaSeconds: buyable ? 0 : eta, progressPercent: (progress || 0) * 100 },
@@ -14896,6 +14911,9 @@ function getDisplayName(item) {
           target: getDisplayName(plan.target),
           resource: plan.bottleneck?.unit ? getDisplayName(plan.bottleneck.unit) : "meat chain",
           costResources: getCostList(plan.actionUnit).map((cost) => cost?.unit?.name).filter(Boolean),
+          executionId: plan.actionUnit?.name || "",
+          executionKind: "unit",
+          executionVariant: normalizeLabelKey(plan.actionUnit?.suffix || "") || "base",
           boundedAmount: normalizeBoundedAmountToken(num),
           wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
           raw: guard?.raw || null,
@@ -14916,9 +14934,17 @@ function getDisplayName(item) {
         target: territory.armySeed ? "House of Mirrors prep" : "Expansion",
         resource: "territory",
         costResources: getCostList(territory.unit).map((cost) => cost?.unit?.name).filter(Boolean),
+        executionId: territory.unit?.name || "",
+        executionKind: "unit",
+        executionVariant: normalizeLabelKey(territory.unit?.suffix || "") || "base",
         boundedAmount: normalizeBoundedAmountToken(territory.num),
         wouldBuyAmount: formatSwarmNumber(territory.num),
-        raw: territory.raw || null,
+        raw: {
+          ...(territory.raw || {}),
+          etaImprovementSeconds: territory.raw?.etaImprovementSeconds ?? territory.etaGainSeconds ?? 0,
+          etaBeforeSeconds: territory.raw?.etaBeforeSeconds ?? territory.etaBeforeSeconds,
+          etaAfterSeconds: territory.raw?.etaAfterSeconds ?? territory.etaAfterSeconds,
+        },
       }, "territory");
     }
 
@@ -14959,11 +14985,14 @@ function getDisplayName(item) {
     return isPositive(amount) ? amount : null;
   }
 
-  function buildCoordinatorCandidateFingerprint({ lane, executionKey, candidate, target, boundedAmount }) {
+  function buildCoordinatorCandidateFingerprint({ lane, executionKey, candidate, executionId, executionKind, executionVariant, target, boundedAmount }) {
     return [
       String(lane || "none"),
       String(executionKey || "none"),
-      String(candidate || "none"),
+      normalizeLabelKey(candidate) || "none",
+      String(executionId || "none"),
+      String(executionKind || "none"),
+      String(executionVariant || "base"),
       String(target || "none"),
       normalizeBoundedAmountToken(boundedAmount),
     ].join("|");
@@ -14978,6 +15007,9 @@ function getDisplayName(item) {
       selectedLane: "none",
       selectedCandidate: "none",
       selectedExecutionKey: null,
+      selectedExecutionId: "none",
+      selectedExecutionKind: "none",
+      selectedExecutionVariant: "base",
       selectedAmount: "0",
       selectedTarget: "none",
       selectedFingerprint: "none",
@@ -15015,6 +15047,9 @@ function getDisplayName(item) {
       || null;
     const domain = wholeEconomyDomainForLane(winner.lane);
     const selectedKey = proposal?.executionKey || null;
+    const selectedExecutionId = String(proposal?.executionId || "");
+    const selectedExecutionKind = String(proposal?.executionKind || "");
+    const selectedExecutionVariant = String(proposal?.executionVariant || "base");
     const blockers = proposal?.blockers || [];
     const gatesPassed = [];
     const gatesFailed = [];
@@ -15034,6 +15069,11 @@ function getDisplayName(item) {
       : (evaluation?.runnerUp ? null : Number.POSITIVE_INFINITY);
     gate("economic-evidence-sufficient", winner.evidenceFields >= 3 && (scoreMargin === Number.POSITIVE_INFINITY || scoreMargin > 0), "insufficient evidence or score margin");
     gate("known-execution-key", !!selectedKey, "executionKey missing");
+    gate(
+      "known-execution-identity",
+      !!selectedExecutionId && ["unit", "upgrade"].includes(selectedExecutionKind),
+      "canonical executionId or executionKind missing"
+    );
     gate("action-budget", Number(actionBudget || 0) >= 1, `budget ${Number(actionBudget || 0)} < 1`);
     gate("execution-mode-enabled", executionEnabled === true, "advisor-only or auto-buy-safe is disabled");
     gate("no-ability-or-ascension-automation", isWholeEconomyExecutionLaneAllowed(winner.lane), "candidate implies ability/ascension scope");
@@ -15045,6 +15085,9 @@ function getDisplayName(item) {
       lane: winner.lane,
       executionKey: selectedKey,
       candidate: winner.candidate,
+      executionId: selectedExecutionId,
+      executionKind: selectedExecutionKind,
+      executionVariant: selectedExecutionVariant,
       target: selectedTarget,
       boundedAmount: selectedAmountToken,
     });
@@ -15054,6 +15097,9 @@ function getDisplayName(item) {
       selectedLane: winner.lane || "none",
       selectedCandidate: winner.candidate || "none",
       selectedExecutionKey: selectedKey,
+      selectedExecutionId: selectedExecutionId || "none",
+      selectedExecutionKind: selectedExecutionKind || "none",
+      selectedExecutionVariant,
       selectedAmount: selectedAmountToken,
       selectedTarget,
       selectedFingerprint,
@@ -15091,6 +15137,9 @@ function getDisplayName(item) {
       row.executionKey === base.selectedExecutionKey
       && row.lane === base.selectedLane
       && row.candidate === base.selectedCandidate
+      && row.executionId === base.selectedExecutionId
+      && row.executionKind === base.selectedExecutionKind
+      && String(row.executionVariant || "base") === base.selectedExecutionVariant
     ) || null;
     const matchedRow = (evaluation?.evaluated || []).find((row) =>
       row.lane === base.selectedLane && row.candidate === base.selectedCandidate
@@ -15123,6 +15172,9 @@ function getDisplayName(item) {
       lane: base.selectedLane,
       executionKey: base.selectedExecutionKey,
       candidate: base.selectedCandidate,
+      executionId: matchedProposal?.executionId || "none",
+      executionKind: matchedProposal?.executionKind || "none",
+      executionVariant: matchedProposal?.executionVariant || "base",
       target: revalidatedTarget,
       boundedAmount: revalidatedAmountToken,
     });
@@ -15134,6 +15186,9 @@ function getDisplayName(item) {
       selectedReason: matchedProposal?.reason || base.selectedReason,
       selectedAmount: revalidatedAmountToken,
       selectedTarget: revalidatedTarget,
+      selectedExecutionId: matchedProposal?.executionId || base.selectedExecutionId,
+      selectedExecutionKind: matchedProposal?.executionKind || base.selectedExecutionKind,
+      selectedExecutionVariant: matchedProposal?.executionVariant || base.selectedExecutionVariant,
       selectedFingerprint: revalidatedFingerprint,
       confidence: matchedRow?.confidence || base.confidence,
       scoreMargin: scoreMargin === Number.POSITIVE_INFINITY ? null : roundWholeEconomy(scoreMargin),
@@ -15163,15 +15218,38 @@ function getDisplayName(item) {
     };
   }
 
-  function executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount }) {
+  function resolveCoordinatorUnit(game, expectedExecutionId, expectedExecutionVariant, expectedCandidate) {
+    const variant = expectedExecutionVariant || "base";
+    const candidateKey = normalizeLabelKey(expectedCandidate);
+    const fromList = (game?.unitlist?.() || []).find((unit) =>
+      String(unit?.name || "") === expectedExecutionId
+      && (normalizeLabelKey(unit?.suffix || "") || "base") === variant
+      && (!candidateKey || normalizeLabelKey(getDisplayName(unit)) === candidateKey)
+    );
+    if (fromList) return fromList;
+    if (variant !== "base") return null;
+    const direct = getGameUnit(game, expectedExecutionId || "");
+    return direct
+      && String(direct.name || "") === expectedExecutionId
+      && (!candidateKey || normalizeLabelKey(getDisplayName(direct)) === candidateKey)
+      ? direct
+      : null;
+  }
+
+  function executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
     const amount = parseBoundedAmountToken(expectedAmount);
-    const unit = getGameUnit(game, expectedCandidate || "");
-    if (!unit || !amount) {
+    const unit = expectedExecutionKind === "unit"
+      ? resolveCoordinatorUnit(game, expectedExecutionId, expectedExecutionVariant, expectedCandidate)
+      : null;
+    if (!unit || String(unit.name || "") !== expectedExecutionId || !amount) {
       return {
         actionTaken: false,
         bought: 0,
         executedCandidate: expectedCandidate || "none",
-        executedAmount: normalizeBoundedAmountToken(expectedAmount),
+        executedExecutionId: "none",
+        executedExecutionKind: "none",
+        executedExecutionVariant: "base",
+        executedAmount: "0",
         summary: "Meat exact execution unavailable",
       };
     }
@@ -15184,92 +15262,129 @@ function getDisplayName(item) {
       actionTaken: bought,
       bought: bought ? 1 : 0,
       executedCandidate: getDisplayName(unit),
+      executedExecutionId: unit.name,
+      executedExecutionKind: "unit",
+      executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
       executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
       summary: bought ? `Bought ${getDisplayName(unit)}` : `Meat exact buy failed for ${getDisplayName(unit)}`,
     };
   }
 
-  function executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount }) {
+  function executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
     const amount = parseBoundedAmountToken(expectedAmount);
-    const upgrade = getGameUpgrade(game, expectedCandidate || "");
-    if (!upgrade || !amount) {
+    const upgrade = expectedExecutionKind === "upgrade" ? getGameUpgrade(game, expectedExecutionId || "") : null;
+    if (
+      !upgrade
+      || String(upgrade.name || "") !== expectedExecutionId
+      || normalizeLabelKey(getDisplayName(upgrade)) !== normalizeLabelKey(expectedCandidate)
+      || !amount
+    ) {
       return {
         actionTaken: false,
         bought: 0,
         executedCandidate: expectedCandidate || "none",
-        executedAmount: normalizeBoundedAmountToken(expectedAmount),
+        executedExecutionId: "none",
+        executedExecutionKind: "none",
+        executedExecutionVariant: "base",
+        executedAmount: "0",
         summary: "Engine exact execution unavailable",
       };
     }
 
+    const before = decimalFrom(upgrade.count?.() || 0, 0);
     const bought = safe(`Unified Engine ${getDisplayName(upgrade)}`, () => buyUpgradeAmount(commands, upgrade, amount, "Larva Engine"));
+    const after = decimalFrom(upgrade.count?.() || 0, 0);
+    const delta = after.minus(before);
     return {
       actionTaken: bought,
       bought: bought ? 1 : 0,
       executedCandidate: getDisplayName(upgrade),
-      executedAmount: bought ? normalizeBoundedAmountToken(amount) : "0",
+      executedExecutionId: upgrade.name,
+      executedExecutionKind: "upgrade",
+      executedExecutionVariant: expectedExecutionVariant || "base",
+      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
       summary: bought ? `Bought ${getDisplayName(upgrade)}` : `Engine exact buy failed for ${getDisplayName(upgrade)}`,
     };
   }
 
-  function executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount }) {
+  function executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
     const amount = parseBoundedAmountToken(expectedAmount);
-    const unit = getGameUnit(game, expectedCandidate || "");
-    if (!unit || !amount) {
+    const unit = expectedExecutionKind === "unit"
+      ? resolveCoordinatorUnit(game, expectedExecutionId, expectedExecutionVariant, expectedCandidate)
+      : null;
+    if (!unit || String(unit.name || "") !== expectedExecutionId || !amount) {
       return {
         actionTaken: false,
         bought: 0,
         executedCandidate: expectedCandidate || "none",
-        executedAmount: normalizeBoundedAmountToken(expectedAmount),
+        executedExecutionId: "none",
+        executedExecutionKind: "none",
+        executedExecutionVariant: "base",
+        executedAmount: "0",
         summary: "Territory exact execution unavailable",
       };
     }
 
+    const before = decimalFrom(unit.count?.() || 0, 0);
     const bought = safe(`Unified Territory ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Territory Prep"));
+    const after = decimalFrom(unit.count?.() || 0, 0);
+    const delta = after.minus(before);
     return {
       actionTaken: bought,
       bought: bought ? 1 : 0,
       executedCandidate: getDisplayName(unit),
-      executedAmount: bought ? normalizeBoundedAmountToken(amount) : "0",
+      executedExecutionId: unit.name,
+      executedExecutionKind: "unit",
+      executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
+      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
       summary: bought ? `Bought ${getDisplayName(unit)}` : `Territory exact buy failed for ${getDisplayName(unit)}`,
     };
   }
 
-  function executeUnifiedPurchaseWinner({ executionKey, game, commands, remainingActions, selectedLane, selectedCandidate, selectedAmount, selectedTarget, selectedFingerprint }) {
+  function executeUnifiedPurchaseWinner({ executionKey, game, commands, remainingActions, selectedLane, selectedCandidate, selectedExecutionId, selectedExecutionKind, selectedExecutionVariant, selectedAmount, selectedTarget, selectedFingerprint }) {
     if (!executionKey || remainingActions < 1) {
       return { label: "Unified", result: { actionTaken: false, bought: 0, summary: "no execution" } };
     }
 
     const lane = selectedLane || "none";
     const expectedCandidate = selectedCandidate || "none";
+    const expectedExecutionId = selectedExecutionId || "none";
+    const expectedExecutionKind = selectedExecutionKind || "none";
+    const expectedExecutionVariant = selectedExecutionVariant || "base";
     const expectedAmount = normalizeBoundedAmountToken(selectedAmount || "0");
     const expectedTarget = selectedTarget || "none";
     const expectedFingerprint = selectedFingerprint || buildCoordinatorCandidateFingerprint({
       lane,
       executionKey,
       candidate: expectedCandidate,
+      executionId: expectedExecutionId,
+      executionKind: expectedExecutionKind,
+      executionVariant: expectedExecutionVariant,
       target: expectedTarget,
       boundedAmount: expectedAmount,
     });
 
     let label = "Unified";
-    let result = { actionTaken: false, bought: 0, executedCandidate: expectedCandidate, executedAmount: "0", summary: "no execution" };
+    let result = { actionTaken: false, bought: 0, executedCandidate: expectedCandidate, executedExecutionId: "none", executedExecutionKind: "none", executedExecutionVariant: "base", executedAmount: "0", summary: "no execution" };
 
     if (executionKey === "meat") {
       label = "Unlock planner";
-      result = executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount });
+      result = executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
     } else if (executionKey === "engine") {
       label = "Larva engine";
-      result = executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount });
+      result = executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
     } else if (executionKey === "territory") {
       label = "Territory";
-      result = executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount });
+      result = executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
     }
 
     const executedFingerprint = buildCoordinatorCandidateFingerprint({
       lane,
       executionKey,
       candidate: result.executedCandidate,
+      executionId: result.executedExecutionId,
+      executionKind: result.executedExecutionKind,
+      executionVariant: result.executedExecutionVariant,
       target: expectedTarget,
       boundedAmount: result.executedAmount,
     });
@@ -15419,6 +15534,9 @@ function getDisplayName(item) {
         remainingActions: Math.max(0, maxActions - mainActions),
         selectedLane: wholeEconomyExecutionDecisionState.selectedLane,
         selectedCandidate: wholeEconomyExecutionDecisionState.selectedCandidate,
+        selectedExecutionId: wholeEconomyExecutionDecisionState.selectedExecutionId,
+        selectedExecutionKind: wholeEconomyExecutionDecisionState.selectedExecutionKind,
+        selectedExecutionVariant: wholeEconomyExecutionDecisionState.selectedExecutionVariant,
         selectedAmount: wholeEconomyExecutionDecisionState.selectedAmount,
         selectedTarget: wholeEconomyExecutionDecisionState.selectedTarget,
         selectedFingerprint: wholeEconomyExecutionDecisionState.selectedFingerprint,

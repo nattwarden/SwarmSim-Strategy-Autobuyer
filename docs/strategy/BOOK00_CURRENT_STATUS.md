@@ -33,14 +33,15 @@ git rev-parse origin/main
 git log -8 --oneline --decorate
 ```
 
-Observed when this board was created:
+Observed at the start of the Milestone 2 closure fix:
 
 - verified 0.13.0 implementation commit: `3896ad5`
 - verified 0.13.0 evidence commit / `origin/main`: `bcd1910`
-- current feature workspace HEAD: `d4a9db8`
+- current feature workspace starting HEAD: `e7730ad05853134faca3c1f24161182bdf695150`
 - current feature branch: `feature/strategy-audit-testbed-runners`
-- working tree: dirty because BOOK-00/runbook work and separate preliminary
-  Strategy Intelligence automation work are both present
+- feature branch remote status before the closure commit: ahead 9
+- working tree became dirty only with the authored Milestone 2 closure scope
+  recorded in the handoff log below
 
 If observed Git state differs, update this board before implementation.
 
@@ -55,157 +56,138 @@ If observed Git state differs, update this board before implementation.
 
 - Milestone 1 (Whole-Economy Shadow Preview): implemented and accepted on
   `21adb7a`.
-- Milestone 2 (Bounded Whole-Economy Coordinator Execution): implementation
-  accepted at `b9019cfff8ba47077e32d1a1faa2183ab3009f61`, but focused product
-  acceptance is still blocked by a reproducible execution bug in deterministic
-  runtime scenario `sa1-02`.
-- Blocking defect from acceptance scenario:
-  coordinator reports `executionAuthority=true` with selected Engine candidate
-  `Expansion x1`, but execution returns `Engine exact execution unavailable`,
-  `executed=no`, and `matchedExecution=no`.
-- Remaining Milestone 2 limitation:
-  exact bounded coordinator execution is not yet reliable for all selected
-  reversible candidates in staged deterministic runtime states.
+- Milestone 2 (Bounded Whole-Economy Coordinator Execution): locally accepted
+  in the implementation commit containing this handoff. Formal release
+  verification and versioning remain separate work.
+- The original `sa1-02` Engine regression now resolves `upgrade:expansion`,
+  executes exactly one Expansion, and reports `matchedExecution=yes`.
+- Focused product acceptance `book00-m2-coordinator` compares one preserved
+  pre-execution snapshot: legacy ordering selects `Engine: Hatchery`, while the
+  whole-economy coordinator selects and buys `Territory: Stinger V x9` through
+  canonical identity `unit:stinger:v`.
+- Milestone 3 is now active. Energy production must join in shadow comparison
+  before it can receive any bounded reversible execution authority.
 
 ## Active milestone
 
-**Milestone 2 — Bounded Whole-Economy Coordinator Execution (acceptance blocked)**
+**Milestone 3 — Energy production joins the economy**
 
-This is the one allowed infrastructure-first milestone. It must finish once and
-must not expand into more general test-platform work.
+Player-visible target:
 
-Player-visible delta for the following milestone:
+> The bot explains whether producing more Energy now is worth delaying Meat,
+> Larva, or Territory and shows the relevant Nexus or ability timing effect.
 
-> The bot previews why Meat, Larva, or Territory is the best investment for the
-> current milestone instead of showing only unrelated lane scores.
+Authority begins in shadow/advisor mode. Reversible Energy production may only
+execute after its shared outcome fields and hard Nexus gate pass focused
+acceptance.
 
-Milestone 0 exists only to make that product slice safe to begin.
+## Milestone 2 completion checklist
 
-## Milestone 0 checklist
-
-- [x] Define the BOOK-00 product vision and six strategic questions.
-- [x] Save the whole-economy dependency diagram.
-- [x] Create the product delivery runbook and anti-stagnation rules.
-- [x] Make BOOK-00 and the runbook discoverable in repository reading order.
-- [ ] Separate BOOK-00/runbook documentation from Copilot's automation changes.
-- [ ] Resolve which feature-branch commits should move onto current `main`.
-- [ ] Make the supported Strategy Intelligence automation path complete
-      successfully, or reduce it to an honest passing subset.
-- [ ] Remove fixed `sweep150` as a prerequisite for supported-core/v2; retain it
-      only as optional stress research or replace it with bounded adaptive
-      coarse-to-fine breakpoint search.
-- [ ] Ensure failed or partial audit results cannot be reported as passing
-      coverage.
-- [ ] Replace coverage inferred from scenario names with coverage recorded from
-      actual mutations, proposals, mechanics, and invariants, or explicitly
-      defer this to a later non-blocking improvement.
-- [ ] Correct stale current-version statements needed by the next work package.
-- [ ] Leave a clean reproducible baseline with implementation and generated
-      evidence separated.
-- [ ] Close Milestone 0 and activate Milestone 1.
+- [x] `executionAuthority`, confidence, and actual execution behavior agree.
+- [x] Low-confidence comparison remains advisory and cannot execute.
+- [x] Selected action is revalidated immediately before buy.
+- [x] Selected and executed canonical identities, variants, and bounded amounts
+      match.
+- [x] Sequential fallback cannot silently override a successful first action.
+- [x] Original Engine resolution failure is reproduced and fixed.
+- [x] One deterministic product state materially changes the first purchase:
+      legacy `Engine: Hatchery` becomes coordinator `Territory: Stinger V x9`.
 
 ## Current work package
 
 Product capability:
 
-- Clean, truthful launchpad for the first whole-economy comparison slice.
+- Add Energy production as the fourth domain in the shared whole-economy
+  comparison.
 
 Player-visible change:
 
-- None in Milestone 0. This is the single explicitly capped foundation
-  exception. The next work package must be player-visible Milestone 1 work.
+- Council/Inspector explains whether Nexus/Lepidoptera or another supported
+  reversible Energy-production investment is worth delaying Meat, Larva, or
+  Territory.
 
 Included:
 
-- Git/worktree separation;
-- BOOK-00 and delivery documentation;
-- correctness of the current automation summary;
-- minimum supported automation command;
-- current-version documentation required for truthful handoff.
+- Energy reserve and recovery as shared outcome fields;
+- hard Nexus protection in the shared gate;
+- visible cap-waste and delayed-ability opportunity where runtime evidence
+  supports them;
+- shadow outcomes where Energy can honestly win, lose, or remain uncertain.
 
 Explicitly excluded:
 
-- production strategy changes;
-- lane score tuning;
-- new Territory sweeps;
-- new Laboratory formulas;
-- version bump;
-- widening auto-cast or auto-ascend behavior;
-- a comprehensive rewrite of the test platform.
+- ability auto-cast;
+- Ascension or Mutagen logic;
+- Nightbug or Bat auto-buy;
+- broad score tuning or sweeps;
+- new Laboratory formulas unless separately authorized;
+- release/version work before the Milestone 3 shadow slice is accepted.
 
 Authority:
 
-- documentation and test infrastructure only;
-- no runtime execution-authority change.
+- shadow/advisor only for the first Energy comparison slice;
+- existing Nexus protection remains authoritative;
+- no Energy execution authority until focused shadow acceptance passes.
 
 Expected changed areas:
 
-- `docs/BOOK-00-vision-goals-and-dreams.md`
-- `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md`
-- this status board
-- reading-order/index documentation
-- separately owned Strategy Intelligence automation files
-- generated evidence only in predeclared paths and never mixed with authored
-  implementation
+- `dev-src/runtime-sections/runtime-main.js`
+- canonical userscript produced by `npm run build`
+- focused purchase-evaluator check
+- Inspector/Council/export fields needed for the Energy comparison
+- this status board at handoff
 
 Stop condition:
 
-- one clean baseline exists;
-- the supported automation command reports truthfully and completes;
-- Milestone 1 can begin without more infrastructure work.
+- Energy emits the same versioned outcome contract from the same snapshot;
+- Energy can win, lose, and remain uncertain in focused honest states;
+- Nexus protection and ability/Ascension safety defaults remain unchanged;
+- the player can see Energy opportunity cost and switch conditions.
 
 ## Immediate next actions
 
 Execute these in order:
 
-1. Stop simultaneous editing in the shared working tree.
-2. Preserve the current dirty work safely without deleting or restoring another
-   agent's changes.
-3. Split documentation, authored automation, and generated evidence into
-   separate reviewable scopes.
-4. Review the preliminary automation against its actual outputs.
-5. Fix only the blockers that prevent one honest supported automation run.
-6. Ensure breakpoint research can stop adaptively without requiring sweep150.
-7. Complete the Milestone 0 checklist.
-8. Start Milestone 1 immediately.
+1. Define the smallest Energy-production proposal that uses existing runtime
+   evidence rather than a renamed lane score.
+2. Add Energy to the shared comparison in shadow/advisor mode.
+3. Expose reserve recovery, cap waste, and relevant ability-delay fields.
+4. Run only the focused Energy comparison acceptance required by the runbook.
+5. Keep reversible Energy execution disabled until shadow acceptance passes.
 
 ## Known current blockers and cautions
 
-- The latest observed Strategy Intelligence automation run reported
-  `allPassed: false`; `sa1-v2` could not find complete sweep representatives.
-- The preliminary coverage manifest reported reset/leakage failure and included
-  one incomplete result. It is not formal acceptance evidence.
-- The preliminary property sweep tests simplified helper mathematics rather
-  than the complete production economic model. It must not be described as
-  proof of whole-economy correctness.
-- Current runtime and package surfaces are 0.13.0, while some books and roadmap
-  text still describe 0.12.3 or 0.12.4 as current.
-- The Unified Purchase Evaluator reports shadow/no execution authority in one
-  surface while its winner is used by the first-action execution wrapper. That
-  issue belongs to Milestone 2 unless it blocks truthful Milestone 1 shadow
-  reporting.
+- Runtime/package surfaces still identify as 0.13.0. The accepted Milestone 2
+  branch is not a formal release until versioning and exact-SHA verification are
+  performed separately.
+- The current branch is ahead of its remote and has not been merged or pushed.
+- The focused testbed is deterministic only when staged count, command deltas,
+  and `velocity()` describe the same state; preserve that invariant.
+- Territory suffix tiers require canonical name plus variant identity. Do not
+  fall back to display-label lookup for execution.
 
 ## Do not do next
 
-- Do not start another broad ranking or Territory sweep.
-- Do not tune lane weights before the shared outcome contract exists.
+- Do not run sweep150 or start another broad ranking exercise.
+- Do not grant Energy or abilities execution authority in the first M3 slice.
 - Do not build Ascension/Mutagen yet.
-- Do not give abilities execution authority.
-- Do not turn Milestone 0 into a perfect-coverage project.
-- Do not merge large historical artifact deletion with product logic.
-- Do not claim formal verification from the current dirty workspace.
+- Do not change hard safety defaults.
+- Do not claim a released version from the unpushed feature branch.
 
 ## Next product milestone preview
 
-**Milestone 3 — Energy production joins the economy**
+**Milestone 4 — Energy ability timing advisor**
 
 Required product outcome:
 
-- Energy production joins the shared whole-economy coordinator contract as a
-  bounded reversible domain with explicit authority and truthful execution
-  matching.
+- advise cast-versus-save timing for supported abilities from the same shared
+  outcome contract;
+- keep ability execution disabled by default;
+- show projected gain, Energy opportunity cost, reserve recovery, and the next
+  condition that would change the recommendation.
 
-Start Milestone 3 only after the blocked Milestone 2 acceptance scenario passes.
+Start Milestone 4 only after Milestone 3 Energy-production comparison is
+accepted.
 
 ## Handoff update template
 
@@ -226,6 +208,39 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 — Milestone 2 exact execution fixed and locally accepted
+
+- Agent: Codex
+- Worktree/branch: `feature/strategy-audit-testbed-runners`
+- Starting acceptance/handoff SHA: `e7730ad05853134faca3c1f24161182bdf695150`
+- Implementation SHA: the commit containing this handoff entry
+- Product capability changed: coordinator proposals now carry canonical runtime
+  id, kind, and suffix variant; exact bounded adapters resolve and verify that
+  identity before buying.
+- Shared outcome correction: Territory's existing Expansion ETA gain is
+  normalized into the common `etaImprovementSeconds` field.
+- Testbed correction: staged `count()`, `velocity()`, and command purchase
+  deltas now describe one deterministic state.
+- Player-visible result: in focused acceptance, legacy ordering selects
+  `Engine: Hatchery`; the coordinator instead selects and buys
+  `Territory: Stinger V x9`, with `executionAuthority=true`, `executed=yes`,
+  and `matchedExecution=yes`.
+- Focused Engine regression: `upgrade:expansion x1` resolves and executes with
+  a matching fingerprint.
+- Generated evidence paths: none; disposable scenario artifacts are removed by
+  the check.
+- Commands passed before commit:
+  - `npm run build` -> 0
+  - `npm run build:check` -> 0
+  - `npm run check:purchase-evaluator` -> 0
+  - `npm run check:book00:m2:coordinator` -> 0
+  - `npm run validate:guardrails` -> 0
+  - `npm run verify` -> 0
+  - `git diff --check` -> 0
+- Milestone checklist items completed: all Milestone 2 product acceptance items.
+- Remaining blocker: formal release/version work is separate and has not begun.
+- Exact next action: start Milestone 3 Energy-production shadow comparison.
 
 ### 2026-07-13 — Milestone 2 focused acceptance (blocked)
 

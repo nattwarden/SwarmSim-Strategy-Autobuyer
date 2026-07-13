@@ -877,6 +877,31 @@ const SCENARIOS = {
   }
 };
 
+SCENARIOS["book00-m2-coordinator"] = {
+  ...SCENARIOS["sa1-02"],
+  id: "BOOK00-M2-COORDINATOR",
+  title: "Whole-Economy Coordinator Changes the First Reversible Purchase",
+  description: "A single deterministic acceptance state with concrete Engine, Meat, and Territory proposals from one pre-execution snapshot.",
+  cycles: 1,
+  unitCounts: {
+    ...SCENARIOS["sa1-02"].unitCounts,
+    territory: "0",
+  },
+  passiveRates: {
+    ...SCENARIOS["sa1-02"].passiveRates,
+    territory: "0.002",
+  },
+  engine: {
+    hatcheryEtaSeconds: 3600,
+    expansionEtaSeconds: 5400,
+  },
+  syntheticArmyTerritoryPerUnit: 1,
+  notes: [
+    "Milestone 2 acceptance only: compare the legacy first BUY with the coordinator winner from the preserved pre-execution snapshot.",
+    "Uses baseline synthetic army production, a slow Territory rate, and zero Territory bank so an army seed has measurable Expansion ETA value outside the protected save window.",
+  ],
+};
+
 function getScenarioDefinition(scenarioId) {
   const normalizedId = String(scenarioId || "canary").toLowerCase();
   const v2Scenario = buildSa1V2Scenario(normalizedId);
@@ -1621,6 +1646,8 @@ async function stageCanaryState(page, state) {
     const originalUpgrade = typeof game.upgrade === "function" ? game.upgrade.bind(game) : null;
     const originalUpgradeList = typeof game.upgradelist === "function" ? game.upgradelist.bind(game) : null;
     const originalBuyUnit = typeof commands?.buyUnit === "function" ? commands.buyUnit.bind(commands) : null;
+    const originalBuyUpgrade = typeof commands?.buyUpgrade === "function" ? commands.buyUpgrade.bind(commands) : null;
+    const stagedPurchaseDeltas = new WeakMap();
 
     const patched = [];
     const patch = (obj, key, value, note) => {
@@ -1702,7 +1729,8 @@ async function stageCanaryState(page, state) {
       if (stageKey || rateKey) {
         patch(unit, "count", () => {
           const elapsedSeconds = new DecimalCtor(Date.now() - startMs).dividedBy(1000);
-          return stagedDecimal.plus(rateDecimal.times(elapsedSeconds));
+          const purchaseDelta = stagedPurchaseDeltas.get(unit) || makeDecimal(0);
+          return stagedDecimal.plus(rateDecimal.times(elapsedSeconds)).plus(purchaseDelta);
         }, `count override for ${stageKey || rateKey}`);
       }
       patch(unit, "isVisible", () => true, `isVisible override for ${stageKey || rateKey}`);
@@ -1719,12 +1747,13 @@ async function stageCanaryState(page, state) {
       }
 
       if (rateKey) {
+        patch(unit, "velocity", () => rateDecimal, `velocity override for ${rateKey}`);
         manifest.push({
           id: `unit-rate:${unit?.name || rateKey}`,
-          path: `game.unit(${unit?.name || rateKey}).count-rate`,
+          path: `game.unit(${unit?.name || rateKey}).count-and-velocity-rate`,
           before: "runtime-dependent",
           stagedValue: rate,
-          method: "elapsed-seconds * configured rate",
+          method: "elapsed-seconds * configured rate plus matching velocity() override",
           restorationMethod: "restore original property descriptor/value"
         });
       }
@@ -1837,11 +1866,25 @@ async function stageCanaryState(page, state) {
         unit.__kbcIncrement(payload?.num || 0);
         return;
       }
-      if (typeof originalBuyUnit === "function") {
-        return originalBuyUnit(payload);
+      const wasBuyable = !!unit?.isBuyable?.();
+      const result = typeof originalBuyUnit === "function" ? originalBuyUnit(payload) : undefined;
+      if (wasBuyable && unit) {
+        const current = stagedPurchaseDeltas.get(unit) || makeDecimal(0);
+        stagedPurchaseDeltas.set(unit, current.plus(makeDecimal(payload?.num || 0)));
       }
-      return undefined;
+      return result;
     }, "commands.buyUnit patched");
+
+    patch(commands, "buyUpgrade", (payload) => {
+      const upgrade = payload?.upgrade;
+      const wasBuyable = !!upgrade?.isBuyable?.();
+      const result = typeof originalBuyUpgrade === "function" ? originalBuyUpgrade(payload) : undefined;
+      if (wasBuyable && upgrade) {
+        const current = stagedPurchaseDeltas.get(upgrade) || makeDecimal(0);
+        stagedPurchaseDeltas.set(upgrade, current.plus(makeDecimal(payload?.num || 0)));
+      }
+      return result;
+    }, "commands.buyUpgrade patched");
 
     bot.config.enabled = true;
     bot.config.advisorOnly = !executeActions;
@@ -2437,6 +2480,11 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
     row.coordinatorSelectedLane = planner?.inspectorAfter?.coordinatorSelectedLane || null;
     row.coordinatorSelectedCandidate = planner?.inspectorAfter?.coordinatorSelectedCandidate || null;
     row.coordinatorSelectedExecutionKey = planner?.inspectorAfter?.coordinatorSelectedExecutionKey || null;
+    row.coordinatorSelectedExecutionId = planner?.inspectorAfter?.coordinatorSelectedExecutionId || null;
+    row.coordinatorSelectedExecutionKind = planner?.inspectorAfter?.coordinatorSelectedExecutionKind || null;
+    row.coordinatorSelectedExecutionVariant = planner?.inspectorAfter?.coordinatorSelectedExecutionVariant || null;
+    row.coordinatorSelectedFingerprint = planner?.inspectorAfter?.coordinatorSelectedFingerprint || null;
+    row.coordinatorExecutedFingerprint = planner?.inspectorAfter?.coordinatorExecutedFingerprint || null;
     row.coordinatorSelectedAmount = planner?.inspectorAfter?.coordinatorSelectedAmount || null;
     row.coordinatorRevalidationStatus = planner?.inspectorAfter?.coordinatorRevalidationStatus || null;
     row.coordinatorGatesPassed = planner?.inspectorAfter?.coordinatorGatesPassed || null;
@@ -2445,6 +2493,11 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
     row.coordinatorExecuted = planner?.inspectorAfter?.coordinatorExecuted || null;
     row.coordinatorMatchedExecution = planner?.inspectorAfter?.coordinatorMatchedExecution || null;
     row.coordinatorExecutionResult = planner?.inspectorAfter?.coordinatorExecutionResult || null;
+    row.purchaseProposalSnapshot = planner?.inspectorAfter?.purchaseProposalSnapshot || null;
+    row.territoryPrepCandidate = planner?.inspectorAfter?.territoryPrepCandidate || null;
+    row.territoryPrepDecision = planner?.inspectorAfter?.territoryPrepDecision || null;
+    row.territoryPrepReason = planner?.inspectorAfter?.territoryPrepReason || null;
+    row.territoryPrepBlockedBy = planner?.inspectorAfter?.territoryPrepBlockedBy || null;
 
     row.legalAlternatives = legalAlternatives;
     row.rejectedAlternatives = rejectedAlternatives;

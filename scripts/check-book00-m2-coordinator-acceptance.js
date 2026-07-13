@@ -21,7 +21,9 @@ function summarizeAlternatives(laneProposals) {
   const proposals = Array.isArray(laneProposals) ? laneProposals : [];
   const byLane = new Map();
   for (const row of proposals) {
-    if (!row?.lane || byLane.has(row.lane)) continue;
+    if (!row?.lane) continue;
+    const current = byLane.get(row.lane);
+    if (current?.decision === "BUY" || (current && row.decision !== "BUY")) continue;
     byLane.set(row.lane, {
       lane: row.lane,
       decision: row.decision || "OBSERVE",
@@ -35,7 +37,9 @@ function inferLegacyFirstChoice(laneProposals) {
   const byKey = new Map();
   for (const row of laneProposals || []) {
     const key = toExecutionKey(row?.lane);
-    if (key === "none" || byKey.has(key)) continue;
+    if (key === "none") continue;
+    const current = byKey.get(key);
+    if (current?.decision === "BUY" || (current && row?.decision !== "BUY")) continue;
     byKey.set(key, row);
   }
 
@@ -68,7 +72,27 @@ function cleanupExecutionArtifacts(execution) {
 }
 
 async function main() {
-  const scenarioId = "sa1-02";
+  const engineRegressionOutcome = await runMode("fast", [
+    "--scenario", "sa1-02",
+    "--cycles", "1",
+    "--headed", "false",
+    "--keep-open", "false",
+    "--leave-open-on-failure", "false",
+    "--strict-determinism", "false",
+  ]);
+  const engineRegressionExecution = engineRegressionOutcome?.executions?.[0] || null;
+  try {
+    const cycle = engineRegressionExecution?.result?.cycles?.[0] || {};
+    assert(engineRegressionOutcome?.exitCode === 0, `engine resolution regression runner failed with exitCode=${engineRegressionOutcome?.exitCode}`);
+    assert(String(cycle.coordinatorSelectedExecutionId || "none") === "expansion", "engine resolution regression did not select canonical executionId=expansion");
+    assert(String(cycle.coordinatorSelectedExecutionKind || "none") === "upgrade", "engine resolution regression did not select executionKind=upgrade");
+    assert(String(cycle.coordinatorExecuted || "no") === "yes", "engine resolution regression did not execute the selected Expansion");
+    assert(String(cycle.coordinatorMatchedExecution || "no") === "yes", "engine resolution regression did not match the selected Expansion fingerprint");
+  } finally {
+    cleanupExecutionArtifacts(engineRegressionExecution);
+  }
+
+  const scenarioId = "book00-m2-coordinator";
   const cliArgs = [
     "--scenario", scenarioId,
     "--cycles", "1",
@@ -86,11 +110,13 @@ async function main() {
     assert(execution?.result?.cycles?.length === 1, "expected exactly one acceptance cycle");
 
     const cycle = execution.result.cycles[0];
-    const laneProposals = Array.isArray(cycle.laneProposals) ? cycle.laneProposals : [];
+    const laneProposals = Array.isArray(cycle.purchaseProposalSnapshot?.proposals)
+      ? cycle.purchaseProposalSnapshot.proposals
+      : [];
     const alternatives = summarizeAlternatives(laneProposals);
     const legacy = inferLegacyFirstChoice(laneProposals);
 
-    assert(alternatives.every((row) => row.decision !== "MISSING"), "expected concrete Engine/Meat/Territory alternatives");
+    assert(alternatives.every((row) => row.decision !== "MISSING" && row.candidate !== "none"), "expected concrete pre-execution Engine/Meat/Territory alternatives");
     assert(String(cycle.goalMetricDelta || "0") === "1", "expected real smartRunOnce cycle transition");
 
     const coordinator = {
@@ -98,6 +124,9 @@ async function main() {
       selectedLane: String(cycle.coordinatorSelectedLane || "none"),
       selectedCandidate: String(cycle.coordinatorSelectedCandidate || "none"),
       selectedExecutionKey: String(cycle.coordinatorSelectedExecutionKey || "none"),
+      selectedExecutionId: String(cycle.coordinatorSelectedExecutionId || "none"),
+      selectedExecutionKind: String(cycle.coordinatorSelectedExecutionKind || "none"),
+      selectedExecutionVariant: String(cycle.coordinatorSelectedExecutionVariant || "base"),
       selectedAmount: String(cycle.coordinatorSelectedAmount || "0"),
       executed: String(cycle.coordinatorExecuted || "no"),
       matched: String(cycle.coordinatorMatchedExecution || "no"),
@@ -114,8 +143,17 @@ async function main() {
     };
 
     assert(coordinator.authority === "true", `expected executionAuthority=true but got ${coordinator.authority}`);
+    assert(legacy.key === "engine" && legacy.candidate === "Hatchery", `expected legacy first choice Engine: Hatchery but got ${legacy.lane}: ${legacy.candidate}`);
+    assert(coordinator.selectedLane === "Territory" && coordinator.selectedCandidate === "Stinger V", `expected coordinator winner Territory: Stinger V but got ${coordinator.selectedLane}: ${coordinator.selectedCandidate}`);
+    assert(coordinator.selectedExecutionId === "stinger", `expected canonical executionId=stinger but got ${coordinator.selectedExecutionId}`);
+    assert(coordinator.selectedExecutionKind === "unit", `expected executionKind=unit but got ${coordinator.selectedExecutionKind}`);
+    assert(coordinator.selectedExecutionVariant === "v", `expected executionVariant=v but got ${coordinator.selectedExecutionVariant}`);
     assert(coordinator.executed === "yes", `expected executed=yes but got ${coordinator.executed}`);
     assert(coordinator.matched === "yes", `expected matchedExecution=yes but got ${coordinator.matched}`);
+    assert(
+      coordinator.selectedExecutionKey !== legacy.key || coordinator.selectedCandidate !== legacy.candidate,
+      `expected coordinator to improve the legacy first choice, but both selected ${legacy.lane}: ${legacy.candidate}`
+    );
 
     console.log("BOOK00 M2 COORDINATOR ACCEPTANCE PASSED");
     console.log(JSON.stringify(report, null, 2));
@@ -124,12 +162,15 @@ async function main() {
     const report = {
       scenarioId,
       error: error?.message || String(error),
-      legacyFirstChoice: inferLegacyFirstChoice(cycle.laneProposals || []),
+      legacyFirstChoice: inferLegacyFirstChoice(cycle.purchaseProposalSnapshot?.proposals || []),
       coordinator: {
         authority: String(cycle.coordinatorExecutionAuthority || "false"),
         selectedLane: String(cycle.coordinatorSelectedLane || "none"),
         selectedCandidate: String(cycle.coordinatorSelectedCandidate || "none"),
         selectedExecutionKey: String(cycle.coordinatorSelectedExecutionKey || "none"),
+        selectedExecutionId: String(cycle.coordinatorSelectedExecutionId || "none"),
+        selectedExecutionKind: String(cycle.coordinatorSelectedExecutionKind || "none"),
+        selectedExecutionVariant: String(cycle.coordinatorSelectedExecutionVariant || "base"),
         selectedAmount: String(cycle.coordinatorSelectedAmount || "0"),
         executed: String(cycle.coordinatorExecuted || "no"),
         matched: String(cycle.coordinatorMatchedExecution || "no"),
@@ -137,7 +178,7 @@ async function main() {
         fallbackReason: String(cycle.coordinatorFallbackReason || "none"),
         gatesFailed: String(cycle.coordinatorGatesFailed || "none"),
       },
-      alternatives: summarizeAlternatives(cycle.laneProposals || []),
+      alternatives: summarizeAlternatives(cycle.purchaseProposalSnapshot?.proposals || []),
     };
 
     console.error("BOOK00 M2 COORDINATOR ACCEPTANCE FAILED");
