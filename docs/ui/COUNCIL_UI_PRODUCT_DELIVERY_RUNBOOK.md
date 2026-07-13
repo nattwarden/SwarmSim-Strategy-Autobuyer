@@ -68,13 +68,13 @@ without requiring the reference image.
 
 Goal: reach the Council Chamber art direction without sacrificing clarity.
 
-- [ ] Decide Tampermonkey asset delivery method
-- [ ] Derive optimized production assets from approved sources
+- [x] Decide Tampermonkey asset delivery method
+- [x] Derive optimized production assets from approved sources
 - [ ] Record source, generation prompt where available, hash, and license status
-- [ ] Separate background, parchment, ornament, icons, and optional effects
-- [ ] Add responsive crops or fallbacks
+- [x] Separate background, parchment, ornament, icons, and optional effects
+- [x] Add responsive crops or fallbacks
 - [ ] Validate contrast and text-safe regions over real runtime states
-- [ ] Establish asset-size and load-time budgets
+- [x] Establish asset-size and load-time budgets
 
 Exit gate: production art passes visual, performance, provenance, and fallback
 acceptance.

@@ -30,11 +30,30 @@ const required = [
   ['@media (max-width: 1100px)', "desktop Council breakpoint is missing"],
   ['@media (max-width: 700px)', "compact Council breakpoint is missing"],
   ['@media (prefers-reduced-motion: reduce)', "reduced-motion handling is missing"],
+  ['const COUNCIL_ART_RESOURCES', "Council production art resource map is missing"],
+  ['function councilArtStyle()', "Council production art fallback adapter is missing"],
+  ['class="kbc-council-lane-art"', "Council lane artwork hook is missing"],
+  ['var(--kbc-art-parchment)', "Council parchment artwork is missing"],
+  ['var(--kbc-art-frame)', "Council ornate frame artwork is missing"],
+  ['kbc-council-advisor-beetle-magus', "Council advisor artwork mapping is missing"],
+];
+
+const requiredMetadata = [
+  '// @grant        GM_getResourceURL',
+  '// @resource     kbcCouncilChamber',
+  '// @resource     kbcCouncilFrame',
+  '// @resource     kbcCouncilParchment',
+  '// @resource     kbcCouncilLaneMeat',
+  '// @resource     kbcCouncilAdvisorBroodArchitect',
 ];
 
 const failures = required
   .filter(([token]) => !runtime.includes(token) || !userscript.includes(token))
   .map(([, message]) => message);
+
+for (const token of requiredMetadata) {
+  if (!userscript.includes(token)) failures.push(`userscript metadata is missing ${token}`);
+}
 
 if (!runtime.includes("autoCastAbilities: false") || !runtime.includes("autoAscend: false")) {
   failures.push("hard safety defaults changed or are missing");

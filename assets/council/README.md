@@ -22,6 +22,22 @@ The transparent pixels retain irrelevant RGB color data from the removed
 checkerboard. Runtime rendering must use alpha compositing and must not flatten
 the asset against white.
 
+## `council-parchment-source-v1.png`
+
+- status: accepted UI3 source asset; not integrated into runtime
+- source: user-provided generated parchment
+- received: 2026-07-13
+- dimensions: 1774 x 887
+- pixel format: 32-bit ARGB PNG
+- SHA-256: `23DD5D525F23E37C9F31B1C27C4D004E6F3916450E9128C629B1FDAFCB5AB09D`
+- transparency checks:
+  - all four corner pixels alpha: `0`
+  - exterior pixel `(20,20)` alpha: `0`
+  - writing-area pixel `(887,444)` alpha: `255`
+
+The parchment is a stable art layer. All decision labels, values, reasons, and
+statuses must remain live HTML text rendered above it.
+
 ## Accepted shield sources
 
 The ten user-named and user-cut shield images received on 2026-07-13 are
@@ -44,6 +60,24 @@ accepted part of these source images and is not an intake blocker.
 All ten sources are 32-bit ARGB PNGs with transparent exterior pixels. Preserve
 them unchanged and derive any resized or encoded runtime variants separately.
 
+## Runtime asset set
+
+`runtime/` contains 13 generated WebP delivery assets: the chamber, frame,
+parchment, four economic-lane shields, and six advisor shields. They are built
+by `npm run build:ui-assets` through Chromium Canvas without overwriting any
+source image.
+
+- manifest: `runtime/manifest.v1.json`
+- total payload: 492,872 bytes
+- asset budget: no more than 600,000 bytes for the complete UI3 v1 art set
+- delivery: Tampermonkey `@resource` entries resolved through
+  `GM_getResourceURL`
+- fallback: the semantic Council HTML/CSS remains readable when resource URLs
+  are unavailable
+
+The manifest records source/output paths, dimensions, byte sizes, quality
+settings, and SHA-256 hashes for every generated asset.
+
 ## UI3 rules
 
 - preserve this source file unchanged
@@ -51,4 +85,4 @@ them unchanged and derive any resized or encoded runtime variants separately.
 - derive optimized runtime variants instead of overwriting it
 - test the frame over both the chamber scene and a flat diagnostic background
 - verify edge halos at 100%, 125%, and 150% zoom
-- select the Tampermonkey delivery method before runtime integration
+- keep Tampermonkey resource URLs versioned by runtime filename

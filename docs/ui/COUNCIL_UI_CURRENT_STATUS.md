@@ -6,8 +6,8 @@ Updated: 2026-07-13
 
 - **Visual north star:** selected and stored
 - **Completed milestones:** UI0 and UI1
-- **Active delivery milestone:** UI2 — visual acceptance pending
-- **Runtime implementation:** functional UI2 shell implemented locally
+- **Active delivery milestone:** UI3 — production-art integration in progress
+- **Runtime implementation:** functional UI2 shell with UI3 art hooks locally
 - **Strategy behavior:** intentionally unchanged
 
 The clean Council Chamber image is the canonical composition reference. It is
@@ -74,9 +74,10 @@ runtime. UI2 proves information hierarchy before UI3 graphics integration.
 
 ## Exact next action
 
-Install the rebuilt canonical userscript and complete the UI2 visual smoke
-matrix. Capture any overflow, unreadable state, or switching failure before
-closing UI2 and beginning UI3 integration.
+Publish the generated runtime assets, install the rebuilt canonical userscript,
+and complete the combined UI2/UI3 visual smoke matrix. Capture overflow,
+unreadable parchment text, failed resource loading, or Council/Matrix switching
+failures before accepting UI3.
 
 ## Known decisions
 
@@ -111,6 +112,18 @@ Ten user-named and user-cut shield images are also accepted under
 Their semantic mapping, dimensions, and SHA-256 hashes are recorded in the
 asset README. All have real alpha transparency. The visible magenta edge fringe
 is explicitly accepted by the user and must not block UI3 integration.
+
+The standalone blank parchment is accepted at
+`assets/council/council-parchment-source-v1.png`. It is a 1774 x 887 32-bit
+ARGB PNG with transparent exterior pixels and an opaque central writing area.
+It completes the required source-art set for the first UI3 integration pass;
+all live decision content remains HTML rather than raster text.
+
+The first UI3 runtime pass derives 13 WebP assets totaling 492,872 bytes and
+delivers them through cached Tampermonkey `@resource` entries. The Council shell
+uses the chamber and ornate frame, the decision surface uses the parchment, the
+four lane cards use their domain shields, and the detailed advisor cards use
+their six named shields. Every layer retains a semantic HTML/CSS fallback.
 
 ## Validation snapshot
 

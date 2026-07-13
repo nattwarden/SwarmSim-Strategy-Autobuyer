@@ -16,6 +16,29 @@ const productionCss = cssMatch[1];
 const states = fixturePayload.states || [];
 const requiredStateIds = ["autobuyer-completed-purchase", "advisor-hold", "stale-unavailable"];
 const failures = [];
+const screenshotIndex = process.argv.indexOf("--screenshot");
+const screenshotPath = screenshotIndex >= 0 ? process.argv[screenshotIndex + 1] : "";
+const screenshotWidthIndex = process.argv.indexOf("--screenshot-width");
+const screenshotWidth = screenshotWidthIndex >= 0 ? Number(process.argv[screenshotWidthIndex + 1]) : 1366;
+
+const artFiles = {
+  "--kbc-art-chamber": "council-chamber-v1.webp",
+  "--kbc-art-frame": "council-ornate-frame-v1.webp",
+  "--kbc-art-parchment": "council-parchment-v1.webp",
+  "--kbc-art-lane-meat": "council-lane-meat-v1.webp",
+  "--kbc-art-lane-engine": "council-lane-engine-v1.webp",
+  "--kbc-art-lane-territory": "council-lane-territory-v1.webp",
+  "--kbc-art-lane-energy": "council-lane-energy-v1.webp",
+};
+
+const artStyle = Object.entries(artFiles).map(([property, fileName]) => {
+  const filePath = path.join(ROOT, "assets", "council", "runtime", fileName);
+  if (!fs.existsSync(filePath)) {
+    failures.push(`missing runtime art ${fileName}`);
+    return "";
+  }
+  return `${property}:url("data:image/webp;base64,${fs.readFileSync(filePath).toString("base64")}")`;
+}).filter(Boolean).join(";");
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -47,7 +70,8 @@ function summaryTile(label, value, warn = false) {
 function laneHtml(lane) {
   const progress = Number.isFinite(Number(lane.progressPercent)) ? Number(lane.progressPercent) : null;
   return `
-    <article class="kbc-council-lane kbc-council-lane-${escapeHtml(lane.id)}" data-kbc-decision="${escapeHtml(lane.decision)}">
+      <article class="kbc-council-lane kbc-council-lane-${escapeHtml(lane.id)}" data-kbc-decision="${escapeHtml(lane.decision)}">
+      <span class="kbc-council-lane-art" aria-hidden="true"></span>
       <header>
         <div><span>${escapeHtml(lane.label)}</span><strong>${escapeHtml(lane.rate?.display || "—")}</strong></div>
         <span class="kbc-council-lane-decision">${escapeHtml(String(lane.decision || "observe").toUpperCase())}</span>
@@ -69,14 +93,16 @@ function actionText(state) {
 
 function renderFixtureShell(state) {
   const economics = state.decision?.economics || {};
-  const primaryLanes = (state.lanes || []).filter((lane) => ["meat", "engine", "territory", "energy"].includes(lane.id));
+  const primaryLanes = ["meat", "engine", "territory", "energy"]
+    .map((laneId) => (state.lanes || []).find((lane) => lane.id === laneId))
+    .filter(Boolean);
   const authority = state.decision?.authority?.allowed ? "Authorized" : state.bot?.mode === "advisor" ? "Advisor only" : "Refused / fallback";
   const execution = state.decision?.execution?.status || "unknown";
   const blocker = state.decision?.blocker?.text || "none";
   return `
     <div class="kbc-strategy-bar">
       <div id="kbc-strategy-bar-cards">
-        <div class="kbc-council-shell" data-kbc-schema="${escapeHtml(state.schemaVersion || "council-ui-state.v1")}" data-kbc-freshness="${escapeHtml(state.source?.freshness || "unavailable")}">
+        <div class="kbc-council-shell" style="${escapeHtml(artStyle)}" data-kbc-schema="${escapeHtml(state.schemaVersion || "council-ui-state.v1")}" data-kbc-freshness="${escapeHtml(state.source?.freshness || "unavailable")}">
           <nav class="kbc-council-surface-tabs" aria-label="Council view">
             <button type="button" data-kbc-surface="council" class="is-active" aria-pressed="true">Council Chamber</button>
             <button type="button" data-kbc-surface="matrix" aria-pressed="false">Matrix Diagnostics</button>
@@ -163,6 +189,9 @@ async function main() {
             laneColumns: getComputedStyle(lanes).gridTemplateColumns,
             shellOverflowX: shell.scrollWidth > shell.clientWidth + 2,
             barBeyondViewport: bar.getBoundingClientRect().right > document.documentElement.clientWidth + 2,
+            frameArt: getComputedStyle(shell, "::after").backgroundImage,
+            parchmentArt: getComputedStyle(document.querySelector(".kbc-council-decision")).backgroundImage,
+            laneArt: getComputedStyle(document.querySelector(".kbc-council-lane-art")).backgroundImage,
           };
         });
         const prefix = `${state.fixtureId}/${testCase.name}`;
@@ -175,7 +204,16 @@ async function main() {
         if (columnCount(result.laneColumns) !== testCase.laneColumns) failures.push(`${prefix}: expected ${testCase.laneColumns} lane columns, got ${result.laneColumns}`);
         if (result.shellOverflowX) failures.push(`${prefix}: Council shell overflows horizontally`);
         if (result.barBeyondViewport) failures.push(`${prefix}: Council bar extends beyond viewport`);
+        if (testCase.width > 1100 && !result.frameArt.includes("image/webp")) failures.push(`${prefix}: ornate frame art did not resolve`);
+        if (testCase.width <= 1100 && result.frameArt.includes("image/webp")) failures.push(`${prefix}: responsive frame fallback did not activate`);
+        if (!result.parchmentArt.includes("image/webp")) failures.push(`${prefix}: parchment art did not resolve`);
+        if (!result.laneArt.includes("image/webp")) failures.push(`${prefix}: lane art did not resolve`);
       }
+    }
+    if (screenshotPath && states[0]) {
+      await page.setViewportSize({ width: Number.isFinite(screenshotWidth) ? screenshotWidth : 1366, height: 1200 });
+      await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${productionCss}</style></head><body>${renderFixtureShell(states[0])}</body></html>`);
+      await page.locator(".kbc-council-shell").screenshot({ path: path.resolve(screenshotPath) });
     }
   } finally {
     await browser.close();

@@ -17,6 +17,35 @@
   const LABORATORY_LIVE_ENABLE_KEY = "kbcSwarmBotLaboratoryLiveEnabled_v1";
   const LABORATORY_BASE_GAME_SOURCE_REPOSITORY = "https://github.com/swarmsim/swarm";
   const LABORATORY_BASE_GAME_SOURCE_COMMIT = "06b4f404aa324a0b454348508cfa63d5c0f1ff54";
+  const COUNCIL_ART_RESOURCES = Object.freeze({
+    "--kbc-art-chamber": "kbcCouncilChamber",
+    "--kbc-art-frame": "kbcCouncilFrame",
+    "--kbc-art-parchment": "kbcCouncilParchment",
+    "--kbc-art-lane-meat": "kbcCouncilLaneMeat",
+    "--kbc-art-lane-engine": "kbcCouncilLaneEngine",
+    "--kbc-art-lane-territory": "kbcCouncilLaneTerritory",
+    "--kbc-art-lane-energy": "kbcCouncilLaneEnergy",
+    "--kbc-art-advisor-beetle-magus": "kbcCouncilAdvisorBeetleMagus",
+    "--kbc-art-advisor-larva-steward": "kbcCouncilAdvisorLarvaSteward",
+    "--kbc-art-advisor-flesh-smith": "kbcCouncilAdvisorFleshSmith",
+    "--kbc-art-advisor-general-mandible": "kbcCouncilAdvisorGeneralMandible",
+    "--kbc-art-advisor-twin-oracle": "kbcCouncilAdvisorTwinOracle",
+    "--kbc-art-advisor-brood-architect": "kbcCouncilAdvisorBroodArchitect",
+  });
+
+  function councilArtStyle() {
+    if (typeof GM_getResourceURL !== "function") return "";
+    return Object.entries(COUNCIL_ART_RESOURCES).map(([property, resourceName]) => {
+      try {
+        const resourceUrl = GM_getResourceURL(resourceName);
+        if (!resourceUrl) return "";
+        const safeUrl = String(resourceUrl).replace(/["\\\n\r]/g, "");
+        return `${property}:url("${safeUrl}")`;
+      } catch {
+        return "";
+      }
+    }).filter(Boolean).join(";");
+  }
 
   const DEFAULT_CONFIG = {
     enabled: true,
@@ -5521,10 +5550,18 @@ function getDisplayName(item) {
     const decision = normalizeCouncilDecision(card.decision);
     const relevantClass = card.relevant ? "is-relevant" : "is-muted";
     const activeClass = activeSpeaker?.speaker === card.name ? "is-active" : "";
+    const advisorClass = {
+      "Beetle Magus": "beetle-magus",
+      "Larva Steward": "larva-steward",
+      "Flesh Smith": "flesh-smith",
+      "General Mandible": "general-mandible",
+      "Twin Oracle": "twin-oracle",
+      "Brood Architect": "brood-architect",
+    }[card.name] || "";
     return `
-      <article class="kbc-council-card ${relevantClass} ${activeClass}" data-kbc-decision="${escapeHtml(decision)}">
+      <article class="kbc-council-card ${relevantClass} ${activeClass} ${advisorClass ? `kbc-council-advisor-${advisorClass}` : ""}" data-kbc-decision="${escapeHtml(decision)}">
         <div class="kbc-council-card-head">
-          <span class="kbc-council-icon" aria-hidden="true">${card.icon}</span>
+          <span class="kbc-council-icon" aria-hidden="true"><span>${card.icon}</span></span>
           <div>
             <strong>${escapeHtml(card.name)}</strong>
             <span>${escapeHtml(card.role)}</span>
@@ -5727,6 +5764,7 @@ function getDisplayName(item) {
     const progress = Number.isFinite(Number(lane?.progressPercent)) ? Math.max(0, Math.min(100, Number(lane.progressPercent))) : null;
     return `
       <article class="kbc-council-lane kbc-council-lane-${escapeHtml(lane.id)}" data-kbc-decision="${escapeHtml(lane.decision)}">
+        <span class="kbc-council-lane-art" aria-hidden="true"></span>
         <header>
           <div>
             <span>${escapeHtml(lane.label)}</span>
@@ -5776,7 +5814,7 @@ function getDisplayName(item) {
 
     if (!strategyInspector) {
       return `
-        <div class="kbc-council-shell">
+        <div class="kbc-council-shell" style="${escapeHtml(councilArtStyle())}">
           ${councilSurfaceTabsHtml("council")}
           <div class="kbc-council-hero">
             <div>
@@ -5806,7 +5844,9 @@ function getDisplayName(item) {
     const focusItems = buildCouncilFocusItems();
     const activeSpeaker = buildCouncilSpeakerState();
     const nowState = buildCouncilDoThisNowState();
-    const primaryLanes = uiState.lanes.filter((lane) => ["meat", "engine", "territory", "energy"].includes(lane.id));
+    const primaryLanes = ["meat", "engine", "territory", "energy"]
+      .map((laneId) => uiState.lanes.find((lane) => lane.id === laneId))
+      .filter(Boolean);
     const recommendationText = uiState.decision.selection
       ? `${uiState.decision.selection.candidate}${uiState.decision.selection.amount ? ` × ${uiState.decision.selection.amount}` : ""}`
       : uiState.strategy.wholeEconomyWinner.actionText || nowState.doThisNow;
@@ -5816,7 +5856,7 @@ function getDisplayName(item) {
       : uiState.decision.execution.status === "failed" ? "Failed" : "Not executed";
 
     return `
-      <div class="kbc-council-shell" data-kbc-schema="${escapeHtml(uiState.schemaVersion)}" data-kbc-freshness="${escapeHtml(uiState.source.freshness)}">
+      <div class="kbc-council-shell" style="${escapeHtml(councilArtStyle())}" data-kbc-schema="${escapeHtml(uiState.schemaVersion)}" data-kbc-freshness="${escapeHtml(uiState.source.freshness)}">
         ${councilSurfaceTabsHtml("council")}
         <div class="kbc-council-hero">
           <div>
@@ -18311,6 +18351,7 @@ function getDisplayName(item) {
         grid-column: 1 / -1;
         display: flex;
         gap: 4px;
+        margin-inline: 18px;
         padding: 3px;
         border: 1px solid rgba(255,255,255,0.14);
         border-radius: 7px;
@@ -18391,8 +18432,39 @@ function getDisplayName(item) {
         --kbc-hold: #ffd36a;
         --kbc-observe: #9fc7ff;
         --kbc-plan: #d8b4ff;
+        --kbc-art-chamber: none;
+        --kbc-art-frame: none;
+        --kbc-art-parchment: none;
+        position: relative;
+        isolation: isolate;
         display: grid;
         gap: 8px;
+        padding: 52px 62px 58px;
+        overflow: hidden;
+        border: 1px solid rgba(181,126,48,0.46);
+        border-radius: 12px;
+        background-color: #0d0b09;
+        background-image: linear-gradient(rgba(5,5,8,0.7), rgba(8,6,4,0.8)), var(--kbc-art-chamber);
+        background-position: center;
+        background-size: cover;
+        box-shadow: inset 0 0 70px rgba(0,0,0,0.9), 0 10px 30px rgba(0,0,0,0.38);
+      }
+
+      .kbc-council-shell::after {
+        content: "";
+        position: absolute;
+        z-index: 5;
+        inset: 0;
+        pointer-events: none;
+        background-image: var(--kbc-art-frame);
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+      }
+
+      .kbc-council-shell > * {
+        position: relative;
+        z-index: 1;
       }
 
       .kbc-council-hero {
@@ -18440,7 +18512,8 @@ function getDisplayName(item) {
         padding: 9px;
         border: 1px solid var(--kbc-council-line);
         border-radius: 7px;
-        background: rgba(0,0,0,0.2);
+        background: rgba(8,7,7,0.78);
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
       }
 
       .kbc-council-status-rail h2,
@@ -18465,14 +18538,25 @@ function getDisplayName(item) {
         justify-content: center;
         min-height: 210px;
         padding: 18px 22px;
-        border-color: rgba(214,177,106,0.48);
-        background: linear-gradient(135deg, rgba(176,133,70,0.18), rgba(74,48,24,0.1));
+        border-color: rgba(73,43,14,0.72);
+        background-color: #c79b5c;
+        background-image: linear-gradient(rgba(236,205,146,0.05), rgba(104,65,26,0.12)), var(--kbc-art-parchment);
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        color: #2b190b;
         text-align: center;
+        text-shadow: 0 1px rgba(255,235,187,0.24);
+        box-shadow: 0 8px 22px rgba(0,0,0,0.4), inset 0 0 24px rgba(82,42,12,0.2);
+      }
+
+      .kbc-council-decision .kbc-council-eyebrow {
+        color: rgba(49,27,10,0.72);
       }
 
       .kbc-council-decision h2 {
         margin: 4px 0 8px;
-        color: #f7e5bb;
+        color: #281507;
         font-family: Georgia, "Times New Roman", serif;
         font-size: clamp(16px, 2vw, 24px);
         line-height: 1.15;
@@ -18482,7 +18566,7 @@ function getDisplayName(item) {
       .kbc-council-decision > p {
         margin: 0 auto 12px;
         max-width: 620px;
-        color: rgba(255,255,255,0.84);
+        color: rgba(43,25,11,0.86);
         line-height: 1.35;
       }
 
@@ -18495,9 +18579,14 @@ function getDisplayName(item) {
       .kbc-council-metric {
         min-width: 0;
         padding: 6px;
-        border: 1px solid rgba(214,177,106,0.28);
+        border: 1px solid rgba(72,42,15,0.3);
         border-radius: 5px;
-        background: rgba(0,0,0,0.16);
+        background: rgba(91,54,20,0.11);
+      }
+
+      .kbc-council-decision .kbc-council-metric span,
+      .kbc-council-decision .kbc-council-execution-strip span {
+        color: rgba(49,28,12,0.64);
       }
 
       .kbc-council-metric span,
@@ -18512,7 +18601,7 @@ function getDisplayName(item) {
       .kbc-council-metric strong {
         display: block;
         margin-top: 2px;
-        color: #f5d58b;
+        color: #315c20;
         font-size: 12px;
         overflow-wrap: anywhere;
       }
@@ -18533,7 +18622,7 @@ function getDisplayName(item) {
       .kbc-council-execution-strip > div {
         min-width: 0;
         padding: 6px;
-        border-top: 1px solid rgba(255,255,255,0.14);
+        border-top: 1px solid rgba(72,42,15,0.28);
       }
 
       .kbc-council-execution-strip strong {
@@ -18603,19 +18692,37 @@ function getDisplayName(item) {
 
       .kbc-council-lane {
         --kbc-lane-color: #9fc7ff;
+        --kbc-lane-art: none;
+        position: relative;
         min-width: 0;
-        padding: 8px;
+        min-height: 94px;
+        padding: 8px 8px 8px 70px;
         border: 1px solid rgba(159,199,255,0.38);
         border: 1px solid color-mix(in srgb, var(--kbc-lane-color) 45%, transparent);
         border-radius: 6px;
         background: rgba(159,199,255,0.08);
-        background: color-mix(in srgb, var(--kbc-lane-color) 9%, rgba(0,0,0,0.2));
+        background: color-mix(in srgb, var(--kbc-lane-color) 9%, rgba(0,0,0,0.76));
+        box-shadow: inset 0 0 18px rgba(0,0,0,0.3);
       }
 
-      .kbc-council-lane-meat { --kbc-lane-color: #c479ff; }
-      .kbc-council-lane-engine { --kbc-lane-color: #71df77; }
-      .kbc-council-lane-territory { --kbc-lane-color: #f0b631; }
-      .kbc-council-lane-energy { --kbc-lane-color: #51b7ff; }
+      .kbc-council-lane-meat { --kbc-lane-color: #c479ff; --kbc-lane-art: var(--kbc-art-lane-meat); }
+      .kbc-council-lane-engine { --kbc-lane-color: #71df77; --kbc-lane-art: var(--kbc-art-lane-engine); }
+      .kbc-council-lane-territory { --kbc-lane-color: #f0b631; --kbc-lane-art: var(--kbc-art-lane-territory); }
+      .kbc-council-lane-energy { --kbc-lane-color: #51b7ff; --kbc-lane-art: var(--kbc-art-lane-energy); }
+
+      .kbc-council-lane-art {
+        position: absolute;
+        top: 8px;
+        left: 7px;
+        width: 56px;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background-image: var(--kbc-lane-art);
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7));
+      }
 
       .kbc-council-lane header {
         display: flex;
@@ -18856,10 +18963,23 @@ function getDisplayName(item) {
       }
 
       .kbc-council-icon {
-        font-size: 16px;
-        line-height: 1;
-        text-align: center;
+        flex: 0 0 auto;
+        width: 48px;
+        height: 50px;
+        border-radius: 50%;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7));
       }
+
+      .kbc-council-icon > span { opacity: 0; }
+      .kbc-council-advisor-beetle-magus .kbc-council-icon { background-image: var(--kbc-art-advisor-beetle-magus); }
+      .kbc-council-advisor-larva-steward .kbc-council-icon { background-image: var(--kbc-art-advisor-larva-steward); }
+      .kbc-council-advisor-flesh-smith .kbc-council-icon { background-image: var(--kbc-art-advisor-flesh-smith); }
+      .kbc-council-advisor-general-mandible .kbc-council-icon { background-image: var(--kbc-art-advisor-general-mandible); }
+      .kbc-council-advisor-twin-oracle .kbc-council-icon { background-image: var(--kbc-art-advisor-twin-oracle); }
+      .kbc-council-advisor-brood-architect .kbc-council-icon { background-image: var(--kbc-art-advisor-brood-architect); }
 
       .kbc-council-card-head strong,
       .kbc-council-card-head span {
@@ -18981,6 +19101,15 @@ function getDisplayName(item) {
       }
 
       @media (max-width: 1100px) {
+        .kbc-council-shell {
+          padding: 16px;
+          border-color: rgba(181,126,48,0.7);
+        }
+
+        .kbc-council-shell::after {
+          background-image: none;
+        }
+
         .kbc-strategy-bar {
           right: 12px;
         }
@@ -19008,6 +19137,11 @@ function getDisplayName(item) {
       }
 
       @media (max-width: 700px) {
+        .kbc-council-shell {
+          padding: 12px;
+          background-position: center top;
+        }
+
         .kbc-council-stage,
         .kbc-council-lanes,
         .kbc-matrix-grid,
@@ -19018,6 +19152,15 @@ function getDisplayName(item) {
 
         .kbc-council-decision {
           padding: 12px;
+        }
+
+        .kbc-council-lane {
+          min-height: 82px;
+          padding-left: 60px;
+        }
+
+        .kbc-council-lane-art {
+          width: 46px;
         }
 
         .kbc-council-metrics,
