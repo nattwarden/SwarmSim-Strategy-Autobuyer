@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      0.14.1
+// @version      4.0.0
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -16,7 +16,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.14.1";
+  const AUTOBUYER_VERSION = "4.0.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -3447,6 +3447,10 @@ function getDisplayName(item) {
       ["Energy support best use", `${strategyInspector.energySupportBestUse || "none"} (${strategyInspector.energySupportBestUseDecision || "HOLD"})`],
       ["Energy support reason", strategyInspector.energySupportBestUseReason || "none"],
       ["Energy support blocked by", strategyInspector.energySupportBestUseBlockedBy || "none"],
+      ["Ability timing", `${strategyInspector.abilityTimingRecommendation || "SAVE"}: ${strategyInspector.abilityTimingRecommendedAction || "Save Energy"}`],
+      ["Ability timing reason", strategyInspector.abilityTimingReason || "none"],
+      ["Ability timing reconsider", strategyInspector.abilityTimingReconsiderCondition || "none"],
+      ["Ability timing authority", strategyInspector.abilityTimingExecutionAuthority || "advisor-only"],
       ["Clone support", `${strategyInspector.energySupportCloneDecision || "HOLD"} ${strategyInspector.energySupportCloneCandidate || "none"}`],
       ["Mirror support", `${strategyInspector.energySupportMirrorDecision || "HOLD"} ${strategyInspector.energySupportMirrorCandidate || "none"}`],
       ["Lepidoptera support role", `${strategyInspector.energySupportLepidopteraRole || "wait"} (${strategyInspector.energySupportLepidopteraDecision || "WAIT"})`],
@@ -3756,6 +3760,229 @@ function getDisplayName(item) {
     };
   }
 
+  const ENERGY_ABILITY_TIMING_SCHEMA_VERSION = "energy-ability-timing-advisor.v1";
+  const ENERGY_ABILITY_TIMING_ACTION_IDS = ["CLONE_LARVAE", "HOUSE_OF_MIRRORS", "LARVA_RUSH", "MEAT_RUSH", "TERRITORY_RUSH"];
+
+  function energyAbilityTimingNumber(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function energyAbilityTimingTargetAligned(actionId, smartFocus, selectedMainAction) {
+    const context = `${String(smartFocus || "")} ${String(selectedMainAction?.lane || "")} ${String(selectedMainAction?.target || "")}`.toLowerCase();
+    if (actionId === "CLONE_LARVAE" || actionId === "LARVA_RUSH") return /larva|meat|clone/.test(context);
+    if (actionId === "MEAT_RUSH") return /meat/.test(context);
+    if (actionId === "HOUSE_OF_MIRRORS" || actionId === "TERRITORY_RUSH") return /territory|expansion|army|engine/.test(context);
+    return false;
+  }
+
+  function evaluateEnergyAbilityTimingSnapshot(inputSnapshot = {}) {
+    const snapshot = laboratoryDeepFreeze(laboratoryCloneJson(inputSnapshot || {}));
+    const snapshotId = String(snapshot.snapshotHash || snapshot.snapshotId || "M4-SNAPSHOT-UNKNOWN");
+    const energyBefore = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.amount));
+    const energyPerSecond = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.perSecond));
+    const reserveRequired = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.reserveRequired));
+    const supported = (Array.isArray(snapshot.abilities) ? snapshot.abilities : [])
+      .filter((ability) => ENERGY_ABILITY_TIMING_ACTION_IDS.includes(String(ability?.actionId || "")));
+    const waitBranch = {
+      actionId: "WAIT",
+      label: "Save Energy",
+      snapshotId,
+      activeMilestone: snapshot.activeMilestone || "unknown",
+      activeTarget: snapshot.activeTarget || "unknown",
+      actionLegal: true,
+      actionSafetySafe: true,
+      energyBefore,
+      energyCost: 0,
+      energyAfterAction: energyBefore,
+      reserveRequired,
+      reserveAfterAction: energyBefore - reserveRequired,
+      projectedGain: 0,
+      targetResource: "energy",
+      targetAligned: true,
+      opportunityCost: "none",
+      postActionPolicy: "passive-only; no downstream purchases or casts are assumed",
+      reconsiderCondition: "Reconsider when Energy, milestone target, resource rates, or supported ability availability changes.",
+      score: 30,
+      confidence: "high",
+      blockers: [],
+    };
+
+    const branches = supported.map((ability) => {
+      const actionId = String(ability.actionId);
+      const energyCost = Math.max(0, energyAbilityTimingNumber(ability.energyCost));
+      const energyAfterAction = energyBefore - energyCost;
+      const reserveAfterAction = energyAfterAction - reserveRequired;
+      const projectedGain = Math.max(0, energyAbilityTimingNumber(ability.projectedGain));
+      const gainRatio = Math.max(0, energyAbilityTimingNumber(ability.gainRatio));
+      const targetAligned = ability.targetAligned === true;
+      const formulaStatus = String(ability.formulaStatus || "unknown");
+      const blockers = [];
+      if (ability.available !== true) blockers.push(ability.unavailableReason || "ability unavailable");
+      if (energyBefore < energyCost) blockers.push("insufficient Energy");
+      if (reserveAfterAction < 0) blockers.push("Energy reserve would be violated");
+      if (!targetAligned) blockers.push("ability does not advance the active milestone target");
+      if (!(projectedGain > 0) || !(gainRatio > 0)) blockers.push("no meaningful projected gain");
+      if (!/source-verified|runtime-verified/.test(formulaStatus)) blockers.push("formula is not verified");
+
+      const nextOtherCost = supported
+        .filter((other) => other !== ability && other.available === true && other.targetAligned === true)
+        .map((other) => Math.max(0, energyAbilityTimingNumber(other.energyCost)))
+        .filter((cost) => cost > 0)
+        .sort((a, b) => a - b)[0];
+      const delayToNextSupportedAbilitySeconds = Number.isFinite(nextOtherCost) && energyAfterAction < nextOtherCost
+        ? (energyPerSecond > 0 ? Math.max(0, (nextOtherCost - energyAfterAction) / energyPerSecond) : null)
+        : 0;
+      const reserveRecoverySeconds = reserveAfterAction >= 0
+        ? 0
+        : (energyPerSecond > 0 ? Math.abs(reserveAfterAction) / energyPerSecond : null);
+      const delayPenalty = Number.isFinite(delayToNextSupportedAbilitySeconds)
+        ? Math.min(30, delayToNextSupportedAbilitySeconds / 60)
+        : 30;
+      const benefitScore = Math.min(60, Math.log10(1 + gainRatio * 1000) * 24);
+      const score = blockers.length ? 0 : Math.max(0, 35 + benefitScore - delayPenalty);
+      const reconsiderCondition = blockers.includes("insufficient Energy")
+        ? `Reconsider when Energy reaches ${trimNumber(energyCost + reserveRequired)}.`
+        : (blockers.includes("Energy reserve would be violated")
+          ? `Reconsider when Energy reaches ${trimNumber(energyCost + reserveRequired)} so the reserve remains intact.`
+          : (!targetAligned
+            ? `Reconsider when the active milestone target benefits from ${ability.targetResource || ability.label}.`
+            : `Reconsider after the manual cast, or when Energy, rates, or milestone target changes.`));
+      return {
+        actionId,
+        label: ability.label || actionId,
+        snapshotId,
+        activeMilestone: snapshot.activeMilestone || "unknown",
+        activeTarget: snapshot.activeTarget || "unknown",
+        actionLegal: ability.available === true && energyBefore >= energyCost,
+        actionSafetySafe: reserveAfterAction >= 0,
+        energyBefore,
+        energyCost,
+        energyAfterAction,
+        reserveRequired,
+        reserveAfterAction,
+        reserveRecoverySeconds,
+        projectedGain,
+        gainRatio,
+        targetResource: ability.targetResource || "unknown",
+        targetAligned,
+        delayToNextSupportedAbilitySeconds,
+        opportunityCost: Number.isFinite(delayToNextSupportedAbilitySeconds) && delayToNextSupportedAbilitySeconds > 0
+          ? `${trimNumber(delayToNextSupportedAbilitySeconds)}s delay to the next aligned supported ability`
+          : "no measured delay to another aligned supported ability",
+        postActionPolicy: "apply the immediate ability effect, then passive production only; no downstream purchases or casts are assumed",
+        reconsiderCondition,
+        formulaStatus,
+        score,
+        confidence: blockers.length ? "low" : (formulaStatus === "source-verified" ? "high" : "medium"),
+        blockers,
+      };
+    });
+
+    const eligibleBranches = branches.filter((branch) => branch.score > waitBranch.score && !branch.blockers.length);
+    eligibleBranches.sort((a, b) => b.score - a.score || a.actionId.localeCompare(b.actionId));
+    const winner = eligibleBranches[0] || waitBranch;
+    const recommendation = winner.actionId === "WAIT" ? "SAVE" : "CAST_NOW";
+    const reason = winner.actionId === "WAIT"
+      ? (branches.find((branch) => branch.blockers.length)?.blockers?.[0] || "Saving Energy is the best supported alternative on this snapshot.")
+      : `${winner.label} best advances ${winner.activeTarget} after Energy reserve and ability-delay costs.`;
+    return laboratoryDeepFreeze({
+      schemaVersion: ENERGY_ABILITY_TIMING_SCHEMA_VERSION,
+      mode: "advisor-only",
+      executionAuthority: false,
+      snapshotId,
+      activeMilestone: snapshot.activeMilestone || "unknown",
+      activeTarget: snapshot.activeTarget || "unknown",
+      supportedActionIds: ENERGY_ABILITY_TIMING_ACTION_IDS.slice(),
+      excludedActionIds: ["SWARMWARP"],
+      bestNonCastAlternative: {
+        ...waitBranch,
+        productionAlternative: snapshot?.bestNonCastAlternative || "WAIT / preserve Energy for the current production plan",
+      },
+      branches: [waitBranch, ...branches],
+      recommendation,
+      recommendedActionId: winner.actionId,
+      recommendedLabel: winner.label,
+      projectedGain: winner.projectedGain,
+      energyOpportunityCost: winner.opportunityCost,
+      confidence: winner.confidence,
+      reason,
+      reconsiderCondition: winner.reconsiderCondition,
+      postActionPolicy: winner.postActionPolicy,
+    });
+  }
+
+  function captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction) {
+    const warnings = [];
+    const formulaStatuses = [];
+    const army = buildLaboratoryArmySnapshot(game, warnings, formulaStatuses);
+    const clone = buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses);
+    const mirror = buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses);
+    const rushDefinitions = [
+      { actionId: "LARVA_RUSH", gameAbilityId: "larvarush", label: "Larva Rush", resourceId: "larva", resourceKey: "larvae", velocitySeconds: 2400, flatAddition: 100000 },
+      { actionId: "MEAT_RUSH", gameAbilityId: "meatrush", label: "Meat Rush", resourceId: "meat", resourceKey: "meat", velocitySeconds: 7200, flatAddition: 100000000000 },
+      { actionId: "TERRITORY_RUSH", gameAbilityId: "territoryrush", label: "Territory Rush", resourceId: "territory", resourceKey: "territory", velocitySeconds: 7200, flatAddition: 1000000000 },
+    ];
+    const current = {
+      larvae: decimalFrom(getCurrentResource(game, "larva")),
+      meat: decimalFrom(getCurrentResource(game, "meat")),
+      territory: decimalFrom(getCurrentResource(game, "territory")),
+    };
+    const rates = {
+      larvae: decimalFrom(getVelocity(game, "larva")),
+      meat: decimalFrom(getVelocity(game, "meat")),
+      territory: decimalFrom(getVelocity(game, "territory")),
+    };
+    const ratioAgainstHorizon = (gain, resourceKey) => {
+      const bankBaseline = current[resourceKey] || newDecimal(0);
+      const horizonBaseline = (rates[resourceKey] || newDecimal(0)).times(300);
+      let baseline = bankBaseline.greaterThan(horizonBaseline) ? bankBaseline : horizonBaseline;
+      if (baseline.lessThan(1)) baseline = newDecimal(1);
+      return decimalToNumber(decimalFrom(gain || 0).dividedBy(baseline), 0);
+    };
+    const cloneGain = clone?.formulaInputs?.sourceVerifiedOutput || "0";
+    const mirrorBefore = decimalFrom(mirror?.affectedTerritoryPerSecondBefore || 0).plus(decimalFrom(mirror?.unaffectedTerritoryPerSecond || 0));
+    const mirrorAfter = decimalFrom(mirror?.sourceVerifiedTerritoryPerSecondAfter || 0);
+    const rawMirrorGain = mirrorAfter.minus(mirrorBefore);
+    const mirrorGain = rawMirrorGain.greaterThan(0) ? rawMirrorGain : newDecimal(0);
+    const mirrorBaseline = mirrorBefore.greaterThan(1) ? mirrorBefore : newDecimal(1);
+    const abilities = [
+      {
+        actionId: "CLONE_LARVAE", label: "Clone Larvae", targetResource: "larvae", available: clone.available,
+        unavailableReason: clone.unavailableReason, energyCost: clone.energyCost, projectedGain: cloneGain,
+        gainRatio: ratioAgainstHorizon(cloneGain, "larvae"), formulaStatus: "source-verified",
+      },
+      {
+        actionId: "HOUSE_OF_MIRRORS", label: "House of Mirrors", targetResource: "territory rate", available: mirror.available,
+        unavailableReason: mirror.unavailableReason, energyCost: mirror.energyCost, projectedGain: laboratoryDecimalString(mirrorGain),
+        gainRatio: decimalToNumber(mirrorGain.dividedBy(mirrorBaseline), 0), formulaStatus: "source-verified",
+      },
+      ...rushDefinitions.map((definition) => {
+        const rush = buildLaboratoryRushSnapshot(game, definition, warnings, formulaStatuses);
+        const gain = rush?.formulaInputs?.sourceVerifiedOutput || "0";
+        return {
+          actionId: definition.actionId, label: definition.label, targetResource: definition.resourceKey, available: rush.available,
+          unavailableReason: rush.unavailableReason, energyCost: rush.energyCost, projectedGain: gain,
+          gainRatio: ratioAgainstHorizon(gain, definition.resourceKey), formulaStatus: "source-verified",
+        };
+      }),
+    ];
+    for (const ability of abilities) ability.targetAligned = energyAbilityTimingTargetAligned(ability.actionId, smartFocus, selectedMainAction);
+    const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
+    return laboratoryDeepFreeze({
+      snapshotId: `M4-LIVE-${Number(scenarioHarnessContext.evaluationRevision || 0) + 1}`,
+      activeMilestone: strategyInspector?.goal || smartFocus || "current strategy milestone",
+      activeTarget: selectedMainAction?.target || smartFocus || "current strategy target",
+      energy: {
+        amount: laboratoryDecimalString(getCurrentResource(game, "energy")),
+        perSecond: laboratoryDecimalString(getVelocity(game, "energy")),
+        reserveRequired: laboratoryDecimalString(decimalFrom(getVelocity(game, "energy")).times(reserveSeconds)),
+      },
+      bestNonCastAlternative: postNexusEnergyPlannerState?.postNexusEnergyReason || "WAIT / preserve Energy for bounded Nexus or Lepidoptera production",
+      abilities,
+    });
+  }
+
   function buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction) {
     if (!config.energySupportBroker) {
       return {
@@ -4063,6 +4290,9 @@ function getDisplayName(item) {
     }
 
     const bestUseSelectionReason = `${topSupport?.key || "wait"} selected from ranked support candidates (${candidateRanking})`;
+    const abilityTimingAdvisor = evaluateEnergyAbilityTimingSnapshot(
+      captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction)
+    );
 
     scenarioHarnessContext.evaluationRevision = (Number(scenarioHarnessContext.evaluationRevision) || 0) + 1;
 
@@ -4111,6 +4341,19 @@ function getDisplayName(item) {
       energySupportLepidopteraReserveAfter: lepidopteraPlan.postNexusEnergyReserve || "0",
       energySupportCandidateRanking: candidateRanking,
       energySupportBestUseSelectionReason: bestUseSelectionReason,
+      abilityTimingAdvisor,
+      abilityTimingSchemaVersion: abilityTimingAdvisor.schemaVersion,
+      abilityTimingMode: abilityTimingAdvisor.mode,
+      abilityTimingExecutionAuthority: abilityTimingAdvisor.executionAuthority ? "enabled" : "advisor-only",
+      abilityTimingSnapshotId: abilityTimingAdvisor.snapshotId,
+      abilityTimingRecommendation: abilityTimingAdvisor.recommendation,
+      abilityTimingRecommendedAction: abilityTimingAdvisor.recommendedLabel,
+      abilityTimingProjectedGain: formatSwarmNumber(abilityTimingAdvisor.projectedGain || 0),
+      abilityTimingEnergyOpportunityCost: abilityTimingAdvisor.energyOpportunityCost,
+      abilityTimingConfidence: abilityTimingAdvisor.confidence,
+      abilityTimingReason: abilityTimingAdvisor.reason,
+      abilityTimingReconsiderCondition: abilityTimingAdvisor.reconsiderCondition,
+      abilityTimingPostActionPolicy: abilityTimingAdvisor.postActionPolicy,
     };
   }
 
@@ -5023,6 +5266,19 @@ function getDisplayName(item) {
       energySupportBestUseSelectionReason: strategyInspector?.energySupportBestUseSelectionReason || "none",
       energySupportBackgroundAction: strategyInspector?.energySupportBackgroundAction || "none",
       energySupportCandidateRanking: strategyInspector?.energySupportCandidateRanking || "none",
+      abilityTimingAdvisor: strategyInspector?.abilityTimingAdvisor || null,
+      abilityTimingSchemaVersion: strategyInspector?.abilityTimingSchemaVersion || "none",
+      abilityTimingMode: strategyInspector?.abilityTimingMode || "advisor-only",
+      abilityTimingExecutionAuthority: strategyInspector?.abilityTimingExecutionAuthority || "advisor-only",
+      abilityTimingSnapshotId: strategyInspector?.abilityTimingSnapshotId || "none",
+      abilityTimingRecommendation: strategyInspector?.abilityTimingRecommendation || "SAVE",
+      abilityTimingRecommendedAction: strategyInspector?.abilityTimingRecommendedAction || "Save Energy",
+      abilityTimingProjectedGain: strategyInspector?.abilityTimingProjectedGain || "0",
+      abilityTimingEnergyOpportunityCost: strategyInspector?.abilityTimingEnergyOpportunityCost || "none",
+      abilityTimingConfidence: strategyInspector?.abilityTimingConfidence || "low",
+      abilityTimingReason: strategyInspector?.abilityTimingReason || "none",
+      abilityTimingReconsiderCondition: strategyInspector?.abilityTimingReconsiderCondition || "none",
+      abilityTimingPostActionPolicy: strategyInspector?.abilityTimingPostActionPolicy || "passive-only",
       energySupportCloneCandidate: strategyInspector?.energySupportCloneCandidate || "none",
       energySupportCloneDecision: strategyInspector?.energySupportCloneDecision || "HOLD",
       energySupportCloneReason: strategyInspector?.energySupportCloneReason || "none",
@@ -5600,6 +5856,15 @@ function getDisplayName(item) {
       `- Energy support autobuyer instruction: ${payload.energySupportBestUseAutobuyerInstruction || "none"}`,
       `- Energy support blocked by: ${payload.energySupportBestUseBlockedBy || "none"}`,
       `- Energy support background action: ${payload.energySupportBackgroundAction || "none"}`,
+      `- Ability timing: ${payload.abilityTimingRecommendation || "SAVE"} ${payload.abilityTimingRecommendedAction || "Save Energy"}`,
+      `- Ability timing snapshot: ${payload.abilityTimingSnapshotId || "none"}`,
+      `- Ability timing projected gain: ${payload.abilityTimingProjectedGain || "0"}`,
+      `- Ability timing opportunity cost: ${payload.abilityTimingEnergyOpportunityCost || "none"}`,
+      `- Ability timing confidence: ${payload.abilityTimingConfidence || "low"}`,
+      `- Ability timing reason: ${payload.abilityTimingReason || "none"}`,
+      `- Ability timing reconsider: ${payload.abilityTimingReconsiderCondition || "none"}`,
+      `- Ability timing post-action policy: ${payload.abilityTimingPostActionPolicy || "passive-only"}`,
+      `- Ability timing execution authority: ${payload.abilityTimingExecutionAuthority || "advisor-only"}`,
       `- Clone support: ${payload.energySupportCloneDecision || "HOLD"} ${payload.energySupportCloneCandidate || "none"} (${payload.energySupportCloneReason || "none"})`,
       `- Mirror support: ${payload.energySupportMirrorDecision || "HOLD"} ${payload.energySupportMirrorCandidate || "none"} (${payload.energySupportMirrorReason || "none"})`,
       `- Mirror readiness state: ${payload.energySupportMirrorReadinessState || "none"}`,
@@ -18721,6 +18986,17 @@ function getDisplayName(item) {
             decision = applyWholeEconomyExecutionRevalidationV1({ decision, revalidationState, actionBudget });
           }
           return laboratoryCloneJson(decision);
+        },
+      },
+
+      abilityTimingAdvisor: {
+        schemaVersion: ENERGY_ABILITY_TIMING_SCHEMA_VERSION,
+        supportedActionIds: ENERGY_ABILITY_TIMING_ACTION_IDS.slice(),
+        evaluate(snapshot = {}) {
+          return laboratoryCloneJson(evaluateEnergyAbilityTimingSnapshot(snapshot));
+        },
+        getCurrent() {
+          return laboratoryCloneJson(strategyInspector?.abilityTimingAdvisor || null);
         },
       },
 

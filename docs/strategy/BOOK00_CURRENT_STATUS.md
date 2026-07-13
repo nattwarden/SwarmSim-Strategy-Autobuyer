@@ -80,14 +80,20 @@ If observed Git state differs, update this board before implementation.
   Lepidoptera may receive Energy execution authority, after the whole-economy
   winner, evidence, Nexus gate, identity, amount, and immediate Energy proposal
   revalidation all pass.
+- Milestone 3 is formally closed by implementation
+  `45d989c31e1e802edcf80bfcfda3922fd5cdd6c4` and evidence
+  `7ef846d29e52a6a43bc67564b663a8e390687692`.
+- Starting with Milestone 4, the release major version matches the active
+  BOOK-00 milestone. M4 starts at `4.0.0`; historical M3 evidence remains
+  correctly identified as `0.14.1`.
 
 ## Active milestone
 
-**Milestone 4 — Energy ability timing advisor (next; not yet implemented)**
+**Milestone 4 — Energy ability timing advisor (active; 4.0.0 implementation)**
 
-Milestone 3 capability is implementation-complete. The transition is formally
-accepted only when the exact-SHA suite and separate evidence commit for the
-closure package pass. No Milestone 4 ability logic is included in that package.
+Milestone 3 is implementation- and evidence-complete. The first Milestone 4
+slice compares supported Energy abilities against explicit WAIT/save from one
+immutable snapshot and remains advisor-only.
 
 Milestone 4 player-visible target:
 
@@ -122,76 +128,72 @@ default.
 
 ## Current work package
 
-Implementation status: bounded Energy execution is integrated on `main` at
-`df402cea59da8bd3cb7591c2ce7117f2b1bd57ce`. Formal exact-SHA verification and
-the separate evidence/provenance commit are the remaining acceptance gate.
+Implementation status: `4.0.0` Milestone 4 ability timing advisor is in its
+implementation and verification package. Formal exact-SHA verification and a
+separate evidence/provenance commit remain the acceptance gate.
 
 Product capability:
 
-- Allow a sufficiently evidenced Energy-production winner to make the first
-  reversible purchase through the shared whole-economy coordinator.
+- Recommend whether to cast or save a supported Energy ability using one shared
+  snapshot, explicit Energy opportunity cost, and the current milestone target.
 
 Player-visible change:
 
-- In Autobuyer mode, a winning supported Energy proposal can execute the exact
-  current Nexus or bounded Lepidoptera purchase shown by Council and Inspector;
-  Advisor mode continues to explain without buying.
+- Inspector and exports show CAST_NOW or SAVE, the supported action, projected
+  gain, opportunity cost, confidence, and what should trigger reconsideration.
 
 Included:
 
-- current Nexus upgrades and bounded Lepidoptera chunks only;
-- medium/high confidence and a positive score margin or no runner-up;
-- hard Nexus production gate before and during revalidation;
-- exact canonical identity, variant, target, and bounded amount matching;
-- a final Energy proposal rebuild immediately at the buy boundary;
-- duplicate sequential Energy execution suppression after a matched
-  coordinator purchase.
+- Clone Larvae and House of Mirrors;
+- source-verified Larva Rush, Meat Rush, and Territory Rush;
+- explicit WAIT/save as the best non-cast alternative;
+- one snapshot identity and milestone model for every branch;
+- passive-only post-action projection with no invented downstream spending.
 
 Explicitly excluded:
 
-- ability auto-cast;
+- ability auto-cast or any ability execution authority;
+- Swarmwarp until its formula is source-verified;
 - Ascension or Mutagen logic;
 - Nightbug or Bat auto-buy;
 - broad score tuning or sweeps;
 - new Laboratory formulas unless separately authorized;
-- version bump or broad release work.
+- unrelated release work beyond the milestone-aligned `4.0.0` version.
 
 Authority:
 
-- bounded reversible coordinator execution for supported Energy production;
-- no authority in Advisor mode or when safe auto-buy is disabled;
+- advisor-only timing recommendations with `executionAuthority: false`;
 - no ability, Nightbug/Bat, Ascension, or Mutagen authority.
 
 Expected changed areas:
 
 - `dev-src/runtime-sections/runtime-main.js`
 - canonical userscript produced by `npm run build`
-- focused purchase-evaluator check
-- focused Energy execution acceptance
-- one disposable production-parity exact Energy execution scenario
+- focused M4 ability timing acceptance
+- version `4.0.0` surfaces and release notes
 - this status board at handoff
 
 Stop condition:
 
-- passing Nexus and Lepidoptera winners can receive authority after exact
-  revalidation;
-- a blocked Nexus gate and an Energy ability candidate cannot receive authority;
-- M2 Meat/Engine/Territory execution remains accepted;
+- Clone, House of Mirrors, and a source-verified Rush can honestly win aligned
+  deterministic states;
+- WAIT/save wins when Energy reserve would be violated;
+- every branch shares one snapshot/milestone and remains advisor-only;
+- Swarmwarp remains excluded;
 - canonical build, full verify, guardrails, and exact-SHA evidence pass.
 
 ## Immediate next actions
 
 Execute these in order:
 
-1. Verify the immutable Milestone 3 closure SHA in an isolated worktree.
-2. Commit only the predeclared Milestone 3 closure provenance record.
-3. Confirm `HEAD == origin/main` and a clean tree.
-4. Begin Milestone 4 with advisor-only cast-versus-save scope.
+1. Complete focused and full checks for the `4.0.0` M4 implementation.
+2. Commit and push the implementation.
+3. Verify the exact immutable implementation SHA in an isolated clean tree.
+4. Commit only the predeclared M4 provenance record.
 
 ## Known current blockers and cautions
 
-- Formal Milestone 3 closure cannot be claimed until the exact-SHA evidence
-  commit exists on `origin/main`.
+- M4 cannot be formally accepted until its exact-SHA evidence commit exists.
 - The focused testbed is deterministic only when staged count, command deltas,
   and `velocity()` describe the same state; preserve that invariant.
 - Territory suffix tiers require canonical name plus variant identity. Do not
@@ -216,8 +218,8 @@ Required product outcome:
 - show projected gain, Energy opportunity cost, reserve recovery, and the next
   condition that would change the recommendation.
 
-Start Milestone 4 implementation only after the Milestone 3 closure evidence
-commit is on `origin/main` and the working tree is clean.
+The next M4 slice should refine timing evidence only after the `4.0.0` exact-SHA
+acceptance package is complete.
 
 ## Handoff update template
 

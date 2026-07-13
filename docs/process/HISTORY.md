@@ -19,6 +19,10 @@ docs/release-notes/
 
 ## Version notes
 
+- 4.0.0: Began milestone-aligned versioning with M4 and added the advisor-only
+  Energy ability timing contract. Clone Larvae, House of Mirrors, and the three
+  source-verified Rush abilities are compared against explicit WAIT/save from
+  one snapshot; Swarmwarp and all ability execution remain excluded.
 - 0.14.1: Simplified the default control surface to Advisor or Autobuyer,
   collapsed expert settings and Laboratory tools, fixed button contrast, and
   made Swarm Council movable and resizable with a persisted layout.
