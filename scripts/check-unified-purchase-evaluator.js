@@ -172,9 +172,11 @@ async function main() {
     assert(evaluation.wholeEconomyPreview?.mode === "shadow-advisor-only", "whole-economy preview mode mismatch");
     assert(evaluation.wholeEconomyPreview?.executionAuthority === false, "whole-economy preview must remain advisor-only");
     assert(evaluation.wholeEconomyPreview?.winner?.domain === "Army/Territory", "whole-economy winner domain mismatch");
-    assert(Array.isArray(evaluation.wholeEconomyPreview?.domainCandidates) && evaluation.wholeEconomyPreview.domainCandidates.length === 3, "expected three normalized whole-economy domain candidates");
+    assert(evaluation.wholeEconomyPreview?.schemaVersion === "whole-economy-shadow-preview.v2", "whole-economy preview schema mismatch");
+    assert(Array.isArray(evaluation.wholeEconomyPreview?.domainCandidates) && evaluation.wholeEconomyPreview.domainCandidates.length === 4, "expected four normalized whole-economy domain candidates");
     assert(evaluation.wholeEconomyPreview.domainCandidates.every((row) => row.candidate !== "none"), "whole-economy domain passed with a placeholder candidate");
     assert(evaluation.wholeEconomyPreview.domainCandidates.some((row) => row.domain === "Larva/Engine" && row.candidate === "Hatchery"), "real Larva/Engine candidate missing");
+    assert(evaluation.wholeEconomyPreview.domainCandidates.some((row) => row.domain === "Energy production" && row.candidate === "Nexus 5"), "Energy production domain missing");
     assert(Array.isArray(evaluation.wholeEconomyPreview?.losers) && evaluation.wholeEconomyPreview.losers.length >= 2, "expected at least two losing whole-economy candidates");
     assert(Array.isArray(evaluation.wholeEconomyPreview?.resourceConflicts) && evaluation.wholeEconomyPreview.resourceConflicts.length > 0, "shared purchase resources were not reported");
 

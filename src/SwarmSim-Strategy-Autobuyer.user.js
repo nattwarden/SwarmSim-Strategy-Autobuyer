@@ -1741,6 +1741,16 @@ function getDisplayName(item) {
       "targetAwareUpgradeCostAmount",
       "targetAwareUpgradeCurrentAmount",
       "targetAwareUpgradeReserveAfter",
+      "energyReserveAfter",
+      "energyReserveRequired",
+      "energyReserveRecoverySeconds",
+      "energyCapHeadroomAfter",
+      "energySecondsToCapAfter",
+      "energyCapWasteAvoidedAmount",
+      "cloneLarvaeDelaySeconds",
+      "houseOfMirrorsDelaySeconds",
+      "energyProductionGainPercent",
+      "nexusProtectionGate",
     ];
 
     const out = {};
@@ -2008,6 +2018,40 @@ function getDisplayName(item) {
       Number.isFinite(etaImprovement), Number.isFinite(eta), Number.isFinite(paybackSeconds),
       Number.isFinite(reserveRatio), Number.isFinite(progressPercent), !!candidate?.target, !!candidate?.wouldBuyAmount,
     ].filter(Boolean).length;
+    const sharedOutcome = {
+      schemaVersion: "whole-economy-outcome.v2",
+      etaSeconds: Number.isFinite(eta) ? roundWholeEconomy(eta) : null,
+      etaImprovementSeconds: Number.isFinite(etaImprovement) ? roundWholeEconomy(etaImprovement) : null,
+      paybackSeconds: Number.isFinite(paybackSeconds) ? roundWholeEconomy(paybackSeconds) : null,
+      reserveAfter: Number.isFinite(rawMetricNumber(raw, "energyReserveAfter", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "energyReserveAfter", NaN))
+        : (Number.isFinite(rawMetricNumber(raw, "reserveAfter", NaN)) ? roundWholeEconomy(rawMetricNumber(raw, "reserveAfter", NaN)) : null),
+      reserveRequired: Number.isFinite(rawMetricNumber(raw, "energyReserveRequired", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "energyReserveRequired", NaN))
+        : (Number.isFinite(rawMetricNumber(raw, "reserveRequired", NaN)) ? roundWholeEconomy(rawMetricNumber(raw, "reserveRequired", NaN)) : null),
+      reserveRecoverySeconds: Number.isFinite(rawMetricNumber(raw, "energyReserveRecoverySeconds", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "energyReserveRecoverySeconds", NaN))
+        : null,
+      capHeadroomAfter: Number.isFinite(rawMetricNumber(raw, "energyCapHeadroomAfter", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "energyCapHeadroomAfter", NaN))
+        : null,
+      secondsToCapAfter: Number.isFinite(rawMetricNumber(raw, "energySecondsToCapAfter", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "energySecondsToCapAfter", NaN))
+        : null,
+      capWasteAvoidedAmount: Number.isFinite(rawMetricNumber(raw, "energyCapWasteAvoidedAmount", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "energyCapWasteAvoidedAmount", NaN))
+        : null,
+      cloneLarvaeDelaySeconds: Number.isFinite(rawMetricNumber(raw, "cloneLarvaeDelaySeconds", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "cloneLarvaeDelaySeconds", NaN))
+        : null,
+      houseOfMirrorsDelaySeconds: Number.isFinite(rawMetricNumber(raw, "houseOfMirrorsDelaySeconds", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "houseOfMirrorsDelaySeconds", NaN))
+        : null,
+      energyProductionGainPercent: Number.isFinite(rawMetricNumber(raw, "energyProductionGainPercent", NaN))
+        ? roundWholeEconomy(rawMetricNumber(raw, "energyProductionGainPercent", NaN))
+        : null,
+      nexusProtectionGate: String(raw?.nexusProtectionGate || (candidate?.lane === "Energy" ? "unknown" : "not-applicable")),
+    };
     return {
       lane: candidate?.lane || "Other",
       candidate: candidate?.candidate || "unknown",
@@ -2021,6 +2065,7 @@ function getDisplayName(item) {
       costResources: normalizeWholeEconomyCostResources(candidate),
       amount: candidate?.wouldBuyAmount || "",
       components,
+      sharedOutcome,
       blockers,
       reason: candidate?.reason || "",
     };
@@ -2030,6 +2075,7 @@ function getDisplayName(item) {
     if (lane === "Meat") return { id: "meat", label: "Meat chain", lanes: ["Meat"] };
     if (lane === "Engine") return { id: "engine", label: "Larva/Engine", lanes: ["Engine"] };
     if (lane === "Territory") return { id: "territory", label: "Army/Territory", lanes: ["Territory"] };
+    if (lane === "Energy") return { id: "energy", label: "Energy production", lanes: ["Energy"] };
     return null;
   }
 
@@ -2056,6 +2102,7 @@ function getDisplayName(item) {
       { id: "meat", label: "Meat chain", lanes: ["Meat"] },
       { id: "engine", label: "Larva/Engine", lanes: ["Engine"] },
       { id: "territory", label: "Army/Territory", lanes: ["Territory"] },
+      { id: "energy", label: "Energy production", lanes: ["Energy"] },
     ];
 
     const domainCandidates = trackedDomains.map((domain) => {
@@ -2080,6 +2127,10 @@ function getDisplayName(item) {
         blocker: selected ? blockingReason : "no lane candidate emitted",
         reason: selected?.reason || (selected ? "candidate is waiting" : "lane proposal missing"),
         evidenceFields: Number.isFinite(selected?.evidenceFields) ? selected.evidenceFields : 0,
+        sharedOutcome: selected?.sharedOutcome || {
+          schemaVersion: "whole-economy-outcome.v2",
+          nexusProtectionGate: domain.id === "energy" ? "unknown" : "not-applicable",
+        },
       };
     });
 
@@ -2127,7 +2178,7 @@ function getDisplayName(item) {
       : "wait for a second comparable lane candidate";
 
     return {
-      schemaVersion: "whole-economy-shadow-preview.v1",
+      schemaVersion: "whole-economy-shadow-preview.v2",
       mode: "shadow-advisor-only",
       executionAuthority: false,
       goal: "best whole-economy opportunity",
@@ -2140,7 +2191,7 @@ function getDisplayName(item) {
       advisorOnlyReason: winner
         ? (winner.confidence === "low"
           ? "winner has low evidence quality; advisory only"
-          : "shadow preview remains advisor-only in Milestone 1")
+          : "Energy production comparison remains shadow/advisor-only in Milestone 3")
         : "no safe domain winner",
     };
   }
@@ -2931,6 +2982,8 @@ function getDisplayName(item) {
     const wholeEconomyPreview = purchaseEvaluator.wholeEconomyPreview || null;
     const wholeEconomyWinner = wholeEconomyPreview?.winner || null;
     const wholeEconomyLosers = wholeEconomyPreview?.losers || [];
+    const wholeEconomyEnergy = wholeEconomyPreview?.domainCandidates?.find((row) => row.domain === "Energy production") || null;
+    const wholeEconomyEnergyOutcome = wholeEconomyEnergy?.sharedOutcome || {};
     const coordinatorExecution = wholeEconomyExecutionDecisionState || createWholeEconomyExecutionDecisionBase(Math.max(0, Number(maxActions || 0) - Number(mainActions || 0)));
     const noSideReason = selectedSideAction?.reason
       ? selectedSideAction.reason
@@ -3049,6 +3102,24 @@ function getDisplayName(item) {
       wholeEconomySwitchSignal: wholeEconomyPreview?.switchSignal || "none",
       wholeEconomyAdvisorOnlyReason: wholeEconomyPreview?.advisorOnlyReason || "shadow preview is advisory",
       wholeEconomyLosingCandidates: wholeEconomyLosers,
+      wholeEconomyEnergyCandidate: wholeEconomyEnergy?.candidate || "none",
+      wholeEconomyEnergyDecision: wholeEconomyEnergy?.decision || "OBSERVE",
+      wholeEconomyEnergyReason: wholeEconomyEnergy?.reason || "no Energy-production proposal",
+      wholeEconomyEnergyNexusGate: wholeEconomyEnergyOutcome.nexusProtectionGate || "unknown",
+      wholeEconomyEnergyReserveAfter: wholeEconomyEnergyOutcome.reserveAfter ?? null,
+      wholeEconomyEnergyReserveRequired: wholeEconomyEnergyOutcome.reserveRequired ?? null,
+      wholeEconomyEnergyReserveRecoverySeconds: wholeEconomyEnergyOutcome.reserveRecoverySeconds ?? null,
+      wholeEconomyEnergyCapHeadroomAfter: wholeEconomyEnergyOutcome.capHeadroomAfter ?? null,
+      wholeEconomyEnergySecondsToCapAfter: wholeEconomyEnergyOutcome.secondsToCapAfter ?? null,
+      wholeEconomyEnergyCapWasteAvoidedAmount: wholeEconomyEnergyOutcome.capWasteAvoidedAmount ?? null,
+      wholeEconomyEnergyCloneDelaySeconds: wholeEconomyEnergyOutcome.cloneLarvaeDelaySeconds ?? null,
+      wholeEconomyEnergyMirrorDelaySeconds: wholeEconomyEnergyOutcome.houseOfMirrorsDelaySeconds ?? null,
+      wholeEconomyEnergyProductionGainPercent: wholeEconomyEnergyOutcome.energyProductionGainPercent ?? null,
+      wholeEconomyEnergySwitchSignal: wholeEconomyWinner?.domain === "Energy production"
+        ? "Energy production leads; execution remains disabled pending focused acceptance"
+        : (wholeEconomyEnergy?.safeEligible
+          ? "Energy production wins when its shared outcome score overtakes the current winner"
+          : `Energy production remains blocked: ${wholeEconomyEnergy?.blocker || "insufficient evidence"}`),
       coordinatorExecutionSchema: coordinatorExecution.schemaVersion || "whole-economy-execution-decision.v1",
       coordinatorAuthoritySource: coordinatorExecution.authoritySource || "whole-economy-coordinator.v2",
       coordinatorExecutionAuthority: coordinatorExecution.executionAuthority === true ? "true" : "false",
@@ -3311,6 +3382,15 @@ function getDisplayName(item) {
       ["Why others wait", strategyInspector.wholeEconomyWhyOthersWait || "none"],
       ["Decision switch signal", strategyInspector.wholeEconomySwitchSignal || "none"],
       ["Advisor-only reason", strategyInspector.wholeEconomyAdvisorOnlyReason || "none"],
+      ["Energy shadow candidate", `${strategyInspector.wholeEconomyEnergyDecision || "OBSERVE"} ${strategyInspector.wholeEconomyEnergyCandidate || "none"}`],
+      ["Energy Nexus gate", strategyInspector.wholeEconomyEnergyNexusGate || "unknown"],
+      ["Energy reserve", `${strategyInspector.wholeEconomyEnergyReserveAfter ?? "n/a"} after / ${strategyInspector.wholeEconomyEnergyReserveRequired ?? "n/a"} required`],
+      ["Energy reserve recovery", strategyInspector.wholeEconomyEnergyReserveRecoverySeconds !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyReserveRecoverySeconds)) ? formatDuration(Number(strategyInspector.wholeEconomyEnergyReserveRecoverySeconds)) : "n/a"],
+      ["Energy cap headroom", `${strategyInspector.wholeEconomyEnergyCapHeadroomAfter ?? "n/a"} (${strategyInspector.wholeEconomyEnergySecondsToCapAfter !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergySecondsToCapAfter)) ? `${formatDuration(Number(strategyInspector.wholeEconomyEnergySecondsToCapAfter))} to cap` : "cap timing unavailable"})`],
+      ["Energy cap waste avoided", strategyInspector.wholeEconomyEnergyCapWasteAvoidedAmount ?? "n/a"],
+      ["Energy ability delay", `Clone ${strategyInspector.wholeEconomyEnergyCloneDelaySeconds !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyCloneDelaySeconds)) ? formatDuration(Number(strategyInspector.wholeEconomyEnergyCloneDelaySeconds)) : "n/a"}; Mirrors ${strategyInspector.wholeEconomyEnergyMirrorDelaySeconds !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyMirrorDelaySeconds)) ? formatDuration(Number(strategyInspector.wholeEconomyEnergyMirrorDelaySeconds)) : "n/a"}`],
+      ["Energy production gain", strategyInspector.wholeEconomyEnergyProductionGainPercent !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyProductionGainPercent)) ? `+${trimNumber(Number(strategyInspector.wholeEconomyEnergyProductionGainPercent))}%` : "n/a"],
+      ["Energy switch signal", strategyInspector.wholeEconomyEnergySwitchSignal || "none"],
       ["Coordinator contract", strategyInspector.coordinatorExecutionSchema || "none"],
       ["Coordinator authority", `${strategyInspector.coordinatorExecutionAuthority || "false"} (${strategyInspector.coordinatorAuthoritySource || "none"})`],
       ["Coordinator selected", `${strategyInspector.coordinatorSelectedDomain || "none"} · ${strategyInspector.coordinatorSelectedLane || "none"}: ${strategyInspector.coordinatorSelectedCandidate || "none"}`],
@@ -4260,6 +4340,12 @@ function getDisplayName(item) {
     }
     if (usefulCouncilText(strategyInspector.wholeEconomyWhyOthersWait) && strategyInspector.wholeEconomyWhyOthersWait !== "none") {
       items.push(`Why others wait: ${strategyInspector.wholeEconomyWhyOthersWait}.`);
+    }
+    if (usefulCouncilText(strategyInspector.wholeEconomyEnergyCandidate) && strategyInspector.wholeEconomyEnergyCandidate !== "none") {
+      const recovery = strategyInspector.wholeEconomyEnergyReserveRecoverySeconds !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyReserveRecoverySeconds))
+        ? formatDuration(Number(strategyInspector.wholeEconomyEnergyReserveRecoverySeconds))
+        : "n/a";
+      items.push(`Energy shadow: ${strategyInspector.wholeEconomyEnergyDecision || "OBSERVE"} ${strategyInspector.wholeEconomyEnergyCandidate}; Nexus gate ${strategyInspector.wholeEconomyEnergyNexusGate || "unknown"}; reserve recovery ${recovery}.`);
     }
     if (usefulCouncilText(strategyInspector.energySupportBestUseReason)) {
       items.push(`Energy support: ${strategyInspector.energySupportBestUse || "wait"} - ${strategyInspector.energySupportBestUseReason}.`);
@@ -14879,6 +14965,204 @@ function getDisplayName(item) {
     return runCloneBufferPlanner(game, commands);
   }
 
+  function buildEnergyProductionOpportunityMetrics(game, spentEnergyValue, nexusProtectionGate, energyProductionGainPercent = NaN) {
+    const currentEnergy = decimalFrom(getCurrentResource(game, "energy"));
+    const energyVelocity = decimalFrom(getVelocity(game, "energy"));
+    const spentEnergy = decimalFrom(spentEnergyValue || 0);
+    const energyAfterRaw = currentEnergy.minus(spentEnergy);
+    const energyAfter = energyAfterRaw.lessThan(0) ? newDecimal(0) : energyAfterRaw;
+    const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
+    const reserveRequired = energyVelocity.times(reserveSeconds);
+    const reserveDeficit = reserveRequired.minus(energyAfter);
+    const reserveRecovery = reserveDeficit.greaterThan(0) && energyVelocity.greaterThan(0)
+      ? reserveDeficit.dividedBy(energyVelocity)
+      : newDecimal(0);
+    const energyUnit = getGameUnit(game, "energy");
+    const energyCap = decimalFrom(safe("Whole-economy Energy cap", () => energyUnit?.capValue?.()) || 0);
+    const capHeadroomRaw = energyCap.greaterThan(0) ? energyCap.minus(energyAfter) : newDecimal(0);
+    const capHeadroom = capHeadroomRaw.greaterThan(0) ? capHeadroomRaw : newDecimal(0);
+    const secondsToCap = energyCap.greaterThan(0) && energyVelocity.greaterThan(0)
+      ? capHeadroom.dividedBy(energyVelocity)
+      : null;
+    const capWasteAvoided = energyCap.greaterThan(0) && currentEnergy.greaterThanOrEqualTo(energyCap)
+      ? decimalMin(spentEnergy, energyCap)
+      : newDecimal(0);
+
+    const abilityDelaySeconds = (ability) => {
+      if (!ability?.isVisible?.() || !energyVelocity.greaterThan(0)) return null;
+      const cost = decimalFrom(getCostForResource(ability, "energy"));
+      if (!cost.greaterThan(0)) return null;
+      const waitEta = laboratoryEnergyDelaySeconds(currentEnergy, cost, energyVelocity, energyCap.greaterThan(0) ? energyCap : null);
+      const actionEta = laboratoryEnergyDelaySeconds(energyAfter, cost, energyVelocity, energyCap.greaterThan(0) ? energyCap : null);
+      if (!waitEta || !actionEta) return null;
+      return decimalToNumber(actionEta.minus(waitEta), NaN);
+    };
+
+    const cloneAbility = getGameUpgrade(game, "clonelarvae");
+    const mirrorAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const cloneDelay = abilityDelaySeconds(cloneAbility);
+    const mirrorDelay = abilityDelaySeconds(mirrorAbility);
+    const reserveRatio = reserveRequired.greaterThan(0) ? decimalToNumber(energyAfter.dividedBy(reserveRequired), NaN) : null;
+
+    return {
+      energyReserveAfter: decimalToNumber(energyAfter, NaN),
+      energyReserveRequired: decimalToNumber(reserveRequired, NaN),
+      energyReserveRecoverySeconds: decimalToNumber(reserveRecovery, NaN),
+      reserveAfter: decimalToNumber(energyAfter, NaN),
+      reserveRequired: decimalToNumber(reserveRequired, NaN),
+      reserveRatio,
+      energyCapHeadroomAfter: energyCap.greaterThan(0) ? decimalToNumber(capHeadroom, NaN) : null,
+      energySecondsToCapAfter: secondsToCap ? decimalToNumber(secondsToCap, NaN) : null,
+      energyCapWasteAvoidedAmount: decimalToNumber(capWasteAvoided, NaN),
+      cloneLarvaeDelaySeconds: Number.isFinite(cloneDelay) ? cloneDelay : null,
+      houseOfMirrorsDelaySeconds: Number.isFinite(mirrorDelay) ? mirrorDelay : null,
+      energyProductionGainPercent: Number.isFinite(Number(energyProductionGainPercent)) ? Number(energyProductionGainPercent) : null,
+      nexusProtectionGate: nexusProtectionGate || "unknown",
+    };
+  }
+
+  function buildEnergyProductionProposal(game) {
+    if (!config.energyStrategy) return null;
+
+    const nexusCount = decimalToNumber(getNexusCount(game), 0);
+    const nextNexus = getNextNexusUpgrade(game);
+    const moth = getGameUnit(game, "moth");
+    const currentEnergy = getCurrentResource(game, "energy");
+    const energyVelocity = getVelocity(game, "energy");
+
+    if (nexusCount < config.nexusTarget && nextNexus?.isBuyable?.()) {
+      const cost = getCostForResource(nextNexus, "energy");
+      return {
+        lane: "Energy",
+        decision: "BUY",
+        candidate: getDisplayName(nextNexus),
+        reason: `Nexus ${Math.floor(nexusCount) + 1} is buyable and is the protected Energy-production target`,
+        blockers: [],
+        score: 90000 + Math.floor(nexusCount) * 1000,
+        target: `Nexus ${Math.floor(nexusCount) + 1}`,
+        resource: "energy",
+        costResources: ["energy"],
+        executionId: nextNexus?.name || "",
+        executionKind: "upgrade",
+        executionVariant: "base",
+        boundedAmount: "1",
+        wouldBuyAmount: "1",
+        raw: {
+          etaSeconds: 0,
+          progressPercent: 100,
+          costAmount: cost,
+          currentAmount: currentEnergy,
+          velocity: energyVelocity,
+          ...buildEnergyProductionOpportunityMetrics(game, cost, "pass-protected-target"),
+        },
+      };
+    }
+
+    const mothNum = getSafeLepidopteraBuyNum(game);
+    if (nexusCount < config.nexusTarget && isPositive(mothNum) && moth?.isVisible?.()) {
+      const plannerHold = getLepidopteraPlannerHoldReason(game, nexusCount);
+      const roi = plannerHold ? null : scoreLepidopteraInvestment(game, mothNum);
+      const spentEnergy = roi?.spentEnergy || getCostForResource(moth, "energy").times(mothNum);
+      const boostBefore = getLepidopteraBoostPercent(game);
+      const boostAfter = estimateLepidopteraBoostPercentForCount(getLepidopteraCount(game).plus(mothNum));
+      const gain = Math.max(0, boostAfter - boostBefore);
+      const safeRoi = !plannerHold && !!roi?.ok;
+      const reason = plannerHold || roi?.reason || "Energy-production ROI is uncertain";
+      return {
+        lane: "Energy",
+        decision: safeRoi ? "BUY" : "HOLD",
+        candidate: "Lepidoptera",
+        reason,
+        blockers: safeRoi ? [] : [plannerHold ? "Nexus protection gate" : "Nexus ETA would worsen"],
+        score: safeRoi ? 70000 + Math.max(0, Number(roi?.etaImprovement || 0)) : 60000,
+        target: "Nexus ETA",
+        resource: "energy",
+        costResources: ["energy"],
+        executionId: moth?.name || "moth",
+        executionKind: "unit",
+        executionVariant: normalizeLabelKey(moth?.suffix || "") || "base",
+        boundedAmount: normalizeBoundedAmountToken(mothNum),
+        wouldBuyAmount: formatSwarmNumber(mothNum),
+        raw: {
+          etaBeforeSeconds: roi?.etaBeforeSeconds,
+          etaAfterSeconds: roi?.etaAfterSeconds,
+          etaImprovementSeconds: roi?.etaImprovement,
+          costAmount: spentEnergy,
+          currentAmount: currentEnergy,
+          velocity: energyVelocity,
+          ...buildEnergyProductionOpportunityMetrics(game, spentEnergy, safeRoi ? "pass" : "blocked", gain),
+        },
+      };
+    }
+
+    if (nexusCount >= config.nexusTarget && moth?.isVisible?.()) {
+      const plan = buildPostNexusLepidopteraPlan(game, nexusCount);
+      const spentEnergy = plan.spentEnergy || newDecimal(0);
+      return {
+        lane: "Energy",
+        decision: plan.ok ? "BUY" : "HOLD",
+        candidate: "Lepidoptera",
+        reason: plan.reason,
+        blockers: plan.ok ? [] : [plan.blockedBy || "Energy-production outcome uncertain"],
+        score: plan.ok ? 69000 + Math.max(0, Number(plan.boostGain || 0)) * 100 : 47000,
+        target: "Post-Nexus energy growth",
+        resource: "energy",
+        costResources: ["energy"],
+        executionId: moth?.name || "moth",
+        executionKind: "unit",
+        executionVariant: normalizeLabelKey(moth?.suffix || "") || "base",
+        boundedAmount: normalizeBoundedAmountToken(plan.num || 0),
+        wouldBuyAmount: plan.num ? formatSwarmNumber(plan.num) : "0",
+        raw: {
+          costAmount: spentEnergy,
+          currentAmount: currentEnergy,
+          velocity: energyVelocity,
+          ...buildEnergyProductionOpportunityMetrics(game, spentEnergy, "not-applicable-post-target", plan.boostGain),
+        },
+      };
+    }
+
+    if (nexusCount < config.nexusTarget && nextNexus) {
+      const cost = getCostForResource(nextNexus, "energy");
+      const eta = cost.greaterThan(currentEnergy) && isPositive(energyVelocity)
+        ? decimalToNumber(cost.minus(currentEnergy).dividedBy(energyVelocity), Infinity)
+        : 0;
+      return {
+        lane: "Energy",
+        decision: "HOLD",
+        candidate: getDisplayName(nextNexus),
+        reason: "saving Energy for the protected Nexus production milestone",
+        blockers: ["energy threshold not reached", "Nexus protection gate"],
+        score: 85000 - Math.min(Number.isFinite(eta) ? eta : 999999, 999999) / 10,
+        target: `Nexus ${Math.floor(nexusCount) + 1}`,
+        resource: "energy",
+        costResources: ["energy"],
+        wouldBuyAmount: "",
+        raw: {
+          etaSeconds: eta,
+          progressPercent: cost.greaterThan(0) ? currentEnergy.dividedBy(cost).times(100) : 0,
+          costAmount: cost,
+          currentAmount: currentEnergy,
+          velocity: energyVelocity,
+          ...buildEnergyProductionOpportunityMetrics(game, 0, "blocked"),
+        },
+      };
+    }
+
+    return {
+      lane: "Energy",
+      decision: "OBSERVE",
+      candidate: "Energy production",
+      reason: "no supported visible Energy-production investment",
+      blockers: ["locked/unavailable"],
+      score: 0,
+      target: "Energy production",
+      resource: "energy",
+      costResources: ["energy"],
+      raw: buildEnergyProductionOpportunityMetrics(game, 0, "unknown"),
+    };
+  }
+
   function buildUnifiedPurchaseProposals(game, engine, protectedResources) {
     const proposals = [];
     const add = (candidate, executionKey) => {
@@ -14916,29 +15200,8 @@ function getDisplayName(item) {
       }
     }
 
-    if (config.energyStrategy) {
-      const nexusCount = decimalToNumber(getNexusCount(game), 0);
-      const nextNexus = getNextNexusUpgrade(game);
-      if (nexusCount < config.nexusTarget && nextNexus) {
-        const buyable = !!nextNexus.isBuyable?.();
-        const cost = getCostForResource(nextNexus, "energy");
-        const current = getCurrentResource(game, "energy");
-        const velocity = getVelocity(game, "energy");
-        const eta = cost.greaterThan(current) && isPositive(velocity) ? decimalToNumber(cost.minus(current).dividedBy(velocity), Infinity) : 0;
-        add({
-          lane: "Energy",
-          decision: buyable ? "BUY" : "HOLD",
-          candidate: getDisplayName(nextNexus),
-          reason: buyable ? "Nexus target is immediately buyable" : "saving Energy for Nexus",
-          blockers: buyable ? [] : ["energy threshold not reached", "Nexus save"],
-          score: 90000 + Math.floor(nexusCount) * 1000,
-          target: `Nexus ${Math.floor(nexusCount) + 1}`,
-          resource: "energy",
-          wouldBuyAmount: buyable ? "1" : "",
-          raw: { etaSeconds: eta, progressPercent: cost.greaterThan(0) ? current.dividedBy(cost).times(100) : 0, costAmount: cost, currentAmount: current, velocity },
-        }, "energy");
-      }
-    }
+    const energyProductionProposal = buildEnergyProductionProposal(game);
+    if (energyProductionProposal) add(energyProductionProposal, "energy");
 
     if (config.meatGoalPlanner) {
       const plan = buildMeatGoalPlan(game);

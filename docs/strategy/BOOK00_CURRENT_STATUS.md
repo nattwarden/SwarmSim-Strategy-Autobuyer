@@ -67,6 +67,10 @@ If observed Git state differs, update this board before implementation.
   canonical identity `unit:stinger:v`.
 - Milestone 3 is now active. Energy production must join in shadow comparison
   before it can receive any bounded reversible execution authority.
+- The first Milestone 3 shadow slice is implemented in the current work package:
+  Energy is the fourth whole-economy domain, emits `whole-economy-outcome.v2`,
+  and remains excluded from coordinator execution authority. Exact-SHA branch
+  verification and main integration remain separate gates.
 
 ## Active milestone
 
@@ -94,6 +98,9 @@ acceptance.
       legacy `Engine: Hatchery` becomes coordinator `Territory: Stinger V x9`.
 
 ## Current work package
+
+Implementation status: authored and passing the pre-commit focused/full local
+suite; exact-SHA branch verification is the next gate.
 
 Product capability:
 
@@ -208,6 +215,36 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 — Milestone 3 Energy-production shadow comparison
+
+- Agent: Codex
+- Worktree/branch: `feature/strategy-audit-testbed-runners`
+- Implementation SHA: the commit containing this handoff entry
+- Product capability changed: Energy production now joins Meat, Larva/Engine,
+  and Army/Territory as the fourth whole-economy comparison domain.
+- Player-visible result: Council/Inspector expose the Energy candidate, Nexus
+  protection gate, reserve after/required/recovery, cap headroom and avoided
+  cap waste, supported Clone Larvae/House of Mirrors delay, production gain,
+  and the condition that would change the comparison.
+- Authority: shadow/advisor only. Energy remains outside the allowed
+  Meat/Engine/Territory coordinator execution scope; ability auto-cast and
+  auto-Ascension remain disabled.
+- Focused acceptance: Energy wins, loses, and remains uncertain in honest
+  synthetic states; an Energy winner is explicitly denied execution authority.
+- 0.14.1 Chrome smoke: Advisor/Autobuyer mode mapping, collapsed Advanced
+  controls, Council resize support, and persisted Council layout passed; the
+  pre-test Autobuyer mode was restored.
+- Pre-commit commands: `npm run build`, `npm run verify`,
+  `node scripts/validate-repo-guardrails.js`, and `git diff --check` all exited
+  `0`; no generated evidence was written.
+- Generated evidence paths: none.
+- Remaining blocker: commit/push the implementation and rerun the declared pure
+  checks against its exact immutable SHA before treating the branch slice as
+  accepted.
+- Exact next action: push the implementation commit, verify that exact SHA in an
+  isolated worktree, then decide whether Milestone 3 should receive a separately
+  gated bounded Energy-production execution slice.
 
 ### 2026-07-13 — 0.14.1 control-surface cleanup
 

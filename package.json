@@ -40,6 +40,7 @@
     "check:laboratory:phase2a": "node scripts/check-laboratory-phase2a-source-math.js",
     "check:purchase-evaluator": "node scripts/check-unified-purchase-evaluator.js",
     "check:book00:m2:coordinator": "node scripts/check-book00-m2-coordinator-acceptance.js",
+    "check:book00:m3:energy-shadow": "node scripts/check-book00-m3-energy-shadow.js",
     "probe:strategy-audit:testbed:production": "node scripts/probe-strategy-audit-testbed-feasibility.js",
     "probe:strategy-audit:testbed:watch": "node scripts/probe-strategy-audit-testbed-feasibility.js --keep-open --pause-ms 5000 --slow-mo 50",
     "strategy:audit:fast": "node scripts/strategy-audit-testbed-fast.js",
@@ -64,7 +65,7 @@
     "sync:from-canonical": "node scripts/extract-runtime-source.js",
     "hotfix:canonical": "npm run sync:from-canonical && npm run build && npm run verify",
     "validate:guardrails": "node scripts/validate-repo-guardrails.js",
-    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && npm run check:0.14.1:versions && npm run check:ui-shell && npm run check:laboratory:phase2a && npm run check:purchase-evaluator && node scripts/validate-repo-guardrails.js"
+    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && npm run check:0.14.1:versions && npm run check:ui-shell && npm run check:laboratory:phase2a && npm run check:purchase-evaluator && npm run check:book00:m3:energy-shadow && node scripts/validate-repo-guardrails.js"
   },
   "dependencies": {
     "playwright": "^1.61.1"
