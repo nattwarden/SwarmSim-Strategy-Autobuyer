@@ -19,6 +19,10 @@ docs/release-notes/
 
 ## Version notes
 
+- 0.13.0: Unified Purchase Evaluator coordinates the first reversible purchase
+  from one pre-execution snapshot, while Laboratory Phase 2A adds source-derived
+  Rush simulation and an advisor-only Energy Opportunity Report. Existing
+  irreversible-action safety defaults remain unchanged.
 - 2026-07-13 audit/v2: Added targeted SA1 v2 breakpoint runner
   (`strategy:audit:matrix:sa1:v2`) with representative-seed selection from
   corrected sweep150 and coarse->fine search over two independent dimensions
