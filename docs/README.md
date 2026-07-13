@@ -29,12 +29,14 @@ material.
 | `BOOK-03-verification-history-and-artifacts.md` | Verification history | Before claiming a version is verified; for forensics |
 | `BOOK-04-strategy-intelligence-findings.md` | Strategy Intelligence findings | Before running or interpreting SA0–SA9 results |
 | `BOOK-05-community-strategy-claims.md` | Community strategy claims | Before using 2015 community guides as bot logic |
+| `BOOK-06-council-chamber-ui-and-experience.md` | Council UI and experience vision | Before UI, timeline, visual asset, or presentation-contract work |
 
 ### Book rules
 
-BOOK-00 is the durable product vision. Books 01 through 05 contain
+BOOK-00 is the durable strategic product vision. Books 01 through 05 contain
 **distilled, classified, stable findings** — not raw data, work orders, or
-architecture decisions.
+architecture decisions. BOOK-06 is the durable UI and experience vision; its
+active delivery material lives under `ui/`.
 
 **Classification labels used in books:**
 
@@ -74,6 +76,7 @@ that fit no existing book. Name it BOOK-06, BOOK-07, etc. and list it here.
 | `prompts/` | Active work orders for implementation agents |
 | `release-notes/` | Per-version changelog |
 | `process/` | Governance: verification protocol, PR checklist, history, modularization plan |
+| `ui/` | Council UI delivery, current status, data contracts, and visual references |
 
 ---
 
@@ -87,7 +90,7 @@ Before any code change:
 4. `BOOK-00-vision-goals-and-dreams.md` for strategy, architecture, or roadmap work
 5. `strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` for product milestone work
 6. `SWARMSIM_GAME_MODEL.md` — active strategy contract
-7. Relevant evidence book (BOOK-01 through BOOK-05)
+7. Relevant evidence book (BOOK-01 through BOOK-05), or BOOK-06 for UI work
 8. Other `strategy/` document if the work requires it
 9. `prompts/` work order if one exists for the task
 10. `live-logs/` only when current claim-level evidence needs payload verification
