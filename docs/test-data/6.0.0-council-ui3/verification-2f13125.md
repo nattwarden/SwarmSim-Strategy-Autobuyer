@@ -45,4 +45,3 @@ verification worktree remained clean.
 A deterministic desktop fixture render was reviewed after the change. The frame
 reaches the Council boundary without the prior black perimeter and decision and
 supporting text remain visually unobscured.
-
