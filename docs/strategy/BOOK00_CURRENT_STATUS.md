@@ -44,12 +44,14 @@ Observed before the M7 foundation work:
   `40c258a7cf19d9660b2c13caf3b5d9b4e0e74da5`;
 - fixed Council window implementation / current baseline:
   `04bb94678ba9ac29d03e2b2c00760ffb40510e55`;
-- runtime version: `6.0.0`;
+- runtime version: `7.0.0`;
 - Council desktop layout: fixed `1180 x 700`, movable, `resize: none`, layout
   key `kbcSwarmBotCouncilPanelLayout_v2`;
 - working tree: clean before the M7 documentation branch was created.
 
 If observed Git state differs, update this board before implementation.
+
+Current runtime version: `7.0.0`
 
 ## Product north star
 
