@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.12.3";
+  const AUTOBUYER_VERSION = "0.13.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -452,6 +452,7 @@
   let advisorLog = [];
   let strategyInspector = null;
   let laneCandidates = [];
+  let unifiedPurchaseProposalState = null;
   let runHistory = [];
   let liveDiagnostics = null;
   let lastLaboratorySnapshot = null;
@@ -1920,6 +1921,78 @@ function getDisplayName(item) {
     };
   }
 
+  function evaluatePurchaseCandidate(candidate) {
+    const raw = candidate?.raw || {};
+    const blockers = candidate?.blockers || [];
+    const hardBlocked = candidate?.decision !== "BUY" || blockers.length > 0;
+    const etaImprovement = rawMetricNumber(raw, "etaImprovementSeconds", NaN);
+    const eta = rawMetricNumber(raw, "etaSeconds", rawMetricNumber(raw, "etaBeforeSeconds", NaN));
+    const paybackSeconds = rawMetricNumber(raw, "paybackSeconds", NaN);
+    const paybackLimit = rawMetricNumber(raw, "paybackLimitSeconds", NaN);
+    const reserveRatio = rawMetricNumber(raw, "reserveRatio", NaN);
+    const progressPercent = normalizeProgressPercentForRank(raw);
+    const reasonText = `${candidate?.reason || ""} ${candidate?.target || ""}`.toLowerCase();
+    const components = {
+      etaImprovement: Number.isFinite(etaImprovement) && etaImprovement > 0 ? Math.log10(etaImprovement + 1) * 120 : 0,
+      etaProximity: Number.isFinite(eta) ? Math.max(0, 100 - Math.log10(Math.max(1, eta) + 1) * 20) : 0,
+      payback: Number.isFinite(paybackSeconds) ? Math.max(-200, 120 - (paybackSeconds / Math.max(60, Number.isFinite(paybackLimit) ? paybackLimit : 1800)) * 120) : 0,
+      reserve: Number.isFinite(reserveRatio) ? Math.min(120, Math.max(-200, (reserveRatio - 1) * 30)) : 0,
+      progress: Number.isFinite(progressPercent) ? progressPercent : 0,
+      unlock: /unlock|target|milestone|action unit|parent-step|nexus|hatchery|expansion/.test(reasonText) ? 100 : 0,
+      plannerEvidence: normalizeCandidateScore(candidate?.score, 0) * 0.0001,
+      fallbackPenalty: candidate?.meatFallback ? -80 : 0,
+      blockerPenalty: hardBlocked ? -1000000 : 0,
+    };
+    const economicScore = Object.values(components).reduce((sum, value) => sum + value, 0);
+    const evidenceFields = [
+      Number.isFinite(etaImprovement), Number.isFinite(eta), Number.isFinite(paybackSeconds),
+      Number.isFinite(reserveRatio), Number.isFinite(progressPercent), !!candidate?.target, !!candidate?.wouldBuyAmount,
+    ].filter(Boolean).length;
+    return {
+      lane: candidate?.lane || "Other",
+      candidate: candidate?.candidate || "unknown",
+      decision: candidate?.decision || "OBSERVE",
+      safeEligible: !hardBlocked,
+      economicScore: Math.round(economicScore * 1000) / 1000,
+      confidence: evidenceFields >= 5 ? "high" : evidenceFields >= 3 ? "medium" : "low",
+      evidenceFields,
+      target: candidate?.target || "",
+      amount: candidate?.wouldBuyAmount || "",
+      components,
+      blockers,
+      reason: candidate?.reason || "",
+    };
+  }
+
+  function buildUnifiedPurchaseEvaluator(candidates, selectedMainAction) {
+    const evaluated = (candidates || []).map(evaluatePurchaseCandidate);
+    const eligible = evaluated.filter((row) => row.safeEligible).sort((a, b) => b.economicScore - a.economicScore);
+    const winner = eligible[0] || null;
+    const runnerUp = eligible[1] || null;
+    const councilSelection = selectedMainAction
+      ? evaluated.find((row) => row.lane === selectedMainAction.lane && row.candidate === selectedMainAction.candidate)
+        || evaluated.find((row) => row.lane === selectedMainAction.lane)
+        || null
+      : null;
+    const sufficientForExecution = !!winner && winner.confidence !== "low" && (!runnerUp || winner.economicScore > runnerUp.economicScore);
+    return {
+      mode: "shadow-advisor-only",
+      comparisonBasis: "post-sequential-candidate-observation",
+      executionAuthority: false,
+      winner,
+      runnerUp,
+      councilSelection,
+      agreesWithCouncil: !!winner && !!councilSelection && winner.lane === councilSelection.lane && winner.candidate === councilSelection.candidate,
+      scoreMargin: winner && runnerUp ? Math.round((winner.economicScore - runnerUp.economicScore) * 1000) / 1000 : null,
+      sufficientForExecution,
+      whyNotExecuting: sufficientForExecution
+        ? "shadow validation required before execution authority"
+        : !winner ? "no safe BUY candidate" : winner.confidence === "low"
+          ? "winner lacks comparable ETA/payback/reserve evidence" : "economic scores are tied or incomplete",
+      evaluated,
+    };
+  }
+
   function candidatesBlockedBy(category) {
     return laneCandidates
       .filter((candidate) => candidate.blockerCategories?.includes(category))
@@ -2665,6 +2738,13 @@ function getDisplayName(item) {
     const bestAllowedMain = candidateSummary.bestAllowedMainCandidate;
     const bestAllowedSide = candidateSummary.bestAllowedSideCandidate;
     const bestRejectedStrategic = candidateSummary.bestRejectedStrategicCandidate;
+    const purchaseEvaluator = unifiedPurchaseProposalState?.proposals?.length
+      ? {
+          ...buildUnifiedPurchaseEvaluator(unifiedPurchaseProposalState.proposals, selectedMainAction),
+          comparisonBasis: "single-pre-execution-snapshot",
+          selectedExecutionKey: unifiedPurchaseProposalState.selectedExecutionKey,
+        }
+      : buildUnifiedPurchaseEvaluator(laneCandidates, selectedMainAction);
     const noSideReason = selectedSideAction?.reason
       ? selectedSideAction.reason
       : (refillState?.decision === "HOLD" && refillState?.whyNoFollowUpAction && refillState.whyNoFollowUpAction !== "none"
@@ -2759,6 +2839,15 @@ function getDisplayName(item) {
       councilWinningLane,
       councilWinningCandidate,
       councilFocusBubble,
+      purchaseEvaluator,
+      purchaseEvaluatorMode: purchaseEvaluator.mode,
+      purchaseEvaluatorWinner: purchaseEvaluator.winner ? `${purchaseEvaluator.winner.lane}: ${purchaseEvaluator.winner.candidate}` : "none",
+      purchaseEvaluatorWinnerScore: purchaseEvaluator.winner?.economicScore ?? null,
+      purchaseEvaluatorWinnerConfidence: purchaseEvaluator.winner?.confidence || "none",
+      purchaseEvaluatorAgreesWithCouncil: purchaseEvaluator.agreesWithCouncil,
+      purchaseEvaluatorScoreMargin: purchaseEvaluator.scoreMargin,
+      purchaseEvaluatorWhyNotExecuting: purchaseEvaluator.whyNotExecuting,
+      purchaseProposalSnapshot: unifiedPurchaseProposalState,
       laneCoordinatorDecision: coordinatorState?.coordinatorDecision || mainLaneDecisionLabel(mainActions, sideActions),
       laneCoordinatorSelectedActions: coordinatorState?.selectedLaneActions || [],
       laneCoordinatorSelectedSummary: coordinatorState?.selectedLaneSummary || "none",
@@ -2973,6 +3062,13 @@ function getDisplayName(item) {
       ["Companion selected", strategyInspector.overseerSideSelected || "none"],
       ["Actions used", strategyInspector.overseerActionsUsed || `${strategyInspector.mainActions || 0}/?`],
       ["Why selected", strategyInspector.overseerWhySelected || "none"],
+      ["Purchase evaluator", strategyInspector.purchaseEvaluatorMode || "off"],
+      ["Economic winner", strategyInspector.purchaseEvaluatorWinner || "none"],
+      ["Economic score", strategyInspector.purchaseEvaluatorWinnerScore ?? "n/a"],
+      ["Economic confidence", strategyInspector.purchaseEvaluatorWinnerConfidence || "none"],
+      ["Agrees with Council", strategyInspector.purchaseEvaluatorAgreesWithCouncil ? "yes" : "no"],
+      ["Economic margin", strategyInspector.purchaseEvaluatorScoreMargin ?? "n/a"],
+      ["Evaluator hold", strategyInspector.purchaseEvaluatorWhyNotExecuting || "none"],
       ["Why no companion", strategyInspector.overseerWhyNoSide || "none"],
       ["Blocked by hard guard", strategyInspector.overseerBlockedByHardGuard || "none"],
       ["Main", strategyInspector.mainDecision || strategyInspector.decision],
@@ -5761,6 +5857,15 @@ function getDisplayName(item) {
     return getGameUpgrade(game, "clonelarvae");
   }
 
+  function getLaboratoryRushAbility(game, abilityId) {
+    return getGameUpgrade(game, abilityId);
+  }
+
+  function getLaboratoryEffectByType(ability, typeName) {
+    const effects = Array.isArray(ability?.effect) ? ability.effect : [];
+    return effects.find((effect) => String(effect?.type?.name || effect?.type || "") === typeName) || null;
+  }
+
   function getLaboratoryCompoundEffect(ability, unitId) {
     const effects = Array.isArray(ability?.effect) ? ability.effect : [];
     return effects.find((effect) => {
@@ -6185,6 +6290,66 @@ function getDisplayName(item) {
     };
   }
 
+  function buildLaboratoryRushSnapshot(game, definition, warnings, formulaStatuses) {
+    const ability = getLaboratoryRushAbility(game, definition.gameAbilityId);
+    const availability = getLaboratoryAbilityState(game, ability, definition.label);
+    const velocityEffect = getLaboratoryEffectByType(ability, "addUnitByVelocity");
+    const flatEffect = getLaboratoryEffectByType(ability, "addUnit");
+    const targetVelocity = decimalFrom(getVelocity(game, definition.resourceId));
+    const velocitySeconds = decimalFrom(velocityEffect?.val ?? definition.velocitySeconds);
+    const flatAddition = decimalFrom(flatEffect?.val ?? definition.flatAddition);
+    const velocityPower = decimalFrom(safe(`Laboratory ${definition.label} velocity power`, () => velocityEffect?.power?.()) || 1);
+    const flatPower = decimalFrom(safe(`Laboratory ${definition.label} flat power`, () => flatEffect?.power?.()) || 1);
+    const velocityOutput = targetVelocity.times(velocitySeconds).times(velocityPower);
+    const flatOutput = flatAddition.times(flatPower);
+    const sourceVerifiedOutput = velocityOutput.plus(flatOutput);
+    let runtimePreviewOutput = null;
+
+    if (!ability || !velocityEffect || !flatEffect) {
+      warnings.push(`${definition.label} runtime effects are incomplete; pinned source constants were used where necessary.`);
+      formulaStatuses.push("incomplete");
+    } else if (!(scenarioHarnessContext.active && scenarioHarnessContext.overrides)) {
+      const velocityPreview = safe(`Laboratory ${definition.label} velocity preview`, () => velocityEffect.output?.());
+      const flatPreview = safe(`Laboratory ${definition.label} flat preview`, () => flatEffect.output?.());
+      if (velocityPreview !== null && velocityPreview !== undefined && flatPreview !== null && flatPreview !== undefined) {
+        runtimePreviewOutput = decimalFrom(velocityPreview).plus(decimalFrom(flatPreview));
+        if (!laboratoryDecimalEquals(runtimePreviewOutput, sourceVerifiedOutput)) {
+          warnings.push(`${definition.label} source-verified output does not match runtime preview.`);
+          formulaStatuses.push("mismatch");
+        }
+      } else {
+        warnings.push(`${definition.label} runtime preview is unavailable.`);
+        formulaStatuses.push("incomplete");
+      }
+    }
+
+    return {
+      gameAbilityId: definition.gameAbilityId,
+      actionId: definition.actionId,
+      targetResource: definition.resourceKey,
+      available: availability.available,
+      unlocked: availability.unlocked,
+      visible: availability.visible,
+      affordable: availability.affordable,
+      unavailableReason: availability.unavailableReason,
+      unavailableReasonCode: availability.unavailableReasonCode,
+      energyCurrent: laboratoryDecimalString(availability.energyCurrent),
+      energyCost: laboratoryDecimalString(availability.energyCost),
+      energyDeficit: laboratoryDecimalString(availability.energyDeficit),
+      formulaInputs: {
+        targetVelocity: laboratoryDecimalString(targetVelocity),
+        velocitySeconds: laboratoryDecimalString(velocitySeconds),
+        velocityPower: laboratoryDecimalString(velocityPower),
+        velocityOutput: laboratoryDecimalString(velocityOutput),
+        flatAddition: laboratoryDecimalString(flatAddition),
+        flatPower: laboratoryDecimalString(flatPower),
+        flatOutput: laboratoryDecimalString(flatOutput),
+        sourceVerifiedOutput: laboratoryDecimalString(sourceVerifiedOutput),
+      },
+      runtimePreviewOutput: runtimePreviewOutput ? laboratoryDecimalString(runtimePreviewOutput) : null,
+    };
+  }
+
   function buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses) {
     const mirrorAbility = getLaboratoryHouseOfMirrorsAbility(game);
     const availability = getLaboratoryAbilityState(game, mirrorAbility, "House of Mirrors");
@@ -6333,6 +6498,12 @@ function getDisplayName(item) {
           valueSource: "Laboratory recompute from runtime-derived counts and effective territory/unit",
           status: formulaStatusByName.houseOfMirrors || "source-verified",
         }),
+        rushAbilities: laboratoryFormulaSource({
+          file: "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee",
+          functionName: "abilities larvarush/meatrush/territoryrush; addUnitByVelocity; addUnit",
+          valueSource: "Laboratory recompute from pinned constants and runtime-derived velocity/effect power",
+          status: formulaStatusByName.rushAbilities || "source-verified",
+        }),
         territoryPerSecond: laboratoryFormulaSource({
           file: "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
           functionName: "Unit.eachProduction, Unit.totalProduction, Unit.velocity",
@@ -6408,6 +6579,15 @@ function getDisplayName(item) {
       ? "mismatch"
       : (unresolvedAffectedUnits ? "incomplete" : "source-verified");
     const expansion = buildLaboratoryExpansionSnapshot(game, engine, warnings, formulaStatuses);
+    const rushDefinitions = [
+      { actionId: "LARVA_RUSH", gameAbilityId: "larvarush", label: "Larva Rush", resourceId: "larva", resourceKey: "larvae", velocitySeconds: 2400, flatAddition: 100000 },
+      { actionId: "MEAT_RUSH", gameAbilityId: "meatrush", label: "Meat Rush", resourceId: "meat", resourceKey: "meat", velocitySeconds: 7200, flatAddition: 100000000000 },
+      { actionId: "TERRITORY_RUSH", gameAbilityId: "territoryrush", label: "Territory Rush", resourceId: "territory", resourceKey: "territory", velocitySeconds: 7200, flatAddition: 1000000000 },
+    ];
+    const rushAbilities = {};
+    for (const definition of rushDefinitions) {
+      rushAbilities[definition.gameAbilityId] = buildLaboratoryRushSnapshot(game, definition, warnings, formulaStatuses);
+    }
 
     let topStatus = "verified";
     if (formulaStatuses.includes("mismatch")) topStatus = "mismatch";
@@ -6468,13 +6648,17 @@ function getDisplayName(item) {
           amount: laboratoryDecimalString(getCurrentResource(game, "territory")),
           perSecond: laboratoryDecimalString(getVelocity(game, "territory")),
         },
-        meat,
+        meat: {
+          ...meat,
+          amount: laboratoryDecimalString(getCurrentResource(game, "meat")),
+        },
       },
       army,
       expansion,
       abilities: {
         cloneLarvae,
         houseOfMirrors,
+        ...rushAbilities,
       },
       safety: {
         resource: "energy",
@@ -6504,6 +6688,9 @@ function getDisplayName(item) {
   const LABORATORY_PHASE1_ACTION_SCHEMA_VERSION = "swarmsim-lab.action.v1";
   const LABORATORY_PHASE1_RESULT_SCHEMA_VERSION = "swarmsim-lab.result.v1";
   const LABORATORY_PHASE1_ACTION_IDS = ["WAIT", "CLONE_LARVAE", "HOUSE_OF_MIRRORS"];
+  const LABORATORY_PHASE2_ACTION_SCHEMA_VERSION = "swarmsim-lab.action.v2";
+  const LABORATORY_PHASE2_RESULT_SCHEMA_VERSION = "swarmsim-lab.result.v2";
+  const LABORATORY_PHASE2A_ACTION_IDS = ["WAIT", "LARVA_RUSH", "MEAT_RUSH", "TERRITORY_RUSH"];
   const LABORATORY_PHASE1_HORIZONS_SECONDS = ["60", "300"];
   const LABORATORY_PHASE1_AFFECTED_UNIT_IDS = ["swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
 
@@ -6561,11 +6748,14 @@ function getDisplayName(item) {
     return { ok: errors.length === 0, errors, warnings };
   }
 
-  function laboratoryActionDefinition(actionId) {
+  function laboratoryActionDefinition(actionId, schemaVersion = null) {
     const normalized = String(actionId || "").toUpperCase();
-    if (normalized === "WAIT") return { schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION, actionId: "WAIT", requestedAtSeconds: "0", castCount: 0 };
+    const isPhase2 = LABORATORY_PHASE2A_ACTION_IDS.includes(normalized) && !LABORATORY_PHASE1_ACTION_IDS.includes(normalized);
+    const resolvedSchema = schemaVersion || (isPhase2 ? LABORATORY_PHASE2_ACTION_SCHEMA_VERSION : LABORATORY_PHASE1_ACTION_SCHEMA_VERSION);
+    if (normalized === "WAIT") return { schemaVersion: resolvedSchema, actionId: "WAIT", requestedAtSeconds: "0", castCount: 0 };
     if (normalized === "CLONE_LARVAE") return { schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION, actionId: "CLONE_LARVAE", requestedAtSeconds: "0", castCount: 1 };
     if (normalized === "HOUSE_OF_MIRRORS") return { schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION, actionId: "HOUSE_OF_MIRRORS", requestedAtSeconds: "0", castCount: 1 };
+    if (LABORATORY_PHASE2A_ACTION_IDS.includes(normalized)) return { schemaVersion: LABORATORY_PHASE2_ACTION_SCHEMA_VERSION, actionId: normalized, requestedAtSeconds: "0", castCount: 1 };
     return null;
   }
 
@@ -6574,7 +6764,7 @@ function getDisplayName(item) {
     if (!action || typeof action !== "object") {
       return { ok: false, error: "action is missing", warnings };
     }
-    if (action.schemaVersion !== LABORATORY_PHASE1_ACTION_SCHEMA_VERSION) {
+    if (![LABORATORY_PHASE1_ACTION_SCHEMA_VERSION, LABORATORY_PHASE2_ACTION_SCHEMA_VERSION].includes(action.schemaVersion)) {
       return { ok: false, error: `unexpected action schemaVersion ${action.schemaVersion || "missing"}`, warnings };
     }
     const normalized = laboratoryActionDefinition(action.actionId);
@@ -6674,7 +6864,10 @@ function getDisplayName(item) {
         larvaeAfterAction: laboratoryDecimalString(larvaeBefore.plus(computed || newDecimal(0))),
         cocoonsBefore: laboratoryDecimalString(cocoonsBefore),
         cocoonsAfterAction: laboratoryDecimalString(cocoonsBefore),
+        meatBefore: laboratoryDecimalString(snapshot?.resources?.meat?.amount || 0),
+        meatAfterAction: laboratoryDecimalString(snapshot?.resources?.meat?.amount || 0),
         territoryBefore: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
+        territoryAfterAction: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
         territoryPerSecondBefore: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
         territoryPerSecondAfterAction: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
         affectedArmyCountsBefore: laboratoryTerritoryArmyMap(snapshot),
@@ -6693,6 +6886,91 @@ function getDisplayName(item) {
         safetyViolation,
         larvaeBefore,
       },
+    };
+  }
+
+  function laboratoryRushImmediate(snapshot, actionId, warnings) {
+    const definitions = {
+      LARVA_RUSH: { abilityKey: "larvarush", resourceKey: "larvae" },
+      MEAT_RUSH: { abilityKey: "meatrush", resourceKey: "meat" },
+      TERRITORY_RUSH: { abilityKey: "territoryrush", resourceKey: "territory" },
+    };
+    const definition = definitions[actionId];
+    const ability = definition ? snapshot?.abilities?.[definition.abilityKey] : null;
+    if (!definition || !ability) {
+      return { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, invalidReasonCode: "MISSING_ABILITY_SNAPSHOT", invalidReason: `${actionId} snapshot is unavailable`, warnings: warnings.concat([`${actionId} snapshot is unavailable`]) };
+    }
+
+    const energyBefore = laboratoryDecimalOrNull(snapshot?.resources?.energy?.amount) || newDecimal(0);
+    const energyCost = laboratoryDecimalOrNull(ability.energyCost) || newDecimal(0);
+    if (!ability.available || energyBefore.lessThan(energyCost)) {
+      const invalidReasonCode = !ability.available ? (ability.unavailableReasonCode || "UNKNOWN") : "INSUFFICIENT_ENERGY";
+      const invalidReason = !ability.available
+        ? (ability.unavailableReason || `${actionId} unavailable`)
+        : `not enough energy (current Energy ${laboratoryDecimalString(energyBefore)}, cost ${laboratoryDecimalString(energyCost)}, deficit ${laboratoryDecimalString(energyCost.minus(energyBefore))})`;
+      return { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, invalidReasonCode, invalidReason, warnings: warnings.concat([invalidReason]) };
+    }
+
+    const output = laboratoryDecimalOrNull(ability?.formulaInputs?.sourceVerifiedOutput);
+    const preview = laboratoryDecimalOrNull(ability?.runtimePreviewOutput);
+    const actionWarnings = warnings.slice();
+    let status = "ok";
+    if (!output) {
+      status = "incomplete-formula";
+      actionWarnings.push(`${actionId} output is unavailable`);
+    } else if (preview && !laboratoryDecimalEquals(preview, output)) {
+      status = "formula-mismatch";
+      actionWarnings.push(`${actionId} computed output does not match runtime preview`);
+    }
+
+    const energyAfterAction = energyBefore.minus(energyCost);
+    const reserveRequired = laboratoryEnergyReserveRequired(snapshot);
+    const reserveAfterAction = energyAfterAction.minus(reserveRequired);
+    const safetyViolation = reserveAfterAction.lessThan(0);
+    const larvaeBefore = laboratoryDecimalOrNull(snapshot?.resources?.larvae?.amount) || newDecimal(0);
+    const cocoonsBefore = laboratoryDecimalOrNull(snapshot?.resources?.cocoons?.amount) || newDecimal(0);
+    const meatBefore = laboratoryDecimalOrNull(snapshot?.resources?.meat?.amount) || newDecimal(0);
+    const territoryBefore = laboratoryDecimalOrNull(snapshot?.resources?.territory?.amount) || newDecimal(0);
+    const appliedOutput = output || newDecimal(0);
+
+    return {
+      ok: true,
+      status,
+      actionLegal: true,
+      actionApplied: true,
+      actionSafetySafe: !safetyViolation,
+      immediate: {
+        schemaVersion: LABORATORY_PHASE2_ACTION_SCHEMA_VERSION,
+        actionId,
+        actionLegal: true,
+        actionApplied: true,
+        actionSafetySafe: !safetyViolation,
+        energyBefore: laboratoryDecimalString(energyBefore),
+        energyCost: laboratoryDecimalString(energyCost),
+        energyAfterAction: laboratoryDecimalString(energyAfterAction),
+        reserveRequired: laboratoryDecimalString(reserveRequired),
+        reserveAfterAction: laboratoryDecimalString(reserveAfterAction),
+        safetyViolation,
+        targetResource: definition.resourceKey,
+        resourceAdded: laboratoryDecimalString(appliedOutput),
+        larvaeBefore: laboratoryDecimalString(larvaeBefore),
+        larvaeAfterAction: laboratoryDecimalString(definition.resourceKey === "larvae" ? larvaeBefore.plus(appliedOutput) : larvaeBefore),
+        cocoonsBefore: laboratoryDecimalString(cocoonsBefore),
+        cocoonsAfterAction: laboratoryDecimalString(cocoonsBefore),
+        meatBefore: laboratoryDecimalString(meatBefore),
+        meatAfterAction: laboratoryDecimalString(definition.resourceKey === "meat" ? meatBefore.plus(appliedOutput) : meatBefore),
+        territoryBefore: laboratoryDecimalString(territoryBefore),
+        territoryAfterAction: laboratoryDecimalString(definition.resourceKey === "territory" ? territoryBefore.plus(appliedOutput) : territoryBefore),
+        territoryPerSecondBefore: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
+        territoryPerSecondAfterAction: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
+        affectedArmyCountsBefore: laboratoryTerritoryArmyMap(snapshot),
+        affectedArmyCountsAfter: laboratoryTerritoryArmyMap(snapshot),
+        formulaStatus: status,
+        warnings: actionWarnings.slice(),
+      },
+      formulaValidation: { status, computed: laboratoryStringOrNull(output), runtimePreview: laboratoryStringOrNull(preview), warnings: actionWarnings.slice() },
+      warnings: actionWarnings,
+      base: { energyBefore, energyCost, energyAfterAction, reserveRequired, reserveAfterAction, safetyViolation },
     };
   }
 
@@ -6772,7 +7050,10 @@ function getDisplayName(item) {
         larvaeAfterAction: laboratoryDecimalString(snapshot?.resources?.larvae?.amount || 0),
         cocoonsBefore: laboratoryDecimalString(snapshot?.resources?.cocoons?.amount || 0),
         cocoonsAfterAction: laboratoryDecimalString(snapshot?.resources?.cocoons?.amount || 0),
+        meatBefore: laboratoryDecimalString(snapshot?.resources?.meat?.amount || 0),
+        meatAfterAction: laboratoryDecimalString(snapshot?.resources?.meat?.amount || 0),
         territoryBefore: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
+        territoryAfterAction: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
         territoryPerSecondBefore: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
         territoryPerSecondAfterAction: laboratoryDecimalString(computed),
         affectedArmyCountsBefore: affectedBefore,
@@ -6794,7 +7075,7 @@ function getDisplayName(item) {
     };
   }
 
-  function laboratoryWaitImmediate(snapshot, warnings) {
+  function laboratoryWaitImmediate(snapshot, warnings, schemaVersion = LABORATORY_PHASE1_ACTION_SCHEMA_VERSION) {
     const energyBefore = laboratoryDecimalOrNull(snapshot?.resources?.energy?.amount) || newDecimal(0);
     const reserveRequired = laboratoryEnergyReserveRequired(snapshot);
     const energyAfterAction = energyBefore;
@@ -6807,7 +7088,7 @@ function getDisplayName(item) {
       actionApplied: true,
       actionSafetySafe: !safetyViolation,
       immediate: {
-        schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION,
+        schemaVersion,
         actionId: "WAIT",
         actionLegal: true,
         actionApplied: true,
@@ -6822,7 +7103,10 @@ function getDisplayName(item) {
         larvaeAfterAction: laboratoryDecimalString(snapshot?.resources?.larvae?.amount || 0),
         cocoonsBefore: laboratoryDecimalString(snapshot?.resources?.cocoons?.amount || 0),
         cocoonsAfterAction: laboratoryDecimalString(snapshot?.resources?.cocoons?.amount || 0),
+        meatBefore: laboratoryDecimalString(snapshot?.resources?.meat?.amount || 0),
+        meatAfterAction: laboratoryDecimalString(snapshot?.resources?.meat?.amount || 0),
         territoryBefore: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
+        territoryAfterAction: laboratoryDecimalString(snapshot?.resources?.territory?.amount || 0),
         territoryPerSecondBefore: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
         territoryPerSecondAfterAction: laboratoryDecimalString(snapshot?.resources?.territory?.perSecond || 0),
         affectedArmyCountsBefore: laboratoryTerritoryArmyMap(snapshot),
@@ -6860,7 +7144,11 @@ function getDisplayName(item) {
     const larvaeAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.larvaeAfterAction) || newDecimal(0);
     const cocoonsAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.cocoonsAfterAction) || newDecimal(0);
     const reserveAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.reserveAfterAction) || newDecimal(0);
-    const territoryAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.territoryBefore) || territoryBefore;
+    const territoryAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.territoryAfterAction)
+      || laboratoryDecimalOrNull(postAction?.immediate?.territoryBefore)
+      || territoryBefore;
+    const meatBefore = laboratoryDecimalOrNull(snapshot?.resources?.meat?.amount) || newDecimal(0);
+    const meatAfterAction = laboratoryDecimalOrNull(postAction?.immediate?.meatAfterAction) || meatBefore;
     const energyAfterHorizonRaw = energyAfterAction.plus(energyPerSecond.times(horizon));
     const energyAfterHorizon = energyCap ? decimalMin(energyAfterHorizonRaw, energyCap) : energyAfterHorizonRaw;
     const larvaeAfterHorizon = larvaeAfterAction.plus(larvaePerSecond.times(horizon));
@@ -6884,6 +7172,8 @@ function getDisplayName(item) {
     }
 
     const meatProjection = laboratoryMeatProjectionAtHorizon(snapshot?.resources?.meat?.rateProjection, horizon, warnings, postAction.formulaValidation || { status: "ok" });
+    const meatCountProjection = laboratoryResourceCountAtHorizon(snapshot?.resources?.meat?.rateProjection, horizon, warnings, postAction.formulaValidation || { status: "ok" });
+    const meatAfterHorizon = meatCountProjection ? meatAfterAction.plus(meatCountProjection.minus(meatBefore)) : null;
     const formulaStatus = postAction?.status || "ok";
 
     return {
@@ -6893,6 +7183,7 @@ function getDisplayName(item) {
       metrics: {
         larvaeAfter: laboratoryStringOrNull(larvaeAfterHorizon),
         cocoonsAfter: laboratoryStringOrNull(cocoonsAfterHorizon),
+        meatAfter: laboratoryStringOrNull(meatAfterHorizon),
         meatPerSecondAfter: laboratoryStringOrNull(meatProjection),
         territoryAfter: laboratoryStringOrNull(territoryAfterHorizon),
         territoryPerSecondAfter: laboratoryStringOrNull(territoryPerSecondAfterAction),
@@ -6912,6 +7203,7 @@ function getDisplayName(item) {
         larvaePerSecond: laboratoryStringOrNull(larvaePerSecond),
         cocoonsAfterAction: laboratoryStringOrNull(cocoonsAfterAction),
         cocoonsPerSecond: laboratoryStringOrNull(cocoonsPerSecond),
+        meatAfterAction: laboratoryStringOrNull(meatAfterAction),
         territoryAfterAction: laboratoryStringOrNull(territoryAfterAction),
         territoryPerSecondAfterAction: laboratoryStringOrNull(territoryPerSecondAfterAction),
         expansionEtaReason,
@@ -6952,6 +7244,27 @@ function getDisplayName(item) {
     return total;
   }
 
+  function laboratoryResourceCountAtHorizon(rateProjection, horizonSeconds, warnings, formulaValidation) {
+    const horizon = laboratoryDecimalOrNull(horizonSeconds);
+    const coefficients = Array.isArray(rateProjection?.coefficients) ? rateProjection.coefficients : null;
+    if (!coefficients || !coefficients.length || rateProjection?.validation !== "source-verified" || !horizon) {
+      warnings.push("resource count projection is unavailable or unvalidated");
+      formulaValidation.status = formulaValidation.status === "ok" ? "incomplete-formula" : formulaValidation.status;
+      return null;
+    }
+    let total = newDecimal(0);
+    for (let degree = 0; degree < coefficients.length; degree++) {
+      const coefficient = laboratoryDecimalOrNull(coefficients[degree]);
+      if (!coefficient) return null;
+      let power = newDecimal(1);
+      for (let step = 0; step < degree; step++) power = power.times(horizon);
+      let factorial = newDecimal(1);
+      for (let step = 2; step <= degree; step++) factorial = factorial.times(step);
+      total = total.plus(coefficient.times(power).dividedBy(factorial));
+    }
+    return total;
+  }
+
   function laboratoryComparisonVsWait(actionMetrics, waitMetrics) {
     if (!actionMetrics || !waitMetrics) return null;
     const waitTerritoryPerSecond = laboratoryDecimalOrNull(waitMetrics.territoryPerSecondAfter);
@@ -6961,6 +7274,7 @@ function getDisplayName(item) {
     return {
       larvaeAbsoluteDelta: laboratoryNumericDelta(actionMetrics.larvaeAfter, waitMetrics.larvaeAfter),
       cocoonsAbsoluteDelta: laboratoryNumericDelta(actionMetrics.cocoonsAfter, waitMetrics.cocoonsAfter),
+      meatAbsoluteDelta: laboratoryNumericDelta(actionMetrics.meatAfter, waitMetrics.meatAfter),
       meatPerSecondAbsoluteDelta: laboratoryNumericDelta(actionMetrics.meatPerSecondAfter, waitMetrics.meatPerSecondAfter),
       territoryAbsoluteDelta: laboratoryNumericDelta(actionMetrics.territoryAfter, waitMetrics.territoryAfter),
       territoryPerSecondAbsoluteDelta: laboratoryNumericDelta(actionTerritoryPerSecond, waitTerritoryPerSecond),
@@ -6987,9 +7301,12 @@ function getDisplayName(item) {
       return { ok: false, error: validation.errors.join("; "), warnings: validation.warnings.slice() };
     }
 
+    const actionSchemaVersion = String(options.actionSchemaVersion || LABORATORY_PHASE1_ACTION_SCHEMA_VERSION);
+    const resultSchemaVersion = String(options.resultSchemaVersion || LABORATORY_PHASE1_RESULT_SCHEMA_VERSION);
+    const defaultActionIds = Array.isArray(options.defaultActionIds) && options.defaultActionIds.length ? options.defaultActionIds : LABORATORY_PHASE1_ACTION_IDS;
     const actions = Array.isArray(options.actions) && options.actions.length
-      ? options.actions.map((action) => (typeof action === "string" ? laboratoryActionDefinition(action) : action)).filter(Boolean)
-      : LABORATORY_PHASE1_ACTION_IDS.map((actionId) => laboratoryActionDefinition(actionId));
+      ? options.actions.map((action) => (typeof action === "string" ? laboratoryActionDefinition(action, actionSchemaVersion) : action)).filter(Boolean)
+      : defaultActionIds.map((actionId) => laboratoryActionDefinition(actionId, actionSchemaVersion));
     const horizons = Array.isArray(options.horizonsSeconds) && options.horizonsSeconds.length ? options.horizonsSeconds.map(String) : LABORATORY_PHASE1_HORIZONS_SECONDS.slice();
     const experimentId = String(options.experimentId || `${snapshot.snapshotId}-P1`);
     const formulaSetId = String(options.formulaSetId || snapshot?.formulaProvenance?.formulaSetId || "swarmsim-runtime-formulas");
@@ -6998,11 +7315,13 @@ function getDisplayName(item) {
     for (const action of actions) {
       const baseWarnings = [];
       const immediate = action?.actionId === "WAIT"
-        ? laboratoryWaitImmediate(snapshot, baseWarnings)
+        ? laboratoryWaitImmediate(snapshot, baseWarnings, actionSchemaVersion)
         : action?.actionId === "CLONE_LARVAE"
           ? laboratoryCloneLarvaeImmediate(snapshot, baseWarnings)
           : action?.actionId === "HOUSE_OF_MIRRORS"
             ? laboratoryHouseOfMirrorsImmediate(snapshot, baseWarnings)
+            : LABORATORY_PHASE2A_ACTION_IDS.includes(action?.actionId)
+              ? laboratoryRushImmediate(snapshot, action.actionId, baseWarnings)
             : { ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, warnings: ["unsupported action"] };
 
       if (!immediate.ok) {
@@ -7016,7 +7335,7 @@ function getDisplayName(item) {
             actionApplied: false,
             actionSafetySafe: false,
             immediate: {
-              schemaVersion: LABORATORY_PHASE1_ACTION_SCHEMA_VERSION,
+              schemaVersion: actionSchemaVersion,
               actionId: String(action?.actionId || "INVALID"),
               actionLegal: false,
               actionApplied: false,
@@ -7083,14 +7402,14 @@ function getDisplayName(item) {
     }
 
     const result = {
-      schemaVersion: LABORATORY_PHASE1_RESULT_SCHEMA_VERSION,
+      schemaVersion: resultSchemaVersion,
       kind: "deterministic-simulation",
       experimentId,
       experimentHash: null,
       snapshotId: snapshot.snapshotId,
       snapshotHash: snapshot.snapshotHash,
       scenarioId: snapshot?.source?.scenarioId || null,
-      actions: LABORATORY_PHASE1_ACTION_IDS.slice(),
+      actions: actions.map((action) => action.actionId),
       horizonsSeconds: LABORATORY_PHASE1_HORIZONS_SECONDS.slice(),
       postActionPolicy: "passive-only",
       formulaSetId,
@@ -7107,6 +7426,16 @@ function getDisplayName(item) {
     return laboratoryDeepFreeze(result);
   }
 
+  async function laboratoryRunPhase2AExperiment(snapshot, options = {}) {
+    return laboratoryRunPhase1Experiment(snapshot, {
+      ...options,
+      experimentId: options.experimentId || `${snapshot.snapshotId}-P2A`,
+      actionSchemaVersion: LABORATORY_PHASE2_ACTION_SCHEMA_VERSION,
+      resultSchemaVersion: LABORATORY_PHASE2_RESULT_SCHEMA_VERSION,
+      defaultActionIds: LABORATORY_PHASE2A_ACTION_IDS,
+    });
+  }
+
   function laboratoryCloneResult(value) {
     return value ? laboratoryCloneJson(value) : null;
   }
@@ -7120,6 +7449,7 @@ function getDisplayName(item) {
 
   function laboratoryBuildLiveExperimentWrapper(snapshot, experiment, liveStateVerification, options = {}) {
     const observations = laboratoryCreateObservationSummary({ snapshot, experiment, liveStateVerification, ...options });
+    const energyOpportunityReport = laboratoryCreateEnergyOpportunityReport(snapshot, experiment);
     const wrapper = {
       schemaVersion: "swarmsim-lab.live-result.v1",
       kind: "live-read-only-simulation",
@@ -7129,6 +7459,7 @@ function getDisplayName(item) {
       experiment,
       runs: experiment?.runs || [],
       observationSummary: observations,
+      energyOpportunityReport,
       liveStateVerification,
       formulaSource: snapshot?.formulaProvenance || null,
       warnings: Array.from(new Set([...(snapshot?.warnings || []), ...(experiment?.warnings || []), ...(observations?.warnings || []), ...(liveStateVerification?.warnings || [])].filter(Boolean))),
@@ -7238,6 +7569,72 @@ function getDisplayName(item) {
     return { text: lines.join("\n"), warnings };
   }
 
+  function laboratoryEnergyDelaySeconds(energyAmount, targetCost, energyPerSecond, energyCap) {
+    if (!energyAmount || !targetCost || !energyPerSecond || !energyPerSecond.greaterThan(0)) return null;
+    if (energyAmount.greaterThanOrEqualTo(targetCost)) return newDecimal(0);
+    if (energyCap && energyCap.lessThan(targetCost)) return null;
+    return targetCost.minus(energyAmount).dividedBy(energyPerSecond);
+  }
+
+  function laboratoryCreateEnergyOpportunityReport(snapshot, experiment) {
+    if (experiment?.schemaVersion !== LABORATORY_PHASE2_RESULT_SCHEMA_VERSION) return null;
+    const energyBefore = laboratoryDecimalOrNull(snapshot?.resources?.energy?.amount);
+    const energyPerSecond = laboratoryDecimalOrNull(snapshot?.resources?.energy?.perSecond);
+    const energyCap = laboratoryCurrentEnergyCap(snapshot);
+    const reserveRequired = laboratoryEnergyReserveRequired(snapshot);
+    const cloneCost = laboratoryDecimalOrNull(snapshot?.abilities?.cloneLarvae?.energyCost);
+    const mirrorCost = laboratoryDecimalOrNull(snapshot?.abilities?.houseOfMirrors?.energyCost);
+    const projectedWaitRaw = energyBefore && energyPerSecond ? energyBefore.plus(energyPerSecond.times(300)) : null;
+    const waitEnergyWastedAtCap = projectedWaitRaw && energyCap && projectedWaitRaw.greaterThan(energyCap)
+      ? projectedWaitRaw.minus(energyCap)
+      : newDecimal(0);
+    const entries = [];
+
+    for (const actionId of LABORATORY_PHASE2A_ACTION_IDS.filter((id) => id !== "WAIT")) {
+      const run = laboratoryActionRunForExperiment(experiment, actionId, 300);
+      if (!run) continue;
+      const energyAfterAction = laboratoryDecimalOrNull(run?.immediate?.energyAfterAction);
+      const recoveryToReserve = energyAfterAction && energyPerSecond && energyPerSecond.greaterThan(0) && energyAfterAction.lessThan(reserveRequired)
+        ? reserveRequired.minus(energyAfterAction).dividedBy(energyPerSecond)
+        : newDecimal(0);
+      const waitCloneEta = laboratoryEnergyDelaySeconds(energyBefore, cloneCost, energyPerSecond, energyCap);
+      const actionCloneEta = laboratoryEnergyDelaySeconds(energyAfterAction, cloneCost, energyPerSecond, energyCap);
+      const waitMirrorEta = laboratoryEnergyDelaySeconds(energyBefore, mirrorCost, energyPerSecond, energyCap);
+      const actionMirrorEta = laboratoryEnergyDelaySeconds(energyAfterAction, mirrorCost, energyPerSecond, energyCap);
+      entries.push({
+        actionId,
+        status: run.status,
+        legal: !!run.actionLegal,
+        safetySafe: !!run.actionSafetySafe,
+        targetResource: run?.immediate?.targetResource || null,
+        resourceAdded: run?.immediate?.resourceAdded || null,
+        energyCost: run?.immediate?.energyCost || null,
+        reserveAfterAction: run?.metrics?.reserveAfterAction ?? null,
+        recoverySecondsToReserve: laboratoryStringOrNull(recoveryToReserve),
+        cloneLarvaeDelaySeconds: waitCloneEta && actionCloneEta ? laboratoryDecimalString(actionCloneEta.minus(waitCloneEta)) : null,
+        houseOfMirrorsDelaySeconds: waitMirrorEta && actionMirrorEta ? laboratoryDecimalString(actionMirrorEta.minus(waitMirrorEta)) : null,
+        expansionEtaImprovementSeconds: run?.comparisonVsWait?.expansionEtaImprovementSeconds ?? null,
+        energyDeltaAt300Seconds: run?.comparisonVsWait?.energyAbsoluteDelta ?? null,
+        warnings: run.warnings || [],
+      });
+    }
+
+    const lines = [
+      `WAIT would waste ${laboratoryDecimalString(waitEnergyWastedAtCap)} Energy at the cap over 300 seconds.`,
+      ...entries.map((entry) => entry.status !== "ok"
+        ? `${entry.actionId}: unavailable (${laboratoryJoinWarnings(entry.warnings)}).`
+        : `${entry.actionId}: +${entry.resourceAdded || "unknown"} ${entry.targetResource || "resource"}; Expansion ETA improvement ${entry.expansionEtaImprovementSeconds ?? "n/a"}s; reserve after action ${entry.reserveAfterAction ?? "n/a"}; reserve recovery ${entry.recoverySecondsToReserve ?? "n/a"}s; delays Clone Larvae ${entry.cloneLarvaeDelaySeconds ?? "n/a"}s and House of Mirrors ${entry.houseOfMirrorsDelaySeconds ?? "n/a"}s.`),
+      "Advisor only: no ability was cast and no overall winner was selected.",
+    ];
+    return {
+      kind: "advisor-only-energy-opportunity-report",
+      horizonSeconds: "300",
+      waitEnergyWastedAtCap: laboratoryDecimalString(waitEnergyWastedAtCap),
+      entries,
+      text: lines.join("\n"),
+    };
+  }
+
   function laboratoryLiveBadge(label, tone = "") {
     return `<span class="kbc-badge ${tone}">${escapeHtml(label)}</span>`;
   }
@@ -7261,6 +7658,10 @@ function getDisplayName(item) {
           <td>${escapeHtml(comparison.energyAbsoluteDelta ?? "")}</td>
           <td>${escapeHtml(run.metrics?.larvaeAfter ?? "")}</td>
           <td>${escapeHtml(comparison.larvaeAbsoluteDelta ?? "")}</td>
+          <td>${escapeHtml(run.metrics?.meatAfter ?? "")}</td>
+          <td>${escapeHtml(comparison.meatAbsoluteDelta ?? "")}</td>
+          <td>${escapeHtml(run.metrics?.territoryAfter ?? "")}</td>
+          <td>${escapeHtml(comparison.territoryAbsoluteDelta ?? "")}</td>
           <td>${escapeHtml(run.metrics?.territoryPerSecondAfter ?? "")}</td>
           <td>${escapeHtml(comparison.territoryPerSecondAbsoluteDelta ?? "")}</td>
           <td>${escapeHtml(run.metrics?.expansionEtaSecondsAfter ?? "")}</td>
@@ -7278,10 +7679,10 @@ function getDisplayName(item) {
       <table class="kbc-lab-table">
         <thead>
           <tr>
-            <th>Action</th><th>Status</th><th>Energy</th><th>Energy delta vs WAIT</th><th>Larvae</th><th>Larvae delta vs WAIT</th><th>Territory/sec</th><th>Territory/sec delta</th><th>Expansion ETA</th><th>ETA improvement</th><th>Reserve after action</th><th>Safety</th><th>Formula status</th><th>Reason</th>
+            <th>Action</th><th>Status</th><th>Energy</th><th>Energy delta vs WAIT</th><th>Larvae</th><th>Larvae delta</th><th>Meat</th><th>Meat delta</th><th>Territory</th><th>Territory delta</th><th>Territory/sec</th><th>Territory/sec delta</th><th>Expansion ETA</th><th>ETA improvement</th><th>Reserve after action</th><th>Safety</th><th>Formula status</th><th>Reason</th>
           </tr>
         </thead>
-        <tbody>${rows || `<tr><td colspan="14">No runs</td></tr>`}</tbody>
+        <tbody>${rows || `<tr><td colspan="18">No runs</td></tr>`}</tbody>
       </table>
     `;
   }
@@ -7290,6 +7691,7 @@ function getDisplayName(item) {
     if (!result) return `<div class="kbc-note">No live result captured yet.</div>`;
     const proof = result.liveStateVerification || {};
     const warnings = laboratoryJoinWarnings(result.warnings || []);
+    const opportunityReport = result.energyOpportunityReport?.text || "";
     return `
       <div class="kbc-note">
         <div><strong>Laboratory · Read-only</strong></div>
@@ -7303,6 +7705,7 @@ function getDisplayName(item) {
         <div>Non-mutation proof: ${laboratoryLiveBadge(String(proof?.unchanged), proof?.unchanged ? "kbc-ok" : "kbc-bad")}</div>
         ${warnings ? `<div>Warnings: ${escapeHtml(warnings)}</div>` : ""}
       </div>
+      ${opportunityReport ? `<div class="kbc-note"><div><strong>Energy Opportunity Report Â· Advisor only</strong></div><div style="white-space:pre-wrap">${escapeHtml(opportunityReport)}</div></div>` : ""}
       ${laboratoryLiveResultTableHtml(result, 60)}
       ${laboratoryLiveResultTableHtml(result, 300)}
     `;
@@ -7340,7 +7743,7 @@ function getDisplayName(item) {
     const experiment = result?.experiment || result;
     const baseLines = laboratoryExportResultCsv(experiment).split(/\r?\n/);
     const header = baseLines.shift() || "";
-    const extraHeader = ["capture_mode", "capture_timestamp", "snapshot_validity", "formula_source", "live_state_unchanged", "live_status", "live_warnings", "observation_summary"];
+    const extraHeader = ["capture_mode", "capture_timestamp", "snapshot_validity", "formula_source", "live_state_unchanged", "live_status", "live_warnings", "observation_summary", "energy_opportunity_report"];
     const flattenCell = (value) => String(value || "").replace(/\r?\n+/g, " | ");
     const rows = baseLines.map((line) => `${line},${[
       laboratoryCsvEscape(result?.captureMode || "live-read-only"),
@@ -7351,6 +7754,7 @@ function getDisplayName(item) {
       laboratoryCsvEscape(result?.status || ""),
       laboratoryCsvEscape(flattenCell(laboratoryJoinWarnings(result?.warnings || []))),
       laboratoryCsvEscape(flattenCell(result?.observationSummary?.text || "")),
+      laboratoryCsvEscape(flattenCell(result?.energyOpportunityReport?.text || "")),
     ].join(",")}`);
     return [
       `${header},${extraHeader.map(laboratoryCsvEscape).join(",")}`,
@@ -7373,6 +7777,12 @@ function getDisplayName(item) {
     lines.push("## Observation summary");
     lines.push("");
     lines.push(result?.observationSummary?.text || "No observation summary available.");
+    if (result?.energyOpportunityReport?.text) {
+      lines.push("");
+      lines.push("## Energy Opportunity Report (advisor only)");
+      lines.push("");
+      lines.push(result.energyOpportunityReport.text);
+    }
     lines.push("");
     lines.push("## 60 seconds");
     lines.push("");
@@ -7443,6 +7853,8 @@ function getDisplayName(item) {
       "larvae_delta_vs_wait",
       "cocoons_after",
       "cocoons_delta_vs_wait",
+      "meat_after",
+      "meat_delta_vs_wait",
       "meat_per_second_after",
       "meat_per_second_delta_vs_wait",
       "territory_after",
@@ -7485,6 +7897,8 @@ function getDisplayName(item) {
         comparison.larvaeAbsoluteDelta,
         run.metrics?.cocoonsAfter,
         comparison.cocoonsAbsoluteDelta,
+        run.metrics?.meatAfter,
+        comparison.meatAbsoluteDelta,
         run.metrics?.meatPerSecondAfter,
         comparison.meatPerSecondAbsoluteDelta,
         run.metrics?.territoryAfter,
@@ -7510,7 +7924,8 @@ function getDisplayName(item) {
 
   function laboratoryExportResultMarkdown(result) {
     const lines = [];
-    lines.push("# SwarmSim Laboratory Phase 1 Result");
+    const phase2 = result?.schemaVersion === LABORATORY_PHASE2_RESULT_SCHEMA_VERSION;
+    lines.push(`# SwarmSim Laboratory ${phase2 ? "Phase 2A" : "Phase 1"} Result`);
     lines.push("");
     lines.push(`- Experiment ID: \`${result.experimentId}\``);
     lines.push(`- Experiment hash: \`${result.experimentHash}\``);
@@ -7519,13 +7934,13 @@ function getDisplayName(item) {
     lines.push(`- Formula set: \`${result.formulaSetId || "swarmsim-runtime-formulas"}\``);
     lines.push(`- Post-action policy: \`${result.postActionPolicy}\``);
     lines.push("");
-    lines.push("WAIT, Clone Larvae, and House of Mirrors are compared from the same immutable snapshot. No total winner or global recommendation is produced.");
+    lines.push(`${(result?.actions || []).join(", ")} are compared from the same immutable snapshot. No total winner or global recommendation is produced.`);
     lines.push("");
     for (const horizon of LABORATORY_PHASE1_HORIZONS_SECONDS) {
       lines.push(`## ${horizon} seconds`);
       lines.push("");
-      lines.push("| Action | Status | Legal | Applied | Safe | Reason | Larvae | Cocoons | Meat/sec | Territory | Territory/sec | Energy | Expansion ETA | Reserve | Safety | Formula | Warnings |");
-      lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+      lines.push("| Action | Status | Legal | Applied | Safe | Reason | Larvae | Cocoons | Meat | Meat/sec | Territory | Territory/sec | Energy | Expansion ETA | Reserve | Safety | Formula | Warnings |");
+      lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
       for (const run of (result?.runs || []).filter((run) => run.horizonSeconds === horizon)) {
         const reason = run.status === "invalid-action"
           ? `${run.immediate?.invalidReasonCode || run.invalidReasonCode || "UNKNOWN"}: ${run.immediate?.invalidReason || run.invalidReason || ""}`
@@ -7539,6 +7954,7 @@ function getDisplayName(item) {
           reason,
           run.metrics?.larvaeAfter ?? "",
           run.metrics?.cocoonsAfter ?? "",
+          run.metrics?.meatAfter ?? "",
           run.metrics?.meatPerSecondAfter ?? "",
           run.metrics?.territoryAfter ?? "",
           run.metrics?.territoryPerSecondAfter ?? "",
@@ -7556,7 +7972,7 @@ function getDisplayName(item) {
     if (warnings.length) {
       lines.push(`Warnings: ${laboratoryJoinWarnings(warnings)}`);
     }
-    lines.push("No larvae-spending policy is active, so meat/sec is normally identical across branches unless a formula mismatch or incomplete snapshot is reported.");
+    lines.push("No resource-spending policy is active. Rush resources are retained, and production rates change only when the source-defined action changes a rate directly.");
     return lines.join("\n");
   }
 
@@ -7594,6 +8010,37 @@ function getDisplayName(item) {
     const capture = await captureLaboratorySnapshot(options);
     if (!capture?.ok) return capture;
     const result = await laboratoryRunPhase1Experiment(capture.snapshot, options);
+    if (!result?.ok && result?.error) return result;
+    lastLaboratoryExperiment = result;
+    return { ok: true, snapshot: capture.snapshot, result };
+  }
+
+  async function laboratoryRunLivePhase2A(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const snapshot = laboratoryLatestLiveSnapshot(options);
+    const captureResult = snapshot ? { ok: true, snapshot, liveStateVerification: lastLaboratoryLiveStateVerification || null } : await captureLaboratoryLiveSnapshot(options);
+    if (!captureResult?.ok) return captureResult;
+    const experiment = await laboratoryRunPhase2AExperiment(captureResult.snapshot, options);
+    if (!experiment?.ok && experiment?.error) return experiment;
+    const liveStateVerification = captureResult.liveStateVerification || lastLaboratoryLiveStateVerification || null;
+    const result = laboratoryBuildLiveExperimentWrapper(captureResult.snapshot, experiment, liveStateVerification, options);
+    lastLaboratoryLiveSnapshot = captureResult.snapshot;
+    lastLaboratoryLiveExperiment = result;
+    lastLaboratoryLiveStateVerification = liveStateVerification;
+    return { ok: true, snapshot: captureResult.snapshot, experiment, result, liveStateVerification, observationSummary: result.observationSummary };
+  }
+
+  async function laboratoryCaptureAndRunLivePhase2A(options = {}) {
+    const capture = await captureLaboratoryLiveSnapshot(options);
+    if (!capture?.ok) return capture;
+    return laboratoryRunLivePhase2A({ ...options, snapshot: capture.snapshot });
+  }
+
+  async function laboratoryCaptureAndRunPhase2A(options = {}) {
+    const capture = await captureLaboratorySnapshot(options);
+    if (!capture?.ok) return capture;
+    const result = await laboratoryRunPhase2AExperiment(capture.snapshot, options);
     if (!result?.ok && result?.error) return result;
     lastLaboratoryExperiment = result;
     return { ok: true, snapshot: capture.snapshot, result };
@@ -13703,7 +14150,7 @@ function getDisplayName(item) {
   }
   // <build:section:adapter-territory-execution:end>
 
-  function buySmartUnits(game, commands, engine, protectedResources, remainingActions = 1) {
+  function buySmartUnits(game, commands, engine, protectedResources, remainingActions = 1, options = {}) {
     if (shouldPauseUnitsForAscension(game)) {
       recordAdvisor("HOLD", "Units", "near ascension");
       addLaneCandidate({
@@ -13768,7 +14215,9 @@ function getDisplayName(item) {
       });
     }
 
-    const plannerResult = executeMeatGuardAction({ game, commands, protectedResources, remainingActions: Math.max(0, maxUnitActions - boughtCount) });
+    const plannerResult = options.skipMeatFirst
+      ? { actionTaken: false, bought: 0, summary: "Meat winner already executed by unified evaluator" }
+      : executeMeatGuardAction({ game, commands, protectedResources, remainingActions: Math.max(0, maxUnitActions - boughtCount) });
     if (plannerResult.actionTaken && Number(plannerResult.bought || 0) > 0) {
       boughtCount += Number(plannerResult.bought || 0);
       const row = latestAdvisorRow(["BUY"]);
@@ -14103,6 +14552,137 @@ function getDisplayName(item) {
   function executeCloneGuardAction({ game, commands }) {
     return runCloneBufferPlanner(game, commands);
   }
+
+  function buildUnifiedPurchaseProposals(game, engine, protectedResources) {
+    const proposals = [];
+    const add = (candidate, executionKey) => {
+      if (!candidate) return;
+      proposals.push({ ...candidate, executionKey });
+    };
+
+    if (config.larvaEnginePriority && engine) {
+      const engineRows = [
+        { upgrade: engine.expansion, lane: "Engine", candidate: "Expansion", target: "Expansion", resource: "territory", score: 90000 },
+        { upgrade: engine.hatchery, lane: "Engine", candidate: "Hatchery", target: "Hatchery", resource: "meat", score: 80000 },
+      ];
+      for (const row of engineRows) {
+        if (!row.upgrade?.isVisible?.()) continue;
+        const buyable = !!row.upgrade?.isBuyable?.();
+        const eta = row.target === "Expansion" ? engine.expansionEta : engine.hatcheryEta;
+        const progress = row.target === "Expansion" ? engine.expansionProgress : engine.hatcheryProgress;
+        add({
+          lane: row.lane,
+          decision: buyable ? "BUY" : "HOLD",
+          candidate: row.candidate,
+          reason: buyable ? `${row.target} is immediately buyable` : `${row.target} is not buyable yet`,
+          blockers: buyable ? [] : [`${row.resource} threshold not reached`],
+          score: row.score,
+          target: row.target,
+          resource: row.resource,
+          wouldBuyAmount: buyable ? "1" : "",
+          raw: { etaSeconds: buyable ? 0 : eta, progressPercent: (progress || 0) * 100 },
+        }, "engine");
+      }
+    }
+
+    if (config.energyStrategy) {
+      const nexusCount = decimalToNumber(getNexusCount(game), 0);
+      const nextNexus = getNextNexusUpgrade(game);
+      if (nexusCount < config.nexusTarget && nextNexus) {
+        const buyable = !!nextNexus.isBuyable?.();
+        const cost = getCostForResource(nextNexus, "energy");
+        const current = getCurrentResource(game, "energy");
+        const velocity = getVelocity(game, "energy");
+        const eta = cost.greaterThan(current) && isPositive(velocity) ? decimalToNumber(cost.minus(current).dividedBy(velocity), Infinity) : 0;
+        add({
+          lane: "Energy",
+          decision: buyable ? "BUY" : "HOLD",
+          candidate: getDisplayName(nextNexus),
+          reason: buyable ? "Nexus target is immediately buyable" : "saving Energy for Nexus",
+          blockers: buyable ? [] : ["energy threshold not reached", "Nexus save"],
+          score: 90000 + Math.floor(nexusCount) * 1000,
+          target: `Nexus ${Math.floor(nexusCount) + 1}`,
+          resource: "energy",
+          wouldBuyAmount: buyable ? "1" : "",
+          raw: { etaSeconds: eta, progressPercent: cost.greaterThan(0) ? current.dividedBy(cost).times(100) : 0, costAmount: cost, currentAmount: current, velocity },
+        }, "energy");
+      }
+    }
+
+    if (config.meatGoalPlanner) {
+      const plan = buildMeatGoalPlan(game);
+      if (plan?.actionUnit) {
+        const num = getPlannerUnitBuyNum(plan.actionUnit);
+        const protectedCost = shouldAvoidProtectedCost(plan.actionUnit, protectedResources);
+        const guard = isPositive(num) ? getMeatChainPurchaseAnalysis(plan.actionUnit, num) : null;
+        const safe = canPlannerBuyUnit(plan.actionUnit) && isPositive(num) && !protectedCost && (!guard || guard.ok);
+        add({
+          lane: "Meat",
+          decision: safe ? "BUY" : "HOLD",
+          candidate: getDisplayName(plan.actionUnit),
+          reason: safe ? `target-path action for ${getDisplayName(plan.target)}` : (protectedCost ? protectedResourceHoldReason(protectedCost) : guard?.reason || "no safe target-path chunk"),
+          blockers: safe ? [] : [protectedCost ? protectedResourceBlocker(protectedCost) : guard?.type || "no safe chunk"],
+          score: unitCostScore(plan.actionUnit),
+          target: getDisplayName(plan.target),
+          resource: plan.bottleneck?.unit ? getDisplayName(plan.bottleneck.unit) : "meat chain",
+          wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
+          raw: guard?.raw || null,
+        }, "meat");
+      }
+    }
+
+    const territoryState = buildTerritoryGuardProposal({ game, engine, protectedResources });
+    const territory = territoryState?.proposal;
+    if (territory) {
+      add({
+        lane: "Territory",
+        decision: territory.meetsMinimum === false ? "HOLD" : "BUY",
+        candidate: getDisplayName(territory.unit),
+        reason: territory.reason || territoryState.territoryPrepReason || "territory proposal",
+        blockers: territory.meetsMinimum === false ? ["territory ROI below minimum"] : [],
+        score: territory.score,
+        target: territory.armySeed ? "House of Mirrors prep" : "Expansion",
+        resource: "territory",
+        wouldBuyAmount: formatSwarmNumber(territory.num),
+        raw: territory.raw || null,
+      }, "territory");
+    }
+
+    const evaluation = buildUnifiedPurchaseEvaluator(proposals, null);
+    return {
+      capturedAt: new Date().toISOString(),
+      snapshotPhase: getCurrentStrategyPhase(game, engine),
+      proposals,
+      evaluation: { ...evaluation, comparisonBasis: "single-pre-execution-snapshot" },
+      selectedExecutionKey: evaluation.winner?.safeEligible ? proposals.find((proposal) => proposal.lane === evaluation.winner.lane && proposal.candidate === evaluation.winner.candidate)?.executionKey || null : null,
+    };
+  }
+
+  function executeUnifiedPurchaseWinner({ executionKey, game, engine, commands, protectedResources, remainingActions }) {
+    if (!executionKey || remainingActions < 1) return { label: "Unified", result: { actionTaken: false, bought: 0 } };
+    if (executionKey === "engine") return { label: "Larva engine", result: executeEngineGuardAction({ game, commands, engine }) };
+    if (executionKey === "energy") return { label: "Energy", result: executeEnergyGuardAction({ game, commands, protectedResources }) };
+    if (executionKey === "meat") return { label: "Unlock planner", result: executeMeatGuardAction({ game, commands, protectedResources, remainingActions }) };
+    if (executionKey === "territory") {
+      const proposal = territoryPrepPlannerState?.proposal;
+      if (!proposal || proposal.meetsMinimum === false) return { label: "Territory", result: { actionTaken: false, bought: 0, summary: "Territory proposal no longer safe" } };
+      recordAdvisor("BUY", getDisplayName(proposal.unit), `unified evaluator selected Territory: ${proposal.reason}`);
+      addLaneCandidate({
+        lane: "Territory", decision: "BUY", candidate: getDisplayName(proposal.unit),
+        reason: `unified evaluator selected: ${proposal.reason}`, score: proposal.score,
+        wouldBuyAmount: formatSwarmNumber(proposal.num), target: proposal.armySeed ? "House of Mirrors prep" : "Expansion",
+        resource: "territory", raw: proposal.raw || null,
+      });
+      if (config.advisorOnly || !config.autoBuySafeDecisions) {
+        return { label: "Territory", result: { actionTaken: true, bought: 0, summary: `Would buy ${getDisplayName(proposal.unit)}` } };
+      }
+      const bought = safe(`Unified Territory ${getDisplayName(proposal.unit)}`, () =>
+        buyUnitAmount(commands, proposal.unit, proposal.num, proposal.armySeed ? "Army Seed" : "Territory Prep")
+      );
+      return { label: "Territory", result: { actionTaken: true, bought: bought ? 1 : 0, summary: bought ? `Bought ${getDisplayName(proposal.unit)}` : "Territory buy failed" } };
+    }
+    return { label: "Unified", result: { actionTaken: false, bought: 0 } };
+  }
   // <build:section:adapter-smart-execution:end>
 
   function smartRunOnce() {
@@ -14122,6 +14702,7 @@ function getDisplayName(item) {
     parentStepPlannerState = null;
     twinUnlockPlannerState = null;
     cloneBufferPlannerState = null;
+    unifiedPurchaseProposalState = null;
     abilityPrepPlannerState = null;
     postNexusEnergyPlannerState = null;
     territoryPrepPlannerState = null;
@@ -14208,8 +14789,27 @@ function getDisplayName(item) {
 
     let engine = analyzeLarvaEngine(game);
     let protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
+    unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
+    const unifiedFirstExecutionKey = unifiedPurchaseProposalState?.selectedExecutionKey || null;
 
-    if (canDoMoreMainActions()) {
+    if (canDoMoreMainActions() && unifiedFirstExecutionKey) {
+      const unifiedAction = executeUnifiedPurchaseWinner({
+        executionKey: unifiedFirstExecutionKey,
+        game,
+        engine,
+        commands,
+        protectedResources,
+        remainingActions: Math.max(0, maxActions - mainActions),
+      });
+      addMainResult(unifiedAction.label, unifiedAction.result);
+      if (unifiedAction.result?.actionTaken) {
+        engine = analyzeLarvaEngine(game);
+        protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
+        if (unifiedFirstExecutionKey !== "territory") territoryPrepPlannerState = null;
+      }
+    }
+
+    if (canDoMoreMainActions() && unifiedFirstExecutionKey !== "engine") {
       const engineAction = executeEngineGuardAction({ game, commands, engine });
       addMainResult("Larva engine", engineAction);
 
@@ -14224,7 +14824,7 @@ function getDisplayName(item) {
       addMainResult("Critical upgrades", criticalUpgradeAction);
     }
 
-    if (canDoMoreMainActions()) {
+    if (canDoMoreMainActions() && unifiedFirstExecutionKey !== "energy") {
       const energyAction = executeEnergyGuardAction({ game, commands, protectedResources });
       addMainResult("Energy", energyAction);
     }
@@ -14236,7 +14836,7 @@ function getDisplayName(item) {
       executeCloneGuardAction({ game, commands });
     }
 
-    if (canDoMoreMainActions()) {
+    if (canDoMoreMainActions() && unifiedFirstExecutionKey !== "meat") {
       const unlockAction = runUnlockPlanner(game, commands, protectedResources);
       addMainResult("Unlock planner", unlockAction);
     }
@@ -14298,7 +14898,14 @@ function getDisplayName(item) {
     }
 
     if (config.buyUnits && canDoMoreMainActions()) {
-      units = safe("Smart units", () => buySmartUnits(game, commands, engine, protectedResources, Math.max(1, maxActions - mainActions))) || 0;
+      units = safe("Smart units", () => buySmartUnits(
+        game,
+        commands,
+        engine,
+        protectedResources,
+        Math.max(1, maxActions - mainActions),
+        { skipMeatFirst: unifiedFirstExecutionKey === "meat" }
+      )) || 0;
       if (units === "paused-ascension") {
         summaries.push("units paused near ascension");
       } else if (units > 0) {
@@ -14761,6 +15368,11 @@ function getDisplayName(item) {
       <div class="kbc-row">
         <button id="kbc-lab-live-run-last" title="Run Phase 1 on the latest live snapshot">Run Last Snapshot</button>
         <button id="kbc-lab-live-run" title="Capture live state and run Phase 1">Capture + Run</button>
+      </div>
+
+      <div class="kbc-row">
+        <button id="kbc-lab-live-run-rush-last" title="Run read-only Rush comparison on the latest live snapshot">Run Rush Snapshot</button>
+        <button id="kbc-lab-live-run-rush" title="Capture live state and compare Wait, Larva Rush, Meat Rush, and Territory Rush">Capture + Rush Lab</button>
       </div>
 
       <div class="kbc-row">
@@ -16041,6 +16653,28 @@ function getDisplayName(item) {
       refreshPanel();
     });
 
+    panel?.querySelector("#kbc-lab-live-run-rush-last")?.addEventListener("click", async () => {
+      const result = await laboratoryRunLivePhase2A({ snapshot: lastLaboratoryLiveSnapshot || null });
+      const status = panel?.querySelector("#kbc-lab-live-status");
+      if (!result?.ok) {
+        if (status) status.textContent = result.error || "Laboratory Rush run failed.";
+        return;
+      }
+      if (status) status.textContent = `Rush experiment ${result.result?.experimentHash || result.experiment?.experimentHash || "pending"}`;
+      refreshPanel();
+    });
+
+    panel?.querySelector("#kbc-lab-live-run-rush")?.addEventListener("click", async () => {
+      const result = await laboratoryCaptureAndRunLivePhase2A();
+      const status = panel?.querySelector("#kbc-lab-live-status");
+      if (!result?.ok) {
+        if (status) status.textContent = result.error || "Laboratory live Rush capture/run failed.";
+        return;
+      }
+      if (status) status.textContent = `Rush experiment ${result.result?.experimentHash || result.experiment?.experimentHash || "pending"}`;
+      refreshPanel();
+    });
+
     panel?.querySelector("#kbc-lab-live-export-result-json")?.addEventListener("click", async () => {
       let result = lastLaboratoryLiveExperiment;
       if (!result) {
@@ -16780,6 +17414,12 @@ function getDisplayName(item) {
         return liveDiagnostics || buildLiveDiagnostics(runHistory);
       },
 
+      purchaseEvaluator: {
+        evaluate(candidates = [], selectedMainAction = null) {
+          return laboratoryCloneJson(buildUnifiedPurchaseEvaluator(candidates, selectedMainAction));
+        },
+      },
+
       clearRunHistory,
 
       getLogExport(format = "markdown") {
@@ -16865,6 +17505,7 @@ function getDisplayName(item) {
           if (actionId === "WAIT") return { snapshot, ...laboratoryWaitImmediate(snapshot, []) };
           if (actionId === "CLONE_LARVAE") return { snapshot, ...laboratoryCloneLarvaeImmediate(snapshot, []) };
           if (actionId === "HOUSE_OF_MIRRORS") return { snapshot, ...laboratoryHouseOfMirrorsImmediate(snapshot, []) };
+          if (LABORATORY_PHASE2A_ACTION_IDS.includes(actionId)) return { snapshot, ...laboratoryRushImmediate(snapshot, actionId, []) };
           return { snapshot, ok: false, status: "invalid-action", actionLegal: false, actionApplied: false, actionSafetySafe: false, warnings: ["unsupported action"] };
         },
         projectState(postActionState, horizonSeconds) {
@@ -16875,16 +17516,32 @@ function getDisplayName(item) {
           if (!gate.ok) return gate;
           return laboratoryRunPhase1Experiment(snapshot, options);
         },
+        async runPhase2AExperiment(snapshot, options = {}) {
+          const gate = laboratoryRequireDevelopmentGate();
+          if (!gate.ok) return gate;
+          return laboratoryRunPhase2AExperiment(snapshot, options);
+        },
         async runLivePhase1(options = {}) {
           return laboratoryRunLivePhase1(options);
+        },
+        async runLivePhase2A(options = {}) {
+          return laboratoryRunLivePhase2A(options);
         },
         async captureAndRunPhase1(options = {}) {
           const gate = laboratoryRequireDevelopmentGate();
           if (!gate.ok) return gate;
           return laboratoryCaptureAndRunPhase1(options);
         },
+        async captureAndRunPhase2A(options = {}) {
+          const gate = laboratoryRequireDevelopmentGate();
+          if (!gate.ok) return gate;
+          return laboratoryCaptureAndRunPhase2A(options);
+        },
         async captureAndRunLivePhase1(options = {}) {
           return laboratoryCaptureAndRunLivePhase1(options);
+        },
+        async captureAndRunLivePhase2A(options = {}) {
+          return laboratoryCaptureAndRunLivePhase2A(options);
         },
         exportSnapshotJson(snapshot) {
           return laboratoryExportSnapshotJson(snapshot);

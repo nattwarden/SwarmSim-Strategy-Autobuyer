@@ -19,6 +19,10 @@ docs/release-notes/
 
 ## Version notes
 
+- 0.13.0: Unified Purchase Evaluator coordinates the first reversible purchase
+  from one pre-execution snapshot, while Laboratory Phase 2A adds source-derived
+  Rush simulation and an advisor-only Energy Opportunity Report. Existing
+  irreversible-action safety defaults remain unchanged.
 - 2026-07-10 docs/planning: Strategy Audit now requires a documented testbed
   feasibility decision before execution. Disposable audit instances may be
   freely staged, while planner output may never be forced. A visible headed
