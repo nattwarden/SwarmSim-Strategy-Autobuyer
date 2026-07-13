@@ -1970,10 +1970,131 @@ function getDisplayName(item) {
       confidence: evidenceFields >= 5 ? "high" : evidenceFields >= 3 ? "medium" : "low",
       evidenceFields,
       target: candidate?.target || "",
+      resource: candidate?.resource || "",
+      costResources: normalizeWholeEconomyCostResources(candidate),
       amount: candidate?.wouldBuyAmount || "",
       components,
       blockers,
       reason: candidate?.reason || "",
+    };
+  }
+
+  function wholeEconomyDomainForLane(lane) {
+    if (lane === "Meat") return { id: "meat", label: "Meat chain", lanes: ["Meat"] };
+    if (lane === "Engine") return { id: "engine", label: "Larva/Engine", lanes: ["Engine"] };
+    if (lane === "Territory") return { id: "territory", label: "Army/Territory", lanes: ["Territory"] };
+    return null;
+  }
+
+  function formatWholeEconomyAction(row) {
+    if (!row) return "none";
+    const laneLabel = row.lane === "Territory" ? "Army/Territory" : row.lane;
+    return `${laneLabel}: ${row.candidate || "unknown"}${row.amount ? ` × ${row.amount}` : ""}`;
+  }
+
+  function roundWholeEconomy(value) {
+    return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : null;
+  }
+
+  function normalizeWholeEconomyCostResources(candidate) {
+    const explicit = Array.isArray(candidate?.costResources) ? candidate.costResources : [];
+    const fallback = candidate?.resource ? [candidate.resource] : [];
+    return Array.from(new Set([...explicit, ...fallback]
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter(Boolean)));
+  }
+
+  function buildWholeEconomyShadowPreview(evaluatedRows = []) {
+    const trackedDomains = [
+      { id: "meat", label: "Meat chain", lanes: ["Meat"] },
+      { id: "engine", label: "Larva/Engine", lanes: ["Engine"] },
+      { id: "territory", label: "Army/Territory", lanes: ["Territory"] },
+    ];
+
+    const domainCandidates = trackedDomains.map((domain) => {
+      const scopedRows = evaluatedRows
+        .filter((row) => domain.lanes.includes(row.lane))
+        .sort((a, b) => (Number(b.safeEligible) - Number(a.safeEligible)) || (b.economicScore - a.economicScore));
+      const selected = scopedRows[0] || null;
+      const blockingReason = selected?.blockers?.[0] || "not buyable yet";
+      return {
+        domain: domain.label,
+        lane: selected?.lane || domain.lanes[0],
+        candidate: selected?.candidate || "none",
+        action: formatWholeEconomyAction(selected),
+        target: selected?.target || "none",
+        decision: selected?.decision || "HOLD",
+        safeEligible: !!selected?.safeEligible,
+        economicScore: roundWholeEconomy(selected?.economicScore),
+        confidence: selected?.confidence || "low",
+        resource: selected?.resource || "none",
+        costResources: selected?.costResources || [],
+        blockers: selected?.blockers || [],
+        blocker: selected ? blockingReason : "no lane candidate emitted",
+        reason: selected?.reason || (selected ? "candidate is waiting" : "lane proposal missing"),
+        evidenceFields: Number.isFinite(selected?.evidenceFields) ? selected.evidenceFields : 0,
+      };
+    });
+
+    const ranked = domainCandidates.slice().sort((a, b) => {
+      const eligibilityDelta = Number(b.safeEligible) - Number(a.safeEligible);
+      if (eligibilityDelta !== 0) return eligibilityDelta;
+      return (Number(b.economicScore) || -Infinity) - (Number(a.economicScore) || -Infinity);
+    });
+
+    const winner = ranked.find((row) => row.safeEligible) || null;
+    const losers = ranked.filter((row) => !winner || row.domain !== winner.domain);
+    const topLosers = losers.slice(0, 2).map((row) => {
+      const scoreGap = winner ? roundWholeEconomy((winner.economicScore || 0) - (row.economicScore || 0)) : null;
+      const whyWaiting = !row.safeEligible
+        ? row.blocker
+        : Number.isFinite(scoreGap)
+          ? `lower whole-economy score by ${trimNumber(scoreGap)}`
+          : "insufficient comparable score";
+      const switchSignal = !row.safeEligible
+        ? `unblock ${row.domain.toLowerCase()}: ${row.blocker}`
+        : Number.isFinite(scoreGap)
+          ? `improve by at least ${trimNumber(scoreGap)} score or winner weakens`
+          : "improve ETA/payback/reserve evidence";
+      return {
+        ...row,
+        scoreGap,
+        whyWaiting,
+        switchSignal,
+      };
+    });
+
+    const resourceConflicts = winner
+      ? topLosers.flatMap((row) => {
+          const shared = winner.costResources.filter((resource) => row.costResources.includes(resource));
+          return shared.map((resource) => `${winner.domain} and ${row.domain} both spend ${resource}`);
+        })
+      : [];
+
+    const topOpportunityCost = topLosers[0]
+      ? `${topLosers[0].domain}: ${topLosers[0].action} (${topLosers[0].whyWaiting})`
+      : "none";
+
+    const switchSignal = topLosers.length
+      ? topLosers.map((row) => `${row.domain}: ${row.switchSignal}`).join("; ")
+      : "wait for a second comparable lane candidate";
+
+    return {
+      schemaVersion: "whole-economy-shadow-preview.v1",
+      mode: "shadow-advisor-only",
+      executionAuthority: false,
+      goal: "best whole-economy opportunity",
+      winner,
+      losers: topLosers,
+      domainCandidates,
+      resourceConflicts,
+      topOpportunityCost,
+      switchSignal,
+      advisorOnlyReason: winner
+        ? (winner.confidence === "low"
+          ? "winner has low evidence quality; advisory only"
+          : "shadow preview remains advisor-only in Milestone 1")
+        : "no safe domain winner",
     };
   }
 
@@ -1987,11 +2108,13 @@ function getDisplayName(item) {
         || evaluated.find((row) => row.lane === selectedMainAction.lane)
         || null
       : null;
+    const wholeEconomyPreview = buildWholeEconomyShadowPreview(evaluated);
     const sufficientForExecution = !!winner && winner.confidence !== "low" && (!runnerUp || winner.economicScore > runnerUp.economicScore);
     return {
       mode: "shadow-advisor-only",
       comparisonBasis: "post-sequential-candidate-observation",
       executionAuthority: false,
+      wholeEconomyPreview,
       winner,
       runnerUp,
       councilSelection,
@@ -2758,6 +2881,9 @@ function getDisplayName(item) {
           selectedExecutionKey: unifiedPurchaseProposalState.selectedExecutionKey,
         }
       : buildUnifiedPurchaseEvaluator(laneCandidates, selectedMainAction);
+    const wholeEconomyPreview = purchaseEvaluator.wholeEconomyPreview || null;
+    const wholeEconomyWinner = wholeEconomyPreview?.winner || null;
+    const wholeEconomyLosers = wholeEconomyPreview?.losers || [];
     const noSideReason = selectedSideAction?.reason
       ? selectedSideAction.reason
       : (refillState?.decision === "HOLD" && refillState?.whyNoFollowUpAction && refillState.whyNoFollowUpAction !== "none"
@@ -2860,6 +2986,21 @@ function getDisplayName(item) {
       purchaseEvaluatorAgreesWithCouncil: purchaseEvaluator.agreesWithCouncil,
       purchaseEvaluatorScoreMargin: purchaseEvaluator.scoreMargin,
       purchaseEvaluatorWhyNotExecuting: purchaseEvaluator.whyNotExecuting,
+      wholeEconomyShadowMode: wholeEconomyPreview?.mode || "shadow-advisor-only",
+      wholeEconomyExecutionAuthority: wholeEconomyPreview?.executionAuthority === true ? "enabled" : "advisor-only",
+      wholeEconomyBestOpportunity: wholeEconomyWinner ? wholeEconomyWinner.domain : "none",
+      wholeEconomyBestAction: wholeEconomyWinner?.action || "none",
+      wholeEconomyBestTarget: wholeEconomyWinner?.target || "none",
+      wholeEconomyBestGoal: wholeEconomyPreview?.goal || "best whole-economy opportunity",
+      wholeEconomyBestReason: wholeEconomyWinner?.reason || "none",
+      wholeEconomyResourceConflicts: wholeEconomyPreview?.resourceConflicts?.length ? wholeEconomyPreview.resourceConflicts.join("; ") : "none",
+      wholeEconomyTopOpportunityCost: wholeEconomyPreview?.topOpportunityCost || "none",
+      wholeEconomyWhyOthersWait: wholeEconomyLosers.length
+        ? wholeEconomyLosers.map((row) => `${row.domain}: ${row.whyWaiting}`).join("; ")
+        : "none",
+      wholeEconomySwitchSignal: wholeEconomyPreview?.switchSignal || "none",
+      wholeEconomyAdvisorOnlyReason: wholeEconomyPreview?.advisorOnlyReason || "shadow preview is advisory",
+      wholeEconomyLosingCandidates: wholeEconomyLosers,
       purchaseProposalSnapshot: unifiedPurchaseProposalState,
       laneCoordinatorDecision: coordinatorState?.coordinatorDecision || mainLaneDecisionLabel(mainActions, sideActions),
       laneCoordinatorSelectedActions: coordinatorState?.selectedLaneActions || [],
@@ -3082,6 +3223,15 @@ function getDisplayName(item) {
       ["Agrees with Council", strategyInspector.purchaseEvaluatorAgreesWithCouncil ? "yes" : "no"],
       ["Economic margin", strategyInspector.purchaseEvaluatorScoreMargin ?? "n/a"],
       ["Evaluator hold", strategyInspector.purchaseEvaluatorWhyNotExecuting || "none"],
+      ["Whole-economy mode", `${strategyInspector.wholeEconomyShadowMode || "shadow-advisor-only"} (${strategyInspector.wholeEconomyExecutionAuthority || "advisor-only"})`],
+      ["Best whole-economy opportunity", strategyInspector.wholeEconomyBestOpportunity || "none"],
+      ["Whole-economy action", strategyInspector.wholeEconomyBestAction || "none"],
+      ["Whole-economy target", strategyInspector.wholeEconomyBestTarget || "none"],
+      ["Whole-economy conflicts", strategyInspector.wholeEconomyResourceConflicts || "none"],
+      ["Top opportunity cost", strategyInspector.wholeEconomyTopOpportunityCost || "none"],
+      ["Why others wait", strategyInspector.wholeEconomyWhyOthersWait || "none"],
+      ["Decision switch signal", strategyInspector.wholeEconomySwitchSignal || "none"],
+      ["Advisor-only reason", strategyInspector.wholeEconomyAdvisorOnlyReason || "none"],
       ["Why no companion", strategyInspector.overseerWhyNoSide || "none"],
       ["Blocked by hard guard", strategyInspector.overseerBlockedByHardGuard || "none"],
       ["Main", strategyInspector.mainDecision || strategyInspector.decision],
@@ -4006,6 +4156,12 @@ function getDisplayName(item) {
 
     items.push(`Primary focus: ${strategyInspector.momentumPrimaryFocus || "Methodical progression"}.`);
     items.push(`Best step: ${strategyInspector.momentumBestStep || "Wait"} (${strategyInspector.momentumBestStepDecision || "WAIT"}).`);
+    if (usefulCouncilText(strategyInspector.wholeEconomyBestOpportunity)) {
+      items.push(`Whole economy winner: ${strategyInspector.wholeEconomyBestOpportunity || "none"} via ${strategyInspector.wholeEconomyBestAction || "none"}.`);
+    }
+    if (usefulCouncilText(strategyInspector.wholeEconomyWhyOthersWait) && strategyInspector.wholeEconomyWhyOthersWait !== "none") {
+      items.push(`Why others wait: ${strategyInspector.wholeEconomyWhyOthersWait}.`);
+    }
     if (usefulCouncilText(strategyInspector.energySupportBestUseReason)) {
       items.push(`Energy support: ${strategyInspector.energySupportBestUse || "wait"} - ${strategyInspector.energySupportBestUseReason}.`);
     }
@@ -4017,7 +4173,7 @@ function getDisplayName(item) {
       items.push(strategyInspector.nextLikelyBuy ? `Watch next likely buy: ${strategyInspector.nextLikelyBuy}.` : "No urgent focus; observe the next Smart run.");
     }
 
-    return items.slice(0, 4);
+    return items.slice(0, 5);
   }
 
   function buildCouncilSpeakerState() {
@@ -4101,10 +4257,12 @@ function getDisplayName(item) {
     }
 
     return {
-      doThisNow: strategyInspector.momentumBestStep || "Wait",
-      why: strategyInspector.momentumBestStepReason || strategyInspector.energySupportBestUseReason || "No safe bounded action yet.",
+      doThisNow: strategyInspector.wholeEconomyBestAction && strategyInspector.wholeEconomyBestAction !== "none"
+        ? `Manual advisor: consider ${strategyInspector.wholeEconomyBestAction}`
+        : strategyInspector.momentumBestStep || "Wait",
+      why: strategyInspector.wholeEconomyBestReason || strategyInspector.momentumBestStepReason || strategyInspector.energySupportBestUseReason || "No safe bounded action yet.",
       botIsDoing: strategyInspector.momentumAutobuyerInstruction || "Bounded Smart actions only.",
-      playerShouldAvoid: strategyInspector.momentumPlayerInstruction || "Avoid risky spend while guardrails are active.",
+      playerShouldAvoid: strategyInspector.momentumPlayerInstruction || "Treat the whole-economy suggestion as manual advice; automation still follows existing guardrails.",
     };
   }
 
@@ -4342,6 +4500,7 @@ function getDisplayName(item) {
         </div>
         <div class="kbc-council-summary">
           ${councilSummaryTile("Phase", strategyInspector.phase || "n/a")}
+          ${councilSummaryTile("Whole economy", strategyInspector.wholeEconomyBestOpportunity || "none")}
           ${councilSummaryTile("Primary", strategyInspector.momentumPrimaryFocus || "n/a")}
           ${councilSummaryTile("Advisor", strategyInspector.momentumPrimaryAdvisor || activeSpeaker.speaker || "none")}
           ${councilSummaryTile("Main", strategyInspector.overseerMainSelected || "none")}
@@ -4450,6 +4609,18 @@ function getDisplayName(item) {
       closestMainLaneToBuying: strategyInspector?.closestMainLaneToBuying || summary.closestMainLaneToBuying,
       closestLaneToBuying: strategyInspector?.closestLaneToBuying || summary.closestLaneToBuying,
       nextLikelyBuy: strategyInspector?.nextLikelyBuy || "unknown",
+      wholeEconomyShadowMode: strategyInspector?.wholeEconomyShadowMode || "shadow-advisor-only",
+      wholeEconomyExecutionAuthority: strategyInspector?.wholeEconomyExecutionAuthority || "advisor-only",
+      wholeEconomyBestOpportunity: strategyInspector?.wholeEconomyBestOpportunity || "none",
+      wholeEconomyBestAction: strategyInspector?.wholeEconomyBestAction || "none",
+      wholeEconomyBestTarget: strategyInspector?.wholeEconomyBestTarget || "none",
+      wholeEconomyBestReason: strategyInspector?.wholeEconomyBestReason || "none",
+      wholeEconomyResourceConflicts: strategyInspector?.wholeEconomyResourceConflicts || "none",
+      wholeEconomyTopOpportunityCost: strategyInspector?.wholeEconomyTopOpportunityCost || "none",
+      wholeEconomyWhyOthersWait: strategyInspector?.wholeEconomyWhyOthersWait || "none",
+      wholeEconomySwitchSignal: strategyInspector?.wholeEconomySwitchSignal || "none",
+      wholeEconomyAdvisorOnlyReason: strategyInspector?.wholeEconomyAdvisorOnlyReason || "none",
+      wholeEconomyLosingCandidates: strategyInspector?.wholeEconomyLosingCandidates || [],
       // Legacy 0.7.3 names kept for compatibility.
       bestRejectedCandidate: strategyInspector?.bestRejectedCandidate || summary.bestRejectedCandidate,
       bestAllowedCandidate: strategyInspector?.bestAllowedCandidate || summary.bestAllowedCandidate,
@@ -14592,6 +14763,7 @@ function getDisplayName(item) {
           score: row.score,
           target: row.target,
           resource: row.resource,
+          costResources: getCostList(row.upgrade).map((cost) => cost?.unit?.name).filter(Boolean),
           wouldBuyAmount: buyable ? "1" : "",
           raw: { etaSeconds: buyable ? 0 : eta, progressPercent: (progress || 0) * 100 },
         }, "engine");
@@ -14638,6 +14810,7 @@ function getDisplayName(item) {
           score: unitCostScore(plan.actionUnit),
           target: getDisplayName(plan.target),
           resource: plan.bottleneck?.unit ? getDisplayName(plan.bottleneck.unit) : "meat chain",
+          costResources: getCostList(plan.actionUnit).map((cost) => cost?.unit?.name).filter(Boolean),
           wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
           raw: guard?.raw || null,
         }, "meat");
@@ -14656,6 +14829,7 @@ function getDisplayName(item) {
         score: territory.score,
         target: territory.armySeed ? "House of Mirrors prep" : "Expansion",
         resource: "territory",
+        costResources: getCostList(territory.unit).map((cost) => cost?.unit?.name).filter(Boolean),
         wouldBuyAmount: formatSwarmNumber(territory.num),
         raw: territory.raw || null,
       }, "territory");

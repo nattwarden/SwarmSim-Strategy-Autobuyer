@@ -19,12 +19,17 @@ async function main() {
     const evaluation = await page.evaluate(() => window.kbcSwarmBot.purchaseEvaluator.evaluate([
       {
         lane: "Meat", decision: "BUY", candidate: "Drone", target: "Nest", wouldBuyAmount: "100",
-        reason: "target unlock step", score: 90000, blockers: [],
+        reason: "target unlock step", score: 90000, blockers: [], costResources: ["meat", "larva"],
         raw: { paybackSeconds: 900, paybackLimitSeconds: 1800, reserveRatio: 3, progressPercent: 40 },
       },
       {
+        lane: "Engine", decision: "BUY", candidate: "Hatchery", target: "Hatchery", wouldBuyAmount: "1",
+        reason: "improves larva production", score: 80000, blockers: [], costResources: ["meat", "larva"],
+        raw: { etaSeconds: 300, reserveRatio: 2, progressPercent: 60 },
+      },
+      {
         lane: "Territory", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "5",
-        reason: "improves Expansion ETA", score: 70000, blockers: [],
+        reason: "improves Expansion ETA", score: 70000, blockers: [], costResources: ["meat", "larva"],
         raw: { etaBeforeSeconds: 600, etaImprovementSeconds: 240, reserveRatio: 4, progressPercent: 70 },
       },
       {
@@ -40,6 +45,14 @@ async function main() {
     assert(evaluation.agreesWithCouncil === false, "Council divergence was not detected");
     assert(evaluation.evaluated.find((row) => row.lane === "Energy")?.safeEligible === false, "blocked candidate became eligible");
     assert(evaluation.scoreMargin > 0, "winner margin is missing");
+    assert(evaluation.wholeEconomyPreview?.mode === "shadow-advisor-only", "whole-economy preview mode mismatch");
+    assert(evaluation.wholeEconomyPreview?.executionAuthority === false, "whole-economy preview must remain advisor-only");
+    assert(evaluation.wholeEconomyPreview?.winner?.domain === "Army/Territory", "whole-economy winner domain mismatch");
+    assert(Array.isArray(evaluation.wholeEconomyPreview?.domainCandidates) && evaluation.wholeEconomyPreview.domainCandidates.length === 3, "expected three normalized whole-economy domain candidates");
+    assert(evaluation.wholeEconomyPreview.domainCandidates.every((row) => row.candidate !== "none"), "whole-economy domain passed with a placeholder candidate");
+    assert(evaluation.wholeEconomyPreview.domainCandidates.some((row) => row.domain === "Larva/Engine" && row.candidate === "Hatchery"), "real Larva/Engine candidate missing");
+    assert(Array.isArray(evaluation.wholeEconomyPreview?.losers) && evaluation.wholeEconomyPreview.losers.length >= 2, "expected at least two losing whole-economy candidates");
+    assert(Array.isArray(evaluation.wholeEconomyPreview?.resourceConflicts) && evaluation.wholeEconomyPreview.resourceConflicts.length > 0, "shared purchase resources were not reported");
   } finally {
     await browser.close();
   }
