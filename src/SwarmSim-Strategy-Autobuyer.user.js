@@ -4021,6 +4021,18 @@ function getDisplayName(item) {
     return ascensionMutagenPow(15625, normalized);
   }
 
+  function ascensionMutagenEnergyEtaSeconds(costValue, currentValue, rateValue, capValue) {
+    const cost = ascensionMutagenToDecimal(costValue, 0);
+    const current = ascensionMutagenToDecimal(currentValue, 0);
+    const rate = ascensionMutagenToDecimal(rateValue, 0);
+    const cap = ascensionMutagenToDecimal(capValue, 0);
+    if (cap.greaterThan(0) && cost.greaterThanOrEqualTo(cap)) return null;
+    if (current.greaterThanOrEqualTo(cost)) return 0;
+    if (!rate.greaterThan(0)) return null;
+    const eta = decimalToNumber(cost.minus(current).dividedBy(rate), NaN);
+    return Number.isFinite(eta) ? Math.max(0, eta) : null;
+  }
+
   function buildMutagenPlan(snapshot) {
     const horizonSeconds = Math.max(0, ascensionMutagenToNumber(snapshot?.recoveryModel?.nextRunHorizonSeconds, 0));
     const activeAfterAscend = ascensionMutagenToDecimal(snapshot?.mutagen?.activeAfterAscend || 0, 0);
@@ -4277,8 +4289,7 @@ function getDisplayName(item) {
     const runtimeAscendCost = ascensionMutagenToDecimal(safe("Ascend cost", () => game.ascendCost?.()) || 0, 0);
     const runtimeAscendPercent = ascensionMutagenToDecimal(safe("Ascend cost percent", () => game.ascendCostPercent?.()) || 0, 0);
     const energyCapBlocked = energyCap.greaterThan(0) ? runtimeAscendCost.greaterThanOrEqualTo(energyCap) : false;
-    const runtimeEnergyEtaRaw = safe("Ascend energy ETA", () => game.ascendCostDurationSecs?.(runtimeAscendCost));
-    const runtimeEnergyEta = energyCapBlocked ? null : (Number.isFinite(Number(runtimeEnergyEtaRaw)) ? Number(runtimeEnergyEtaRaw) : null);
+    const runtimeEnergyEta = ascensionMutagenEnergyEtaSeconds(runtimeAscendCost, currentEnergy, energyPerSecond, energyCap);
     const sessionRestart = safe("Session restarted time", () => game?.session?.state?.date?.restarted);
     const now = Date.now();
     const elapsedSeconds = Number.isFinite(Number(sessionRestart)) ? Math.max(0, Math.floor((now - Number(sessionRestart)) / 1000)) : null;
@@ -5555,22 +5566,88 @@ function getDisplayName(item) {
       };
     }
 
+    let botIsDoing = strategyInspector.momentumAutobuyerInstruction || "Bounded Smart actions only.";
+    if (strategyInspector.coordinatorExecuted === "yes") {
+      botIsDoing = `${strategyInspector.coordinatorExecutionLabel || "Coordinator"}: ${strategyInspector.coordinatorExecutionResult || "executed"}`;
+    } else if (strategyInspector.coordinatorExecutionAuthority === "true") {
+      botIsDoing = "Coordinator selected an action but no purchase executed this tick.";
+    } else if (usefulCouncilText(strategyInspector.coordinatorFallbackPlanner)) {
+      botIsDoing = `Guarded fallback active: ${strategyInspector.coordinatorFallbackPlanner}${usefulCouncilText(strategyInspector.coordinatorFallbackPlannerReason) ? ` - ${strategyInspector.coordinatorFallbackPlannerReason}` : ""}`;
+    } else if (usefulCouncilText(strategyInspector.coordinatorFallbackReason)) {
+      botIsDoing = `Coordinator held: ${strategyInspector.coordinatorFallbackReason}`;
+    }
+
     return {
       doThisNow: strategyInspector.coordinatorSelectedCandidate && strategyInspector.coordinatorSelectedCandidate !== "none"
         ? `Coordinator selected ${strategyInspector.coordinatorSelectedLane || "lane"}: ${strategyInspector.coordinatorSelectedCandidate}`
         : (strategyInspector.wholeEconomyBestAction && strategyInspector.wholeEconomyBestAction !== "none"
           ? `Manual advisor: consider ${strategyInspector.wholeEconomyBestAction}`
           : strategyInspector.momentumBestStep || "Wait"),
-      why: strategyInspector.coordinatorSelectedReason || strategyInspector.wholeEconomyBestReason || strategyInspector.momentumBestStepReason || strategyInspector.energySupportBestUseReason || "No safe bounded action yet.",
-      botIsDoing: strategyInspector.coordinatorExecuted === "yes"
-        ? `${strategyInspector.coordinatorExecutionLabel || "Coordinator"}: ${strategyInspector.coordinatorExecutionResult || "executed"}`
-        : (strategyInspector.coordinatorExecutionAuthority === "true"
-          ? "Coordinator selected an action but no purchase executed this tick."
-          : (strategyInspector.coordinatorFallbackReason && strategyInspector.coordinatorFallbackReason !== "none"
-            ? `Coordinator refused execution: ${strategyInspector.coordinatorFallbackReason}`
-            : (strategyInspector.momentumAutobuyerInstruction || "Bounded Smart actions only."))),
-      playerShouldAvoid: strategyInspector.momentumPlayerInstruction || "Treat the whole-economy suggestion as manual advice; automation still follows existing guardrails.",
+      why: firstCouncilText(
+        strategyInspector.coordinatorSelectedReason,
+        strategyInspector.wholeEconomyBestReason,
+        strategyInspector.councilFocusBubble,
+        strategyInspector.mainReason,
+        strategyInspector.momentumBestStepReason,
+        strategyInspector.energySupportBestUseReason
+      ) || "No safe bounded action yet.",
+      botIsDoing,
+      playerShouldAvoid: usefulCouncilText(strategyInspector.overseerBlockedByHardGuard)
+        ? `Do not bypass: ${strategyInspector.overseerBlockedByHardGuard}`
+        : "Do not bypass reserves, Nexus/Energy protection, or advisor-only controls.",
     };
+  }
+
+  function councilAdvisorCardHtml(title, recommendation, action, reason, details) {
+    return `
+      <article class="kbc-council-advisor-result">
+        <header><span>${escapeHtml(title)}</span>${councilBadgeHtml(recommendation)}</header>
+        <strong>${escapeHtml(action || recommendation || "Observe")}</strong>
+        <p>${escapeHtml(reason || "No advisor reason available this run.")}</p>
+        <small>${escapeHtml(details || "Advisor-only; no execution authority.")}</small>
+      </article>
+    `;
+  }
+
+  function buildCouncilAdvisorResultsHtml() {
+    if (!strategyInspector) return "";
+    const abilityDetails = [
+      `confidence ${strategyInspector.abilityTimingConfidence || "low"}`,
+      `opportunity cost ${strategyInspector.abilityTimingEnergyOpportunityCost || "unknown"}`,
+      `reconsider ${strategyInspector.abilityTimingReconsiderCondition || "unknown"}`,
+      strategyInspector.abilityTimingExecutionAuthority || "advisor-only",
+    ].join(" | ");
+    const mutagenAction = strategyInspector.ascensionAdvisorMutagenPlan?.recommendedActionId || "KEEP_UNALLOCATED";
+    const breakEven = strategyInspector.ascensionAdvisorBreakEvenSeconds !== null
+      && strategyInspector.ascensionAdvisorBreakEvenSeconds !== undefined
+      && Number.isFinite(Number(strategyInspector.ascensionAdvisorBreakEvenSeconds))
+      ? formatDuration(Number(strategyInspector.ascensionAdvisorBreakEvenSeconds))
+      : "unavailable";
+    const ascensionDetails = [
+      `confidence ${strategyInspector.ascensionAdvisorConfidence || "low"}`,
+      `break-even ${breakEven}`,
+      `mutagen ${mutagenAction}`,
+      `reconsider ${strategyInspector.ascensionAdvisorReconsiderCondition || "unknown"}`,
+      strategyInspector.ascensionAdvisorExecutionAuthority || "advisor-only",
+    ].join(" | ");
+    return `
+      <section class="kbc-council-advisor-results" aria-label="Ability, Ascension and Mutagen advisors">
+        ${councilAdvisorCardHtml(
+          "Ability timing",
+          strategyInspector.abilityTimingRecommendation || "SAVE",
+          strategyInspector.abilityTimingRecommendedAction || "Save Energy",
+          strategyInspector.abilityTimingReason,
+          abilityDetails
+        )}
+        ${councilAdvisorCardHtml(
+          "Ascension & Mutagen",
+          strategyInspector.ascensionAdvisorRecommendation || "CONTINUE_RUN",
+          strategyInspector.ascensionAdvisorRecommendation || "CONTINUE_RUN",
+          strategyInspector.ascensionAdvisorReason,
+          ascensionDetails
+        )}
+      </section>
+    `;
   }
 
   function councilCardHtml(card, activeSpeaker) {
@@ -5931,6 +6008,7 @@ function getDisplayName(item) {
         <section class="kbc-council-lanes" aria-label="Economic lanes">
           ${primaryLanes.map(councilUiLaneCardHtml).join("")}
         </section>
+        ${buildCouncilAdvisorResultsHtml()}
         <details class="kbc-council-details">
           <summary>Council reasoning and technical details</summary>
           <section class="kbc-council-focus" aria-label="Focus now">
@@ -5978,6 +6056,8 @@ function getDisplayName(item) {
       laneCard("Energy", laneByName.get("Energy")),
       laneCard("Clone", laneByName.get("Clone Prep")),
       laneCard("Ability", laneByName.get("Ability")),
+      ["Ability timing", `${strategyInspector.abilityTimingRecommendation || "SAVE"} ${strategyInspector.abilityTimingRecommendedAction || "Save Energy"}`, strategyInspector.abilityTimingReason || "none", `confidence ${strategyInspector.abilityTimingConfidence || "low"}; reconsider ${strategyInspector.abilityTimingReconsiderCondition || "unknown"}`],
+      ["Ascension & Mutagen", strategyInspector.ascensionAdvisorRecommendation || "CONTINUE_RUN", strategyInspector.ascensionAdvisorReason || "none", `break-even ${strategyInspector.ascensionAdvisorBreakEvenSeconds ?? "n/a"}s; mutagen ${strategyInspector.ascensionAdvisorMutagenPlan?.recommendedActionId || "KEEP_UNALLOCATED"}; ${strategyInspector.ascensionAdvisorExecutionAuthority || "advisor-only"}`],
       laneCard("Twin / Upgrade", laneByName.get("Upgrade") || laneByName.get("Twin")),
       ["Next likely buy", strategyInspector.nextLikelyBuy || strategyInspector.waits, liveDiagnosticsWarningLabel(), strategyInspector.blockedBySummary || ""],
     ];
@@ -18732,6 +18812,51 @@ function getDisplayName(item) {
         box-shadow: inset 0 0 18px rgba(0,0,0,0.3);
       }
 
+      .kbc-council-advisor-results {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: 6px;
+      }
+
+      .kbc-council-advisor-result {
+        min-width: 0;
+        padding: 9px;
+        border: 1px solid rgba(81,183,255,0.38);
+        border-radius: 6px;
+        background: rgba(25,42,56,0.82);
+      }
+
+      .kbc-council-advisor-result header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .kbc-council-advisor-result header > span {
+        color: #9fc7ff;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .kbc-council-advisor-result > strong,
+      .kbc-council-advisor-result > p,
+      .kbc-council-advisor-result > small {
+        display: block;
+        margin-top: 5px;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-advisor-result > p {
+        margin-bottom: 0;
+        color: #e8eef5;
+      }
+
+      .kbc-council-advisor-result > small {
+        color: var(--kbc-council-muted);
+      }
+
       .kbc-council-lane-meat { --kbc-lane-color: #c479ff; --kbc-lane-art: var(--kbc-art-lane-meat); }
       .kbc-council-lane-engine { --kbc-lane-color: #71df77; --kbc-lane-art: var(--kbc-art-lane-engine); }
       .kbc-council-lane-territory { --kbc-lane-color: #f0b631; --kbc-lane-art: var(--kbc-art-lane-territory); }
@@ -19154,6 +19279,7 @@ function getDisplayName(item) {
         }
 
         .kbc-council-lanes,
+        .kbc-council-advisor-results,
         .kbc-matrix-grid {
           grid-template-columns: repeat(2, minmax(140px, 1fr));
         }
@@ -19171,6 +19297,7 @@ function getDisplayName(item) {
 
         .kbc-council-stage,
         .kbc-council-lanes,
+        .kbc-council-advisor-results,
         .kbc-matrix-grid,
         .kbc-council-summary,
         .kbc-council-grid {
@@ -20516,6 +20643,9 @@ function getDisplayName(item) {
         },
         getCurrent() {
           return laboratoryCloneJson(strategyInspector?.ascensionMutagenAdvisor || null);
+        },
+        estimateEnergyEta({ cost = 0, current = 0, rate = 0, cap = 0 } = {}) {
+          return ascensionMutagenEnergyEtaSeconds(cost, current, rate, cap);
         },
         formulaManifest() {
           return laboratoryCloneJson({

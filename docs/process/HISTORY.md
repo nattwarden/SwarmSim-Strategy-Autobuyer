@@ -30,6 +30,9 @@ docs/release-notes/
   recovery-aware uncertainty gates, keeps Mutagen allocation execution disabled,
   ranks KEEP_UNALLOCATED and Hatchery Mutation when direct larva inputs resolve,
   and exposes structured/flat observability fields plus diagnostic API access.
+  A live hotfix replaced the incompatible game ETA helper with Decimal-safe
+  linear Energy ETA, surfaced M4/M5 results in Council and Matrix, and clarified
+  guarded fallback, reason, and Avoid wording without widening authority.
 - 4.0.0: Began milestone-aligned versioning with M4 and added the advisor-only
   Energy ability timing contract. Clone Larvae, House of Mirrors, and the three
   source-verified Rush abilities are compared against explicit WAIT/save from

@@ -21,6 +21,11 @@ async function main() {
     "function captureAscensionMutagenSnapshot(game, strategyContext = {})",
     "function evaluateAscensionMutagenSnapshot(inputSnapshot = {})",
     "ascensionMutagenAdvisor:",
+    "function ascensionMutagenEnergyEtaSeconds(",
+    '"Ascension & Mutagen"',
+    '"Ability timing"',
+    'Guarded fallback active:',
+    'Do not bypass reserves, Nexus/Energy protection, or advisor-only controls.',
   ]) {
     assert(userscript.includes(expected), `missing M5 contract surface: ${expected}`);
   }
@@ -32,8 +37,14 @@ async function main() {
     await page.addScriptTag({ content: userscript });
     await page.waitForFunction(() => !!window.kbcSwarmBot?.ascensionMutagenAdvisor, { timeout: 60000 });
 
-    const report = await page.evaluate(() => {
+    const report = await page.evaluate(async () => {
       const api = window.kbcSwarmBot.ascensionMutagenAdvisor;
+      const energyEta = {
+        linear: api.estimateEnergyEta({ cost: "100", current: "40", rate: "3", cap: "200" }),
+        ready: api.estimateEnergyEta({ cost: "100", current: "100", rate: "3", cap: "200" }),
+        capBlocked: api.estimateEnergyEta({ cost: "200", current: "40", rate: "3", cap: "200" }),
+        noRate: api.estimateEnergyEta({ cost: "100", current: "40", rate: "0", cap: "200" }),
+      };
       const manifest = api.formulaManifest();
 
       const mutationStatus = {
@@ -165,6 +176,7 @@ async function main() {
       const immutableAfter = JSON.stringify(immutableCheck);
 
       window.kbcSwarmBot.runOnce();
+      await new Promise((resolve) => setTimeout(resolve, 250));
       const inspector = window.kbcSwarmBot.getStrategyInspector?.() || {};
 
       const hatcheryCandidate = (hatcheryWin.mutagenPlan?.candidates || []).find((c) => c.mutationId === "HATCHERY_MUTATION");
@@ -188,6 +200,8 @@ async function main() {
         keepScenarioHatchery,
         warpCandidate,
         inspector,
+        energyEta,
+        councilText: document.querySelector("#kbc-swarmbot-strategy-bar")?.innerText || "",
       };
     });
 
@@ -234,6 +248,12 @@ async function main() {
     assert(report.inspector.ascensionAdvisorRecommendation, "live observability missing ascension recommendation");
     assert(report.inspector.ascensionAdvisorMutagenPlan, "live observability missing mutagen plan field");
     assert(report.inspector.ascensionMutagenAdvisor && report.inspector.ascensionMutagenAdvisor.schemaVersion === "ascension-mutagen-advisor.v1", "live inspector missing structured ascension advisor result");
+    assert(report.energyEta.linear === 20, "Decimal-safe linear Ascension ETA is wrong");
+    assert(report.energyEta.ready === 0, "ready Ascension ETA must be zero");
+    assert(report.energyEta.capBlocked === null, "cap-blocked Ascension ETA must be unavailable");
+    assert(report.energyEta.noRate === null, "zero-rate Ascension ETA must be unavailable");
+    assert(report.councilText.toLowerCase().includes("ability timing"), "Council does not show the M4 ability timing advisor");
+    assert(report.councilText.toLowerCase().includes("ascension & mutagen"), "Council does not show the M5 Ascension and Mutagen advisor");
   } finally {
     await browser.close();
   }
