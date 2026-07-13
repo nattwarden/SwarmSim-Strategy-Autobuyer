@@ -71,7 +71,7 @@ If observed Git state differs, update this board before implementation.
   Energy is the fourth whole-economy domain, emits `whole-economy-outcome.v2`,
   and remains excluded from coordinator execution authority. Exact-SHA branch
   checks passed against `42847a4258ba299132f0c7c8c85489371fe68a12`;
-  main integration remains a separate gate.
+  the feature history was fast-forwarded to `main` at `e9918dd` on 2026-07-13.
 
 ## Active milestone
 
@@ -100,9 +100,9 @@ acceptance.
 
 ## Current work package
 
-Implementation status: pushed and passing the focused/full suite against exact
-implementation SHA `42847a4258ba299132f0c7c8c85489371fe68a12`.
-The branch result is not a published-main or release-verification claim.
+Implementation status: integrated on `main`. Formal exact-SHA verification and
+the separate evidence/provenance commit are now in progress; acceptance is
+determined by the versioned provenance record once that evidence commit exists.
 
 Product capability:
 
@@ -246,13 +246,14 @@ Exact next action:
   `npm run build:check`, `npm run check:book00:m3:energy-shadow`,
   `npm run verify`, and `git diff --check` all exited `0` in a detached worktree;
   Node `v24.14.0`, npm `11.9.0`, no tracked changes, no evidence written.
-- Remaining blocker: `origin/main` remains at
-  `bcd19105e70e32206659c3f3fb2fece6af38e285`; the feature history is not a
-  published release until an explicitly authorized main-integration workflow
-  and formal evidence sequence are completed.
-- Exact next action: integrate the feature history through the user-authorized
-  Git workflow, then decide whether Milestone 3 should receive a separately
-  gated bounded Energy-production execution slice.
+- Main integration: the complete feature history was fast-forwarded and pushed
+  to `main` at `e9918dd564e5a2cf3d9255dc7805b2fc1f7f8562`.
+- Remaining blocker: formal exact-SHA verification and a separate
+  evidence/provenance commit must complete before a published-main acceptance
+  claim.
+- Exact next action: verify the final authored main tree in an isolated worktree,
+  commit only the predeclared provenance record, then decide whether Milestone 3
+  should receive a separately gated bounded Energy-production execution slice.
 
 ### 2026-07-13 — 0.14.1 control-surface cleanup
 
