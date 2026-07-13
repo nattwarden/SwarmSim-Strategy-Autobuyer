@@ -55,7 +55,7 @@ Goal: prove hierarchy and interaction before production art integration.
 - [x] Add Council Chamber as a selectable UI surface
 - [x] Build responsive chamber, parchment, status, lane, and timeline regions
 - [x] Render the current runtime recommendation and execution state
-- [ ] Render all three UI1 fixtures through a deterministic shell test
+- [x] Render all three UI1 fixtures through a deterministic shell test
 - [x] Render all four lane cards and global safety state
 - [x] Implement tabs, modes, keyboard focus, and reduced-motion behavior
 - [x] Add Matrix Diagnostics navigation

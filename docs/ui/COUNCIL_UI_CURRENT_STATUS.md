@@ -67,7 +67,7 @@ runtime. UI2 proves information hierarchy before UI3 graphics integration.
 
 ### UI2 remaining acceptance
 
-- [ ] deterministic shell render of all three UI1 state fixtures
+- [x] deterministic shell render of all three UI1 state fixtures
 - [ ] live visual smoke at desktop width, below 1100 px, and below 700 px
 - [ ] browser zoom smoke at 100%, 125%, and 150%
 - [ ] confirm Council ↔ Matrix switching in the installed userscript
@@ -132,3 +132,9 @@ Pre-commit source validation on 2026-07-13 passed:
 - `node --check dev-src/runtime-sections/runtime-main.js`
 - `node --check src/SwarmSim-Strategy-Autobuyer.user.js`
 - `git diff --check`
+
+The follow-up `check:ui2:fixtures` renders all three state fixtures through the
+production Council CSS at four effective layout widths: desktop 100%, desktop
+125%, desktop 150%, and compact below 700 px. It verifies semantic regions,
+four primary lanes, decision metrics, Council/Matrix controls, breakpoint
+columns, and horizontal-overflow bounds without writing screenshots or evidence.
