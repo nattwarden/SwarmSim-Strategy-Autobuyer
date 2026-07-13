@@ -79,7 +79,7 @@ Forbidden:
 3. State mutation manifest + hash capture.
 4. Pre/post/reset hash and leakage detection capture.
 5. Watch overlay (read-only) that does not influence ranking.
-6. Documented artifact folder under `docs/test-data/strategy-audit-feasibility/` or dedicated audit-run folder.
+6. Findings documented in the feasibility report; raw probe artifacts are temporary.
 
 ## Non-negotiable safeguards
 

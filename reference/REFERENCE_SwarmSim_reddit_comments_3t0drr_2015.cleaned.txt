@@ -19,7 +19,7 @@ Important:
 
 > **Verification note — 2026-07-09**
 > Status: HEURISTIC
-> Evidence: `docs/SWARMSIM_GAME_MODEL.md`, `docs/live-logs/2026-07-09-clicked-mechanics-progression.md`
+> Evidence: `docs/SWARMSIM_GAME_MODEL.md`, `docs/BOOK-01-base-mechanics-and-claims.md`
 > Supports: This reference remains useful for strategy intuition, especially around sacrifice/rebuild, twinning, cascade, and Clone Larvae timing.
 > Script implication: Do not implement automation from this file alone. Treat claims here as candidates that must be cross-checked against the canonical game model and live/mechanics logs before script changes.
 
@@ -34,7 +34,7 @@ Practical script interpretation:
 
 > **Verification note — 2026-07-09**
 > Status: CONFIRMED
-> Evidence: `docs/SWARMSIM_GAME_MODEL.md` section 4; `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` Queen and Twin observations.
+> Evidence: `docs/SWARMSIM_GAME_MODEL.md` section 4; `docs/BOOK-01-base-mechanics-and-claims.md` Queen and Twin observations.
 > Supports: SwarmSim is a sacrifice/rebuild game, not a simple highest-cost-unit game. Queen purchases consume drones before rebuilding through passive production; Twin Drones can be harmful when parent production loss exceeds hatch-conversion gain.
 > Script implication: Keep target-aware meat planning, reserve checks, rebuild/payback guards, and anti-filler rules. Do not add blind highest-unit buying.
 
@@ -51,7 +51,7 @@ Practical script interpretation:
 
 > **Verification note — 2026-07-09**
 > Status: CONFIRMED
-> Evidence: `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` Faster/Twin distinction and second Twin Drones opportunity-cost test; `docs/release-notes/SwarmSim-Strategy-Autobuyer-0.8.7-release-notes.md`.
+> Evidence: `docs/BOOK-01-base-mechanics-and-claims.md` Faster/Twin distinction and second Twin Drones opportunity-cost test; `docs/release-notes/SwarmSim-Strategy-Autobuyer-0.8.7-release-notes.md`.
 > Supports: `Twin X` is a hatch-conversion upgrade, not a passive production multiplier. In the observed second Twin Drones state, the upgrade gained only about `+4.4` possible larvae-based drones/sec while losing about `-40` passive drones/sec from sacrificed Queens.
 > Script implication: Keep Twin upgrade opportunity-cost logic. Twin upgrades should require recovery or opportunity-cost evidence, not just buyable state.
 
@@ -70,7 +70,7 @@ Practical script interpretation:
 
 > **Verification note — 2026-07-09**
 > Status: PARTIALLY CONFIRMED
-> Evidence: `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms parent passive production and hatch-conversion are different systems; it does not yet validate a full cascade trigger or the 2:1 rule across late-game units.
+> Evidence: `docs/BOOK-01-base-mechanics-and-claims.md` confirms parent passive production and hatch-conversion are different systems; it does not yet validate a full cascade trigger or the 2:1 rule across late-game units.
 > Supports: The direction of cascade reasoning is plausible and matches the observed production-chain mechanics.
 > Script implication: Future Cascade Planner work should be gated behind more live/math validation. Do not auto-cast Clone Larvae from this heuristic alone.
 

@@ -49,7 +49,7 @@ not a work order, not an architecture decision.
 
 **How to update books:**
 - Verify fact → add compact entry to relevant book section with source citation
-- SA scenario result → raw output to `test-data/strategy-audit/` first, distilled finding to BOOK-04
+- SA scenario result → distill the finding directly into BOOK-04; raw run output is temporary and not retained
 - Changed conclusion → update existing entry in-place, no duplicate file
 
 **When to create a new book:**
@@ -58,13 +58,13 @@ that fit no existing book. Name it BOOK-06, BOOK-07, etc. and list it here.
 
 ---
 
-## Subfolders (archives and working material)
+## Subfolders (working material)
 
 | Folder | What it contains |
 |--------|-----------------|
 | `strategy/` | Architecture decision records (ADRs), planning docs, specs |
-| `live-logs/` | Source observation logs, acceptance evidence, raw screenshots |
-| `test-data/` | Versioned raw test artifacts and scenario results |
+| `live-logs/` | Current claim-level evidence only |
+| `test-data/` | Minimal verifier fixture only; raw runs are not retained |
 | `prompts/` | Active work orders for implementation agents |
 | `release-notes/` | Per-version changelog |
 | `process/` | Governance: verification protocol, PR checklist, history, modularization plan |
@@ -81,8 +81,8 @@ Before any code change:
 4. Relevant book (BOOK-01 through BOOK-05)
 5. `strategy/` document if the work is architecture-level
 6. `prompts/` work order if one exists for the task
-7. `live-logs/` source log only when a specific claim needs payload verification
-8. `test-data/` only for raw artifact forensics
+7. `live-logs/` only when current claim-level evidence needs payload verification
+8. `test-data/` only when the active verifier needs its fixture
 
 Do not read `live-logs/` or `test-data/` before the books. The books tell you
 what the source material already concluded.
@@ -94,9 +94,10 @@ Use `docs/SWARMSIM_GAME_MODEL.md` as the only active game model.
 Older dated game model files and indexed AI snapshots are historical context
 only. They should not be used as current strategy truth.
 
-The current live/mechanics logs above are the active empirical context for
-clean-start behavior, sacrifice/rebuild mechanics, Faster/Twin distinctions,
-Hatchery/Expansion coupling, and military empower/suffix behavior.
+Books 01 and 02 contain the distilled empirical context for clean-start
+behavior, sacrifice/rebuild mechanics, Faster/Twin distinctions,
+Hatchery/Expansion coupling, and military empower/suffix behavior. Open the
+retained current evidence only when a verifier needs payload-level support.
 
 ## Verification annotation status
 
@@ -105,11 +106,11 @@ The following files include 2026-07-09 verification notes that mark claims as
 
 ```text
 SWARMSIM_GAME_MODEL.md
-live-logs/2026-07-09-clean-start-game-observation.md
-live-logs/2026-07-09-clicked-mechanics-progression.md
+BOOK-01-base-mechanics-and-claims.md
+BOOK-02-energy-house-of-mirrors-and-lab.md
 ../reference/REFERENCE_SwarmSim_reddit_comments_3t0drr_2015.cleaned.txt
 ```
 
 These notes should guide the next script review. Confirmed notes can be used as
 strong evidence. Heuristic/Open notes should not drive automation without more
-live-log or math validation.
+booked findings or math validation.

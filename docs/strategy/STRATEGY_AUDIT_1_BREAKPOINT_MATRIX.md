@@ -127,9 +127,9 @@ runs. Reset failure, detected state leakage, or any failed run makes
 the matrix exit non-zero. The isolated confirmation command preserves the
 original process-per-run behavior for stronger final confirmation.
 
-Each child run writes timestamped JSON and Markdown results below
-`docs/test-data/strategy-audit-1/<scenario-id>/live/`. The runner streams every run to
-the terminal; it does not currently create a separate matrix-summary artifact.
+Each child run writes temporary JSON and Markdown results. The runner streams
+every run to the terminal; findings are distilled into BOOK-04 and no raw run
+files are retained.
 
 ## Architecture boundary
 
@@ -183,13 +183,11 @@ After each matrix run, update:
 - `docs/BOOK-05-community-strategy-claims.md`
 - `docs/process/HISTORY.md`
 
-Use evidence links under `docs/test-data/strategy-audit-1/`.
+Use the distilled findings in BOOK-04 and BOOK-05.
 
 ## SA1 v2 narrow sweep status
 
-Most recent targeted run:
-
-- `docs/test-data/strategy-audit-1/sa1-v2-breakpoint/2026-07-13T04-47-57-757Z/sa1-v2-summary.md`
+Most recent targeted run is summarized in BOOK-04; its raw output is not retained.
 
 Method:
 

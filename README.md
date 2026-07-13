@@ -2,11 +2,10 @@
 
 Methodical Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current script version in `src/`: **0.8.9**.
+Current script version in `src/`: **0.13.0**.
 
-Last live-verified baseline: **0.8.7 - Twin Upgrade Opportunity Cost Bypass**.
-
-Current focus: **0.8.9 - Methodical Lane Follow-through / Visible Progress Fix**.
+The active game model and distilled strategy knowledge live in
+`docs/SWARMSIM_GAME_MODEL.md` and `docs/BOOK-01` through `docs/BOOK-05`.
 
 ## Repository layout
 
@@ -102,7 +101,8 @@ npm run hotfix:canonical
 npm run verify
 ```
 
-`npm run verify` runs build check plus guardrails validation.
+`npm run verify` runs the active Laboratory, version, purchase-evaluator, and
+guardrail checks.
 
 ## Strategy Audit SA1 matrix
 
@@ -120,8 +120,10 @@ command runs every scenario once. These fast paths reuse one Chrome window,
 browser context, and page for sequential runs. They fail on any run, reset
 failure, or state leakage. The `:isolated` command preserves a new
 Node process and Chrome instance per run for stronger final confirmation. All
-variants write timestamped JSON and Markdown artifacts under
-`docs/test-data/strategy-audit-1/<scenario-id>/live/`.
+variants write timestamped JSON and Markdown artifacts temporarily. Strategy
+Audit findings are distilled into
+`docs/BOOK-04-strategy-intelligence-findings.md`; raw run output is not
+retained in the repository.
 
 This Strategy Audit flow stress-tests strategy decisions across staged states.
 It is separate from Laboratory's read-only counterfactual simulation and its
@@ -150,10 +152,8 @@ Equivalent explicit steps:
 
 This keeps guardrails strict while still allowing fast app development when needed.
 
-## Current 0.8.9 work
+## Knowledge workflow
 
-See:
-
-```text
-docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md
-```
+Read the relevant Book before opening verifier payloads or starting a new run.
+Keep only the active verifier fixture and current claim-level evidence in Git;
+distill new conclusions into the Books.

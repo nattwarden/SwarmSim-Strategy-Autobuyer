@@ -38,7 +38,7 @@ Audit 1 is measurement, not strategy redesign.
 
 ## Required output per accepted SA1 scenario
 
-- artifact JSON in `docs/test-data/strategy-audit-1/...`;
+- temporary artifact JSON during execution; findings distilled into BOOK-04;
 - scenario status and findings in `BOOK-04`;
 - claim impact (if any) in `BOOK-05`;
 - release/history note only when cross-scenario significance is established.

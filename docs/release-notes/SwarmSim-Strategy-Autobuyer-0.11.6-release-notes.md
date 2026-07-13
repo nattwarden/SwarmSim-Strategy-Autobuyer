@@ -58,5 +58,4 @@ Unchanged:
 
 Deterministic evidence for this patch version is tracked under:
 
-- docs/test-data/0.11.6-scenarios/
-- docs/live-logs/browser-test-0.11.6-export.md
+- Historical scenario findings are summarized in BOOK-03; raw 0.11.6 outputs are not retained.

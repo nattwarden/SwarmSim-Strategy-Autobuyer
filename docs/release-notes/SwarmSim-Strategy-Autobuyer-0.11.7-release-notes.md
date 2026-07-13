@@ -52,7 +52,7 @@ velocity, and runtime preview gain field when available).
 Added/updated:
 
 - runtime/package/userscript version surfaces -> `0.11.7`
-- `docs/test-data/0.11.7-scenarios/` definitions/templates
+- The retained verifier fixture is documented in `docs/test-data/README.md`.
 - `scripts/run-0.11.7-deterministic-scenarios.js`
 - `scripts/check-0.11.7-version-surfaces.js`
 

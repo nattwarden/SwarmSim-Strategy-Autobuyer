@@ -22,20 +22,15 @@ Scope: `docs/prompts/next-strategy-audit-testbed-feasibility.md`
   - Reason: pinned source commit `06b4f404aa324a0b454348508cfa63d5c0f1ff54` did not complete full `swarmsim-coffee` build under available Node/Yarn/Ruby stack.
 - headed production-injection verdict:
   - Verified feasible and selected as watch/prototype baseline.
-  - Evidence: `docs/test-data/strategy-audit-feasibility/probe-production-headed/`.
+  - Findings are recorded in this report; raw probe output is not retained.
 - immediate watch-prototype verdict:
   - Pass.
   - A visible headed Chromium run opened the game, injected canonical userscript, staged harmless state, ran normal planner cycle, surfaced Council/Inspector, captured screenshot + trace, and preserved profile isolation.
 
 ## Evidence inventory
 
-- Primary feasibility probe outputs:
-  - `docs/test-data/strategy-audit-feasibility/probe-production-headed/probe-production-headed-result.json`
-  - `docs/test-data/strategy-audit-feasibility/probe-production-headed/probe-production-headed-result.md`
-  - `docs/test-data/strategy-audit-feasibility/probe-production-headed/probe-production-headed.png`
-  - `docs/test-data/strategy-audit-feasibility/probe-production-headed/probe-production-headed-trace.zip`
-- Command and environment log:
-  - `docs/test-data/strategy-audit-feasibility/feasibility-command-log.md`
+The feasibility decision and its implications are recorded in this report;
+raw probe files are disposable and are not retained.
 
 ## Required inventory summary
 

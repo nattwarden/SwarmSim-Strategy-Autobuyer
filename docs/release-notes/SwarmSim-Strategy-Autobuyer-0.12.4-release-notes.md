@@ -27,7 +27,7 @@
 ## Evidence
 
 - SA1 ordering-isolation post-fix result:
-  - `docs/test-data/strategy-audit-1/sa1-02-exp-no-meat-planner/live/live-2026-07-12T072342-889Z/live-2026-07-12T072342-889Z-result.json`
+  - Findings are retained in BOOK-04; raw audit output is temporary.
 - Updated findings and claims:
   - `docs/BOOK-04-strategy-intelligence-findings.md`
   - `docs/BOOK-05-community-strategy-claims.md`

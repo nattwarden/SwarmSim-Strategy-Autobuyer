@@ -135,7 +135,7 @@ Every planner should ask:
 
 > **Verification note — 2026-07-09**
 > Status: CONFIRMED
-> Evidence: `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` Queen purchase and Faster/Twin tests.
+> Evidence: BOOK-01 records the Queen purchase and Faster/Twin tests.
 > Supports: Queen consumes Drones before rebuilding through passive Drone production; Faster upgrades sacrifice producer bank but multiply remaining production; Twin upgrades can sacrifice parent production for hatch conversion.
 > Script implication: Keep reserve/rebuild/payback and target-path checks as core planner rules. Do not implement blind highest-visible-unit purchase logic.
 
@@ -347,7 +347,7 @@ HOLD Army Prep — Hatchery save-window active
 
 > **Verification note — 2026-07-09**
 > Status: PARTIALLY CONFIRMED
-> Evidence: `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms fighting units produce territory and Expansion uses territory to increase larvae; `docs/process/HISTORY.md (0.8.8 entry)` reports missing top fighting units while House of Mirrors remains advisor-only.
+> Evidence: BOOK-01 and BOOK-02 record fighting-unit territory production, Expansion coupling, and the House of Mirrors boundary.
 > Supports: Army/Territory lane needs independent scanning and better diagnostics.
 > Script implication: A small army seed may be appropriate only when safe and clearly explained; House of Mirrors must not auto-cast.
 
@@ -380,6 +380,6 @@ Recommended fields for 0.8.8:
 
 > **Verification note — 2026-07-09**
 > Status: CONFIRMED
-> Evidence: `docs/live-logs/2026-07-09-clean-start-game-observation.md` and `docs/process/HISTORY.md (0.8.8 entry)` both identify misleading or insufficient diagnostics.
+> Evidence: BOOK-01 and BOOK-03 record the historical diagnostic limitations.
 > Supports: Observability must distinguish actual BUY reasons from advisor-only HOLD reasons and distinguish locked future lanes from active blockers.
 > Script implication: Any next code change should keep behavior and Strategy Inspector/export aligned.

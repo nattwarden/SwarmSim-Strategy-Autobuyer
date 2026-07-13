@@ -41,7 +41,7 @@ Frozen baseline:
 - Frozen behavior version: `0.11.7`
 - Verified runtime commit: `1ee631901cd04a1d97ddb0bcee5efa2499481ecc`
 - Baseline repository/evidence commit: `ea999526994c75899b6b1a478e7146f046417803`
-- Browser evidence: `docs/live-logs/browser-test-0.11.7-export.md` and `.json`
+- Browser evidence is summarized in BOOK-02 and the current verifier output.
 
 Known baseline limitation:
 

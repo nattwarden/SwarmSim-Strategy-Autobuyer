@@ -109,7 +109,8 @@ The first runs every current breakpoint scenario twice; the smoke command runs
 each once. Both reuse one Chrome window, context, and page for sequential runs.
 The isolated command starts a new process and Chrome instance per run for
 confirmation. Per-run JSON and Markdown artifacts are written under
-`docs/test-data/strategy-audit-1/<scenario-id>/live/`.
+Strategy Audit findings are distilled into BOOK-04; raw run output is temporary
+and is not retained in the repository.
 
 See:
 

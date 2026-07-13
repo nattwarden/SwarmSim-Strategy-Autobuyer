@@ -10,8 +10,8 @@
 >
 > Current acceptance evidence:
 >
-> - `docs/live-logs/live-real-save-0.12.3-effective-count-mature-save-2026-07-10.md`
-> - `docs/live-logs/live-real-save-0.12.3-effective-count-mature-save-2026-07-10.json`
+> - `docs/live-logs/browser-test-0.12.3-laboratory-effective-count.md`
+> - `docs/live-logs/browser-test-0.12.3-laboratory-effective-count.json`
 >
 > Historical 0.12.2 evidence below must not be interpreted as the current
 > runtime state.
@@ -21,25 +21,8 @@ Purpose: summarize ability-value findings and lab-capture correctness limits.
 
 ## Sources
 
-- live-logs/2026-07-10-0.10.1-energy-support-counterfactual.md
-- live-logs/2026-07-10-0.12.1-first-real-save-laboratory-result.md
-- live-logs/2026-07-10-0.12.1-live-hom-runtime-forensics.md
-- live-logs/2026-07-10-0.12.1-live-house-of-mirrors-cast.md
-- live-logs/2026-07-10-energy-support-counterfactual-0.10.1.json
-- test-data/0.12.2-laboratory/live-real-save-post-hom-capture-run-2026-07-10.md
-- test-data/0.12.2-laboratory/live-real-save-post-hom-capture-run-2026-07-10.json
-- test-data/0.12.2-laboratory/live-second-hom-vs-lab-delta-2026-07-10.md
-- test-data/0.12.2-laboratory/live-second-hom-vs-lab-delta-2026-07-10.json
-- test-data/0.12.2-laboratory/live-exported-json-root-cause-after-second-hom-2026-07-10.md
-- test-data/0.12.2-laboratory/live-exported-json-root-cause-after-second-hom-2026-07-10.json
-- test-data/0.12.2-laboratory/live-exported-snapshot-after-second-hom-2026-07-10.json
-- test-data/0.12.2-laboratory/live-exported-result-after-second-hom-2026-07-10.json
-- test-data/0.12.2-laboratory/live-exported-clone-expansion-diagnostics-after-second-hom-2026-07-10.md
-- test-data/0.12.2-laboratory/live-exported-clone-expansion-diagnostics-after-second-hom-2026-07-10.json
-- test-data/0.12.2-laboratory/live-higher-energy-recapture-after-second-hom-2026-07-10.md
-- test-data/0.12.2-laboratory/live-higher-energy-recapture-after-second-hom-2026-07-10.json
-- test-data/0.12.2-laboratory/live-exported-snapshot-higher-energy-after-second-hom-2026-07-10.json
-- test-data/0.12.2-laboratory/live-exported-result-higher-energy-after-second-hom-2026-07-10.json
+Historical captures have been distilled into this book. Raw 0.10.x–0.12.x
+payloads are intentionally not retained in the repository.
 
 ## Executive summary
 
@@ -153,7 +136,7 @@ non-mutation verification.
 - Separate action legality from action value in reports.
 - Keep ability-blocked summaries explicit (energy, cost, deficit, legal alternatives).
 - Use canonical runtime base ids for House of Mirrors affected-unit accounting.
-- Store compact lab observation payloads under `docs/test-data/<version>-laboratory/`; store conclusions in this book.
+- Store conclusions in this book; temporary lab payloads are not committed.
 - Treat HoM Phase 1 value deltas from 0.12.2 as suspect until affected territory contribution is fixed and verified against a live cast.
 - For the next fix, inspect `getLaboratoryUnitCount()` / `unit.count()` versus the visible effective tier count used by the live UI for rows like `Swarmling V`, `Goon IV`, and `Roach V`.
 - Improve visible blocked-action reason rendering so Clone Larvae does not degrade exact insufficient-energy data into `UNKNOWN:`.
@@ -166,8 +149,7 @@ non-mutation verification.
 - For verification history and artifact provenance:
 	`BOOK-03-verification-history-and-artifacts.md`.
 - For the active game model: `SWARMSIM_GAME_MODEL.md`.
-- For the base-game claims crosscheck: `live-logs/2026-07-10-base-game-claims-crosscheck.md`.
-- For the salvaged 0.12.2 raw-evidence inventory: `test-data/0.12.2-laboratory/LIVE_EVIDENCE_INDEX.md`.
+- For base-game claims and historical context: BOOK-01 and BOOK-03.
 - For current 0.12.3 acceptance truth:
-	- `live-logs/live-real-save-0.12.3-effective-count-mature-save-2026-07-10.md`
-	- `live-logs/live-real-save-0.12.3-effective-count-mature-save-2026-07-10.json`
+	- `live-logs/browser-test-0.12.3-laboratory-effective-count.md`
+	- `live-logs/browser-test-0.12.3-laboratory-effective-count.json`

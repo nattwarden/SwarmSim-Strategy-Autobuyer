@@ -18,7 +18,7 @@ Do not read these files to determine current bot behavior or claim status.
 Instead, read the classified claim book:
 
 ```text
-docs/live-logs/books/BOOK-05-community-strategy-claims.md
+docs/BOOK-05-community-strategy-claims.md
 ```
 
 BOOK-05 classifies every testable claim from these sources as:

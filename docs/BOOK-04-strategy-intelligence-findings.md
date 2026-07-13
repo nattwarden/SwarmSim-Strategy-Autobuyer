@@ -32,9 +32,8 @@ This book collects:
 - strategy decisions and rationale
 - known limitations and inconclusive results
 
-It does **not** collect:
-
-- raw runner JSON or Markdown artifacts (those go in `docs/test-data/strategy-audit/`)
+It does **not** collect raw runner JSON or Markdown artifacts. Raw runs are
+temporary; this book is the retained source of truth.
 - testbed infrastructure decisions (those go in `docs/strategy/STRATEGY_AUDIT_TESTBED_DECISION.md`)
 - game mechanics facts (those go in BOOK-01)
 - energy or Laboratory findings (those go in BOOK-02)
@@ -100,14 +99,12 @@ Prerequisite: testbed runner review approved and merged.
 - Status: expected behavior
 - Purpose: verify Territory lane produces a real candidate and explain why the winner was selected
 - Findings: Territory lane now surfaces a real candidate (Stinger V), but it is rejected on ROI threshold (ETA improvement below configured minimum), while Hatchery remains the selected Engine buy.
-- Evidence: [SA0-05 result JSON](test-data/strategy-audit-0/sa0-05/live/live-2026-07-12T065826-917Z/live-2026-07-12T065826-917Z-result.json)
 
 ### SA0-06 — Meaningless Small-Buy Detection
 
 - Status: expected behavior
 - Purpose: detect legal but practically meaningless small buys
 - Findings: Territory lane evaluated a legal small buy candidate (Stinger V) and rejected it as non-meaningful because Expansion ETA gain was 0s, below the configured 2m minimum.
-- Evidence: [SA0-06 result JSON](test-data/strategy-audit-0/sa0-06/live/live-2026-07-12T065926-054Z/live-2026-07-12T065926-054Z-result.json)
 
 ---
 
@@ -142,9 +139,9 @@ command runs them once. These fast paths reuse one Chrome window, context, and
 page for sequential runs; the isolated variant retains process-per-run confirmation.
 This preserves the important testbed capability of feeding many tests through
 local execution without treating every scenario as a separate AI prompt.
-Per-run JSON and Markdown evidence is written below
-`docs/test-data/strategy-audit-1/<scenario-id>/live/`; failed reset, detected leakage, or any
-failed scenario makes the matrix command fail.
+Per-run JSON and Markdown output is temporary; failed reset, detected leakage,
+or any failed scenario makes the matrix command fail. Findings are distilled
+into this book and raw run files are not retained.
 
 The runner belongs to Strategy Audit: it probes ranking, gating, execution,
 reset, and leakage behavior across staged states. Laboratory remains the
@@ -166,9 +163,7 @@ Scope: mid-game winner quality across competing legal lanes.
 	- Energy lane remained a high-score protected hold (`Nexus save`), indicating reserve policy stayed active while Meat still won execution.
 	- Repeated live runs remained stable (same selected lane/action and best rejected alternative), increasing confidence that this is a robust mid-game pattern rather than one-run noise.
 	- Earlier top-level `QUESTIONABLE` assessment text was a testbed observability defect and is now fixed for non-canary scenarios.
-- Evidence:
-	- [SA1-01 baseline result JSON](test-data/strategy-audit-1/sa1-01/live/live-2026-07-12T070723-253Z/live-2026-07-12T070723-253Z-result.json)
-	- [SA1-01 repeat result JSON](test-data/strategy-audit-1/sa1-01/live/live-2026-07-12T071140-410Z/live-2026-07-12T071140-410Z-result.json)
+- Evidence: findings distilled in this book; raw run output is not retained.
 
 ### SA1-02 — Territory pressure vs rebuild pressure
 
@@ -181,14 +176,7 @@ Scope: mid-game winner quality across competing legal lanes.
 	- This isolates the next optimization target: winner hierarchy/scoring under mid-game rebuild pressure, not only threshold gating.
 	- Energy lane remained a protected hold for Nexus (`Nexus save`) while Meat still won execution, indicating reserve policy and winner selection were coherent together.
 	- After assessment fix, top-level verdict reporting is now scenario-appropriate (`GOOD` when cycle observability checks pass).
-- Evidence:
-	- [SA1-02 baseline result JSON](test-data/strategy-audit-1/sa1-02/live/live-2026-07-12T071006-694Z/live-2026-07-12T071006-694Z-result.json)
-	- [SA1-02 post-fix result JSON](test-data/strategy-audit-1/sa1-02/live/live-2026-07-12T071042-592Z/live-2026-07-12T071042-592Z-result.json)
-	- [SA1-02 threshold experiment result JSON](test-data/strategy-audit-1/sa1-02/live/live-2026-07-12T071553-778Z/live-2026-07-12T071553-778Z-result.json)
-	- [SA1-02 high-yield sensitivity result JSON](test-data/strategy-audit-1/sa1-02-exp-yield/live/live-2026-07-12T071815-444Z/live-2026-07-12T071815-444Z-result.json)
-	- [SA1-02 ordering-isolation result JSON](test-data/strategy-audit-1/sa1-02-exp-no-meat-planner/live/live-2026-07-12T072052-521Z/live-2026-07-12T072052-521Z-result.json)
-	- [SA1-02 ordering-isolation repeat result JSON](test-data/strategy-audit-1/sa1-02-exp-no-meat-planner/live/live-2026-07-12T072147-179Z/live-2026-07-12T072147-179Z-result.json)
-	- [SA1-02 ordering-isolation post-fix result JSON](test-data/strategy-audit-1/sa1-02-exp-no-meat-planner/live/live-2026-07-12T072342-889Z/live-2026-07-12T072342-889Z-result.json)
+- Evidence: findings distilled in this book; raw run output is not retained.
 
 ### SA1-03 — Energy reserve arbitration
 
@@ -198,8 +186,7 @@ Scope: mid-game winner quality across competing legal lanes.
 	- Winner stayed stable across 5 cycles (`Meat BUY drone × 382`) while Energy remained an explicit protected hold (`Nexus save`).
 	- Territory lane remained visible with concrete candidate (`Stinger V`) but did not overtake Meat under default mid-game thresholds.
 	- Reserve blockers and winner rationale remained internally consistent (no contradiction between Energy protection and selected action).
-- Evidence:
-	- [SA1-03 result JSON](test-data/strategy-audit-1/sa1-03/live/live-2026-07-12T071643-350Z/live-2026-07-12T071643-350Z-result.json)
+- Evidence: findings distilled in this book; raw run output is not retained.
 
 SA1 interim conclusion:
 
@@ -225,9 +212,7 @@ SA1 interim conclusion:
 	- guardrails held for all states (`resetVerified=true`, `stateLeakageDetected=false`)
 	- nearest state still strongly Meat-favored (`winnerScore=8110`, `territoryScore=365.1214`, margin `7744.8786`)
 - Classification: expected behavior (no breakpoint found in this narrow v2 pass)
-- Evidence:
-	- [SA1 v2 summary MD](test-data/strategy-audit-1/sa1-v2-breakpoint/2026-07-13T04-47-57-757Z/sa1-v2-summary.md)
-	- [SA1 v2 summary JSON](test-data/strategy-audit-1/sa1-v2-breakpoint/2026-07-13T04-47-57-757Z/sa1-v2-summary.json)
+- Evidence: findings distilled in this book; raw run output is not retained.
 
 ---
 

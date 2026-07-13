@@ -75,12 +75,14 @@ Before code changes, read:
 1. `AGENTS.md`
 2. `AI.md`
 3. `docs/SWARMSIM_GAME_MODEL.md`
-4. `src/SwarmSim-Strategy-Autobuyer.user.js`
-5. Relevant prompt in `docs/prompts/`
-6. Relevant release notes or live logs if needed
-7. `reference/` only for strategy/math sanity checks
-8. `docs/process/MODULARIZATION_PLAN.md` for lane/overseer extraction work
-9. Relevant `dev-src/` modules for scaffold/contract context
+4. Relevant book in `docs/BOOK-01` through `docs/BOOK-05`
+5. `src/SwarmSim-Strategy-Autobuyer.user.js`
+6. Relevant prompt in `docs/prompts/`
+7. Relevant release notes; open `docs/live-logs/` or `docs/test-data/` only
+   when the active verifier needs payload-level support
+8. `reference/` only for strategy/math sanity checks
+9. `docs/process/MODULARIZATION_PLAN.md` for lane/overseer extraction work
+10. Relevant `dev-src/` modules for scaffold/contract context
 
 Do not use old dated game-model files as active truth.
 
@@ -90,26 +92,22 @@ Do not rely on static version text in this file for runtime versioning.
 Always use these as current truth:
 
 1. `src/SwarmSim-Strategy-Autobuyer.user.js` metadata/constants for active script version.
-2. `docs/test-data/0.11.3-scenarios/scenario-summary.md` for latest strict deterministic verification snapshot.
-3. `docs/live-logs/2026-07-10-base-game-claims-crosscheck.md` for game-mechanics claim status.
+2. `docs/BOOK-03-verification-history-and-artifacts.md` for the current verification status.
+3. `docs/SWARMSIM_GAME_MODEL.md` and BOOK-01/BOOK-02 for current claim status.
 
-Current unresolved verification item (as of this file version):
-
-- 0.11.3 deterministic scenario `R8` cycle 2 still fails expected refill decision.
-- Treat this as an open implementation gap when planning follow-up fixes.
+Historical verifier notes are summarized in BOOK-03 and are not current
+implementation requirements unless a new run reproduces them.
 
 ## Current live/mechanics findings
 
-Before changing strategy logic, read the current observation logs:
+Before changing strategy logic, read the current books:
 
 ```text
-docs/live-logs/2026-07-09-clean-start-game-observation.md
-docs/live-logs/2026-07-09-clicked-mechanics-progression.md
-docs/live-logs/2026-07-10-0.10.1-energy-support-counterfactual.md
-docs/live-logs/2026-07-10-base-game-claims-crosscheck.md
+docs/BOOK-01-base-mechanics-and-claims.md
+docs/BOOK-02-energy-house-of-mirrors-and-lab.md
 ```
 
-Use these as empirical context for current planning:
+Use these as the empirical context for current planning:
 
 - Clean start has only meat, larvae, drones, and base upgrades visible.
 - Early Energy/Nexus diagnostics can appear before Energy/Nexus is unlocked;
@@ -133,8 +131,9 @@ Use these as empirical context for current planning:
 
 From 0.8.0 onward:
 
-- GitHub is source of truth for code, docs, prompts, live logs, and release
-  history.
+- GitHub is source of truth for code, books, prompts, current claim-level
+  evidence, and release history. Books retain the distilled findings; raw
+  historical logs and runner payloads are disposable.
 - The only executable script is `src/SwarmSim-Strategy-Autobuyer.user.js`.
 - Do not create `.txt` script mirrors.
 - Do not create duplicated release `.user.js` files.
@@ -294,7 +293,7 @@ Guardrail compatibility rule:
 
 When a browser verification pass discovers new game-mechanics data that is not
 already documented, the agent must write a concise factual note to
-`docs/live-logs/` in the same work cycle.
+the relevant book in the same work cycle.
 
 Required quality bar:
 

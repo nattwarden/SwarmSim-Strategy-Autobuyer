@@ -119,24 +119,8 @@ Mode-specific behavior:
 
 ## Artifact locations
 
-Permanent testbed artifacts are under:
-
-- `docs/test-data/strategy-audit-testbed/canary/`
-- `docs/test-data/strategy-audit-testbed/watch/`
-- `docs/test-data/strategy-audit-testbed/live/`
-
-Each run writes:
-
-- `<run-id>-result.json`
-- `<run-id>-result.md`
-
-Optional artifacts:
-
-- `cycle-*.png` screenshots (watch)
-- `trace.zip` (when trace enabled)
-- video file in mode run folder (when video enabled)
-
-Feasibility artifacts remain separate under `docs/test-data/strategy-audit-feasibility/`.
+Runner output is temporary and is not committed. Books retain the conclusions;
+screenshots, traces, videos, and raw JSON/Markdown are disposable run artifacts.
 
 ## Result schema and null policy
 

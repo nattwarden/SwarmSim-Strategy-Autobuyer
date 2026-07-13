@@ -25,9 +25,7 @@ Purpose: one compact truth layer for base-game mechanics and claim status.
 
 ## Sources
 
-- live-logs/2026-07-09-clean-start-game-observation.md
-- live-logs/2026-07-09-clicked-mechanics-progression.md
-- live-logs/2026-07-10-base-game-claims-crosscheck.md
+- Current mechanics observations are distilled in this book and the active game model.
 
 ## Executive summary
 

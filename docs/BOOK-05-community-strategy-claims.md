@@ -48,7 +48,7 @@ marked **SA0-RELEVANT**.
 
 Evidence:
 - `BOOK-01` — Twin upgrades are hatch-conversion tools, not passive multipliers
-- `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` — second Twin Drones test: −40 passive drones/sec vs +4.4 larvae-based gain; Twin is costly without recovery buffer
+- `BOOK-01` — second Twin Drones test: Twin is costly without recovery buffer
 - Release notes 0.8.7 — Twin Threshold Reachability and Opportunity Cost
 
 Bot implication: Twin prep requires recovery-buffer check, not just buyability. Current bot enforces this.
@@ -63,7 +63,7 @@ Bot implication: Twin prep requires recovery-buffer check, not just buyability. 
 
 Evidence:
 - `BOOK-01` — Faster X upgrades increase total output despite spending part of producer banks
-- `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` — Faster behavior verified
+- `BOOK-01` — Faster behavior verified
 
 Bot implication: Faster upgrades score well in planner when payback is favorable.
 
@@ -123,8 +123,7 @@ Bot implication: None currently. If we implement upgrade timing hints in Council
 
 Evidence:
 - `BOOK-01` — Hatchery-first protection in clean start is mathematically coherent
-- `docs/test-data/strategy-audit-0/sa0-01/live/live-2026-07-12T063510-689Z/live-2026-07-12T063510-689Z-result.json` — clean-start HOLD with Hatchery as closest rejected alternative
-- `docs/test-data/strategy-audit-0/sa0-04/live/live-2026-07-12T063900-773Z/live-2026-07-12T063900-773Z-result.json` — outside-window buy contrasted with inside-window Hatchery protection
+- `BOOK-04` — clean-start HOLD and Hatchery save-window contrast
 - `docs/SWARMSIM_GAME_MODEL.md` — Hatchery larvae formula
 
 Bot implication: Hatchery-first hold logic in clean start is justified.
@@ -157,16 +156,8 @@ The raw claim is too absolute. Our findings qualify it:
 
 Evidence:
 - `BOOK-01` — Territory lane is engine-relevant through Expansion timing, not just territory/sec vanity
-- `docs/test-data/strategy-audit-0/sa0-04/live/live-2026-07-12T063900-773Z/live-2026-07-12T063900-773Z-result.json` — Hatchery save-window state flips the recommendation from buy to hold once ETA enters the protected band
-- [SA0-05 result JSON](test-data/strategy-audit-0/sa0-05/live/live-2026-07-12T065826-917Z/live-2026-07-12T065826-917Z-result.json) — Territory candidate exists but is rejected by minimum-improvement/ROI threshold
-- [SA1-01 result JSON](test-data/strategy-audit-1/sa1-01/live/live-2026-07-12T071140-410Z/live-2026-07-12T071140-410Z-result.json) — mid-game multi-lane conflict still selects Meat while Territory remains an explicit rejected candidate
-- [SA1-02 result JSON](test-data/strategy-audit-1/sa1-02/live/live-2026-07-12T071042-592Z/live-2026-07-12T071042-592Z-result.json) — with stronger territory pressure, winner still favors Meat rebuild under current threshold policy
-- [SA1-02 threshold experiment result JSON](test-data/strategy-audit-1/sa1-02/live/live-2026-07-12T071553-778Z/live-2026-07-12T071553-778Z-result.json) — even when Territory is promoted to legal BUY via relaxed thresholds, Meat can still win, confirming the claim is about context-sensitive ranking rather than simple gating
-- [SA1-02 high-yield sensitivity result JSON](test-data/strategy-audit-1/sa1-02-exp-yield/live/live-2026-07-12T071815-444Z/live-2026-07-12T071815-444Z-result.json) — even with stronger synthetic territory impact and legal Territory BUY, Meat still wins in the tested mid-game state, strengthening the ranking-priority interpretation
-- [SA1-02 ordering-isolation post-fix result JSON](test-data/strategy-audit-1/sa1-02-exp-no-meat-planner/live/live-2026-07-12T072342-889Z/live-2026-07-12T072342-889Z-result.json) — after fixing synthetic Army buy execution in the audit harness, Territory is selected and executed when Meat goal planner is disabled; earlier no-selection runs are treated as harness artifacts
-- [SA1-03 result JSON](test-data/strategy-audit-1/sa1-03/live/live-2026-07-12T071643-350Z/live-2026-07-12T071643-350Z-result.json) — under stronger Nexus reserve pressure, Energy remains protected while Meat still wins execution, reinforcing context-dependent timing over absolute ASAP behavior
-- [SA1 v2 narrow sweep summary](test-data/strategy-audit-1/sa1-v2-breakpoint/2026-07-13T04-47-57-757Z/sa1-v2-summary.md) — targeted coarse->fine audit-only search across representative Meat/Energy/Clone/near-Territory seeds found no natural Territory-over-Meat breakpoint yet; nearest observed gap remained large (winner 8110 vs Territory 365.1214)
-- `docs/live-logs/2026-07-09-clean-start-game-observation.md` — Brood Architect HOLD in clean start
+- `BOOK-04` — SA0/SA1 findings: Territory is context-sensitive, Meat remains dominant in tested mid-game regimes, and no natural Territory breakpoint was found.
+- `BOOK-01` — Brood Architect HOLD in clean start
 
 Bot implication: Planner evaluates Expansion against competing lanes. "ASAP" is not the correct default; "when engine is ready" is.
 
@@ -279,7 +270,7 @@ Bot implication: HoM scores correctly in Laboratory. No auto-cast default.
 
 Evidence:
 - Reddit comments (pre-annotated, claim 3) — directionally confirmed; exact 2:1 trigger not measured
-- `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` — parent passive production and hatch-conversion confirmed as separate systems
+- `BOOK-01` — parent passive production and hatch-conversion are separate systems
 
 Bot implication: Cascade Planner is a future work item. Do not auto-cast Clone Larvae from this heuristic alone.
 
