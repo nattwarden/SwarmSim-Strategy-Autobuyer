@@ -89,7 +89,7 @@ If observed Git state differs, update this board before implementation.
 
 ## Active milestone
 
-**Milestone 5 — Ascension and Mutagen advisor (foundation ready; implementation next)**
+**Milestone 5 — Ascension and Mutagen advisor (implementation in progress on M5 branch)**
 
 Milestone 4 is implementation- and exact-SHA evidence-complete on the stacked
 M4 branch: implementation `f2db145e368f77e1b348a6cb70e1f8ef2f6a0a90`,
@@ -467,3 +467,17 @@ Exact next action:
 - Current milestone: Milestone 0
 - Exact next action: separate the dirty scopes and complete the bounded
   launchpad stabilization checklist
+
+### 2026-07-13 — Milestone 5 implementation started on stacked M5 branch
+
+- Agent: Copilot
+- Worktree/branch: isolated `codex/m5-ascension-mutagen-advisor`
+- Base commit verified present: `b9040d5943e621e6f41c6d247794e6866859ff64`
+- Product capability in progress: advisor-only M5 Ascension and Mutagen
+  comparison with immutable snapshot branches, recovery uncertainty handling,
+  and direct Hatchery-versus-KEEP_UNALLOCATED mutagen analysis.
+- Player-visible result: pending final verification and evidence commit.
+- Scope guard: no Ascension execution authority, no Mutagen spending authority,
+  and M4 safety defaults preserved.
+- Exact next action: complete implementation, run focused acceptance and full
+  verification on exact implementation SHA, then push separate evidence.

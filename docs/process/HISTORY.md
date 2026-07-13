@@ -19,6 +19,11 @@ docs/release-notes/
 
 ## Version notes
 
+- 5.0.0: Added an advisor-only Ascension and Mutagen advisor that compares
+  CONTINUE_RUN and ASCEND_NOW from one immutable snapshot, includes
+  recovery-aware uncertainty gates, keeps Mutagen allocation execution disabled,
+  ranks KEEP_UNALLOCATED and Hatchery Mutation when direct larva inputs resolve,
+  and exposes structured/flat observability fields plus diagnostic API access.
 - 4.0.0: Began milestone-aligned versioning with M4 and added the advisor-only
   Energy ability timing contract. Clone Larvae, House of Mirrors, and the three
   source-verified Rush abilities are compared against explicit WAIT/save from
