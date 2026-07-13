@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      6.0.0
+// @version      7.0.0
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -30,7 +30,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "6.0.0";
+  const AUTOBUYER_VERSION = "7.0.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -78,6 +78,7 @@
 
   const STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION = "strategic-domain-outcome.v1";
   const STRATEGIC_EFFECT_SCHEMA_VERSION = "strategic-effect.v1";
+  const STRATEGIC_OUTCOME_CALIBRATION_SCHEMA_VERSION = "strategic-outcome-calibration.v1";
   const SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION = "six-domain-strategic-coordinator.v1";
   const SIX_DOMAIN_DECISION_HORIZONS = [
     { horizonId: "short", horizonSeconds: 300 },
@@ -86,7 +87,7 @@
   ];
   const SIX_DOMAIN_MANIFEST = {
     schemaVersion: "m6-domain-contract-manifest.v1",
-    targetVersion: "6.0.0",
+    targetVersion: "7.0.0",
     status: "runtime-coordinator",
     baseline: {
       mainIntegrationImplementationSha: "a4221ea4ae741d1dc86e09bbafef616200f87d0c",
@@ -96,6 +97,7 @@
     schemas: {
       domainOutcome: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
       effect: STRATEGIC_EFFECT_SCHEMA_VERSION,
+      calibration: STRATEGIC_OUTCOME_CALIBRATION_SCHEMA_VERSION,
       coordinator: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
     },
     domains: [
@@ -3389,6 +3391,24 @@ function getDisplayName(item) {
       strategicCoordinatorCoverage: strategicCoordinator?.coverage || [],
       strategicCoordinatorManifest: strategicCoordinator?.manifest || SIX_DOMAIN_MANIFEST,
       strategicCoordinatorExecutionPlan,
+      strategicCalibration: strategicCoordinator?.strategicCalibration || null,
+      strategicCalibrationSchemaVersion: strategicCoordinator?.strategicCalibration?.schemaVersion || STRATEGIC_OUTCOME_CALIBRATION_SCHEMA_VERSION,
+      strategicCalibrationId: strategicCoordinator?.strategicCalibration?.calibrationId || "none",
+      strategicCalibrationStatus: strategicCoordinator?.strategicCalibration?.comparabilityStatus || "UNRANKED",
+      strategicCalibrationDomain: strategicCoordinator?.strategicCalibration?.sourceDomainId || "none",
+      strategicCalibrationAction: strategicCoordinator?.strategicCalibration?.actionId || "none",
+      strategicCalibrationBaselineAction: strategicCoordinator?.strategicCalibration?.baselineActionId || "none",
+      strategicCalibrationMilestone: strategicCoordinator?.strategicCalibration?.activeMilestone || "unknown",
+      strategicCalibrationMetric: strategicCoordinator?.strategicCalibration?.metricId || "unknown",
+      strategicCalibrationUnit: strategicCoordinator?.strategicCalibration?.metricUnit || "unknown",
+      strategicCalibrationHorizon: strategicCoordinator?.strategicCalibration?.horizonId || "medium",
+      strategicCalibrationActionValue: strategicCoordinator?.strategicCalibration?.actionValue ?? null,
+      strategicCalibrationBaselineValue: strategicCoordinator?.strategicCalibration?.baselineValue ?? null,
+      strategicCalibrationDelta: strategicCoordinator?.strategicCalibration?.delta ?? null,
+      strategicCalibrationFormulaStatus: strategicCoordinator?.strategicCalibration?.formulaStatus || "incomplete",
+      strategicCalibrationConfidence: strategicCoordinator?.strategicCalibration?.confidence || "low",
+      strategicCalibrationMissingInputs: strategicCoordinator?.strategicCalibration?.missingInputs || [],
+      strategicCalibrationWarnings: strategicCoordinator?.strategicCalibration?.warnings || [],
       councilUiState,
       ...momentum,
       momentumPrimaryPrioritySource: momentum.momentumPrimaryPrioritySource || "default",
@@ -4699,6 +4719,421 @@ function getDisplayName(item) {
     }));
   }
 
+  function strategicCalibrationToNumber(value, fallback = null) {
+    if (value === null || value === undefined || value === "") return fallback;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function strategicCalibrationHasFinite(value) {
+    if (value === null || value === undefined || value === "") return false;
+    return Number.isFinite(Number(value));
+  }
+
+  function strategicCalibrationFormulaStatus(status) {
+    const normalized = String(status || "incomplete").toLowerCase();
+    if (normalized === "runtime-verified") return "runtime-derived";
+    return normalized;
+  }
+
+  function strategicCalibrationRankableFormulaStatus(status) {
+    return status === "source-verified" || status === "runtime-derived";
+  }
+
+  function validateStrategicCalibrationIdentity(action = {}, baseline = {}, context = {}) {
+    const requiredIdentityFields = [
+      "snapshotId",
+      "snapshotHash",
+      "decisionCycleId",
+      "activeMilestone",
+      "activeTarget",
+      "metricId",
+      "metricUnit",
+      "direction",
+      "horizonId",
+      "horizonSeconds",
+      "formulaSetId",
+      "sourceRevision",
+    ];
+    const resolved = {};
+    const mismatches = [];
+    for (const field of requiredIdentityFields) {
+      const actionValue = action?.[field] ?? context?.[field] ?? null;
+      const baselineValue = baseline?.[field] ?? context?.[field] ?? null;
+      resolved[field] = actionValue;
+      if (
+        actionValue === null
+        || baselineValue === null
+        || String(actionValue) !== String(baselineValue)
+      ) {
+        mismatches.push(field);
+      }
+    }
+    return {
+      valid: mismatches.length === 0,
+      mismatches,
+      resolved,
+    };
+  }
+
+  function buildStrategicOutcomeCalibration(input = {}) {
+    const action = laboratoryCloneJson(input?.action || {});
+    const baseline = laboratoryCloneJson(input?.baseline || {});
+    const context = laboratoryCloneJson(input?.context || {});
+    const identity = validateStrategicCalibrationIdentity(action, baseline, context);
+    const formulaStatus = strategicCalibrationFormulaStatus(action?.formulaStatus || baseline?.formulaStatus || "incomplete");
+    const actionValue = strategicCalibrationToNumber(action?.value, null);
+    const baselineValue = strategicCalibrationToNumber(baseline?.value, null);
+    const direction = String(identity.resolved.direction || action.direction || baseline.direction || "HIGHER_IS_BETTER").toUpperCase();
+    const warnings = [];
+    const missingInputs = [];
+
+    let comparabilityStatus = "UNRANKED";
+    if (action?.unsupported === true || baseline?.unsupported === true) {
+      comparabilityStatus = "UNSUPPORTED";
+      missingInputs.push("unsupported action or baseline");
+    } else if (!identity.valid) {
+      comparabilityStatus = "INVALID";
+      for (const field of identity.mismatches) missingInputs.push(`identity:${field}`);
+    } else if (!strategicCalibrationHasFinite(actionValue) || !strategicCalibrationHasFinite(baselineValue)) {
+      comparabilityStatus = "UNRANKED";
+      if (!strategicCalibrationHasFinite(actionValue)) missingInputs.push("actionValue");
+      if (!strategicCalibrationHasFinite(baselineValue)) missingInputs.push("baselineValue");
+    } else if (!strategicCalibrationRankableFormulaStatus(formulaStatus)) {
+      comparabilityStatus = "UNRANKED";
+      missingInputs.push(`formulaStatus:${formulaStatus}`);
+    } else {
+      comparabilityStatus = "COMPARABLE";
+    }
+
+    let delta = null;
+    if (comparabilityStatus === "COMPARABLE") {
+      delta = direction === "LOWER_IS_BETTER"
+        ? baselineValue - actionValue
+        : actionValue - baselineValue;
+    }
+
+    if (action?.blockedBy && Array.isArray(action.blockedBy) && action.blockedBy.length) {
+      warnings.push(...action.blockedBy.map((entry) => String(entry || "unknown blocker")));
+    }
+
+    return laboratoryDeepFreeze({
+      schemaVersion: STRATEGIC_OUTCOME_CALIBRATION_SCHEMA_VERSION,
+      calibrationId: String(input?.calibrationId || `M7-${identity.resolved.snapshotId || context?.snapshotId || "UNKNOWN"}-${String(action?.actionId || "ACTION")}`),
+      snapshotId: String(identity.resolved.snapshotId || context?.snapshotId || "unknown"),
+      snapshotHash: String(identity.resolved.snapshotHash || context?.snapshotHash || "unknown"),
+      decisionCycleId: String(identity.resolved.decisionCycleId || context?.decisionCycleId || "unknown"),
+      sourceDomainId: String(input?.sourceDomainId || "UNKNOWN"),
+      sourceSchemaVersion: String(input?.sourceSchemaVersion || "unknown"),
+      actionId: String(action?.actionId || "ACTION"),
+      baselineActionId: String(baseline?.actionId || "WAIT"),
+      activeMilestone: String(identity.resolved.activeMilestone || context?.activeMilestone || "unknown"),
+      metricId: String(identity.resolved.metricId || "unknown"),
+      metricUnit: String(identity.resolved.metricUnit || "unknown"),
+      horizonId: String(identity.resolved.horizonId || context?.horizonId || "medium"),
+      horizonSeconds: Number(identity.resolved.horizonSeconds || context?.horizonSeconds || 1800),
+      actionValue,
+      baselineValue,
+      delta,
+      direction,
+      comparabilityStatus,
+      formulaStatus,
+      confidence: String(input?.confidence || action?.confidence || "low"),
+      uncertainty: {
+        low: strategicCalibrationToNumber(input?.uncertainty?.low, null),
+        high: strategicCalibrationToNumber(input?.uncertainty?.high, null),
+        reason: String(input?.uncertainty?.reason || (comparabilityStatus === "COMPARABLE" ? "none" : "missing-or-invalid-inputs")),
+      },
+      missingInputs,
+      warnings,
+      provenance: Array.isArray(input?.provenance) ? input.provenance.slice() : [],
+    });
+  }
+
+  function calibrateAbilityOutcome(actionRun = {}, waitRun = {}, context = {}) {
+    const action = laboratoryCloneJson(actionRun || {});
+    const baseline = laboratoryCloneJson(waitRun || {});
+    const actionValueRaw = action?.projectedGain ?? action?.sharedComparableValue ?? action?.milestoneEtaImprovementSeconds;
+    const baselineValueRaw = baseline?.projectedGain ?? baseline?.sharedComparableValue ?? baseline?.milestoneEtaImprovementSeconds;
+    const usingLegacyEtaImprovement = action?.milestoneEtaImprovementSeconds !== undefined
+      || baseline?.milestoneEtaImprovementSeconds !== undefined;
+    const hasExplicitFormulaStatus = action?.formulaStatus !== undefined || baseline?.formulaStatus !== undefined;
+    const inferredFormulaStatus = hasExplicitFormulaStatus
+      ? strategicCalibrationFormulaStatus(action?.formulaStatus || baseline?.formulaStatus || "incomplete")
+      : ((strategicCalibrationHasFinite(actionValueRaw) || strategicCalibrationHasFinite(baselineValueRaw) || usingLegacyEtaImprovement)
+        ? "runtime-derived"
+        : "incomplete");
+    const metricUnit = String(action?.metricUnit || baseline?.metricUnit || (usingLegacyEtaImprovement ? "seconds" : (action?.targetResource || "value")));
+    const metricId = String(action?.metricId || baseline?.metricId || (usingLegacyEtaImprovement ? "milestoneEtaImprovementSeconds" : `${metricUnit}-progress`));
+    const actionFormulaStatus = hasExplicitFormulaStatus
+      ? strategicCalibrationFormulaStatus(action?.formulaStatus || inferredFormulaStatus)
+      : inferredFormulaStatus;
+    const baselineFormulaStatus = hasExplicitFormulaStatus
+      ? strategicCalibrationFormulaStatus(baseline?.formulaStatus || actionFormulaStatus || "incomplete")
+      : inferredFormulaStatus;
+    const formulaStatus = actionFormulaStatus === baselineFormulaStatus ? actionFormulaStatus : "mismatch";
+    return buildStrategicOutcomeCalibration({
+      calibrationId: context?.calibrationId,
+      sourceDomainId: "ENERGY_ABILITIES",
+      sourceSchemaVersion: context?.sourceSchemaVersion || "energy-ability-timing-advisor.v1",
+      confidence: action?.confidence || context?.confidence || "low",
+      uncertainty: context?.uncertainty || null,
+      provenance: context?.provenance || ["runtime-derived ability timing snapshot"],
+      context: {
+        snapshotId: context?.snapshotId,
+        snapshotHash: context?.snapshotHash,
+        decisionCycleId: context?.decisionCycleId,
+        activeMilestone: context?.activeMilestone,
+        activeTarget: context?.activeTarget,
+        metricId,
+        metricUnit,
+        direction: String(action?.direction || baseline?.direction || "HIGHER_IS_BETTER"),
+        horizonId: context?.horizonId || "medium",
+        horizonSeconds: context?.horizonSeconds || 1800,
+        formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
+        sourceRevision: String(action?.sourceRevision || baseline?.sourceRevision || LABORATORY_BASE_GAME_SOURCE_COMMIT),
+      },
+      action: {
+        actionId: String(action?.actionId || "WAIT"),
+        snapshotId: context?.snapshotId,
+        snapshotHash: context?.snapshotHash,
+        decisionCycleId: context?.decisionCycleId,
+        activeMilestone: context?.activeMilestone,
+        activeTarget: context?.activeTarget,
+        metricId,
+        metricUnit,
+        direction: String(action?.direction || baseline?.direction || "HIGHER_IS_BETTER"),
+        horizonId: context?.horizonId || "medium",
+        horizonSeconds: context?.horizonSeconds || 1800,
+        formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
+        sourceRevision: String(action?.sourceRevision || baseline?.sourceRevision || LABORATORY_BASE_GAME_SOURCE_COMMIT),
+        value: strategicCalibrationToNumber(actionValueRaw, null),
+        formulaStatus,
+        blockedBy: Array.isArray(action?.blockers) ? action.blockers.slice() : [],
+        unsupported: action?.unsupported === true,
+      },
+      baseline: {
+        actionId: String(baseline?.actionId || "WAIT"),
+        snapshotId: context?.snapshotId,
+        snapshotHash: context?.snapshotHash,
+        decisionCycleId: context?.decisionCycleId,
+        activeMilestone: context?.activeMilestone,
+        activeTarget: context?.activeTarget,
+        metricId,
+        metricUnit,
+        direction: String(action?.direction || baseline?.direction || "HIGHER_IS_BETTER"),
+        horizonId: context?.horizonId || "medium",
+        horizonSeconds: context?.horizonSeconds || 1800,
+        formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
+        sourceRevision: String(action?.sourceRevision || baseline?.sourceRevision || LABORATORY_BASE_GAME_SOURCE_COMMIT),
+        value: strategicCalibrationToNumber(baselineValueRaw, 0),
+        formulaStatus,
+        unsupported: baseline?.unsupported === true,
+      },
+    });
+  }
+
+  function calibrateAscensionOutcome(continueBranch = {}, ascendBranch = {}, context = {}) {
+    const continueRun = laboratoryCloneJson(continueBranch || {});
+    const ascendNow = laboratoryCloneJson(ascendBranch || {});
+    const metricId = continueRun?.metricId || ascendNow?.metricId || "projectedMilestoneProgressDelta";
+    const metricUnit = continueRun?.metricUnit || ascendNow?.metricUnit || "value";
+    const direction = continueRun?.direction || ascendNow?.direction || "HIGHER_IS_BETTER";
+    const hasExplicitFormulaStatus = ascendNow?.formulaStatus !== undefined || continueRun?.formulaStatus !== undefined;
+    const inferredFormulaStatus = hasExplicitFormulaStatus
+      ? strategicCalibrationFormulaStatus(ascendNow?.formulaStatus || continueRun?.formulaStatus || "incomplete")
+      : ((strategicCalibrationHasFinite(ascendNow?.projectedMilestoneProgressDelta) || strategicCalibrationHasFinite(continueRun?.projectedMilestoneProgressDelta))
+        ? "runtime-derived"
+        : "incomplete");
+    const formulaStatus = inferredFormulaStatus;
+    return buildStrategicOutcomeCalibration({
+      calibrationId: context?.calibrationId,
+      sourceDomainId: "ASCENSION_MUTAGEN",
+      sourceSchemaVersion: context?.sourceSchemaVersion || "ascension-mutagen-advisor.v1",
+      confidence: context?.confidence || "low",
+      provenance: context?.provenance || ["runtime-derived ascension advisor snapshot"],
+      context: {
+        snapshotId: context?.snapshotId,
+        snapshotHash: context?.snapshotHash,
+        decisionCycleId: context?.decisionCycleId,
+        activeMilestone: context?.activeMilestone,
+        activeTarget: context?.activeTarget,
+        metricId,
+        metricUnit,
+        direction,
+        horizonId: context?.horizonId || "medium",
+        horizonSeconds: context?.horizonSeconds || 1800,
+        formulaSetId: continueRun?.formulaSetId || ascendNow?.formulaSetId || "ascension-mutagen-runtime.v1",
+        sourceRevision: continueRun?.sourceRevision || ascendNow?.sourceRevision || "runtime",
+      },
+      action: {
+        actionId: String(ascendNow?.actionId || "ASCEND_NOW"),
+        value: strategicCalibrationToNumber(ascendNow?.projectedMilestoneProgressDelta, null),
+        formulaStatus,
+      },
+      baseline: {
+        actionId: String(continueRun?.actionId || "CONTINUE_RUN"),
+        value: strategicCalibrationToNumber(continueRun?.projectedMilestoneProgressDelta, null),
+        formulaStatus,
+      },
+    });
+  }
+
+  function adaptCalibratedAbilityDomainOutcome(calibration, advisor = {}, sharedContext = {}) {
+    const selectedActionId = String(advisor?.recommendedActionId || advisor?.recommendedAction || "WAIT");
+    const selectedBranch = Array.isArray(advisor?.branches)
+      ? advisor.branches.find((branch) => String(branch?.actionId || "") === selectedActionId) || advisor.branches[0] || null
+      : null;
+    const excludedActionIds = Array.isArray(advisor?.excludedActionIds) ? advisor.excludedActionIds.map((id) => String(id || "")) : [];
+    const unsupported = selectedActionId === "SWARMWARP" || excludedActionIds.includes(selectedActionId) || calibration?.comparabilityStatus === "UNSUPPORTED";
+    const blockedBy = Array.isArray(selectedBranch?.blockers) ? selectedBranch.blockers.filter(Boolean).map((entry) => String(entry)) : [];
+    const action = {
+      actionId: selectedActionId,
+      label: String(advisor?.recommendedLabel || selectedBranch?.label || selectedActionId),
+      class: unsupported ? "UNSUPPORTED" : (selectedActionId === "WAIT" ? "WAIT" : "ADVISOR_ONLY"),
+      amount: "1",
+      executionKey: null,
+      executionId: selectedActionId,
+      executionKind: "advisor",
+      executionVariant: "advisor-only",
+      fingerprint: `advisor:${selectedActionId}`,
+    };
+    const comparable = calibration?.comparabilityStatus === "COMPARABLE";
+    const rankComparable = comparable && selectedActionId !== "WAIT" && !unsupported;
+    const delta = strategicCalibrationToNumber(calibration?.delta, null);
+    const effectMetric = String(calibration?.metricId || (comparable ? "projectedMilestoneProgressDelta" : "missingConversion"));
+    const effectUnit = String(calibration?.metricUnit || "value");
+    const effects = [
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ENERGY_ABILITIES", "DIRECT", effectMetric, effectUnit, sharedContext.horizonId || "medium", comparable && delta !== null ? delta : 0, false, [], String(calibration?.formulaStatus || "runtime-derived")),
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ENERGY_ABILITIES", "FINAL", effectMetric, effectUnit, sharedContext.horizonId || "medium", comparable && delta !== null ? delta : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], String(calibration?.formulaStatus || "runtime-derived")),
+    ];
+    return laboratoryDeepFreeze({
+      schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
+      snapshotId: sharedContext.snapshotId || "unknown",
+      snapshotHash: sharedContext.snapshotHash || "unknown",
+      decisionCycleId: sharedContext.decisionCycleId || "unknown",
+      sourceSchemaVersion: advisor?.schemaVersion || "energy-ability-timing-advisor.v1",
+      domainId: "ENERGY_ABILITIES",
+      domainLabel: "Energy abilities",
+      authorityClass: "ADVISOR_ONLY",
+      action,
+      calibration,
+      context: {
+        activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone || "unknown",
+        activeTarget: sharedContext.activeTarget || advisor?.activeTarget || "unknown",
+        horizonId: sharedContext.horizonId || "medium",
+        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
+      },
+      safety: {
+        status: unsupported ? "UNSUPPORTED" : (blockedBy.length ? "BLOCKED" : "ADVISOR_ONLY"),
+        executionClass: unsupported ? "UNSUPPORTED" : "ADVISOR_ONLY",
+        hardBlockers: blockedBy,
+        protectedResourcesTouched: [],
+      },
+      comparability: {
+        status: unsupported ? "UNSUPPORTED" : (rankComparable ? "COMPARABLE" : "UNRANKED"),
+        basis: rankComparable ? (String(calibration?.direction || "").toUpperCase() === "LOWER_IS_BETTER" ? "milestone-eta-seconds" : "same-unit-milestone-progress-delta") : null,
+        metricUnit: rankComparable ? String(calibration?.metricUnit || "value") : null,
+        commonValue: rankComparable ? strategicCalibrationToNumber(calibration?.delta, null) : null,
+        missingConversions: Array.isArray(calibration?.missingInputs) && calibration.missingInputs.length
+          ? calibration.missingInputs.slice()
+          : [unsupported ? "Swarmwarp is unsupported" : (selectedActionId === "WAIT" ? "no non-WAIT calibrated action selected" : "validated milestone conversion for ability branch")],
+      },
+      outcome: {
+        milestoneEtaBeforeSeconds: String(calibration?.direction || "").toUpperCase() === "LOWER_IS_BETTER" ? strategicCalibrationToNumber(calibration?.baselineValue, null) : null,
+        milestoneEtaAfterSeconds: String(calibration?.direction || "").toUpperCase() === "LOWER_IS_BETTER" ? strategicCalibrationToNumber(calibration?.actionValue, null) : null,
+        milestoneEtaImprovementSeconds: rankComparable && String(calibration?.direction || "").toUpperCase() === "LOWER_IS_BETTER" ? strategicCalibrationToNumber(calibration?.delta, null) : null,
+        projectedMilestoneProgressDelta: rankComparable && String(calibration?.direction || "").toUpperCase() !== "LOWER_IS_BETTER" ? strategicCalibrationToNumber(calibration?.delta, null) : null,
+        recoverySeconds: null,
+        paybackSeconds: null,
+        opportunityCost: advisor?.energyOpportunityCost || selectedBranch?.opportunityCost || "none",
+        resourceCosts: [],
+        effects,
+      },
+      evidence: {
+        confidence: advisor?.confidence || calibration?.confidence || "low",
+        status: calibration?.formulaStatus || "incomplete",
+        supportingFields: advisor ? Object.keys(advisor).slice(0, 12) : [],
+        warnings: Array.isArray(calibration?.warnings) ? calibration.warnings.slice() : [],
+      },
+      reason: advisor?.reason || (unsupported ? "Swarmwarp remains unsupported." : "Energy abilities remain advisor-only."),
+      reconsiderCondition: advisor?.reconsiderCondition || (rankComparable ? "Reconsider when the calibrated WAIT-relative result changes." : "Reconsider when a validated non-WAIT shared conversion for the ability branch is available."),
+    });
+  }
+
+  function adaptCalibratedAscensionDomainOutcome(calibration, advisor = {}, sharedContext = {}) {
+    const selectedActionId = String(advisor?.recommendedActionId || advisor?.recommendedAction || "CONTINUE_RUN");
+    const action = {
+      actionId: selectedActionId,
+      label: String(advisor?.recommendation || selectedActionId),
+      class: "ADVISOR_ONLY",
+      amount: "1",
+      executionKey: null,
+      executionId: selectedActionId,
+      executionKind: "advisor",
+      executionVariant: "advisor-only",
+      fingerprint: `advisor:${selectedActionId}`,
+    };
+    const comparable = calibration?.comparabilityStatus === "COMPARABLE";
+    const delta = strategicCalibrationToNumber(calibration?.delta, null);
+    const effectMetric = String(calibration?.metricId || (comparable ? "projectedMilestoneProgressDelta" : "missingRecoveryConversion"));
+    const effectUnit = String(calibration?.metricUnit || "value");
+    const effects = [
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ASCENSION_MUTAGEN", "DIRECT", effectMetric, effectUnit, sharedContext.horizonId || "medium", comparable && delta !== null ? delta : 0, false, [], String(calibration?.formulaStatus || "incomplete")),
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ASCENSION_MUTAGEN", "FINAL", effectMetric, effectUnit, sharedContext.horizonId || "medium", comparable && delta !== null ? delta : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], String(calibration?.formulaStatus || "incomplete")),
+    ];
+    return laboratoryDeepFreeze({
+      schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
+      snapshotId: sharedContext.snapshotId || "unknown",
+      snapshotHash: sharedContext.snapshotHash || "unknown",
+      decisionCycleId: sharedContext.decisionCycleId || "unknown",
+      sourceSchemaVersion: advisor?.schemaVersion || "ascension-mutagen-advisor.v1",
+      domainId: "ASCENSION_MUTAGEN",
+      domainLabel: "Ascension/Mutagen",
+      authorityClass: "ADVISOR_ONLY",
+      action,
+      calibration,
+      context: {
+        activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone || "unknown",
+        activeTarget: sharedContext.activeTarget || advisor?.activeTarget || "unknown",
+        horizonId: sharedContext.horizonId || "medium",
+        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
+      },
+      safety: {
+        status: "ADVISOR_ONLY",
+        executionClass: "ADVISOR_ONLY",
+        hardBlockers: [],
+        protectedResourcesTouched: [],
+      },
+      comparability: {
+        status: String(calibration?.comparabilityStatus || "UNRANKED"),
+        basis: comparable ? "same-unit-milestone-progress-delta" : null,
+        metricUnit: comparable ? String(calibration?.metricUnit || "value") : null,
+        commonValue: comparable ? strategicCalibrationToNumber(calibration?.delta, null) : null,
+        missingConversions: Array.isArray(calibration?.missingInputs) ? calibration.missingInputs.slice() : ["validated recovery-to-horizon conversion for Ascension"],
+      },
+      outcome: {
+        milestoneEtaBeforeSeconds: null,
+        milestoneEtaAfterSeconds: null,
+        milestoneEtaImprovementSeconds: null,
+        projectedMilestoneProgressDelta: comparable ? strategicCalibrationToNumber(calibration?.delta, null) : null,
+        recoverySeconds: sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? Number(advisor.breakEvenSeconds) : null,
+        paybackSeconds: null,
+        opportunityCost: advisor?.currentRunOpportunityCost || "none",
+        resourceCosts: [],
+        effects,
+      },
+      evidence: {
+        confidence: advisor?.confidence || calibration?.confidence || "low",
+        status: calibration?.formulaStatus || "incomplete",
+        supportingFields: advisor ? Object.keys(advisor).slice(0, 12) : [],
+        warnings: Array.isArray(calibration?.warnings) ? calibration.warnings.slice() : [],
+      },
+      reason: advisor?.reason || "Ascension/Mutagen remains advisor-only.",
+      reconsiderCondition: advisor?.reconsiderCondition || (comparable ? "Reconsider when calibrated next-run value changes." : "Reconsider when validated next-run milestone values are available for both continue and ascend branches."),
+    });
+  }
+
   function adaptPurchaseDomainOutcome(domainId, purchaseRow, sharedContext = {}) {
     const domain = sixDomainInfo(domainId);
     const row = purchaseRow ? laboratoryCloneJson(purchaseRow) : null;
@@ -4802,153 +5237,60 @@ function getDisplayName(item) {
   function adaptAbilityDomainOutcome(abilityAdvisor, sharedContext = {}) {
     const advisor = laboratoryCloneJson(abilityAdvisor || {});
     const selectedActionId = String(advisor?.recommendedActionId || advisor?.recommendedAction || "WAIT");
-    const selectedBranch = Array.isArray(advisor?.branches) ? advisor.branches.find((branch) => String(branch?.actionId || "") === selectedActionId) || advisor.branches[0] || null : null;
-    const excludedActionIds = Array.isArray(advisor?.excludedActionIds) ? advisor.excludedActionIds.map((id) => String(id || "")) : [];
-    const unsupported = selectedActionId === "SWARMWARP" || excludedActionIds.includes(selectedActionId);
-    const comparable = sixDomainHasFiniteMetric(advisor?.milestoneEtaImprovementSeconds) || sixDomainHasFiniteMetric(selectedBranch?.milestoneEtaImprovementSeconds) || sixDomainHasFiniteMetric(advisor?.sharedComparableValue);
-    const comparisonValue = sixDomainHasFiniteMetric(advisor?.milestoneEtaImprovementSeconds)
-      ? Number(advisor.milestoneEtaImprovementSeconds)
-      : (sixDomainHasFiniteMetric(selectedBranch?.milestoneEtaImprovementSeconds)
-        ? Number(selectedBranch.milestoneEtaImprovementSeconds)
-        : (sixDomainHasFiniteMetric(advisor?.sharedComparableValue) ? Number(advisor.sharedComparableValue) : null));
-    const action = {
+    const selectedBranch = Array.isArray(advisor?.branches)
+      ? advisor.branches.find((branch) => String(branch?.actionId || "") === selectedActionId) || advisor.branches[0] || null
+      : null;
+    const waitBranch = Array.isArray(advisor?.branches)
+      ? advisor.branches.find((branch) => String(branch?.actionId || "") === "WAIT") || null
+      : null;
+    const calibration = calibrateAbilityOutcome(selectedBranch || {
       actionId: selectedActionId,
-      label: String(advisor?.recommendedLabel || selectedBranch?.label || selectedActionId),
-      class: unsupported ? "UNSUPPORTED" : (selectedActionId === "WAIT" ? "WAIT" : "ADVISOR_ONLY"),
-      amount: "1",
-      executionKey: null,
-      executionId: selectedActionId,
-      executionKind: "advisor",
-      executionVariant: "advisor-only",
-      fingerprint: `advisor:${selectedActionId}`,
-    };
-    const effects = Array.isArray(advisor?.effects) && advisor.effects.length ? advisor.effects.map((effect) => laboratoryCloneJson(effect)) : [
-      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ENERGY_ABILITIES", "DIRECT", comparable ? "milestoneEtaImprovementSeconds" : "missingConversion", comparable ? "seconds" : "value", sharedContext.horizonId || "medium", comparable ? comparisonValue : 0, false, [], "runtime-derived"),
-      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ENERGY_ABILITIES", "FINAL", comparable ? "milestoneEtaImprovementSeconds" : "missingConversion", comparable ? "seconds" : "value", sharedContext.horizonId || "medium", comparable ? comparisonValue : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], "runtime-derived"),
-    ];
-    return laboratoryDeepFreeze({
-      schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
-      snapshotId: sharedContext.snapshotId || "unknown",
-      snapshotHash: sharedContext.snapshotHash || "unknown",
-      decisionCycleId: sharedContext.decisionCycleId || "unknown",
+      projectedGain: advisor?.projectedGain,
+      formulaStatus: "incomplete",
+      blockers: ["missing ability branch"],
+      unsupported: true,
+    }, waitBranch || {
+      actionId: "WAIT",
+      projectedGain: 0,
+      formulaStatus: "runtime-derived",
+    }, {
+      calibrationId: `M7-${sharedContext.snapshotId || "unknown"}-${selectedActionId}`,
       sourceSchemaVersion: advisor?.schemaVersion || "energy-ability-timing-advisor.v1",
-      domainId: "ENERGY_ABILITIES",
-      domainLabel: "Energy abilities",
-      authorityClass: "ADVISOR_ONLY",
-      action,
-      context: {
-        activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone || "unknown",
-        activeTarget: sharedContext.activeTarget || advisor?.activeTarget || "unknown",
-        horizonId: sharedContext.horizonId || "medium",
-        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
-      },
-      safety: {
-        status: unsupported ? "UNSUPPORTED" : "ADVISOR_ONLY",
-        executionClass: unsupported ? "UNSUPPORTED" : "ADVISOR_ONLY",
-        hardBlockers: [],
-        protectedResourcesTouched: [],
-      },
-      comparability: {
-        status: comparable && !unsupported ? "COMPARABLE" : "UNRANKED",
-        basis: comparable && !unsupported ? (sixDomainHasFiniteMetric(advisor?.milestoneEtaImprovementSeconds) || sixDomainHasFiniteMetric(selectedBranch?.milestoneEtaImprovementSeconds) ? "milestone-eta-seconds" : "versioned-source-or-runtime-derived-common-value") : null,
-        metricUnit: comparable && !unsupported ? "seconds" : null,
-        commonValue: comparable ? comparisonValue : null,
-        missingConversions: comparable && !unsupported ? [] : [unsupported ? "Swarmwarp is unsupported" : "validated milestone-eta conversion for an ability branch"],
-      },
-      outcome: {
-        milestoneEtaBeforeSeconds: null,
-        milestoneEtaAfterSeconds: null,
-        milestoneEtaImprovementSeconds: comparable ? comparisonValue : null,
-        projectedMilestoneProgressDelta: null,
-        recoverySeconds: null,
-        paybackSeconds: null,
-        opportunityCost: advisor?.energyOpportunityCost || selectedBranch?.opportunityCost || "none",
-        resourceCosts: [],
-        effects,
-      },
-      evidence: {
-        confidence: advisor?.confidence || "low",
-        status: advisor?.schemaVersion ? "runtime-derived" : "unsupported",
-        supportingFields: advisor ? Object.keys(advisor).slice(0, 12) : [],
-        warnings: comparable ? [] : ["no validated milestone conversion for ability domain"],
-      },
-      reason: advisor?.reason || (unsupported ? "Swarmwarp remains unsupported." : "Energy abilities remain advisor-only."),
-      reconsiderCondition: advisor?.reconsiderCondition || (unsupported ? "Reconsider when Swarmwarp gains a verified model." : (comparable ? "Reconsider when the ability conversion changes." : "Reconsider when a validated shared conversion for the ability branch is available.")),
+      snapshotId: sharedContext.snapshotId,
+      snapshotHash: sharedContext.snapshotHash,
+      decisionCycleId: sharedContext.decisionCycleId,
+      activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone,
+      activeTarget: sharedContext.activeTarget || advisor?.activeTarget,
+      horizonId: sharedContext.horizonId,
+      horizonSeconds: sharedContext.horizonSeconds,
+      confidence: advisor?.confidence || "low",
+      provenance: ["evaluateEnergyAbilityTimingSnapshot"],
     });
+    return adaptCalibratedAbilityDomainOutcome(calibration, advisor, sharedContext);
   }
 
   function adaptAscensionDomainOutcome(ascensionAdvisor, sharedContext = {}) {
     const advisor = laboratoryCloneJson(ascensionAdvisor || {});
-    const selectedActionId = String(advisor?.recommendedActionId || advisor?.recommendedAction || "CONTINUE_RUN");
-    const selectedBranch = Array.isArray(advisor?.branches) ? advisor.branches.find((branch) => String(branch?.actionId || "") === selectedActionId) || advisor.branches[0] || null : null;
-    const comparable = sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) || sixDomainHasFiniteMetric(advisor?.projectedMilestoneProgressDelta) || sixDomainHasFiniteMetric(selectedBranch?.projectedMilestoneProgressDelta);
-    const comparisonValue = sixDomainHasFiniteMetric(advisor?.projectedMilestoneProgressDelta)
-      ? Number(advisor.projectedMilestoneProgressDelta)
-      : (sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? Math.max(0, Number(sharedContext.horizonSeconds || 1800) - Number(advisor.breakEvenSeconds)) : (sixDomainHasFiniteMetric(selectedBranch?.projectedMilestoneProgressDelta) ? Number(selectedBranch.projectedMilestoneProgressDelta) : null));
-    const action = {
-      actionId: selectedActionId,
-      label: String(advisor?.recommendation || selectedActionId),
-      class: selectedActionId === "CONTINUE_RUN" ? "ADVISOR_ONLY" : "ADVISOR_ONLY",
-      amount: "1",
-      executionKey: null,
-      executionId: selectedActionId,
-      executionKind: "advisor",
-      executionVariant: "advisor-only",
-      fingerprint: `advisor:${selectedActionId}`,
-    };
-    const effects = Array.isArray(advisor?.effects) && advisor.effects.length ? advisor.effects.map((effect) => laboratoryCloneJson(effect)) : [
-      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ASCENSION_MUTAGEN", "DIRECT", comparable ? "projectedMilestoneProgressDelta" : "missingRecoveryConversion", comparable ? "progress-delta" : "value", sharedContext.horizonId || "medium", comparable && comparisonValue !== null ? comparisonValue : 0, false, [], "runtime-derived"),
-      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ASCENSION_MUTAGEN", "FINAL", comparable ? "projectedMilestoneProgressDelta" : "missingRecoveryConversion", comparable ? "progress-delta" : "value", sharedContext.horizonId || "medium", comparable && comparisonValue !== null ? comparisonValue : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], "runtime-derived"),
-    ];
-    return laboratoryDeepFreeze({
-      schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
-      snapshotId: sharedContext.snapshotId || "unknown",
-      snapshotHash: sharedContext.snapshotHash || "unknown",
-      decisionCycleId: sharedContext.decisionCycleId || "unknown",
+    const continueBranch = Array.isArray(advisor?.branches)
+      ? advisor.branches.find((branch) => String(branch?.actionId || "") === "CONTINUE_RUN") || advisor.branches[0] || {}
+      : {};
+    const ascendBranch = Array.isArray(advisor?.branches)
+      ? advisor.branches.find((branch) => String(branch?.actionId || "") === "ASCEND_NOW") || {}
+      : {};
+    const calibration = calibrateAscensionOutcome(continueBranch, ascendBranch, {
+      calibrationId: `M7-${sharedContext.snapshotId || "unknown"}-ASCENSION`,
       sourceSchemaVersion: advisor?.schemaVersion || "ascension-mutagen-advisor.v1",
-      domainId: "ASCENSION_MUTAGEN",
-      domainLabel: "Ascension/Mutagen",
-      authorityClass: "ADVISOR_ONLY",
-      action,
-      context: {
-        activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone || "unknown",
-        activeTarget: sharedContext.activeTarget || advisor?.activeTarget || "unknown",
-        horizonId: sharedContext.horizonId || "medium",
-        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
-      },
-      safety: {
-        status: "ADVISOR_ONLY",
-        executionClass: "ADVISOR_ONLY",
-        hardBlockers: [],
-        protectedResourcesTouched: [],
-      },
-      comparability: {
-        status: comparable ? "COMPARABLE" : "UNRANKED",
-        basis: comparable ? (sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? "milestone-eta-seconds" : "same-unit-milestone-progress-delta") : null,
-        metricUnit: comparable ? (sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? "seconds" : "progress-delta") : null,
-        commonValue: comparable ? comparisonValue : null,
-        missingConversions: comparable ? [] : ["validated recovery-to-horizon conversion for Ascension"],
-      },
-      outcome: {
-        milestoneEtaBeforeSeconds: null,
-        milestoneEtaAfterSeconds: null,
-        milestoneEtaImprovementSeconds: comparable && sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? Math.max(0, Number(sharedContext.horizonSeconds || 1800) - Number(advisor.breakEvenSeconds)) : null,
-        projectedMilestoneProgressDelta: comparable && !sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? comparisonValue : null,
-        recoverySeconds: sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? Number(advisor.breakEvenSeconds) : null,
-        paybackSeconds: null,
-        opportunityCost: advisor?.currentRunOpportunityCost || "none",
-        resourceCosts: [],
-        effects,
-      },
-      evidence: {
-        confidence: advisor?.confidence || "low",
-        status: advisor?.schemaVersion ? "runtime-derived" : "unsupported",
-        supportingFields: advisor ? Object.keys(advisor).slice(0, 12) : [],
-        warnings: comparable ? [] : ["no validated recovery conversion for ascension domain"],
-      },
-      reason: advisor?.reason || "Ascension/Mutagen remains advisor-only.",
-      reconsiderCondition: advisor?.reconsiderCondition || (comparable ? "Reconsider when the recovery conversion changes." : "Reconsider when validated recovery evidence becomes available."),
+      snapshotId: sharedContext.snapshotId,
+      snapshotHash: sharedContext.snapshotHash,
+      decisionCycleId: sharedContext.decisionCycleId,
+      activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone,
+      activeTarget: sharedContext.activeTarget || advisor?.activeTarget,
+      horizonId: sharedContext.horizonId,
+      horizonSeconds: sharedContext.horizonSeconds,
+      confidence: advisor?.confidence || "low",
+      provenance: ["evaluateAscensionMutagenSnapshot"],
     });
+    return adaptCalibratedAscensionDomainOutcome(calibration, advisor, sharedContext);
   }
 
   function snapshotActionId(sharedContext, fallbackActionId) {
@@ -4977,11 +5319,11 @@ function getDisplayName(item) {
         evidenceBasis = (domainOutcomes || []).map((outcome) => `${outcome.domainId}:${outcome.effectAudit?.status || "missing"}`).join(" | ");
       } else if (mechanic.mechanicId === "M6-ABILITY-AUTHORITY") {
         const ability = (domainOutcomes || []).find((outcome) => outcome.domainId === "ENERGY_ABILITIES");
-        status = ability?.authorityClass === "ADVISOR_ONLY" && ability?.safety?.status === "ADVISOR_ONLY" ? "PASS" : "FAIL";
+        status = ability?.authorityClass === "ADVISOR_ONLY" && ["ADVISOR_ONLY", "BLOCKED", "UNSUPPORTED"].includes(String(ability?.safety?.status || "")) ? "PASS" : "FAIL";
         evidenceBasis = ability ? `${ability.domainId}:${ability.action?.actionId || "unknown"}` : "missing ability outcome";
       } else if (mechanic.mechanicId === "M6-ASCENSION-AUTHORITY") {
         const ascension = (domainOutcomes || []).find((outcome) => outcome.domainId === "ASCENSION_MUTAGEN");
-        status = ascension?.authorityClass === "ADVISOR_ONLY" && ascension?.safety?.status === "ADVISOR_ONLY" ? "PASS" : "FAIL";
+        status = ascension?.authorityClass === "ADVISOR_ONLY" && ["ADVISOR_ONLY", "BLOCKED", "UNSUPPORTED"].includes(String(ascension?.safety?.status || "")) ? "PASS" : "FAIL";
         evidenceBasis = ascension ? `${ascension.domainId}:${ascension.action?.actionId || "unknown"}` : "missing ascension outcome";
       } else if (mechanic.mechanicId === "M6-BOUNDED-EXECUTION") {
         const reversible = (domainOutcomes || []).find((outcome) => outcome.authorityClass === "BOUNDED_REVERSIBLE" && outcome.safety?.status === "ALLOWED" && outcome.comparability?.status === "COMPARABLE");
@@ -5087,6 +5429,10 @@ function getDisplayName(item) {
     const confidence = winner?.evidence?.confidence || (ranked.some((outcome) => outcome.evidence?.confidence === "medium") ? "medium" : "low");
     const selectedComparisonBasis = winner?.comparability?.basis || null;
     const blockers = importantAlternatives.flatMap((outcome) => outcome.safety?.hardBlockers || []);
+    const strategicCalibration = winner?.calibration
+      || domainOutcomes.find((outcome) => outcome?.domainId === "ENERGY_ABILITIES")?.calibration
+      || domainOutcomes.find((outcome) => outcome?.domainId === "ASCENSION_MUTAGEN")?.calibration
+      || null;
 
     return laboratoryDeepFreeze({
       schemaVersion: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
@@ -5111,6 +5457,7 @@ function getDisplayName(item) {
       blockers,
       sharedResourceConflicts,
       domainOutcomes,
+      strategicCalibration,
       authorityState: {
         executionAuthority,
         authorityClass: winner?.authorityClass || "NONE",
@@ -5253,7 +5600,13 @@ function getDisplayName(item) {
 
   function evaluateEnergyAbilityTimingSnapshot(inputSnapshot = {}) {
     const snapshot = laboratoryDeepFreeze(laboratoryCloneJson(inputSnapshot || {}));
-    const snapshotId = String(snapshot.snapshotHash || snapshot.snapshotId || "M4-SNAPSHOT-UNKNOWN");
+    const snapshotId = String(snapshot.snapshotId || "M4-SNAPSHOT-UNKNOWN");
+    const snapshotHash = String(snapshot.snapshotHash || `sha256:${snapshotId}`);
+    const decisionCycleId = String(snapshot.decisionCycleId || `cycle-${Number(scenarioHarnessContext.evaluationRevision || 0) + 1}`);
+    const horizonId = String(snapshot.horizonId || "medium");
+    const horizonSeconds = Math.max(0, energyAbilityTimingNumber(snapshot?.horizonSeconds, 300));
+    const formulaSetId = String(snapshot.formulaSetId || "energy-ability-source-formulas.v1");
+    const sourceRevision = String(snapshot.sourceRevision || LABORATORY_BASE_GAME_SOURCE_COMMIT);
     const energyBefore = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.amount));
     const energyPerSecond = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.perSecond));
     const reserveRequired = Math.max(0, energyAbilityTimingNumber(snapshot?.energy?.reserveRequired));
@@ -5263,6 +5616,12 @@ function getDisplayName(item) {
       actionId: "WAIT",
       label: "Save Energy",
       snapshotId,
+      snapshotHash,
+      decisionCycleId,
+      horizonId,
+      horizonSeconds,
+      formulaSetId,
+      sourceRevision,
       activeMilestone: snapshot.activeMilestone || "unknown",
       activeTarget: snapshot.activeTarget || "unknown",
       actionLegal: true,
@@ -5274,12 +5633,16 @@ function getDisplayName(item) {
       reserveAfterAction: energyBefore - reserveRequired,
       projectedGain: 0,
       targetResource: "energy",
+      metricId: "ability-target-progress",
+      metricUnit: "value",
+      direction: "HIGHER_IS_BETTER",
       targetAligned: true,
       opportunityCost: "none",
       postActionPolicy: "passive-only; no downstream purchases or casts are assumed",
       reconsiderCondition: "Reconsider when Energy, milestone target, resource rates, or supported ability availability changes.",
       score: 30,
       confidence: "high",
+      formulaStatus: "runtime-derived",
       blockers: [],
     };
 
@@ -5288,17 +5651,16 @@ function getDisplayName(item) {
       const energyCost = Math.max(0, energyAbilityTimingNumber(ability.energyCost));
       const energyAfterAction = energyBefore - energyCost;
       const reserveAfterAction = energyAfterAction - reserveRequired;
-      const projectedGain = Math.max(0, energyAbilityTimingNumber(ability.projectedGain));
+      const projectedGain = energyAbilityTimingNumber(ability.projectedGain, 0);
       const gainRatio = Math.max(0, energyAbilityTimingNumber(ability.gainRatio));
       const targetAligned = ability.targetAligned === true;
-      const formulaStatus = String(ability.formulaStatus || "unknown");
+      const formulaStatus = strategicCalibrationFormulaStatus(ability.formulaStatus || "incomplete");
       const blockers = [];
       if (ability.available !== true) blockers.push(ability.unavailableReason || "ability unavailable");
       if (energyBefore < energyCost) blockers.push("insufficient Energy");
       if (reserveAfterAction < 0) blockers.push("Energy reserve would be violated");
       if (!targetAligned) blockers.push("ability does not advance the active milestone target");
-      if (!(projectedGain > 0) || !(gainRatio > 0)) blockers.push("no meaningful projected gain");
-      if (!/source-verified|runtime-verified/.test(formulaStatus)) blockers.push("formula is not verified");
+      if (!/source-verified|runtime-derived/.test(formulaStatus)) blockers.push("formula is not verified");
 
       const nextOtherCost = supported
         .filter((other) => other !== ability && other.available === true && other.targetAligned === true)
@@ -5327,6 +5689,12 @@ function getDisplayName(item) {
         actionId,
         label: ability.label || actionId,
         snapshotId,
+        snapshotHash,
+        decisionCycleId,
+        horizonId,
+        horizonSeconds,
+        formulaSetId,
+        sourceRevision,
         activeMilestone: snapshot.activeMilestone || "unknown",
         activeTarget: snapshot.activeTarget || "unknown",
         actionLegal: ability.available === true && energyBefore >= energyCost,
@@ -5340,6 +5708,9 @@ function getDisplayName(item) {
         projectedGain,
         gainRatio,
         targetResource: ability.targetResource || "unknown",
+        metricId: `ability-${String(ability.targetResource || "value").replace(/\s+/g, "-")}-progress`,
+        metricUnit: String(ability.targetResource || "value"),
+        direction: "HIGHER_IS_BETTER",
         targetAligned,
         delayToNextSupportedAbilitySeconds,
         opportunityCost: Number.isFinite(delayToNextSupportedAbilitySeconds) && delayToNextSupportedAbilitySeconds > 0
@@ -5366,6 +5737,12 @@ function getDisplayName(item) {
       mode: "advisor-only",
       executionAuthority: false,
       snapshotId,
+      snapshotHash,
+      decisionCycleId,
+      horizonId,
+      horizonSeconds,
+      formulaSetId,
+      sourceRevision,
       activeMilestone: snapshot.activeMilestone || "unknown",
       activeTarget: snapshot.activeTarget || "unknown",
       supportedActionIds: ENERGY_ABILITY_TIMING_ACTION_IDS.slice(),
@@ -5444,8 +5821,18 @@ function getDisplayName(item) {
     ];
     for (const ability of abilities) ability.targetAligned = energyAbilityTimingTargetAligned(ability.actionId, smartFocus, selectedMainAction);
     const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
+    const snapshotId = `M4-LIVE-${Number(scenarioHarnessContext.evaluationRevision || 0) + 1}`;
+    const decisionCycleId = `cycle-${Number(scenarioHarnessContext.evaluationRevision || 0) + 1}`;
+    const horizonId = "medium";
+    const horizonSeconds = 300;
     return laboratoryDeepFreeze({
-      snapshotId: `M4-LIVE-${Number(scenarioHarnessContext.evaluationRevision || 0) + 1}`,
+      snapshotId,
+      snapshotHash: `sha256:${snapshotId}`,
+      decisionCycleId,
+      horizonId,
+      horizonSeconds,
+      formulaSetId: "energy-ability-source-formulas.v1",
+      sourceRevision: LABORATORY_BASE_GAME_SOURCE_COMMIT,
       activeMilestone: strategyInspector?.goal || smartFocus || "current strategy milestone",
       activeTarget: selectedMainAction?.target || smartFocus || "current strategy target",
       energy: {
@@ -6185,6 +6572,7 @@ function getDisplayName(item) {
           recommendation: inspector.strategicCoordinator.recommendation,
           recommendedActionId: inspector.strategicCoordinator.recommendedActionId,
           winner: inspector.strategicCoordinator.winner || null,
+          strategicCalibration: inspector.strategicCoordinator.strategicCalibration || null,
           alternatives: inspector.strategicCoordinator.importantAlternatives || [],
           blockers: inspector.strategicCoordinator.blockers || [],
           confidence: inspector.strategicCoordinator.confidence || "low",
@@ -6456,6 +6844,8 @@ function getDisplayName(item) {
     if (!strategyInspector) return "";
     const abilityDetails = [
       `confidence ${strategyInspector.abilityTimingConfidence || "low"}`,
+      `calibration ${strategyInspector.strategicCalibrationStatus || "UNRANKED"}`,
+      `${strategyInspector.strategicCalibrationMetric || "unknown"} ${strategyInspector.strategicCalibrationUnit || ""}`.trim(),
       `opportunity cost ${strategyInspector.abilityTimingEnergyOpportunityCost || "unknown"}`,
       `reconsider ${strategyInspector.abilityTimingReconsiderCondition || "unknown"}`,
       strategyInspector.abilityTimingExecutionAuthority || "advisor-only",
@@ -6468,6 +6858,7 @@ function getDisplayName(item) {
       : "unavailable";
     const ascensionDetails = [
       `confidence ${strategyInspector.ascensionAdvisorConfidence || "low"}`,
+      `calibration ${strategyInspector.strategicCalibrationDomain === "ASCENSION_MUTAGEN" ? (strategyInspector.strategicCalibrationStatus || "UNRANKED") : "UNRANKED"}`,
       `break-even ${breakEven}`,
       `mutagen ${mutagenAction}`,
       `reconsider ${strategyInspector.ascensionAdvisorReconsiderCondition || "unknown"}`,
@@ -6478,6 +6869,7 @@ function getDisplayName(item) {
     const coordinatorDetails = [
       `confidence ${coordinator?.confidence || "low"}`,
       `authority ${coordinator?.authorityState?.authorityClass || "NONE"}`,
+      `calibration ${strategyInspector.strategicCalibrationStatus || "UNRANKED"}`,
       `cycle ${coordinator?.decisionCycleId || "unknown"}`,
       `reconsider ${coordinator?.reconsiderCondition || "unknown"}`,
     ].join(" | ");
@@ -7214,6 +7606,24 @@ function getDisplayName(item) {
       ascensionAdvisorNewLarvaPerSecond: strategyInspector?.ascensionAdvisorNewLarvaPerSecond || "0",
       ascensionAdvisorMutagenPlan: strategyInspector?.ascensionAdvisorMutagenPlan || null,
       ascensionAdvisorExecutionAuthority: strategyInspector?.ascensionAdvisorExecutionAuthority || "advisor-only",
+      strategicCalibration: strategyInspector?.strategicCalibration || null,
+      strategicCalibrationSchemaVersion: strategyInspector?.strategicCalibrationSchemaVersion || STRATEGIC_OUTCOME_CALIBRATION_SCHEMA_VERSION,
+      strategicCalibrationId: strategyInspector?.strategicCalibrationId || "none",
+      strategicCalibrationStatus: strategyInspector?.strategicCalibrationStatus || "UNRANKED",
+      strategicCalibrationDomain: strategyInspector?.strategicCalibrationDomain || "none",
+      strategicCalibrationAction: strategyInspector?.strategicCalibrationAction || "none",
+      strategicCalibrationBaselineAction: strategyInspector?.strategicCalibrationBaselineAction || "none",
+      strategicCalibrationMilestone: strategyInspector?.strategicCalibrationMilestone || "unknown",
+      strategicCalibrationMetric: strategyInspector?.strategicCalibrationMetric || "unknown",
+      strategicCalibrationUnit: strategyInspector?.strategicCalibrationUnit || "unknown",
+      strategicCalibrationHorizon: strategyInspector?.strategicCalibrationHorizon || "medium",
+      strategicCalibrationActionValue: strategyInspector?.strategicCalibrationActionValue ?? null,
+      strategicCalibrationBaselineValue: strategyInspector?.strategicCalibrationBaselineValue ?? null,
+      strategicCalibrationDelta: strategyInspector?.strategicCalibrationDelta ?? null,
+      strategicCalibrationFormulaStatus: strategyInspector?.strategicCalibrationFormulaStatus || "incomplete",
+      strategicCalibrationConfidence: strategyInspector?.strategicCalibrationConfidence || "low",
+      strategicCalibrationMissingInputs: strategyInspector?.strategicCalibrationMissingInputs || [],
+      strategicCalibrationWarnings: strategyInspector?.strategicCalibrationWarnings || [],
       energySupportCloneCandidate: strategyInspector?.energySupportCloneCandidate || "none",
       energySupportCloneDecision: strategyInspector?.energySupportCloneDecision || "HOLD",
       energySupportCloneReason: strategyInspector?.energySupportCloneReason || "none",
@@ -7800,6 +8210,16 @@ function getDisplayName(item) {
       `- Ability timing reconsider: ${payload.abilityTimingReconsiderCondition || "none"}`,
       `- Ability timing post-action policy: ${payload.abilityTimingPostActionPolicy || "passive-only"}`,
       `- Ability timing execution authority: ${payload.abilityTimingExecutionAuthority || "advisor-only"}`,
+      `- Strategic calibration schema: ${payload.strategicCalibrationSchemaVersion || "strategic-outcome-calibration.v1"}`,
+      `- Strategic calibration id: ${payload.strategicCalibrationId || "none"}`,
+      `- Strategic calibration status: ${payload.strategicCalibrationStatus || "UNRANKED"}`,
+      `- Strategic calibration domain/action: ${payload.strategicCalibrationDomain || "none"} ${payload.strategicCalibrationAction || "none"} vs ${payload.strategicCalibrationBaselineAction || "none"}`,
+      `- Strategic calibration milestone/metric: ${payload.strategicCalibrationMilestone || "unknown"} · ${payload.strategicCalibrationMetric || "unknown"} (${payload.strategicCalibrationUnit || "unknown"})`,
+      `- Strategic calibration horizon: ${payload.strategicCalibrationHorizon || "medium"}`,
+      `- Strategic calibration values: action ${payload.strategicCalibrationActionValue ?? "null"}, baseline ${payload.strategicCalibrationBaselineValue ?? "null"}, delta ${payload.strategicCalibrationDelta ?? "null"}`,
+      `- Strategic calibration formula/confidence: ${payload.strategicCalibrationFormulaStatus || "incomplete"} / ${payload.strategicCalibrationConfidence || "low"}`,
+      `- Strategic calibration missing inputs: ${(payload.strategicCalibrationMissingInputs || []).join("; ") || "none"}`,
+      `- Strategic calibration warnings: ${(payload.strategicCalibrationWarnings || []).join("; ") || "none"}`,
       `- Clone support: ${payload.energySupportCloneDecision || "HOLD"} ${payload.energySupportCloneCandidate || "none"} (${payload.energySupportCloneReason || "none"})`,
       `- Mirror support: ${payload.energySupportMirrorDecision || "HOLD"} ${payload.energySupportMirrorCandidate || "none"} (${payload.energySupportMirrorReason || "none"})`,
       `- Mirror readiness state: ${payload.energySupportMirrorReadinessState || "none"}`,
@@ -21532,6 +21952,22 @@ function getDisplayName(item) {
         },
         revalidateExecutionPlan(plan = {}, freshProposalState = {}, freshCycle = {}) {
           return laboratoryCloneJson(applySixDomainExecutionRevalidation(plan, freshProposalState, freshCycle));
+        },
+        calibration: {
+          schemaVersion: STRATEGIC_OUTCOME_CALIBRATION_SCHEMA_VERSION,
+          evaluate(input = {}) {
+            return laboratoryCloneJson(buildStrategicOutcomeCalibration(input));
+          },
+          getCurrent() {
+            return laboratoryCloneJson(strategyInspector?.strategicCalibration || strategyInspector?.strategicCoordinator?.strategicCalibration || null);
+          },
+          manifest() {
+            return laboratoryCloneJson({
+              schemaVersion: STRATEGIC_OUTCOME_CALIBRATION_SCHEMA_VERSION,
+              rankableFormulaStatuses: ["source-verified", "runtime-derived"],
+              comparabilityStatuses: ["COMPARABLE", "UNRANKED", "UNSUPPORTED", "INVALID"],
+            });
+          },
         },
       },
 

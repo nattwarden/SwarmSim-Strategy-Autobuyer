@@ -19,6 +19,7 @@ docs/release-notes/
 
 ## Version notes
 
+- 7.0.0: Added M7 strategic outcome calibration (`strategic-outcome-calibration.v1`) with WAIT-relative identity/metric/horizon validation for Energy abilities, strict Ascension placeholder calibration that refuses break-even-surplus ETA conversion, calibrated advisor observability in Council/Inspector/export/API, and focused M7 acceptance/version checks while preserving existing bounded reversible execution authority and all hard safety defaults.
 - 6.0.0: Added the six-domain strategic coordinator runtime slice, exposing one
   immutable decision identity, coordinated Council/Inspector state, advisor-only
   alternatives, bounded reversible execution gating, effect audits, shared-cost
