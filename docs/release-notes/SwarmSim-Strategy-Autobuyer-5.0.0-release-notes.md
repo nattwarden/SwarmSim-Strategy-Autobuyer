@@ -26,14 +26,6 @@ Milestone 5 at `5.0.0` without relabeling historical evidence.
   until their cross-domain value models are supported.
 - Added inspector/export/API observability fields for the M5 advisor and a
   diagnostic-only API at `window.kbcSwarmBot.ascensionMutagenAdvisor`.
-- Live hotfix:
-  - replaced the incompatible `ascendCostDurationSecs` path with a Decimal-safe
-    linear Energy ETA so live M5 snapshots no longer emit a repeating type error
-  - added visible Ability Timing and Ascension/Mutagen advisor cards to Council
-    Chamber and matching diagnostic rows to Matrix Diagnostics
-  - made unavailable break-even explicit instead of displaying `0s`
-  - clarified guarded fallback activity, selected-lane reasons, and the Council
-    `Avoid` guidance
 
 ## Safety and scope
 

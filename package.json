@@ -1,7 +1,7 @@
 {
   "name": "swarmsim-strategy-autobuyer",
   "private": true,
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "SwarmSim Strategy Autobuyer tooling",
   "license": "UNLICENSED",
   "scripts": {
@@ -37,7 +37,7 @@
     "check:0.13.0:versions": "node scripts/check-0.13.0-version-surfaces.js",
     "check:0.14.0:versions": "node scripts/check-0.14.0-version-surfaces.js",
     "check:0.14.1:versions": "node scripts/check-0.14.1-version-surfaces.js",
-    "check:5.0.0:versions": "node scripts/check-5.0.0-version-surfaces.js",
+    "check:5.0.1:versions": "node scripts/check-5.0.1-version-surfaces.js",
     "check:ui-shell": "node scripts/check-ui-shell.js",
     "check:ui2:fixtures": "node scripts/check-council-ui2-fixture-shell.js",
     "check:ui3:assets": "node scripts/check-council-runtime-assets.js",
@@ -72,7 +72,7 @@
     "sync:from-canonical": "node scripts/extract-runtime-source.js",
     "hotfix:canonical": "npm run sync:from-canonical && npm run build && npm run verify",
     "validate:guardrails": "node scripts/validate-repo-guardrails.js",
-    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && npm run check:5.0.0:versions && npm run check:ui-shell && npm run check:ui2:fixtures && npm run check:ui3:assets && npm run check:laboratory:phase2a && npm run check:purchase-evaluator && npm run check:book00:m3:energy && npm run check:book00:m3:energy:execution && npm run check:book00:m4:ability-timing && npm run check:book00:m5:ascension-mutagen && node scripts/validate-repo-guardrails.js"
+    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && npm run check:5.0.1:versions && npm run check:ui-shell && npm run check:ui2:fixtures && npm run check:ui3:assets && npm run check:laboratory:phase2a && npm run check:purchase-evaluator && npm run check:book00:m3:energy && npm run check:book00:m3:energy:execution && npm run check:book00:m4:ability-timing && npm run check:book00:m5:ascension-mutagen && node scripts/validate-repo-guardrails.js"
   },
   "dependencies": {
     "playwright": "^1.61.1"

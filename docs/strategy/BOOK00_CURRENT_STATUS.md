@@ -69,6 +69,7 @@ If observed Git state differs, update this board before implementation.
 - Council UI, M4, and M5 were integrated on `main` at
   `c10d8c5a9160708e1d657ad5f08496dfb8e2e698` and formally accepted by separate
   integration evidence `af6a41b9534b6ff682a2903d938fa17686a3a9d2`.
+- Current M5 hotfix release: `5.0.1`.
 - Starting with Milestone 4, release major version follows the active BOOK-00
   milestone. M6 therefore starts at `6.0.0`.
 
