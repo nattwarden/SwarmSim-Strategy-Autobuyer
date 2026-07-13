@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "0.13.0";
+  const AUTOBUYER_VERSION = "0.14.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";

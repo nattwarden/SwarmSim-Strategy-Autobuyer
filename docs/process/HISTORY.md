@@ -19,6 +19,11 @@ docs/release-notes/
 
 ## Version notes
 
+- 0.14.0: Whole-Economy Coordinator compares Meat, Larva/Engine, and
+  Army/Territory from one snapshot, then may execute exactly one bounded,
+  reversible winner after identity-preserving revalidation. Council, Inspector,
+  and exports distinguish advice, authority, execution, and fallback. Ability
+  and Ascension safety defaults remain unchanged.
 - 0.13.0: Unified Purchase Evaluator coordinates the first reversible purchase
   from one pre-execution snapshot, while Laboratory Phase 2A adds source-derived
   Rush simulation and an advisor-only Energy Opportunity Report. Existing

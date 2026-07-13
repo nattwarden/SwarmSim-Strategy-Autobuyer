@@ -57,8 +57,8 @@ If observed Git state differs, update this board before implementation.
 - Milestone 1 (Whole-Economy Shadow Preview): implemented and accepted on
   `21adb7a`.
 - Milestone 2 (Bounded Whole-Economy Coordinator Execution): locally accepted
-  in the implementation commit containing this handoff. Formal release
-  verification and versioning remain separate work.
+  in `808f9e1` and packaged as the local 0.14.0 release candidate. Formal
+  published-release verification remains separate work.
 - The original `sa1-02` Engine regression now resolves `upgrade:expansion`,
   executes exactly one Expansion, and reports `matchedExecution=yes`.
 - Focused product acceptance `book00-m2-coordinator` compares one preserved
@@ -157,9 +157,9 @@ Execute these in order:
 
 ## Known current blockers and cautions
 
-- Runtime/package surfaces still identify as 0.13.0. The accepted Milestone 2
-  branch is not a formal release until versioning and exact-SHA verification are
-  performed separately.
+- Runtime/package surfaces now identify as 0.14.0. The accepted Milestone 2
+  branch is still not a published release until it is pushed and the formal
+  exact-SHA protocol is completed against that published implementation.
 - The current branch is ahead of its remote and has not been merged or pushed.
 - The focused testbed is deterministic only when staged count, command deltas,
   and `velocity()` describe the same state; preserve that invariant.
@@ -208,6 +208,34 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 — Milestone 2 packaged as local 0.14.0 release candidate
+
+- Agent: Codex
+- Worktree/branch: `feature/strategy-audit-testbed-runners`
+- Accepted Milestone 2 SHA: `808f9e1bc16f21bff082e221d2ed875e6fb7b26e`
+- Release-candidate SHA: the commit containing this handoff entry
+- Product capability changed: no new strategy behavior beyond accepted
+  Milestone 2; this package aligns the installable script, runtime, package,
+  documentation, release notes, and current-version verifier on 0.14.0.
+- Player-visible result: the installable userscript identifies as 0.14.0 and
+  contains the accepted Whole-Economy Shadow Preview and bounded coordinator.
+- Generated evidence paths: none.
+- Commands passed before the release-candidate commit:
+  - `npm run build` -> 0
+  - `npm run build:check` -> 0
+  - `npm run check:0.14.0:versions` -> 0
+  - `npm run check:purchase-evaluator` -> 0
+  - `npm run check:book00:m2:coordinator` -> 0
+  - `npm run validate:guardrails` -> 0
+  - `npm run verify` -> 0
+  - `git diff --check` -> 0
+- Milestone checklist items completed: Milestone 2 remains complete; local
+  release packaging is complete when the checks below pass on the commit.
+- Remaining blocker: the feature branch is not pushed or merged, so formal
+  published-release verification and an evidence commit are not claimed.
+- Exact next action: test the local 0.14.0 userscript, then start Milestone 3
+  Energy-production shadow comparison after release disposition is decided.
 
 ### 2026-07-13 — Milestone 2 exact execution fixed and locally accepted
 
