@@ -1,5 +1,7 @@
 # Book 00 - Vision, Goals, and Dreams
 
+> Books system: `books.v1` | Last full audit: `2026-07-14` | Last maintenance: `2026-07-14` | Revision: `8e654038839498416a0fae0fd017b745c96d5115` | Result: `quick drift gate passed; active milestone transitioned to M8`
+
 Status: Strategic north star for SwarmSim Strategy Autobuyer.
 
 This book explains why the project exists, the problem it ultimately aims to

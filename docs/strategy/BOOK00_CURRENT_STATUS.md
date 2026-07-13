@@ -3,7 +3,7 @@
 Status: Active handoff board. Update this file at every completed work package,
 blocked handoff, milestone transition, and accepted verification result.
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
 
 ## Read this first
 
@@ -91,23 +91,20 @@ Current runtime version: `7.0.0`
 
 ## Active milestone
 
-**Milestone 7 - Calibrated shared outcomes**
+**Milestone 8 - ETA-grounded false-wait reduction**
 
-M7 must replace unproven advisor-to-global conversions with a versioned,
-WAIT-relative calibration contract. The first live vertical slice is a
-supported Energy ability whose action and WAIT baseline produce the same named
-milestone metric from one immutable snapshot and horizon.
+M8 turns the pre-M8 wait-lock hotfix into a narrow, source-grounded ETA slice
+for executable normal progression. The immediate scope is Meat fallback
+selection under repeated HOLD cycles where advisor-only ability opportunity
+exists but no legal advisor execution authority exists.
 
-Milestone 7 player-visible target:
+Milestone 8 player-visible target:
 
-> The player sees whether a supported Energy ability is genuinely better than
-> waiting and normal progression for the active milestone, including raw
-> action/baseline values, delta, provenance, uncertainty, and advisor-only
-> authority.
+> The player sees fewer repeated false `Wait` loops in Smart mode, with explicit
+> blocker reasons and bounded fallback progression that remains inside hard
+> safety defaults.
 
-Ascension/Mutagen adopts the calibration contract but remains globally
-unranked until both current-run and next-run branches expose the same verified
-milestone metric. Energy abilities, Ascension, and Mutagen remain
+Energy abilities, Ascension, and Mutagen remain advisor-only and
 non-executable.
 
 ## Milestone 2 completion checklist
@@ -190,33 +187,29 @@ Formal closure:
 
 ## Current work package
 
-Implementation status: documentation-only M7 foundation and Copilot handoff.
-No M7 runtime behavior or version change is part of this package.
+Implementation status: active M8 pre-slice execution on runtime `7.0.0` after
+the pre-M8 wait-lock hotfix.
 
 Product capability:
 
-- Define the first honest calibration slice that lets a supported Energy
-  ability compete with WAIT and normal progression on the same named milestone
-  metric and horizon.
+- Confirm and finalize a narrow ETA-grounded Meat fallback slice that reduces
+  repeated false `Wait` holds under the reproduced `reserve` +
+  `ability disabled` blocker pattern.
 
 Player-visible change:
 
-- None until the M7 work order is implemented as `7.0.0`.
+- Smart mode exits repeated false waits earlier in the verified blocker pattern
+  while preserving reserve/protected-resource safety gates.
 
 Included:
 
-- `strategic-outcome-calibration.v1` contract;
-- WAIT-relative ETA/progress delta rules;
-- source/formula/identity alignment gates;
-- first live supported Energy-ability vertical slice;
-- strict Ascension placeholder that rejects break-even surplus as ETA;
-- Council UI3 and fixed-layout preservation contract;
-- twelve-group focused acceptance matrix;
-- complete Copilot implementation prompt and machine-readable manifest.
+- repeated HOLD blocker-pattern replay in Google Chrome via Playwright;
+- bounded fallback activation calibration under existing hold-history lag;
+- strict reserve/protected-resource and execution-authority preservation;
+- focused Strategy Audit validation and full repo verification.
 
 Explicitly excluded:
 
-- runtime changes in this foundation package;
 - ability, Ascension, or Mutagen execution;
 - Swarmwarp and invented multi-run formulas;
 - new execution keys or purchase authority;
@@ -224,41 +217,50 @@ Explicitly excluded:
 
 Authority:
 
-- documentation only in this package;
-- future M7 Energy-ability and Ascension/Mutagen outputs remain advisor-only;
-- accepted M2/M3/M6 purchase authority remains unchanged.
+- advisor-only domains remain non-executable;
+- accepted M2/M3/M6 purchase authority remains unchanged;
+- fallback progression remains bounded and revalidated.
 
 Expected changed areas:
 
-- `docs/strategy/BOOK00_M7_CALIBRATED_SHARED_OUTCOMES_FOUNDATION.md`
-- `docs/test-data/7.0.0-book00-m7-calibrated-outcomes/m7-calibration-contract-manifest.json`
-- `docs/prompts/implement-book00-m7-calibrated-shared-outcomes.md`
-- `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md`
+- `src/SwarmSim-Strategy-Autobuyer.user.js`
+- `dev-src/runtime-sections/runtime-main.js`
+- `scripts/strategy-audit-testbed-core.js`
+- `scripts/run-sa1-breakpoint-matrix.js`
+- `package.json`
 - `docs/strategy/BOOK00_CURRENT_STATUS.md`
-- `README.md`
+- focused `docs/test-data/strategy-audit-*` outputs when explicitly generated
+  as evidence.
 
 Stop condition:
 
-- calibration schema, metric math, identity gates, authority, UI preservation,
-  acceptance, versioning, Git/evidence protocol, and production-parity stop
-  condition are explicit;
-- Copilot can implement or honestly return `INSUFFICIENT_MODEL_EVIDENCE`
-  without another planning round.
+- reported live blocker pattern is replayed in Google Chrome and fallback
+  activation appears by hold cycle 3 or earlier under the accelerated cap 2;
+- focused Strategy Audit and full verify suite pass without widening safety
+  defaults or execution authority;
+- handoff records exact SHA, commands, and evidence paths per protocol.
+
+Recommended run: **GPT-5.3-Codex (medium reasoning)** for scoped runtime,
+evidence interpretation, and narrow documentation synchronization.
+
+Escalate when: blocker telemetry remains inconsistent across three reproduced
+Chrome runs, ETA comparability is ambiguous, or the slice requires new shared
+milestone formulas beyond the scoped Meat fallback contract.
 
 ## Immediate next actions
 
 Execute these in order:
 
-1. Create `codex/m7-calibrated-shared-outcomes` from current clean
-   `origin/main`, retaining commits `40c258a` and `04bb946`.
-2. Give Copilot
-   `docs/prompts/implement-book00-m7-calibrated-shared-outcomes.md`.
-3. Implement the bounded live ability calibration slice as `7.0.0` or stop
-   with `INSUFFICIENT_MODEL_EVIDENCE` if no honest production-parity conversion
-   exists.
-4. Run focused/full exact-SHA verification, including all UI3/fixed-layout
-   checks, and push separate M7 evidence.
-5. Integrate to `main` only after review and explicit authorization.
+1. Reproduce the reported live state in Google Chrome through Playwright and
+  capture three consecutive decision cycles with blocker traces.
+2. Confirm that fallback activation appears no later than hold cycle 3 for the
+  `reserve` + `ability disabled` pattern under the accelerated threshold cap 2.
+3. If the replay still stalls, implement only the scoped M8 ETA-grade Meat
+  fallback adjustment; otherwise preserve current logic and document closure.
+4. Run focused Strategy Audit plus full verification (`npm run verify`) and
+  keep evidence generation allowlisted.
+5. Record implementation/evidence SHAs and prepare separate commits per
+  `docs/process/GIT_VERIFICATION_PROTOCOL.md`.
 
 ## Known current blockers and cautions
 
@@ -286,20 +288,18 @@ Execute these in order:
 
 ## Next product milestone
 
-**Milestone 7 - Calibrated shared outcomes**
+**Milestone 8 - ETA-grounded false-wait reduction**
 
 Required product outcome:
 
-- derive one real supported Energy-ability outcome relative to WAIT for the same
-  milestone and horizon;
-- compare that calibrated result with M6 purchase alternatives;
-- retain raw values, provenance, uncertainty, and explicit missing inputs;
-- refuse break-even-only Ascension comparability;
-- preserve advisor-only authority and all exact purchase gates;
+- convert repeated false-wait live patterns into bounded executable fallback
+  progression with explicit blocker visibility;
+- keep reserve/protected-resource gates and advisor-only authority intact;
+- use source-grounded ETA semantics where comparability is claimed;
 - preserve Council UI3 and fixed desktop/responsive layout behavior.
 
-Implementation starts from the M7 foundation, manifest, and Copilot work order
-prepared in this package.
+Implementation proceeds from the pre-M8 hotfix baseline and must stay narrow,
+observable, and protocol-compliant.
 
 ## Handoff update template
 
@@ -320,6 +320,31 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - Pre-M8 wait-lock hotfix
+
+- Agent: Copilot (GPT-5.3-Codex)
+- Worktree/branch: primary workspace, `main`
+- Baseline: runtime `7.0.0` with M7 calibrated outcomes and preserved Council UI3/fixed-window behavior.
+- Product capability changed: Meat stall-breaker can now activate earlier when repeated main HOLD cycles are consistently caused by the blocker pattern `reserve` + `ability disabled`; accelerated fallback activation threshold is capped at `2` (still bounded by existing safety gates).
+- Player-visible result: fewer false `Wait` loops in Smart mode when advisor-only ability opportunities exist but no executable lane buys pass under the standard hold-run threshold.
+- Safety: hard defaults unchanged; no auto-cast, no auto-ascend, no new execution keys, and reserve/protected-resource guards remain enforced.
+- Runtime changes:
+  - `src/SwarmSim-Strategy-Autobuyer.user.js`
+  - `dev-src/runtime-sections/runtime-main.js`
+- Tooling changes:
+  - `scripts/strategy-audit-testbed-core.js` (supports `--browser-channel` / `--channel`)
+  - `scripts/run-sa1-breakpoint-matrix.js` (propagates browser-channel in shared and isolated matrix runs)
+  - `package.json` (`strategy:audit:live:chrome`, `strategy:audit:matrix:sa1:chrome`, `strategy:audit:matrix:sa1:single:chrome`)
+- Commands and exit codes:
+  - `npm run build` -> `0`
+  - `node scripts/validate-repo-guardrails.js` -> `0`
+  - `npm run check:book00:m7:calibrated-outcomes` -> `0`
+  - `node scripts/strategy-audit-testbed-live.js --browser-channel chrome --scenario canary --cycles 1 --headed false --keep-open false --leave-open-on-failure false` -> `0`
+  - `git diff --check` -> `0`
+- Generated evidence paths: none.
+- Remaining blocker: M8 milestone ETA models are still not implemented; this hotfix only reduces pre-M8 false waits.
+- Exact next action: replay the reported live state in Google Chrome and verify that fallback activation appears no later than hold cycle 3 (given decision-time history lag and accelerated threshold cap 2) when blocker history remains `reserve, ability disabled`, then proceed with the scoped M8 meat ETA slice.
 
 ### 2026-07-13 - Milestone 6 closure and Milestone 7 foundation
 

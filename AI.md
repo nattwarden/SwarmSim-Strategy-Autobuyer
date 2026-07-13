@@ -1,9 +1,12 @@
 # AI.md - SwarmSim Strategy Autobuyer
 
 Version: 2026-07-10-ai-orientation-refresh
-Status: Source map, optimization posture, and repo policy for ChatGPT/Codex/Copilot/AI agents.
+Status: Supplementary orientation only; AGENTS.md is the sole steering authority.
 
 ## Purpose
+
+Authority note: this file is reference context only. Follow `AGENTS.md` as the
+single normative instruction source when guidance overlaps.
 
 This file tells AI agents which project files to trust, in what order to read
 them, which safety rules must not be violated, and how to reason about the

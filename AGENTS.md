@@ -4,6 +4,8 @@
 
 This is the mandatory repository and process guard for AI coding agents working in this repository.
 
+This file is the sole AI steering authority for this repository.
+
 Its job is to:
 
 - start from the correct Git source of truth
@@ -61,20 +63,21 @@ Empirical evidence belongs under `docs/live-logs/` and versioned `docs/test-data
 Before changing code, read:
 
 1. `AGENTS.md`
-2. `AI.md`
-3. `docs/strategy/BOOK00_CURRENT_STATUS.md`
-4. `docs/BOOK-00-vision-goals-and-dreams.md` for strategy, architecture, or roadmap work
-5. `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` for product milestone work
-6. `docs/SWARMSIM_GAME_MODEL.md`
-7. `scripts/canonical-build.config.json`
-8. `docs/process/GIT_VERIFICATION_PROTOCOL.md`
-9. relevant `docs/prompts/`
-10. relevant `docs/release-notes/`
-11. relevant `docs/live-logs/` and `docs/test-data/`
-12. `dev-src/runtime-sections/runtime-main.js`
-13. `src/SwarmSim-Strategy-Autobuyer.user.js`
-14. relevant verifier scripts and `package.json`
-15. `reference/` only when needed for sanity checks
+2. `docs/strategy/BOOK00_CURRENT_STATUS.md`
+3. `docs/BOOK-00-vision-goals-and-dreams.md` for strategy, architecture, or roadmap work
+4. `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` for product milestone work
+5. `docs/SWARMSIM_GAME_MODEL.md`
+6. `scripts/canonical-build.config.json`
+7. `docs/process/GIT_VERIFICATION_PROTOCOL.md`
+8. relevant `docs/prompts/`
+9. relevant `docs/release-notes/`
+10. relevant `docs/live-logs/` and `docs/test-data/`
+11. `dev-src/runtime-sections/runtime-main.js`
+12. `src/SwarmSim-Strategy-Autobuyer.user.js`
+13. relevant verifier scripts and `package.json`
+14. `reference/` only when needed for sanity checks
+
+`AI.md` is retained as supplementary historical orientation only and must not be treated as a separate steering authority.
 
 For modularization tasks, also read `docs/process/MODULARIZATION_PLAN.md` and relevant `dev-src/` modules.
 

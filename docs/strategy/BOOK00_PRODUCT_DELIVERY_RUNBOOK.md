@@ -513,6 +513,37 @@ Player-facing release sentence:
 > supported Energy abilities with normal progression, while unsupported or
 > weakly evidenced future-run choices remain explicitly unranked.
 
+### Milestone 8 - ETA-grounded false-wait reduction
+
+Product capability:
+
+Reduce repeated false `Wait` loops by applying a narrow, source-grounded ETA
+fallback policy for executable normal progression when advisor-only winners are
+blocked by authority.
+
+Player-visible change:
+
+In repeated HOLD patterns (`reserve` + `ability disabled`), Smart mode
+activates bounded fallback progression earlier instead of looping on `Wait`.
+
+Completion checklist:
+
+- [ ] Reproduced blocker pattern in Google Chrome via Playwright with
+   production-parity state.
+- [ ] Fallback activation appears by hold cycle 3 or earlier under the
+   accelerated cap 2, without violating reserve/protected-resource gates.
+- [ ] Ability/Ascension/Mutagen authority remains advisor-only and
+   non-executable.
+- [ ] Focused Strategy Audit and full verification suite pass.
+- [ ] Exact-SHA implementation and separate evidence protocol is followed.
+
+Recommended run: **GPT-5.3-Codex (medium reasoning)** for bounded runtime,
+verification, and handoff synchronization.
+
+Escalate when: repeated Chrome replays disagree on blocker identity,
+ETA-comparability requires new cross-domain model formulas, or safety/execution
+boundaries become ambiguous.
+
 ## Milestone exit review
 
 At the end of every milestone, answer only these questions:
@@ -529,8 +560,6 @@ If question 1 or 2 has no concrete answer, do not declare the milestone done.
 
 ## Immediate next action
 
-Read `BOOK00_CURRENT_STATUS.md`, create an isolated M7 worktree from current
-`origin/main`, and execute
-`docs/prompts/implement-book00-m7-calibrated-shared-outcomes.md`. Preserve
-Council UI3 and the fixed Council window, do not fabricate shared conversions,
-and do not widen irreversible authority.
+Read `BOOK00_CURRENT_STATUS.md`, execute the active M8 Chrome replay and
+fallback-validation sequence, then complete focused plus full verification
+without widening authority or changing hard safety defaults.
