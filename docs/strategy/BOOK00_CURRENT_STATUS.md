@@ -70,7 +70,8 @@ If observed Git state differs, update this board before implementation.
 - The first Milestone 3 shadow slice is implemented in the current work package:
   Energy is the fourth whole-economy domain, emits `whole-economy-outcome.v2`,
   and remains excluded from coordinator execution authority. Exact-SHA branch
-  verification and main integration remain separate gates.
+  checks passed against `42847a4258ba299132f0c7c8c85489371fe68a12`;
+  main integration remains a separate gate.
 
 ## Active milestone
 
@@ -99,8 +100,9 @@ acceptance.
 
 ## Current work package
 
-Implementation status: authored and passing the pre-commit focused/full local
-suite; exact-SHA branch verification is the next gate.
+Implementation status: pushed and passing the focused/full suite against exact
+implementation SHA `42847a4258ba299132f0c7c8c85489371fe68a12`.
+The branch result is not a published-main or release-verification claim.
 
 Product capability:
 
@@ -220,7 +222,8 @@ Exact next action:
 
 - Agent: Codex
 - Worktree/branch: `feature/strategy-audit-testbed-runners`
-- Implementation SHA: the commit containing this handoff entry
+- Implementation SHA: `42847a4258ba299132f0c7c8c85489371fe68a12`
+- Implementation tree SHA: `9dd3bf4a97cb1e2ccff8130dc0802657e1afa604`
 - Product capability changed: Energy production now joins Meat, Larva/Engine,
   and Army/Territory as the fourth whole-economy comparison domain.
 - Player-visible result: Council/Inspector expose the Energy candidate, Nexus
@@ -239,11 +242,16 @@ Exact next action:
   `node scripts/validate-repo-guardrails.js`, and `git diff --check` all exited
   `0`; no generated evidence was written.
 - Generated evidence paths: none.
-- Remaining blocker: commit/push the implementation and rerun the declared pure
-  checks against its exact immutable SHA before treating the branch slice as
-  accepted.
-- Exact next action: push the implementation commit, verify that exact SHA in an
-  isolated worktree, then decide whether Milestone 3 should receive a separately
+- Exact-SHA branch checks: `node scripts/validate-repo-guardrails.js`,
+  `npm run build:check`, `npm run check:book00:m3:energy-shadow`,
+  `npm run verify`, and `git diff --check` all exited `0` in a detached worktree;
+  Node `v24.14.0`, npm `11.9.0`, no tracked changes, no evidence written.
+- Remaining blocker: `origin/main` remains at
+  `bcd19105e70e32206659c3f3fb2fece6af38e285`; the feature history is not a
+  published release until an explicitly authorized main-integration workflow
+  and formal evidence sequence are completed.
+- Exact next action: integrate the feature history through the user-authorized
+  Git workflow, then decide whether Milestone 3 should receive a separately
   gated bounded Energy-production execution slice.
 
 ### 2026-07-13 — 0.14.1 control-surface cleanup
