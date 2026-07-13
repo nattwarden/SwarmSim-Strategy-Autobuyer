@@ -2,25 +2,25 @@
   "schemaVersion": "swarmsim-lab.live-result.v1",
   "kind": "live-read-only-simulation",
   "captureMode": "live-read-only",
-  "captureTimestamp": "2026-07-10T10:54:00.307Z",
+  "captureTimestamp": "2026-07-13T14:34:55.564Z",
   "snapshot": {
     "schemaVersion": "swarmsim-lab.snapshot.v1",
     "kind": "deterministic-simulation-snapshot",
     "snapshotId": "LIVE-0.12.3-HIGH",
-    "snapshotHash": "sha256:5c348b6382f051a719e37bbdcedbf57eec99869d289814ef4b0ff07b65df66f7",
+    "snapshotHash": "sha256:53e1ce7924abe311e71d0270ed1f82cac179542cff8ea8e155bc48d8514d9f2f",
     "snapshotHashScope": "deterministic-payload-v1",
     "source": {
-      "scriptVersion": "0.12.3",
+      "scriptVersion": "0.13.0",
       "frozenBaselineVersion": "0.11.7",
       "verifiedRuntimeCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
       "baselineRepositoryCommit": "ea999526994c75899b6b1a478e7146f046417803",
       "currentCommit": null,
-      "scenarioHarnessVersion": "0.12.3",
+      "scenarioHarnessVersion": "0.13.0",
       "scenarioId": "LIVE-READ-ONLY",
       "captureMode": "live-read-only",
       "scenarioHash": "sha256:b2fc59572be6ac563eacbd20e3cdb529239d3ff8916ffa79ff78066d842de1d8",
       "gameBuild": "live-browser",
-      "capturedAt": "2026-07-10T10:54:00.307Z",
+      "capturedAt": "2026-07-13T14:34:55.564Z",
       "activePhase": null,
       "activeMilestone": null,
       "currentPlannerTarget": null,
@@ -74,7 +74,8 @@
           "maxDegree": 0,
           "valueAtZero": "0",
           "validation": "source-verified"
-        }
+        },
+        "amount": "35"
       }
     },
     "army": {
@@ -669,6 +670,81 @@
         "unaffectedTerritoryPerSecond": "0",
         "sourceVerifiedTerritoryPerSecondAfter": "3.9511729145293958758e+27",
         "runtimePreviewTerritoryPerSecondAfter": null
+      },
+      "larvarush": {
+        "gameAbilityId": "larvarush",
+        "actionId": "LARVA_RUSH",
+        "targetResource": "larvae",
+        "available": true,
+        "unlocked": true,
+        "visible": true,
+        "affordable": true,
+        "unavailableReason": null,
+        "unavailableReasonCode": null,
+        "energyCurrent": "20000.014084291187739",
+        "energyCost": "1600",
+        "energyDeficit": "0",
+        "formulaInputs": {
+          "targetVelocity": "1",
+          "velocitySeconds": "2400",
+          "velocityPower": "1",
+          "velocityOutput": "2400",
+          "flatAddition": "100000",
+          "flatPower": "1",
+          "flatOutput": "100000",
+          "sourceVerifiedOutput": "102400"
+        },
+        "runtimePreviewOutput": "102400"
+      },
+      "meatrush": {
+        "gameAbilityId": "meatrush",
+        "actionId": "MEAT_RUSH",
+        "targetResource": "meat",
+        "available": true,
+        "unlocked": true,
+        "visible": true,
+        "affordable": true,
+        "unavailableReason": null,
+        "unavailableReasonCode": null,
+        "energyCurrent": "20000.014084291187739",
+        "energyCost": "1600",
+        "energyDeficit": "0",
+        "formulaInputs": {
+          "targetVelocity": "0",
+          "velocitySeconds": "7200",
+          "velocityPower": "1",
+          "velocityOutput": "0",
+          "flatAddition": "100000000000",
+          "flatPower": "1",
+          "flatOutput": "100000000000",
+          "sourceVerifiedOutput": "100000000000"
+        },
+        "runtimePreviewOutput": "100000000000"
+      },
+      "territoryrush": {
+        "gameAbilityId": "territoryrush",
+        "actionId": "TERRITORY_RUSH",
+        "targetResource": "territory",
+        "available": true,
+        "unlocked": true,
+        "visible": true,
+        "affordable": true,
+        "unavailableReason": null,
+        "unavailableReasonCode": null,
+        "energyCurrent": "20000.014084291187739",
+        "energyCost": "1600",
+        "energyDeficit": "0",
+        "formulaInputs": {
+          "targetVelocity": "1.9755864572646979379e+27",
+          "velocitySeconds": "7200",
+          "velocityPower": "1",
+          "velocityOutput": "1.4224222492305825153e+31",
+          "flatAddition": "1000000000",
+          "flatPower": "1",
+          "flatOutput": "1000000000",
+          "sourceVerifiedOutput": "1.4224222492305825153e+31"
+        },
+        "runtimePreviewOutput": "1.4224222492305825153e+31"
       }
     },
     "safety": {
@@ -742,6 +818,14 @@
           "valueSource": "Laboratory recompute from runtime-derived counts and effective territory/unit",
           "verificationStatus": "source-verified"
         },
+        "rushAbilities": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee",
+          "functionOrEffectType": "abilities larvarush/meatrush/territoryrush; addUnitByVelocity; addUnit",
+          "valueSource": "Laboratory recompute from pinned constants and runtime-derived velocity/effect power",
+          "verificationStatus": "source-verified"
+        },
         "territoryPerSecond": {
           "sourceRepository": "https://github.com/swarmsim/swarm",
           "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
@@ -780,9 +864,9 @@
     "schemaVersion": "swarmsim-lab.result.v1",
     "kind": "deterministic-simulation",
     "experimentId": "LIVE-0.12.3-HIGH-P1",
-    "experimentHash": "sha256:3e0a2ca0e6a5a54e61b2776ae1d6a5fc7b32b3a8cc1821504d21e0b0ee5b4000",
+    "experimentHash": "sha256:e373ee2ca3b655bc5d50a0823802cd0e0dc6954dff996f37049cd9d90be0b014",
     "snapshotId": "LIVE-0.12.3-HIGH",
-    "snapshotHash": "sha256:5c348b6382f051a719e37bbdcedbf57eec99869d289814ef4b0ff07b65df66f7",
+    "snapshotHash": "sha256:53e1ce7924abe311e71d0270ed1f82cac179542cff8ea8e155bc48d8514d9f2f",
     "scenarioId": "LIVE-READ-ONLY",
     "actions": [
       "WAIT",
@@ -799,20 +883,20 @@
       "schemaVersion": "swarmsim-lab.snapshot.v1",
       "kind": "deterministic-simulation-snapshot",
       "snapshotId": "LIVE-0.12.3-HIGH",
-      "snapshotHash": "sha256:5c348b6382f051a719e37bbdcedbf57eec99869d289814ef4b0ff07b65df66f7",
+      "snapshotHash": "sha256:53e1ce7924abe311e71d0270ed1f82cac179542cff8ea8e155bc48d8514d9f2f",
       "snapshotHashScope": "deterministic-payload-v1",
       "source": {
-        "scriptVersion": "0.12.3",
+        "scriptVersion": "0.13.0",
         "frozenBaselineVersion": "0.11.7",
         "verifiedRuntimeCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
         "baselineRepositoryCommit": "ea999526994c75899b6b1a478e7146f046417803",
         "currentCommit": null,
-        "scenarioHarnessVersion": "0.12.3",
+        "scenarioHarnessVersion": "0.13.0",
         "scenarioId": "LIVE-READ-ONLY",
         "captureMode": "live-read-only",
         "scenarioHash": "sha256:b2fc59572be6ac563eacbd20e3cdb529239d3ff8916ffa79ff78066d842de1d8",
         "gameBuild": "live-browser",
-        "capturedAt": "2026-07-10T10:54:00.307Z",
+        "capturedAt": "2026-07-13T14:34:55.564Z",
         "activePhase": null,
         "activeMilestone": null,
         "currentPlannerTarget": null,
@@ -866,7 +950,8 @@
             "maxDegree": 0,
             "valueAtZero": "0",
             "validation": "source-verified"
-          }
+          },
+          "amount": "35"
         }
       },
       "army": {
@@ -1461,6 +1546,81 @@
           "unaffectedTerritoryPerSecond": "0",
           "sourceVerifiedTerritoryPerSecondAfter": "3.9511729145293958758e+27",
           "runtimePreviewTerritoryPerSecondAfter": null
+        },
+        "larvarush": {
+          "gameAbilityId": "larvarush",
+          "actionId": "LARVA_RUSH",
+          "targetResource": "larvae",
+          "available": true,
+          "unlocked": true,
+          "visible": true,
+          "affordable": true,
+          "unavailableReason": null,
+          "unavailableReasonCode": null,
+          "energyCurrent": "20000.014084291187739",
+          "energyCost": "1600",
+          "energyDeficit": "0",
+          "formulaInputs": {
+            "targetVelocity": "1",
+            "velocitySeconds": "2400",
+            "velocityPower": "1",
+            "velocityOutput": "2400",
+            "flatAddition": "100000",
+            "flatPower": "1",
+            "flatOutput": "100000",
+            "sourceVerifiedOutput": "102400"
+          },
+          "runtimePreviewOutput": "102400"
+        },
+        "meatrush": {
+          "gameAbilityId": "meatrush",
+          "actionId": "MEAT_RUSH",
+          "targetResource": "meat",
+          "available": true,
+          "unlocked": true,
+          "visible": true,
+          "affordable": true,
+          "unavailableReason": null,
+          "unavailableReasonCode": null,
+          "energyCurrent": "20000.014084291187739",
+          "energyCost": "1600",
+          "energyDeficit": "0",
+          "formulaInputs": {
+            "targetVelocity": "0",
+            "velocitySeconds": "7200",
+            "velocityPower": "1",
+            "velocityOutput": "0",
+            "flatAddition": "100000000000",
+            "flatPower": "1",
+            "flatOutput": "100000000000",
+            "sourceVerifiedOutput": "100000000000"
+          },
+          "runtimePreviewOutput": "100000000000"
+        },
+        "territoryrush": {
+          "gameAbilityId": "territoryrush",
+          "actionId": "TERRITORY_RUSH",
+          "targetResource": "territory",
+          "available": true,
+          "unlocked": true,
+          "visible": true,
+          "affordable": true,
+          "unavailableReason": null,
+          "unavailableReasonCode": null,
+          "energyCurrent": "20000.014084291187739",
+          "energyCost": "1600",
+          "energyDeficit": "0",
+          "formulaInputs": {
+            "targetVelocity": "1.9755864572646979379e+27",
+            "velocitySeconds": "7200",
+            "velocityPower": "1",
+            "velocityOutput": "1.4224222492305825153e+31",
+            "flatAddition": "1000000000",
+            "flatPower": "1",
+            "flatOutput": "1000000000",
+            "sourceVerifiedOutput": "1.4224222492305825153e+31"
+          },
+          "runtimePreviewOutput": "1.4224222492305825153e+31"
         }
       },
       "safety": {
@@ -1534,6 +1694,14 @@
             "valueSource": "Laboratory recompute from runtime-derived counts and effective territory/unit",
             "verificationStatus": "source-verified"
           },
+          "rushAbilities": {
+            "sourceRepository": "https://github.com/swarmsim/swarm",
+            "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+            "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee",
+            "functionOrEffectType": "abilities larvarush/meatrush/territoryrush; addUnitByVelocity; addUnit",
+            "valueSource": "Laboratory recompute from pinned constants and runtime-derived velocity/effect power",
+            "verificationStatus": "source-verified"
+          },
           "territoryPerSecond": {
             "sourceRepository": "https://github.com/swarmsim/swarm",
             "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
@@ -1593,7 +1761,10 @@
           "larvaeAfterAction": "1000000000000",
           "cocoonsBefore": "1000",
           "cocoonsAfterAction": "1000",
+          "meatBefore": "35",
+          "meatAfterAction": "35",
           "territoryBefore": "1000000000000",
+          "territoryAfterAction": "1000000000000",
           "territoryPerSecondBefore": "1.9755864572646979379e+27",
           "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
           "affectedArmyCountsBefore": {
@@ -1760,6 +1931,7 @@
         "metrics": {
           "larvaeAfter": "1000000000060",
           "cocoonsAfter": "1000",
+          "meatAfter": "35",
           "meatPerSecondAfter": "0",
           "territoryAfter": "1.1853518743588187727e+29",
           "territoryPerSecondAfter": "1.9755864572646979379e+27",
@@ -1788,6 +1960,7 @@
             "larvaePerSecond": "1",
             "cocoonsAfterAction": "1000",
             "cocoonsPerSecond": "0",
+            "meatAfterAction": "35",
             "territoryAfterAction": "1000000000000",
             "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
             "expansionEtaReason": null
@@ -1819,7 +1992,10 @@
           "larvaeAfterAction": "1000000000000",
           "cocoonsBefore": "1000",
           "cocoonsAfterAction": "1000",
+          "meatBefore": "35",
+          "meatAfterAction": "35",
           "territoryBefore": "1000000000000",
+          "territoryAfterAction": "1000000000000",
           "territoryPerSecondBefore": "1.9755864572646979379e+27",
           "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
           "affectedArmyCountsBefore": {
@@ -1986,6 +2162,7 @@
         "metrics": {
           "larvaeAfter": "1000000000300",
           "cocoonsAfter": "1000",
+          "meatAfter": "35",
           "meatPerSecondAfter": "0",
           "territoryAfter": "5.9267593717940938237e+29",
           "territoryPerSecondAfter": "1.9755864572646979379e+27",
@@ -2014,6 +2191,7 @@
             "larvaePerSecond": "1",
             "cocoonsAfterAction": "1000",
             "cocoonsPerSecond": "0",
+            "meatAfterAction": "35",
             "territoryAfterAction": "1000000000000",
             "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
             "expansionEtaReason": null
@@ -2045,7 +2223,10 @@
           "larvaeAfterAction": "1000000100000",
           "cocoonsBefore": "1000",
           "cocoonsAfterAction": "1000",
+          "meatBefore": "35",
+          "meatAfterAction": "35",
           "territoryBefore": "1000000000000",
+          "territoryAfterAction": "1000000000000",
           "territoryPerSecondBefore": "1.9755864572646979379e+27",
           "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
           "affectedArmyCountsBefore": {
@@ -2212,6 +2393,7 @@
         "metrics": {
           "larvaeAfter": "1000000100060",
           "cocoonsAfter": "1000",
+          "meatAfter": "35",
           "meatPerSecondAfter": "0",
           "territoryAfter": "1.1853518743588187727e+29",
           "territoryPerSecondAfter": "1.9755864572646979379e+27",
@@ -2225,6 +2407,7 @@
         "comparisonVsWait": {
           "larvaeAbsoluteDelta": "100000",
           "cocoonsAbsoluteDelta": "0",
+          "meatAbsoluteDelta": "0",
           "meatPerSecondAbsoluteDelta": "0",
           "territoryAbsoluteDelta": "0",
           "territoryPerSecondAbsoluteDelta": "0",
@@ -2248,6 +2431,7 @@
             "larvaePerSecond": "1",
             "cocoonsAfterAction": "1000",
             "cocoonsPerSecond": "0",
+            "meatAfterAction": "35",
             "territoryAfterAction": "1000000000000",
             "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
             "expansionEtaReason": null
@@ -2279,7 +2463,10 @@
           "larvaeAfterAction": "1000000100000",
           "cocoonsBefore": "1000",
           "cocoonsAfterAction": "1000",
+          "meatBefore": "35",
+          "meatAfterAction": "35",
           "territoryBefore": "1000000000000",
+          "territoryAfterAction": "1000000000000",
           "territoryPerSecondBefore": "1.9755864572646979379e+27",
           "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
           "affectedArmyCountsBefore": {
@@ -2446,6 +2633,7 @@
         "metrics": {
           "larvaeAfter": "1000000100300",
           "cocoonsAfter": "1000",
+          "meatAfter": "35",
           "meatPerSecondAfter": "0",
           "territoryAfter": "5.9267593717940938237e+29",
           "territoryPerSecondAfter": "1.9755864572646979379e+27",
@@ -2459,6 +2647,7 @@
         "comparisonVsWait": {
           "larvaeAbsoluteDelta": "100000",
           "cocoonsAbsoluteDelta": "0",
+          "meatAbsoluteDelta": "0",
           "meatPerSecondAbsoluteDelta": "0",
           "territoryAbsoluteDelta": "0",
           "territoryPerSecondAbsoluteDelta": "0",
@@ -2482,6 +2671,7 @@
             "larvaePerSecond": "1",
             "cocoonsAfterAction": "1000",
             "cocoonsPerSecond": "0",
+            "meatAfterAction": "35",
             "territoryAfterAction": "1000000000000",
             "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
             "expansionEtaReason": null
@@ -2513,7 +2703,10 @@
           "larvaeAfterAction": "1000000000000",
           "cocoonsBefore": "1000",
           "cocoonsAfterAction": "1000",
+          "meatBefore": "35",
+          "meatAfterAction": "35",
           "territoryBefore": "1000000000000",
+          "territoryAfterAction": "1000000000000",
           "territoryPerSecondBefore": "1.9755864572646979379e+27",
           "territoryPerSecondAfterAction": "3.9511729145293958758e+27",
           "affectedArmyCountsBefore": {
@@ -2680,6 +2873,7 @@
         "metrics": {
           "larvaeAfter": "1000000000060",
           "cocoonsAfter": "1000",
+          "meatAfter": "35",
           "meatPerSecondAfter": "0",
           "territoryAfter": "2.3707037487176375355e+29",
           "territoryPerSecondAfter": "3.9511729145293958758e+27",
@@ -2693,6 +2887,7 @@
         "comparisonVsWait": {
           "larvaeAbsoluteDelta": "0",
           "cocoonsAbsoluteDelta": "0",
+          "meatAbsoluteDelta": "0",
           "meatPerSecondAbsoluteDelta": "0",
           "territoryAbsoluteDelta": "1.1853518743588187628e+29",
           "territoryPerSecondAbsoluteDelta": "1.9755864572646979379e+27",
@@ -2716,6 +2911,7 @@
             "larvaePerSecond": "1",
             "cocoonsAfterAction": "1000",
             "cocoonsPerSecond": "0",
+            "meatAfterAction": "35",
             "territoryAfterAction": "1000000000000",
             "territoryPerSecondAfterAction": "3.9511729145293958758e+27",
             "expansionEtaReason": null
@@ -2747,7 +2943,10 @@
           "larvaeAfterAction": "1000000000000",
           "cocoonsBefore": "1000",
           "cocoonsAfterAction": "1000",
+          "meatBefore": "35",
+          "meatAfterAction": "35",
           "territoryBefore": "1000000000000",
+          "territoryAfterAction": "1000000000000",
           "territoryPerSecondBefore": "1.9755864572646979379e+27",
           "territoryPerSecondAfterAction": "3.9511729145293958758e+27",
           "affectedArmyCountsBefore": {
@@ -2914,6 +3113,7 @@
         "metrics": {
           "larvaeAfter": "1000000000300",
           "cocoonsAfter": "1000",
+          "meatAfter": "35",
           "meatPerSecondAfter": "0",
           "territoryAfter": "1.1853518743588187637e+30",
           "territoryPerSecondAfter": "3.9511729145293958758e+27",
@@ -2927,6 +3127,7 @@
         "comparisonVsWait": {
           "larvaeAbsoluteDelta": "0",
           "cocoonsAbsoluteDelta": "0",
+          "meatAbsoluteDelta": "0",
           "meatPerSecondAbsoluteDelta": "0",
           "territoryAbsoluteDelta": "5.9267593717940938133e+29",
           "territoryPerSecondAbsoluteDelta": "1.9755864572646979379e+27",
@@ -2950,6 +3151,7 @@
             "larvaePerSecond": "1",
             "cocoonsAfterAction": "1000",
             "cocoonsPerSecond": "0",
+            "meatAfterAction": "35",
             "territoryAfterAction": "1000000000000",
             "territoryPerSecondAfterAction": "3.9511729145293958758e+27",
             "expansionEtaReason": null
@@ -2985,7 +3187,10 @@
         "larvaeAfterAction": "1000000000000",
         "cocoonsBefore": "1000",
         "cocoonsAfterAction": "1000",
+        "meatBefore": "35",
+        "meatAfterAction": "35",
         "territoryBefore": "1000000000000",
+        "territoryAfterAction": "1000000000000",
         "territoryPerSecondBefore": "1.9755864572646979379e+27",
         "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
         "affectedArmyCountsBefore": {
@@ -3152,6 +3357,7 @@
       "metrics": {
         "larvaeAfter": "1000000000060",
         "cocoonsAfter": "1000",
+        "meatAfter": "35",
         "meatPerSecondAfter": "0",
         "territoryAfter": "1.1853518743588187727e+29",
         "territoryPerSecondAfter": "1.9755864572646979379e+27",
@@ -3180,6 +3386,7 @@
           "larvaePerSecond": "1",
           "cocoonsAfterAction": "1000",
           "cocoonsPerSecond": "0",
+          "meatAfterAction": "35",
           "territoryAfterAction": "1000000000000",
           "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
           "expansionEtaReason": null
@@ -3211,7 +3418,10 @@
         "larvaeAfterAction": "1000000000000",
         "cocoonsBefore": "1000",
         "cocoonsAfterAction": "1000",
+        "meatBefore": "35",
+        "meatAfterAction": "35",
         "territoryBefore": "1000000000000",
+        "territoryAfterAction": "1000000000000",
         "territoryPerSecondBefore": "1.9755864572646979379e+27",
         "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
         "affectedArmyCountsBefore": {
@@ -3378,6 +3588,7 @@
       "metrics": {
         "larvaeAfter": "1000000000300",
         "cocoonsAfter": "1000",
+        "meatAfter": "35",
         "meatPerSecondAfter": "0",
         "territoryAfter": "5.9267593717940938237e+29",
         "territoryPerSecondAfter": "1.9755864572646979379e+27",
@@ -3406,6 +3617,7 @@
           "larvaePerSecond": "1",
           "cocoonsAfterAction": "1000",
           "cocoonsPerSecond": "0",
+          "meatAfterAction": "35",
           "territoryAfterAction": "1000000000000",
           "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
           "expansionEtaReason": null
@@ -3437,7 +3649,10 @@
         "larvaeAfterAction": "1000000100000",
         "cocoonsBefore": "1000",
         "cocoonsAfterAction": "1000",
+        "meatBefore": "35",
+        "meatAfterAction": "35",
         "territoryBefore": "1000000000000",
+        "territoryAfterAction": "1000000000000",
         "territoryPerSecondBefore": "1.9755864572646979379e+27",
         "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
         "affectedArmyCountsBefore": {
@@ -3604,6 +3819,7 @@
       "metrics": {
         "larvaeAfter": "1000000100060",
         "cocoonsAfter": "1000",
+        "meatAfter": "35",
         "meatPerSecondAfter": "0",
         "territoryAfter": "1.1853518743588187727e+29",
         "territoryPerSecondAfter": "1.9755864572646979379e+27",
@@ -3617,6 +3833,7 @@
       "comparisonVsWait": {
         "larvaeAbsoluteDelta": "100000",
         "cocoonsAbsoluteDelta": "0",
+        "meatAbsoluteDelta": "0",
         "meatPerSecondAbsoluteDelta": "0",
         "territoryAbsoluteDelta": "0",
         "territoryPerSecondAbsoluteDelta": "0",
@@ -3640,6 +3857,7 @@
           "larvaePerSecond": "1",
           "cocoonsAfterAction": "1000",
           "cocoonsPerSecond": "0",
+          "meatAfterAction": "35",
           "territoryAfterAction": "1000000000000",
           "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
           "expansionEtaReason": null
@@ -3671,7 +3889,10 @@
         "larvaeAfterAction": "1000000100000",
         "cocoonsBefore": "1000",
         "cocoonsAfterAction": "1000",
+        "meatBefore": "35",
+        "meatAfterAction": "35",
         "territoryBefore": "1000000000000",
+        "territoryAfterAction": "1000000000000",
         "territoryPerSecondBefore": "1.9755864572646979379e+27",
         "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
         "affectedArmyCountsBefore": {
@@ -3838,6 +4059,7 @@
       "metrics": {
         "larvaeAfter": "1000000100300",
         "cocoonsAfter": "1000",
+        "meatAfter": "35",
         "meatPerSecondAfter": "0",
         "territoryAfter": "5.9267593717940938237e+29",
         "territoryPerSecondAfter": "1.9755864572646979379e+27",
@@ -3851,6 +4073,7 @@
       "comparisonVsWait": {
         "larvaeAbsoluteDelta": "100000",
         "cocoonsAbsoluteDelta": "0",
+        "meatAbsoluteDelta": "0",
         "meatPerSecondAbsoluteDelta": "0",
         "territoryAbsoluteDelta": "0",
         "territoryPerSecondAbsoluteDelta": "0",
@@ -3874,6 +4097,7 @@
           "larvaePerSecond": "1",
           "cocoonsAfterAction": "1000",
           "cocoonsPerSecond": "0",
+          "meatAfterAction": "35",
           "territoryAfterAction": "1000000000000",
           "territoryPerSecondAfterAction": "1.9755864572646979379e+27",
           "expansionEtaReason": null
@@ -3905,7 +4129,10 @@
         "larvaeAfterAction": "1000000000000",
         "cocoonsBefore": "1000",
         "cocoonsAfterAction": "1000",
+        "meatBefore": "35",
+        "meatAfterAction": "35",
         "territoryBefore": "1000000000000",
+        "territoryAfterAction": "1000000000000",
         "territoryPerSecondBefore": "1.9755864572646979379e+27",
         "territoryPerSecondAfterAction": "3.9511729145293958758e+27",
         "affectedArmyCountsBefore": {
@@ -4072,6 +4299,7 @@
       "metrics": {
         "larvaeAfter": "1000000000060",
         "cocoonsAfter": "1000",
+        "meatAfter": "35",
         "meatPerSecondAfter": "0",
         "territoryAfter": "2.3707037487176375355e+29",
         "territoryPerSecondAfter": "3.9511729145293958758e+27",
@@ -4085,6 +4313,7 @@
       "comparisonVsWait": {
         "larvaeAbsoluteDelta": "0",
         "cocoonsAbsoluteDelta": "0",
+        "meatAbsoluteDelta": "0",
         "meatPerSecondAbsoluteDelta": "0",
         "territoryAbsoluteDelta": "1.1853518743588187628e+29",
         "territoryPerSecondAbsoluteDelta": "1.9755864572646979379e+27",
@@ -4108,6 +4337,7 @@
           "larvaePerSecond": "1",
           "cocoonsAfterAction": "1000",
           "cocoonsPerSecond": "0",
+          "meatAfterAction": "35",
           "territoryAfterAction": "1000000000000",
           "territoryPerSecondAfterAction": "3.9511729145293958758e+27",
           "expansionEtaReason": null
@@ -4139,7 +4369,10 @@
         "larvaeAfterAction": "1000000000000",
         "cocoonsBefore": "1000",
         "cocoonsAfterAction": "1000",
+        "meatBefore": "35",
+        "meatAfterAction": "35",
         "territoryBefore": "1000000000000",
+        "territoryAfterAction": "1000000000000",
         "territoryPerSecondBefore": "1.9755864572646979379e+27",
         "territoryPerSecondAfterAction": "3.9511729145293958758e+27",
         "affectedArmyCountsBefore": {
@@ -4306,6 +4539,7 @@
       "metrics": {
         "larvaeAfter": "1000000000300",
         "cocoonsAfter": "1000",
+        "meatAfter": "35",
         "meatPerSecondAfter": "0",
         "territoryAfter": "1.1853518743588187637e+30",
         "territoryPerSecondAfter": "3.9511729145293958758e+27",
@@ -4319,6 +4553,7 @@
       "comparisonVsWait": {
         "larvaeAbsoluteDelta": "0",
         "cocoonsAbsoluteDelta": "0",
+        "meatAbsoluteDelta": "0",
         "meatPerSecondAbsoluteDelta": "0",
         "territoryAbsoluteDelta": "5.9267593717940938133e+29",
         "territoryPerSecondAbsoluteDelta": "1.9755864572646979379e+27",
@@ -4342,6 +4577,7 @@
           "larvaePerSecond": "1",
           "cocoonsAfterAction": "1000",
           "cocoonsPerSecond": "0",
+          "meatAfterAction": "35",
           "territoryAfterAction": "1000000000000",
           "territoryPerSecondAfterAction": "3.9511729145293958758e+27",
           "expansionEtaReason": null
@@ -4354,19 +4590,20 @@
     "text": "WAIT is valid at both horizons.\nClone Larvae leads for larvae after 300 seconds.\nMeat/sec is unchanged because Phase 1 does not spend added larvae.\nHouse of Mirrors leads for territory production at 300 seconds.\nThe snapshot is valid with formula provenance warnings.",
     "warnings": []
   },
+  "energyOpportunityReport": null,
   "liveStateVerification": {
     "structuralBeforeHash": "sha256:20c555d51a840d7059793dd89a6c2cc162ef6ff2b226f0cabd04862a49250061",
     "structuralAfterHash": "sha256:20c555d51a840d7059793dd89a6c2cc162ef6ff2b226f0cabd04862a49250061",
     "structuralUnchanged": true,
-    "elapsedSeconds": "0.005",
+    "elapsedSeconds": "0.006",
     "resourceDrift": {
       "energy": {
         "before": "20000.005281609195402",
         "perSecond": "0",
-        "elapsedSeconds": "0.005",
+        "elapsedSeconds": "0.006",
         "expectedAfter": "20000.005281609195402",
-        "actualAfter": "20000.014084291187739",
-        "drift": "0.008802681992337",
+        "actualAfter": "20000.015844827586207",
+        "drift": "0.010563218390805",
         "tolerance": "2.0000005281609195402e-14",
         "withinExpectedRange": false,
         "normalizationMethod": "passive-rate-plus-elapsed-with-energy-cap"
@@ -4374,10 +4611,10 @@
       "larva": {
         "before": "1000000000000",
         "perSecond": "1",
-        "elapsedSeconds": "0.005",
-        "expectedAfter": "1000000000000.005",
+        "elapsedSeconds": "0.006",
+        "expectedAfter": "1000000000000.006",
         "actualAfter": "1000000000000",
-        "drift": "-0.005",
+        "drift": "-0.006",
         "tolerance": "0.05",
         "withinExpectedRange": true,
         "normalizationMethod": "passive-rate-plus-elapsed"
@@ -4385,7 +4622,7 @@
       "cocoon": {
         "before": "1000",
         "perSecond": "0",
-        "elapsedSeconds": "0.005",
+        "elapsedSeconds": "0.006",
         "expectedAfter": "1000",
         "actualAfter": "1000",
         "drift": "0",
@@ -4396,10 +4633,10 @@
       "territory": {
         "before": "1000000000000",
         "perSecond": "1.9755864572646979379e+27",
-        "elapsedSeconds": "0.005",
-        "expectedAfter": "9.8779322863244896895e+24",
+        "elapsedSeconds": "0.006",
+        "expectedAfter": "1.1853518743589187627e+25",
         "actualAfter": "1000000000000",
-        "drift": "-9.8779322863234896895e+24",
+        "drift": "-1.1853518743588187627e+25",
         "tolerance": "9.8779322863234896895e+25",
         "withinExpectedRange": true,
         "normalizationMethod": "passive-rate-plus-elapsed"
@@ -4407,7 +4644,7 @@
       "meat": {
         "before": "35",
         "perSecond": "0",
-        "elapsedSeconds": "0.005",
+        "elapsedSeconds": "0.006",
         "expectedAfter": "35",
         "actualAfter": "35",
         "drift": "0",
@@ -4479,6 +4716,14 @@
         "valueSource": "Laboratory recompute from runtime-derived counts and effective territory/unit",
         "verificationStatus": "source-verified"
       },
+      "rushAbilities": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee",
+        "functionOrEffectType": "abilities larvarush/meatrush/territoryrush; addUnitByVelocity; addUnit",
+        "valueSource": "Laboratory recompute from pinned constants and runtime-derived velocity/effect power",
+        "verificationStatus": "source-verified"
+      },
       "territoryPerSecond": {
         "sourceRepository": "https://github.com/swarmsim/swarm",
         "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
@@ -4516,6 +4761,6 @@
       "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
     ]
   },
-  "snapshotHash": "sha256:5c348b6382f051a719e37bbdcedbf57eec99869d289814ef4b0ff07b65df66f7",
-  "experimentHash": "sha256:3e0a2ca0e6a5a54e61b2776ae1d6a5fc7b32b3a8cc1821504d21e0b0ee5b4000"
+  "snapshotHash": "sha256:53e1ce7924abe311e71d0270ed1f82cac179542cff8ea8e155bc48d8514d9f2f",
+  "experimentHash": "sha256:e373ee2ca3b655bc5d50a0823802cd0e0dc6954dff996f37049cd9d90be0b014"
 }

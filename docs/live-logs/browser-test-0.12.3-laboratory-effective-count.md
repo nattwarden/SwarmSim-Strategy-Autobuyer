@@ -1,10 +1,10 @@
 # SwarmSim Strategy Autobuyer 0.12.3 Laboratory Effective Count Verification
 
 - Verdict: 0.12.3 LABORATORY LIVE EFFECTIVE COUNT VERIFIED
-- Commit: c819c7d7adc8ab0280e06d25466f6697fb915409
-- Userscript hash: sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0
-- Snapshot hash: sha256:5c348b6382f051a719e37bbdcedbf57eec99869d289814ef4b0ff07b65df66f7
-- Experiment hash: sha256:3e0a2ca0e6a5a54e61b2776ae1d6a5fc7b32b3a8cc1821504d21e0b0ee5b4000
+- Commit: 3896ad55910d6dd3a8c3f50d752864df82791989
+- Userscript hash: sha256:810543d982695a872ea50b2d7f8e433f017756ac4a229b7f1ad096b32a1c5d50
+- Snapshot hash: sha256:53e1ce7924abe311e71d0270ed1f82cac179542cff8ea8e155bc48d8514d9f2f
+- Experiment hash: sha256:e373ee2ca3b655bc5d50a0823802cd0e0dc6954dff996f37049cd9d90be0b014
 
 ## Core gates
 - Canonical HoM rows: 11

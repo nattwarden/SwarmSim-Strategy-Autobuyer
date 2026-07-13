@@ -3,8 +3,8 @@ No actions were executed in the live game.
 
 # SwarmSim Laboratory Live Result
 
-- Snapshot hash: `sha256:5c348b6382f051a719e37bbdcedbf57eec99869d289814ef4b0ff07b65df66f7`
-- Experiment hash: `sha256:3e0a2ca0e6a5a54e61b2776ae1d6a5fc7b32b3a8cc1821504d21e0b0ee5b4000`
+- Snapshot hash: `sha256:53e1ce7924abe311e71d0270ed1f82cac179542cff8ea8e155bc48d8514d9f2f`
+- Experiment hash: `sha256:e373ee2ca3b655bc5d50a0823802cd0e0dc6954dff996f37049cd9d90be0b014`
 - Status: `live-state-mismatch`
 - Live state unchanged: `false`
 
