@@ -14848,6 +14848,7 @@ function getDisplayName(item) {
           target: row.target,
           resource: row.resource,
           costResources: getCostList(row.upgrade).map((cost) => cost?.unit?.name).filter(Boolean),
+          boundedAmount: "1",
           wouldBuyAmount: buyable ? "1" : "",
           raw: { etaSeconds: buyable ? 0 : eta, progressPercent: (progress || 0) * 100 },
         }, "engine");
@@ -14895,6 +14896,7 @@ function getDisplayName(item) {
           target: getDisplayName(plan.target),
           resource: plan.bottleneck?.unit ? getDisplayName(plan.bottleneck.unit) : "meat chain",
           costResources: getCostList(plan.actionUnit).map((cost) => cost?.unit?.name).filter(Boolean),
+          boundedAmount: normalizeBoundedAmountToken(num),
           wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
           raw: guard?.raw || null,
         }, "meat");
@@ -14914,6 +14916,7 @@ function getDisplayName(item) {
         target: territory.armySeed ? "House of Mirrors prep" : "Expansion",
         resource: "territory",
         costResources: getCostList(territory.unit).map((cost) => cost?.unit?.name).filter(Boolean),
+        boundedAmount: normalizeBoundedAmountToken(territory.num),
         wouldBuyAmount: formatSwarmNumber(territory.num),
         raw: territory.raw || null,
       }, "territory");
@@ -14941,6 +14944,31 @@ function getDisplayName(item) {
     return confidence === "medium" || confidence === "high";
   }
 
+  function normalizeBoundedAmountToken(value) {
+    const amount = decimalFrom(value, 0);
+    if (!isPositive(amount)) return "0";
+    try {
+      return amount.toString();
+    } catch {
+      return String(value || "0");
+    }
+  }
+
+  function parseBoundedAmountToken(value) {
+    const amount = decimalFrom(value, 0);
+    return isPositive(amount) ? amount : null;
+  }
+
+  function buildCoordinatorCandidateFingerprint({ lane, executionKey, candidate, target, boundedAmount }) {
+    return [
+      String(lane || "none"),
+      String(executionKey || "none"),
+      String(candidate || "none"),
+      String(target || "none"),
+      normalizeBoundedAmountToken(boundedAmount),
+    ].join("|");
+  }
+
   function createWholeEconomyExecutionDecisionBase(actionBudget = 0) {
     return {
       schemaVersion: "whole-economy-execution-decision.v1",
@@ -14951,6 +14979,8 @@ function getDisplayName(item) {
       selectedCandidate: "none",
       selectedExecutionKey: null,
       selectedAmount: "0",
+      selectedTarget: "none",
+      selectedFingerprint: "none",
       selectedReason: "none",
       confidence: "low",
       scoreMargin: null,
@@ -14967,7 +14997,7 @@ function getDisplayName(item) {
     };
   }
 
-  function buildWholeEconomyExecutionDecisionV1({ proposalState, actionBudget }) {
+  function buildWholeEconomyExecutionDecisionV1({ proposalState, actionBudget, executionEnabled = true }) {
     const base = createWholeEconomyExecutionDecisionBase(actionBudget);
     const proposals = proposalState?.proposals || [];
     const evaluation = proposalState?.evaluation || null;
@@ -15005,16 +15035,28 @@ function getDisplayName(item) {
     gate("economic-evidence-sufficient", winner.evidenceFields >= 3 && (scoreMargin === Number.POSITIVE_INFINITY || scoreMargin > 0), "insufficient evidence or score margin");
     gate("known-execution-key", !!selectedKey, "executionKey missing");
     gate("action-budget", Number(actionBudget || 0) >= 1, `budget ${Number(actionBudget || 0)} < 1`);
+    gate("execution-mode-enabled", executionEnabled === true, "advisor-only or auto-buy-safe is disabled");
     gate("no-ability-or-ascension-automation", isWholeEconomyExecutionLaneAllowed(winner.lane), "candidate implies ability/ascension scope");
 
     const preEligible = gatesFailed.length === 0;
+    const selectedAmountToken = normalizeBoundedAmountToken(proposal?.boundedAmount || proposal?.wouldBuyAmount || winner.amount || "0");
+    const selectedTarget = proposal?.target || winner.target || "none";
+    const selectedFingerprint = buildCoordinatorCandidateFingerprint({
+      lane: winner.lane,
+      executionKey: selectedKey,
+      candidate: winner.candidate,
+      target: selectedTarget,
+      boundedAmount: selectedAmountToken,
+    });
     return {
       ...base,
       selectedDomain: domain?.label || "none",
       selectedLane: winner.lane || "none",
       selectedCandidate: winner.candidate || "none",
       selectedExecutionKey: selectedKey,
-      selectedAmount: proposal?.wouldBuyAmount || winner.amount || "0",
+      selectedAmount: selectedAmountToken,
+      selectedTarget,
+      selectedFingerprint,
       selectedReason: proposal?.reason || winner.reason || "none",
       confidence: winner.confidence || "low",
       scoreMargin: scoreMargin === Number.POSITIVE_INFINITY ? null : roundWholeEconomy(scoreMargin),
@@ -15075,11 +15117,24 @@ function getDisplayName(item) {
     gate("still-reversible-scope", isWholeEconomyExecutionLaneAllowed(base.selectedLane), "selected lane moved outside scope");
     gate("still-no-ability-or-ascension", isWholeEconomyExecutionLaneAllowed(base.selectedLane), "selected candidate moved outside scope");
 
+    const revalidatedAmountToken = normalizeBoundedAmountToken(matchedProposal?.boundedAmount || matchedProposal?.wouldBuyAmount || matchedRow?.amount || "0");
+    const revalidatedTarget = matchedProposal?.target || matchedRow?.target || "none";
+    const revalidatedFingerprint = buildCoordinatorCandidateFingerprint({
+      lane: base.selectedLane,
+      executionKey: base.selectedExecutionKey,
+      candidate: base.selectedCandidate,
+      target: revalidatedTarget,
+      boundedAmount: revalidatedAmountToken,
+    });
+    gate("same-candidate-fingerprint", revalidatedFingerprint === base.selectedFingerprint, "candidate fingerprint changed during revalidation");
+
     const passed = gatesFailed.length === 0;
     return {
       ...base,
       selectedReason: matchedProposal?.reason || base.selectedReason,
-      selectedAmount: matchedProposal?.wouldBuyAmount || base.selectedAmount,
+      selectedAmount: revalidatedAmountToken,
+      selectedTarget: revalidatedTarget,
+      selectedFingerprint: revalidatedFingerprint,
       confidence: matchedRow?.confidence || base.confidence,
       scoreMargin: scoreMargin === Number.POSITIVE_INFINITY ? null : roundWholeEconomy(scoreMargin),
       gatesPassed: Array.from(new Set([...(base.gatesPassed || []), ...gatesPassed])),
@@ -15094,42 +15149,141 @@ function getDisplayName(item) {
     const result = executionAction?.result || { actionTaken: false, bought: 0, summary: "no execution" };
     const bought = Number(result?.bought || 0);
     const executed = bought > 0;
-    const matched = executionAction?.executionKey && decision?.selectedExecutionKey
-      ? executionAction.executionKey === decision.selectedExecutionKey
-      : false;
+    const selectedFingerprint = decision?.selectedFingerprint || "none";
+    const executedFingerprint = result?.executedFingerprint || "none";
+    const matched = executed && selectedFingerprint !== "none" && executedFingerprint === selectedFingerprint;
     return {
       ...(decision || createWholeEconomyExecutionDecisionBase(0)),
       executed,
       executionLabel: executionAction?.label || "Unified",
       executionResult: result?.summary || (executed ? "executed" : "not executed"),
       matchedExecution: matched ? "yes" : "no",
+      selectedFingerprint,
+      executedFingerprint,
     };
   }
 
-  function executeUnifiedPurchaseWinner({ executionKey, game, engine, commands, protectedResources, remainingActions }) {
-    if (!executionKey || remainingActions < 1) return { label: "Unified", result: { actionTaken: false, bought: 0 } };
-    if (executionKey === "engine") return { label: "Larva engine", result: executeEngineGuardAction({ game, commands, engine }) };
-    if (executionKey === "energy") return { label: "Energy", result: executeEnergyGuardAction({ game, commands, protectedResources }) };
-    if (executionKey === "meat") return { label: "Unlock planner", result: executeMeatGuardAction({ game, commands, protectedResources, remainingActions }) };
-    if (executionKey === "territory") {
-      const proposal = territoryPrepPlannerState?.proposal;
-      if (!proposal || proposal.meetsMinimum === false) return { label: "Territory", result: { actionTaken: false, bought: 0, summary: "Territory proposal no longer safe" } };
-      recordAdvisor("BUY", getDisplayName(proposal.unit), `unified evaluator selected Territory: ${proposal.reason}`);
-      addLaneCandidate({
-        lane: "Territory", decision: "BUY", candidate: getDisplayName(proposal.unit),
-        reason: `unified evaluator selected: ${proposal.reason}`, score: proposal.score,
-        wouldBuyAmount: formatSwarmNumber(proposal.num), target: proposal.armySeed ? "House of Mirrors prep" : "Expansion",
-        resource: "territory", raw: proposal.raw || null,
-      });
-      if (config.advisorOnly || !config.autoBuySafeDecisions) {
-        return { label: "Territory", result: { actionTaken: true, bought: 0, summary: `Would buy ${getDisplayName(proposal.unit)}` } };
-      }
-      const bought = safe(`Unified Territory ${getDisplayName(proposal.unit)}`, () =>
-        buyUnitAmount(commands, proposal.unit, proposal.num, proposal.armySeed ? "Army Seed" : "Territory Prep")
-      );
-      return { label: "Territory", result: { actionTaken: true, bought: bought ? 1 : 0, summary: bought ? `Bought ${getDisplayName(proposal.unit)}` : "Territory buy failed" } };
+  function executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount }) {
+    const amount = parseBoundedAmountToken(expectedAmount);
+    const unit = getGameUnit(game, expectedCandidate || "");
+    if (!unit || !amount) {
+      return {
+        actionTaken: false,
+        bought: 0,
+        executedCandidate: expectedCandidate || "none",
+        executedAmount: normalizeBoundedAmountToken(expectedAmount),
+        summary: "Meat exact execution unavailable",
+      };
     }
-    return { label: "Unified", result: { actionTaken: false, bought: 0 } };
+
+    const before = decimalFrom(unit.count?.() || 0, 0);
+    const bought = safe(`Unified Meat ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Target path action"));
+    const after = decimalFrom(unit.count?.() || 0, 0);
+    const delta = after.minus(before);
+    return {
+      actionTaken: bought,
+      bought: bought ? 1 : 0,
+      executedCandidate: getDisplayName(unit),
+      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
+      summary: bought ? `Bought ${getDisplayName(unit)}` : `Meat exact buy failed for ${getDisplayName(unit)}`,
+    };
+  }
+
+  function executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount }) {
+    const amount = parseBoundedAmountToken(expectedAmount);
+    const upgrade = getGameUpgrade(game, expectedCandidate || "");
+    if (!upgrade || !amount) {
+      return {
+        actionTaken: false,
+        bought: 0,
+        executedCandidate: expectedCandidate || "none",
+        executedAmount: normalizeBoundedAmountToken(expectedAmount),
+        summary: "Engine exact execution unavailable",
+      };
+    }
+
+    const bought = safe(`Unified Engine ${getDisplayName(upgrade)}`, () => buyUpgradeAmount(commands, upgrade, amount, "Larva Engine"));
+    return {
+      actionTaken: bought,
+      bought: bought ? 1 : 0,
+      executedCandidate: getDisplayName(upgrade),
+      executedAmount: bought ? normalizeBoundedAmountToken(amount) : "0",
+      summary: bought ? `Bought ${getDisplayName(upgrade)}` : `Engine exact buy failed for ${getDisplayName(upgrade)}`,
+    };
+  }
+
+  function executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount }) {
+    const amount = parseBoundedAmountToken(expectedAmount);
+    const unit = getGameUnit(game, expectedCandidate || "");
+    if (!unit || !amount) {
+      return {
+        actionTaken: false,
+        bought: 0,
+        executedCandidate: expectedCandidate || "none",
+        executedAmount: normalizeBoundedAmountToken(expectedAmount),
+        summary: "Territory exact execution unavailable",
+      };
+    }
+
+    const bought = safe(`Unified Territory ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Territory Prep"));
+    return {
+      actionTaken: bought,
+      bought: bought ? 1 : 0,
+      executedCandidate: getDisplayName(unit),
+      executedAmount: bought ? normalizeBoundedAmountToken(amount) : "0",
+      summary: bought ? `Bought ${getDisplayName(unit)}` : `Territory exact buy failed for ${getDisplayName(unit)}`,
+    };
+  }
+
+  function executeUnifiedPurchaseWinner({ executionKey, game, commands, remainingActions, selectedLane, selectedCandidate, selectedAmount, selectedTarget, selectedFingerprint }) {
+    if (!executionKey || remainingActions < 1) {
+      return { label: "Unified", result: { actionTaken: false, bought: 0, summary: "no execution" } };
+    }
+
+    const lane = selectedLane || "none";
+    const expectedCandidate = selectedCandidate || "none";
+    const expectedAmount = normalizeBoundedAmountToken(selectedAmount || "0");
+    const expectedTarget = selectedTarget || "none";
+    const expectedFingerprint = selectedFingerprint || buildCoordinatorCandidateFingerprint({
+      lane,
+      executionKey,
+      candidate: expectedCandidate,
+      target: expectedTarget,
+      boundedAmount: expectedAmount,
+    });
+
+    let label = "Unified";
+    let result = { actionTaken: false, bought: 0, executedCandidate: expectedCandidate, executedAmount: "0", summary: "no execution" };
+
+    if (executionKey === "meat") {
+      label = "Unlock planner";
+      result = executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount });
+    } else if (executionKey === "engine") {
+      label = "Larva engine";
+      result = executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount });
+    } else if (executionKey === "territory") {
+      label = "Territory";
+      result = executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedAmount });
+    }
+
+    const executedFingerprint = buildCoordinatorCandidateFingerprint({
+      lane,
+      executionKey,
+      candidate: result.executedCandidate,
+      target: expectedTarget,
+      boundedAmount: result.executedAmount,
+    });
+
+    return {
+      label,
+      executionKey,
+      expectedFingerprint,
+      result: {
+        ...result,
+        expectedFingerprint,
+        executedFingerprint,
+      },
+    };
   }
   // <build:section:adapter-smart-execution:end>
 
@@ -15244,6 +15398,7 @@ function getDisplayName(item) {
     wholeEconomyExecutionDecisionState = buildWholeEconomyExecutionDecisionV1({
       proposalState: unifiedPurchaseProposalState,
       actionBudget: Math.max(0, maxActions - mainActions),
+      executionEnabled: !config.advisorOnly && !!config.autoBuySafeDecisions,
     });
 
     if (wholeEconomyExecutionDecisionState.preRevalidationEligible) {
@@ -15260,21 +15415,31 @@ function getDisplayName(item) {
       const unifiedAction = executeUnifiedPurchaseWinner({
         executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey,
         game,
-        engine,
         commands,
-        protectedResources,
         remainingActions: Math.max(0, maxActions - mainActions),
+        selectedLane: wholeEconomyExecutionDecisionState.selectedLane,
+        selectedCandidate: wholeEconomyExecutionDecisionState.selectedCandidate,
+        selectedAmount: wholeEconomyExecutionDecisionState.selectedAmount,
+        selectedTarget: wholeEconomyExecutionDecisionState.selectedTarget,
+        selectedFingerprint: wholeEconomyExecutionDecisionState.selectedFingerprint,
       });
       wholeEconomyExecutionDecisionState = finalizeWholeEconomyExecutionDecisionResult(
         wholeEconomyExecutionDecisionState,
         { ...unifiedAction, executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey }
       );
       addMainResult(unifiedAction.label, unifiedAction.result);
-      if (unifiedAction.result?.actionTaken) {
+      if (Number(unifiedAction.result?.bought || 0) > 0 && wholeEconomyExecutionDecisionState.matchedExecution === "yes") {
         coordinatorExecutedKey = wholeEconomyExecutionDecisionState.selectedExecutionKey;
         engine = analyzeLarvaEngine(game);
         protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
         if (coordinatorExecutedKey !== "territory") territoryPrepPlannerState = null;
+      } else {
+        wholeEconomyExecutionDecisionState = {
+          ...wholeEconomyExecutionDecisionState,
+          fallbackReason: wholeEconomyExecutionDecisionState.fallbackReason === "none"
+            ? "coordinator execution mismatch or zero buy"
+            : wholeEconomyExecutionDecisionState.fallbackReason,
+        };
       }
     } else if (!wholeEconomyExecutionDecisionState.executionAuthority) {
       wholeEconomyExecutionDecisionState = {
@@ -17905,7 +18070,8 @@ function getDisplayName(item) {
             evaluation: buildUnifiedPurchaseEvaluator(proposals, null),
           };
           const actionBudget = Number.isFinite(Number(options?.actionBudget)) ? Number(options.actionBudget) : 1;
-          let decision = buildWholeEconomyExecutionDecisionV1({ proposalState, actionBudget });
+          const executionEnabled = options?.executionEnabled === undefined ? true : !!options.executionEnabled;
+          let decision = buildWholeEconomyExecutionDecisionV1({ proposalState, actionBudget, executionEnabled });
           if (Array.isArray(options?.revalidationCandidates)) {
             const revalidationProposals = options.revalidationCandidates.map((candidate, index) => ({
               ...candidate,

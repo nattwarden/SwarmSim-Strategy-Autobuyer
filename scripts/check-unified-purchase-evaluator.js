@@ -60,6 +60,11 @@ async function main() {
 
       const shadowOnlyDecision = api.buildExecutionDecision(validCandidates, { actionBudget: 1 });
       const approvedDecision = api.buildExecutionDecision(validCandidates, { actionBudget: 1, revalidationCandidates: validCandidates });
+      const executionDisabledDecision = api.buildExecutionDecision(validCandidates, {
+        actionBudget: 1,
+        executionEnabled: false,
+        revalidationCandidates: validCandidates,
+      });
 
       const holdDeniedDecision = api.buildExecutionDecision([
         {
@@ -101,15 +106,57 @@ async function main() {
         ],
       });
 
+      const fingerprintDriftDecision = api.buildExecutionDecision(validCandidates, {
+        actionBudget: 1,
+        revalidationCandidates: [
+          {
+            lane: "Territory", executionKey: "territory", decision: "BUY", candidate: "Stinger V", target: "Expansion", wouldBuyAmount: "6",
+            reason: "improves Expansion ETA", score: 72000, blockers: [], costResources: ["meat", "larva"],
+            raw: { etaBeforeSeconds: 500, etaImprovementSeconds: 200, reserveRatio: 3, progressPercent: 65 },
+          },
+          validCandidates[1],
+          validCandidates[2],
+        ],
+      });
+
+      const bot = window.kbcSwarmBot;
+      const previousConfig = {
+        enabled: !!bot?.config?.enabled,
+        smartMode: !!bot?.config?.smartMode,
+        advisorOnly: !!bot?.config?.advisorOnly,
+        autoBuySafeDecisions: !!bot?.config?.autoBuySafeDecisions,
+      };
+
+      bot.config.enabled = true;
+      bot.config.smartMode = true;
+      bot.config.advisorOnly = true;
+      bot.config.autoBuySafeDecisions = true;
+      bot.runOnce();
+      const runtimeInspector = bot.getStrategyInspector?.() || {};
+      const runtimeSmoke = {
+        coordinatorExecutionSchema: runtimeInspector.coordinatorExecutionSchema || "none",
+        coordinatorExecutionAuthority: runtimeInspector.coordinatorExecutionAuthority || "false",
+        coordinatorExecuted: runtimeInspector.coordinatorExecuted || "no",
+        coordinatorMatchedExecution: runtimeInspector.coordinatorMatchedExecution || "no",
+      };
+
+      bot.config.enabled = previousConfig.enabled;
+      bot.config.smartMode = previousConfig.smartMode;
+      bot.config.advisorOnly = previousConfig.advisorOnly;
+      bot.config.autoBuySafeDecisions = previousConfig.autoBuySafeDecisions;
+
       return {
         evaluation,
         shadowOnlyDecision,
         approvedDecision,
+        executionDisabledDecision,
         holdDeniedDecision,
         blockedDeniedDecision,
         lowConfidenceDeniedDecision,
         unknownKeyDeniedDecision,
         revalidationFailedDecision,
+        fingerprintDriftDecision,
+        runtimeSmoke,
       };
     });
 
@@ -137,6 +184,10 @@ async function main() {
     assert(report.approvedDecision.executionAuthority === true, "valid medium/high BUY candidate did not receive authority");
     assert(report.approvedDecision.revalidationStatus === "passed", "approved candidate did not pass revalidation");
     assert(report.approvedDecision.selectedExecutionKey === "territory", "approved decision selected unexpected execution key");
+    assert(report.approvedDecision.selectedFingerprint && report.approvedDecision.selectedFingerprint !== "none", "approved decision fingerprint missing");
+
+    assert(report.executionDisabledDecision.executionAuthority === false, "execution-disabled decision must not grant authority");
+    assert(report.executionDisabledDecision.gatesFailed.join(" ").includes("execution-mode-enabled"), "execution-disabled decision missing mode gate failure");
 
     assert(report.holdDeniedDecision.executionAuthority === false, "HOLD candidate was incorrectly authorized");
     assert(report.blockedDeniedDecision.executionAuthority === false, "blocked candidate was incorrectly authorized");
@@ -148,6 +199,15 @@ async function main() {
     assert(report.revalidationFailedDecision.executionAuthority === false, "revalidation failure should remove authority");
     assert(report.revalidationFailedDecision.revalidationStatus === "failed", "revalidation failure status was not reported");
     assert(report.revalidationFailedDecision.fallbackReason && report.revalidationFailedDecision.fallbackReason !== "none", "fallback reason missing after failed revalidation");
+
+    assert(report.fingerprintDriftDecision.executionAuthority === false, "fingerprint drift should remove authority");
+    assert(report.fingerprintDriftDecision.revalidationStatus === "failed", "fingerprint drift must fail revalidation");
+    assert(report.fingerprintDriftDecision.gatesFailed.join(" ").includes("same-candidate-fingerprint"), "fingerprint drift gate failure missing");
+
+    assert(report.runtimeSmoke.coordinatorExecutionSchema === "whole-economy-execution-decision.v1", "runtime smoke missing coordinator execution schema");
+    assert(report.runtimeSmoke.coordinatorExecutionAuthority === "false", "advisor-only runtime smoke should not grant execution authority");
+    assert(report.runtimeSmoke.coordinatorExecuted === "no", "advisor-only runtime smoke should not execute coordinator buy");
+    assert(report.runtimeSmoke.coordinatorMatchedExecution === "no", "advisor-only runtime smoke should not report matched execution");
   } finally {
     await browser.close();
   }
