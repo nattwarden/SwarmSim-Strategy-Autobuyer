@@ -23,6 +23,11 @@ const WIDE_COARSE_LADDER = [
   { y: 6000, r: 16, p: 120, u: 14 },
 ];
 
+function buildSweepScenarioIds(total = 150) {
+  const count = Math.max(1, Number(total) || 150);
+  return Array.from({ length: count }, (_, idx) => `sa1-sweep-${String(idx + 1).padStart(3, "0")}`);
+}
+
 function argMap(argv) {
   const map = new Map();
   for (let i = 0; i < argv.length; i += 1) {
@@ -199,9 +204,24 @@ async function executeScenarioBatch(scenarioIds, repeats, cycles) {
 async function main() {
   const args = argMap(process.argv.slice(2));
   const wide = args.get("--wide") === "true";
+  const autoBootstrapSweep = args.get("--auto-bootstrap-sweep") !== "false";
+  const sweepCycles = Math.max(1, Number(args.get("--bootstrap-cycles") || 5));
   const ladder = wide ? WIDE_COARSE_LADDER : COARSE_LADDER;
 
-  const reps = collectSweepRepresentatives();
+  let reps = collectSweepRepresentatives();
+  if (autoBootstrapSweep && (!reps.lastMeat || !reps.firstEnergy || !reps.firstClone || !reps.nearestTerritoryMargin)) {
+    console.log("SA1 v2: representative sweep states missing; auto-running sweep150 bootstrap.");
+    const bootstrap = await runScenarioMatrix("live", {
+      scenarios: buildSweepScenarioIds(150),
+      repeats: 1,
+      cycles: sweepCycles,
+    });
+    if (bootstrap.exitCode !== 0) {
+      throw new Error("Sweep150 bootstrap failed while preparing SA1 v2 representatives.");
+    }
+    reps = collectSweepRepresentatives();
+  }
+
   if (!reps.lastMeat || !reps.firstEnergy || !reps.firstClone || !reps.nearestTerritoryMargin) {
     throw new Error("Sweep150 representatives are incomplete. Run strategy:audit:matrix:sa1:sweep150 first.");
   }

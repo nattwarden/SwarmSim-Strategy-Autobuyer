@@ -17,6 +17,17 @@ const exampleLiveResultCsvPath = path.join(testDataDir, "example-live-result.csv
 const exampleLiveResultMdPath = path.join(testDataDir, "example-live-result.md");
 const exampleCopySummaryPath = path.join(testDataDir, "example-copy-summary.txt");
 const diagnosticsPath = path.join(testDataDir, "effective-count-diagnostics.json");
+const args = new Set(process.argv.slice(2));
+const writeEvidence = args.has("--write-evidence");
+
+for (const arg of args) {
+  if (!["--check", "--write-evidence"].includes(arg)) {
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+}
+if (args.has("--check") && writeEvidence) {
+  throw new Error("Choose either --check or --write-evidence, not both.");
+}
 
 const HOM_IDS = ["swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
 
@@ -299,8 +310,10 @@ async function runRegression(page, definitions, order) {
 }
 
 async function main() {
-  ensureParentDir(evidenceJsonPath);
-  ensureParentDir(exampleLiveResultJsonPath);
+  if (writeEvidence) {
+    ensureParentDir(evidenceJsonPath);
+    ensureParentDir(exampleLiveResultJsonPath);
+  }
 
   const errors = [];
   const userscript = readUserscript();
@@ -551,16 +564,18 @@ async function main() {
 
   const highExports = await exportLive(lab.page, highResult);
 
-  writeText(exampleLiveResultJsonPath, highExports.jsonText);
-  writeText(exampleLiveResultCsvPath, highExports.csvText);
-  writeText(exampleLiveResultMdPath, highExports.markdownText);
-  writeText(exampleCopySummaryPath, highExports.copySummary);
-  writeText(diagnosticsPath, JSON.stringify({
-    snapshotId: highSnapshot?.snapshotId || null,
-    snapshotHash: highSnapshot?.snapshotHash || null,
-    houseOfMirrorsResolution: highSnapshot?.army?.houseOfMirrorsResolution || null,
-    effectiveCountDiagnostics: highSnapshot?.army?.effectiveCountDiagnostics || [],
-  }, null, 2));
+  if (writeEvidence) {
+    writeText(exampleLiveResultJsonPath, highExports.jsonText);
+    writeText(exampleLiveResultCsvPath, highExports.csvText);
+    writeText(exampleLiveResultMdPath, highExports.markdownText);
+    writeText(exampleCopySummaryPath, highExports.copySummary);
+    writeText(diagnosticsPath, JSON.stringify({
+      snapshotId: highSnapshot?.snapshotId || null,
+      snapshotHash: highSnapshot?.snapshotHash || null,
+      houseOfMirrorsResolution: highSnapshot?.army?.houseOfMirrorsResolution || null,
+      effectiveCountDiagnostics: highSnapshot?.army?.effectiveCountDiagnostics || [],
+    }, null, 2));
+  }
 
   const verdict = errors.length
     ? "0.12.3 LABORATORY LIVE EFFECTIVE COUNT REQUIRES PATCH"
@@ -612,8 +627,9 @@ async function main() {
     errors,
   };
 
-  writeText(evidenceJsonPath, JSON.stringify(evidence, null, 2));
-  writeText(evidenceMdPath, [
+  if (writeEvidence) {
+    writeText(evidenceJsonPath, JSON.stringify(evidence, null, 2));
+    writeText(evidenceMdPath, [
     "# SwarmSim Strategy Autobuyer 0.12.3 Laboratory Effective Count Verification",
     "",
     `- Verdict: ${verdict}`,
@@ -642,7 +658,8 @@ async function main() {
     "## Errors",
     ...(errors.length ? errors.map((row) => `- ${row}`) : ["- none"]),
     "",
-  ].join("\n"));
+    ].join("\n"));
+  }
 
   await closePage(lab);
   await browser.close();
@@ -652,7 +669,9 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("0.12.3 LABORATORY LIVE EFFECTIVE COUNT VERIFIED");
+  console.log(writeEvidence
+    ? "0.12.3 LABORATORY LIVE EFFECTIVE COUNT VERIFIED; EVIDENCE WRITTEN"
+    : "0.12.3 LABORATORY LIVE EFFECTIVE COUNT CHECK PASSED; NO EVIDENCE WRITTEN");
 }
 
 main().catch((error) => {
