@@ -4277,6 +4277,238 @@ function getDisplayName(item) {
     return "";
   }
 
+  function councilUiMetric(raw, display, unit = null, availability = null) {
+    const hasRaw = raw !== null && raw !== undefined && raw !== "";
+    const hasDisplay = usefulCouncilText(display);
+    return {
+      raw: hasRaw ? raw : null,
+      display: hasDisplay || (hasRaw ? String(raw) : "—"),
+      unit,
+      availability: availability || (hasRaw ? "available" : hasDisplay ? "formatted-only" : "unavailable"),
+    };
+  }
+
+  function councilUiDecimalText(value) {
+    if (value === null || value === undefined) return null;
+    try {
+      return typeof value?.toString === "function" ? value.toString() : String(value);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function buildCouncilLiveSnapshot(game) {
+    const resources = {};
+    const rates = {};
+    for (const name of ["meat", "larva", "territory", "energy"]) {
+      const current = getCurrentResource(game, name);
+      const rate = getVelocity(game, name);
+      resources[name] = {
+        raw: councilUiDecimalText(current),
+        display: formatSwarmNumber(current),
+      };
+      rates[name] = {
+        raw: councilUiDecimalText(rate),
+        display: `${formatSwarmNumber(rate)}/s`,
+      };
+    }
+    return { resources, rates };
+  }
+
+  function normalizeCouncilUiDecision(value) {
+    const decision = normalizeCouncilDecision(value, "OBSERVE");
+    if (decision === "BUY") return "buy";
+    if (decision === "PLAN" || decision === "BACKGROUND") return "side";
+    if (decision === "HOLD" || decision === "WAIT") return "hold";
+    return "observe";
+  }
+
+  function buildCouncilUiState(inspector = strategyInspector, options = {}) {
+    const runtimeConfig = options.config || config;
+    const sourceKind = options.sourceKind || scenarioSourceTag();
+    const scriptVersion = options.scriptVersion || SCRIPT_VERSION;
+    const statusText = options.statusText ?? lastStatus;
+    const generatedAt = options.generatedAt || new Date().toISOString();
+    const generatedAtMs = Date.parse(generatedAt);
+    const strategyTimestamp = inspector?.timestamp || null;
+    const strategyTimestampMs = strategyTimestamp ? Date.parse(strategyTimestamp) : NaN;
+    const runEverySeconds = Number.isFinite(Number(options.runEverySeconds))
+      ? Number(options.runEverySeconds)
+      : Number.isFinite(Number(runtimeConfig.runEverySeconds)) ? Number(runtimeConfig.runEverySeconds) : null;
+    const staleAfterMs = Math.max(5000, Math.round((runEverySeconds || 1) * 3000));
+    const ageMs = Number.isFinite(generatedAtMs) && Number.isFinite(strategyTimestampMs)
+      ? Math.max(0, generatedAtMs - strategyTimestampMs)
+      : null;
+    const freshness = !inspector
+      ? "loading"
+      : ageMs !== null && ageMs > staleAfterMs ? "stale" : "fresh";
+    const advisorMode = !!runtimeConfig.advisorOnly || !runtimeConfig.autoBuySafeDecisions;
+    const evaluatorWinner = inspector?.purchaseEvaluator?.winner || null;
+    const sharedOutcome = evaluatorWinner?.sharedOutcome || {};
+    const authorityAllowed = inspector?.coordinatorExecutionAuthority === "true";
+    const executed = inspector?.coordinatorExecuted === "yes";
+    const executionResultText = usefulCouncilText(inspector?.coordinatorExecutionResult) || null;
+    const recommendationCandidate = evaluatorWinner?.candidate || null;
+    const selectedCandidate = usefulCouncilText(inspector?.coordinatorSelectedCandidate) || null;
+    const recommendation = recommendationCandidate ? {
+      domain: usefulCouncilText(inspector?.wholeEconomyBestOpportunity) || null,
+      lane: evaluatorWinner?.lane || null,
+      candidate: recommendationCandidate,
+      amount: usefulCouncilText(evaluatorWinner?.amount) || null,
+      executionKey: null,
+      executionId: null,
+      executionKind: null,
+      executionVariant: null,
+      fingerprint: null,
+    } : null;
+    const selection = selectedCandidate ? {
+      domain: usefulCouncilText(inspector?.coordinatorSelectedDomain) || null,
+      lane: usefulCouncilText(inspector?.coordinatorSelectedLane) || null,
+      candidate: selectedCandidate,
+      amount: usefulCouncilText(inspector?.coordinatorSelectedAmount) || null,
+      executionKey: usefulCouncilText(inspector?.coordinatorSelectedExecutionKey) || null,
+      executionId: usefulCouncilText(inspector?.coordinatorSelectedExecutionId) || null,
+      executionKind: usefulCouncilText(inspector?.coordinatorSelectedExecutionKind) || null,
+      executionVariant: usefulCouncilText(inspector?.coordinatorSelectedExecutionVariant) || null,
+      fingerprint: usefulCouncilText(inspector?.coordinatorSelectedFingerprint) || null,
+    } : null;
+    const gatesFailed = usefulCouncilText(inspector?.coordinatorGatesFailed)
+      ? String(inspector.coordinatorGatesFailed).split(";").map((value) => value.trim()).filter(Boolean)
+      : [];
+    const gatesPassed = usefulCouncilText(inspector?.coordinatorGatesPassed)
+      ? String(inspector.coordinatorGatesPassed).split(";").map((value) => value.trim()).filter(Boolean)
+      : [];
+    const blockerText = firstCouncilText(
+      gatesFailed.join("; "),
+      inspector?.overseerBlockedByHardGuard,
+      inspector?.blockedBySummary,
+      inspector?.whyWaiting
+    );
+    const liveSnapshot = options.liveSnapshot || { resources: {}, rates: {} };
+    const laneDefinitions = [
+      { id: "engine", label: "Larva / Engine", source: "Engine", resource: "larva" },
+      { id: "energy", label: "Energy", source: "Energy", resource: "energy" },
+      { id: "meat", label: "Meat Chain", source: "Meat", resource: "meat" },
+      { id: "territory", label: "Territory", source: "Territory", resource: "territory" },
+      { id: "clone", label: "Clone Prep", source: "Clone Prep", resource: null },
+      { id: "ability", label: "Abilities", source: "Ability", resource: null },
+      { id: "twin", label: "Twin / Upgrades", source: "Twin", alternateSource: "Upgrade", resource: null },
+    ];
+    const inspectorLanes = Array.isArray(inspector?.lanes) ? inspector.lanes : [];
+    const lanes = laneDefinitions.map((definition) => {
+      const lane = inspectorLanes.find((item) => item.name === definition.source)
+        || inspectorLanes.find((item) => item.name === definition.alternateSource)
+        || null;
+      const rawProgress = Number(lane?.candidate?.raw?.progressPercent);
+      const current = definition.resource ? liveSnapshot.resources?.[definition.resource] : null;
+      const rate = definition.resource ? liveSnapshot.rates?.[definition.resource] : null;
+      return {
+        id: definition.id,
+        label: definition.label,
+        decision: inspector ? normalizeCouncilUiDecision(lane?.decision) : "unavailable",
+        candidate: usefulCouncilText(lane?.title) || null,
+        reason: usefulCouncilText(lane?.reason) || null,
+        blockers: Array.isArray(lane?.candidate?.blockers) ? lane.candidate.blockers.slice() : [],
+        current: councilUiMetric(current?.raw, current?.display, definition.resource),
+        rate: councilUiMetric(rate?.raw, rate?.display, definition.resource ? `${definition.resource}/second` : null, definition.resource ? null : "not-applicable"),
+        target: councilUiMetric(null, lane?.candidate?.target, null),
+        progressPercent: Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress <= 1 ? rawProgress * 100 : rawProgress)) : null,
+        nextMilestone: usefulCouncilText(lane?.candidate?.target) || usefulCouncilText(lane?.title) || null,
+      };
+    });
+    const missing = [];
+    if (!inspector) missing.push("strategyInspector");
+    if (!options.cycleId) missing.push("source.cycleId", "decision.decisionId");
+    for (const lane of lanes.filter((item) => ["engine", "energy", "meat", "territory"].includes(item.id))) {
+      if (lane.rate.availability === "unavailable") missing.push(`lanes.${lane.id}.rate`);
+    }
+    return {
+      schemaVersion: "council-ui-state.v1",
+      generatedAt,
+      source: {
+        scriptVersion,
+        strategyTimestamp,
+        cycleId: options.cycleId || null,
+        sourceKind,
+        freshness,
+        ageMs,
+        staleAfterMs,
+      },
+      bot: {
+        enabled: !!runtimeConfig.enabled,
+        mode: advisorMode ? "advisor" : "autobuyer",
+        statusText,
+        runEverySeconds,
+      },
+      strategy: {
+        phase: { id: null, label: inspector?.phase || "Unavailable" },
+        goal: { id: null, label: inspector?.goal || "Unavailable" },
+        wholeEconomyWinner: {
+          domain: usefulCouncilText(inspector?.wholeEconomyBestOpportunity) || null,
+          actionText: usefulCouncilText(inspector?.wholeEconomyBestAction) || null,
+        },
+        activeSpeaker: usefulCouncilText(inspector?.activeCouncilSpeaker) || null,
+        protectedResources: null,
+      },
+      decision: {
+        decisionId: options.decisionId || null,
+        disposition: !inspector ? "unavailable" : executed || authorityAllowed ? "execute" : recommendation ? "recommend" : blockerText ? "hold" : "observe",
+        recommendation,
+        selection,
+        reason: firstCouncilText(inspector?.coordinatorSelectedReason, inspector?.wholeEconomyBestReason, inspector?.whyWaiting) || null,
+        target: usefulCouncilText(inspector?.wholeEconomyBestTarget) || null,
+        economics: {
+          payback: councilUiMetric(sharedOutcome.paybackSeconds, Number.isFinite(Number(sharedOutcome.paybackSeconds)) ? formatDuration(Number(sharedOutcome.paybackSeconds)) : null, "seconds"),
+          eta: councilUiMetric(sharedOutcome.etaSeconds, Number.isFinite(Number(sharedOutcome.etaSeconds)) ? formatDuration(Number(sharedOutcome.etaSeconds)) : null, "seconds"),
+          etaImprovement: councilUiMetric(sharedOutcome.etaImprovementSeconds, Number.isFinite(Number(sharedOutcome.etaImprovementSeconds)) ? formatDuration(Number(sharedOutcome.etaImprovementSeconds)) : null, "seconds"),
+          reserveAfter: councilUiMetric(sharedOutcome.reserveAfter, sharedOutcome.reserveAfter, null),
+          reserveRequired: councilUiMetric(sharedOutcome.reserveRequired, sharedOutcome.reserveRequired, null),
+          reserveRecovery: councilUiMetric(sharedOutcome.reserveRecoverySeconds, Number.isFinite(Number(sharedOutcome.reserveRecoverySeconds)) ? formatDuration(Number(sharedOutcome.reserveRecoverySeconds)) : null, "seconds"),
+        },
+        authority: {
+          allowed: authorityAllowed,
+          source: usefulCouncilText(inspector?.coordinatorAuthoritySource) || null,
+          confidence: ["high", "medium", "low"].includes(inspector?.coordinatorExecutionConfidence) ? inspector.coordinatorExecutionConfidence : "unknown",
+          gatesPassed,
+          gatesFailed,
+          revalidation: usefulCouncilText(inspector?.coordinatorRevalidationStatus) || "unknown",
+          fallbackPlanner: usefulCouncilText(inspector?.coordinatorFallbackPlanner) || null,
+          fallbackReason: usefulCouncilText(inspector?.coordinatorFallbackReason) || null,
+        },
+        execution: {
+          status: executed ? "completed" : authorityAllowed && executionResultText ? "failed" : "not-attempted",
+          matchedSelection: inspector?.coordinatorMatchedExecution === "yes" ? true : inspector?.coordinatorMatchedExecution === "no" ? false : null,
+          resultText: executionResultText,
+          executedFingerprint: usefulCouncilText(inspector?.coordinatorExecutedFingerprint) || null,
+        },
+        blocker: blockerText ? { code: gatesFailed[0] || null, text: blockerText, severity: "warning" } : null,
+      },
+      lanes,
+      safety: {
+        autoCastAbilities: !!runtimeConfig.autoCastAbilities,
+        autoAscend: !!runtimeConfig.autoAscend,
+        energySupportBrokerAllowAutoCast: !!runtimeConfig.energySupportBrokerAllowAutoCast,
+        nexusProtection: runtimeConfig.saveEnergyForNexus ? "protected" : "not-protected",
+        protectedResources: null,
+        strongestSeverity: blockerText ? "warning" : "info",
+      },
+      availability: {
+        missing,
+        formattedOnly: ["strategy.phase.id", "strategy.goal.id", "strategy.protectedResources"],
+        errors: [],
+      },
+    };
+  }
+
+  function councilSurfaceTabsHtml(activeSurface) {
+    return `
+      <nav class="kbc-council-surface-tabs" aria-label="Council view">
+        <button type="button" data-kbc-surface="council" class="${activeSurface === "council" ? "is-active" : ""}" aria-pressed="${activeSurface === "council"}">Council Chamber</button>
+        <button type="button" data-kbc-surface="matrix" class="${activeSurface === "matrix" ? "is-active" : ""}" aria-pressed="${activeSurface === "matrix"}">Matrix Diagnostics</button>
+      </nav>
+    `;
+  }
+
   function councilBadgeHtml(decision) {
     const normalized = normalizeCouncilDecision(decision);
     return `<span class="kbc-council-badge kbc-council-${normalized.toLowerCase()}">${escapeHtml(normalized)}</span>`;
@@ -4648,14 +4880,71 @@ function getDisplayName(item) {
     ];
   }
 
+  function councilUiMetricHtml(label, metric) {
+    const availability = metric?.availability || "unavailable";
+    return `
+      <div class="kbc-council-metric" data-kbc-availability="${escapeHtml(availability)}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(metric?.display || "—")}</strong>
+      </div>
+    `;
+  }
+
+  function councilUiLaneCardHtml(lane) {
+    const progress = Number.isFinite(Number(lane?.progressPercent)) ? Math.max(0, Math.min(100, Number(lane.progressPercent))) : null;
+    return `
+      <article class="kbc-council-lane kbc-council-lane-${escapeHtml(lane.id)}" data-kbc-decision="${escapeHtml(lane.decision)}">
+        <header>
+          <div>
+            <span>${escapeHtml(lane.label)}</span>
+            <strong>${escapeHtml(lane.rate?.display || "—")}</strong>
+          </div>
+          <span class="kbc-council-lane-decision">${escapeHtml(String(lane.decision || "observe").toUpperCase())}</span>
+        </header>
+        <p>${escapeHtml(lane.candidate || lane.nextMilestone || "No candidate emitted")}</p>
+        <small>${escapeHtml(lane.reason || "No lane-specific reason this run.")}</small>
+        ${progress === null ? `
+          <div class="kbc-council-progress is-unavailable" aria-label="Progress unavailable"><span></span></div>
+        ` : `
+          <div class="kbc-council-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}">
+            <span style="width:${progress}%"></span>
+          </div>
+        `}
+      </article>
+    `;
+  }
+
+  function councilLegacySignalsHtml() {
+    const latestAdvisor = advisorLog.slice(0, 3).map((item) => ({
+      time: item.time,
+      type: item.decision || "INFO",
+      title: item.title || "Advisor event",
+      detail: item.reason || "",
+    }));
+    const latestPurchases = purchaseLog.slice(0, 3).map((item) => ({
+      time: item.time,
+      type: item.type || "INFO",
+      title: item.type === "Info" ? item.name : `${item.name}${item.amount ? ` × ${item.amount}` : ""}`,
+      detail: item.type === "Info" ? "" : "Purchase log",
+    }));
+    const rows = [...latestAdvisor, ...latestPurchases].slice(0, 6);
+    return rows.length ? rows.map((row) => `
+      <li>
+        <time>${escapeHtml(row.time || "—")}</time>
+        <div><strong>${escapeHtml(row.type)}</strong><span>${escapeHtml(row.title)}</span>${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}</div>
+      </li>
+    `).join("") : `<li class="is-empty">No recent advisor or purchase entries.</li>`;
+  }
+
   function councilStrategyBarHtml() {
     if (!config.strategyInspector) {
-      return `<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Off</strong></div>`;
+      return `${councilSurfaceTabsHtml("council")}<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Off</strong></div>`;
     }
 
     if (!strategyInspector) {
       return `
         <div class="kbc-council-shell">
+          ${councilSurfaceTabsHtml("council")}
           <div class="kbc-council-hero">
             <div>
               <span class="kbc-council-eyebrow">The Swarm Council</span>
@@ -4666,6 +4955,16 @@ function getDisplayName(item) {
       `;
     }
 
+    const liveSnapshot = safe("Council live resource snapshot", () => buildCouncilLiveSnapshot(getGame())) || { resources: {}, rates: {} };
+    const uiState = buildCouncilUiState(strategyInspector, {
+      generatedAt: new Date().toISOString(),
+      liveSnapshot,
+      config,
+      statusText: lastStatus,
+      scriptVersion: SCRIPT_VERSION,
+      sourceKind: scenarioSourceTag(),
+      cycleId: scenarioHarnessContext.active ? `scenario-cycle-${scenarioHarnessContext.cycleRevision}` : null,
+    });
     const importantBlocker = firstCouncilText(
       strategyInspector.overseerBlockedByHardGuard,
       strategyInspector.blockedBySummary,
@@ -4674,57 +4973,90 @@ function getDisplayName(item) {
     const focusItems = buildCouncilFocusItems();
     const activeSpeaker = buildCouncilSpeakerState();
     const nowState = buildCouncilDoThisNowState();
+    const primaryLanes = uiState.lanes.filter((lane) => ["meat", "engine", "territory", "energy"].includes(lane.id));
+    const recommendationText = uiState.decision.selection
+      ? `${uiState.decision.selection.candidate}${uiState.decision.selection.amount ? ` × ${uiState.decision.selection.amount}` : ""}`
+      : uiState.strategy.wholeEconomyWinner.actionText || nowState.doThisNow;
+    const authorityLabel = uiState.decision.authority.allowed ? "Authorized" : uiState.bot.mode === "advisor" ? "Advisor only" : "Refused / fallback";
+    const executionLabel = uiState.decision.execution.status === "completed"
+      ? "Completed"
+      : uiState.decision.execution.status === "failed" ? "Failed" : "Not executed";
 
     return `
-      <div class="kbc-council-shell">
+      <div class="kbc-council-shell" data-kbc-schema="${escapeHtml(uiState.schemaVersion)}" data-kbc-freshness="${escapeHtml(uiState.source.freshness)}">
+        ${councilSurfaceTabsHtml("council")}
         <div class="kbc-council-hero">
           <div>
-            <span class="kbc-council-eyebrow">The Swarm Council</span>
-            <strong>${escapeHtml(strategyInspector.overseerDecision || strategyInspector.laneCoordinatorDecision || "OBSERVE")}</strong>
+            <span class="kbc-council-eyebrow">SwarmBot Council Chamber</span>
+            <strong>${escapeHtml(uiState.bot.enabled ? "Running" : "Paused")} · ${escapeHtml(uiState.bot.mode === "advisor" ? "Advisor" : "Autobuyer")}</strong>
           </div>
-          ${councilBadgeHtml(strategyInspector.mainDecision || strategyInspector.decision)}
+          <div class="kbc-council-hero-status">
+            <span class="kbc-council-freshness">${escapeHtml(uiState.source.freshness)}</span>
+            ${councilBadgeHtml(strategyInspector.mainDecision || strategyInspector.decision)}
+          </div>
         </div>
-        <div class="kbc-council-summary">
-          ${councilSummaryTile("Phase", strategyInspector.phase || "n/a")}
-          ${councilSummaryTile("Whole economy", strategyInspector.wholeEconomyBestOpportunity || "none")}
-          ${councilSummaryTile("Coordinator", strategyInspector.coordinatorExecutionAuthority === "true" ? "authorized" : "refused", strategyInspector.coordinatorExecutionAuthority === "true" ? "" : "warn")}
-          ${councilSummaryTile("Executed", strategyInspector.coordinatorExecuted === "yes" ? "yes" : "no", strategyInspector.coordinatorExecuted === "yes" ? "" : "warn")}
-          ${councilSummaryTile("Primary", strategyInspector.momentumPrimaryFocus || "n/a")}
-          ${councilSummaryTile("Advisor", strategyInspector.momentumPrimaryAdvisor || activeSpeaker.speaker || "none")}
-          ${councilSummaryTile("Main", strategyInspector.overseerMainSelected || "none")}
-          ${councilSummaryTile("Companion", strategyInspector.momentumCompanionActions || "none")}
-          ${councilSummaryTile("Background", strategyInspector.momentumBackgroundActions || "none")}
-          ${councilSummaryTile("Blocker", importantBlocker, importantBlocker === "none" ? "" : "warn")}
+        <div class="kbc-council-stage">
+          <aside class="kbc-council-status-rail" aria-label="Current strategy status">
+            <h2>Current status</h2>
+            ${councilSummaryTile("Phase", uiState.strategy.phase.label)}
+            ${councilSummaryTile("Strategic goal", uiState.strategy.goal.label)}
+            ${councilSummaryTile("Whole-economy winner", uiState.strategy.wholeEconomyWinner.domain || "none")}
+            ${councilSummaryTile("Coordinator", authorityLabel, uiState.decision.authority.allowed ? "" : "warn")}
+            ${councilSummaryTile("Execution", executionLabel, uiState.decision.execution.status === "completed" ? "" : "warn")}
+            ${councilSummaryTile("Safety", `${uiState.safety.nexusProtection} · auto-cast ${uiState.safety.autoCastAbilities ? "on" : "off"}`, uiState.safety.autoCastAbilities ? "warn" : "")}
+            ${councilSummaryTile("Strongest blocker", importantBlocker, importantBlocker === "none" ? "" : "warn")}
+          </aside>
+          <main class="kbc-council-decision" aria-labelledby="kbc-council-decision-title" aria-live="polite">
+            <span class="kbc-council-eyebrow">The Council has decided</span>
+            <h2 id="kbc-council-decision-title">${escapeHtml(recommendationText)}</h2>
+            <p>${escapeHtml(uiState.decision.reason || nowState.why)}</p>
+            <div class="kbc-council-metrics">
+              ${councilUiMetricHtml("Payback", uiState.decision.economics.payback)}
+              ${councilUiMetricHtml("ETA", uiState.decision.economics.eta)}
+              ${councilUiMetricHtml("Reserve after", uiState.decision.economics.reserveAfter)}
+              ${councilUiMetricHtml("Reserve recovery", uiState.decision.economics.reserveRecovery)}
+            </div>
+            <div class="kbc-council-execution-strip">
+              <div><span>Authority</span><strong>${escapeHtml(authorityLabel)}</strong></div>
+              <div><span>Bot is doing</span><strong>${escapeHtml(nowState.botIsDoing)}</strong></div>
+              <div><span>Avoid</span><strong>${escapeHtml(nowState.playerShouldAvoid)}</strong></div>
+            </div>
+          </main>
+          <aside class="kbc-council-chronicle-preview" aria-label="Recent signals">
+            <header><div><span class="kbc-council-eyebrow">Recent signals</span><strong>Chronicle preview</strong></div></header>
+            <p>Legacy sources · causal event links arrive in UI4.</p>
+            <ol>${councilLegacySignalsHtml()}</ol>
+          </aside>
         </div>
-        <section class="kbc-council-now" aria-label="Do this now">
-          <div><strong>Do this now:</strong> <span>${escapeHtml(nowState.doThisNow)}</span></div>
-          <div><strong>Why:</strong> <span>${escapeHtml(nowState.why)}</span></div>
-          <div><strong>Bot is doing:</strong> <span>${escapeHtml(nowState.botIsDoing)}</span></div>
-          <div><strong>Player should avoid:</strong> <span>${escapeHtml(nowState.playerShouldAvoid)}</span></div>
+        <section class="kbc-council-lanes" aria-label="Economic lanes">
+          ${primaryLanes.map(councilUiLaneCardHtml).join("")}
         </section>
-        <section class="kbc-council-focus" aria-label="Focus now">
-          <strong>Focus now</strong>
-          <ul>${focusItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
-        </section>
-        <section class="kbc-council-speaker" aria-label="Active speaker">
-          <strong>${escapeHtml(activeSpeaker.speaker || "The Council")}</strong>
-          <div class="kbc-council-bubble">${escapeHtml(activeSpeaker.bubble || "Observe the next run.")}</div>
-          <small>Winning lane: ${escapeHtml(activeSpeaker.lane || "none")} | Candidate: ${escapeHtml(activeSpeaker.candidate || "none")}</small>
-        </section>
-        <div class="kbc-council-grid">
-          ${buildCouncilCards().map((card) => councilCardHtml(card, activeSpeaker)).join("")}
-        </div>
+        <details class="kbc-council-details">
+          <summary>Council reasoning and technical details</summary>
+          <section class="kbc-council-focus" aria-label="Focus now">
+            <strong>Focus now</strong>
+            <ul>${focusItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+          </section>
+          <section class="kbc-council-speaker" aria-label="Active speaker">
+            <strong>${escapeHtml(activeSpeaker.speaker || "The Council")}</strong>
+            <div class="kbc-council-bubble">${escapeHtml(activeSpeaker.bubble || "Observe the next run.")}</div>
+            <small>Winning lane: ${escapeHtml(activeSpeaker.lane || "none")} | Candidate: ${escapeHtml(activeSpeaker.candidate || "none")}</small>
+          </section>
+          <div class="kbc-council-grid">
+            ${buildCouncilCards().map((card) => councilCardHtml(card, activeSpeaker)).join("")}
+          </div>
+        </details>
       </div>
     `;
   }
 
   function classicStrategyBarHtml() {
     if (!config.strategyInspector) {
-      return `<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Off</strong></div>`;
+      return `${councilSurfaceTabsHtml("matrix")}<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Off</strong></div>`;
     }
 
     if (!strategyInspector) {
-      return `<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Waiting for first Smart run</strong></div>`;
+      return `${councilSurfaceTabsHtml("matrix")}<div class="kbc-strategy-card"><span>Strategy Inspector</span><strong>Waiting for first Smart run</strong></div>`;
     }
 
     const laneByName = new Map((strategyInspector.lanes || []).map((lane) => [lane.name, lane]));
@@ -4750,7 +5082,7 @@ function getDisplayName(item) {
       ["Next likely buy", strategyInspector.nextLikelyBuy || strategyInspector.waits, liveDiagnosticsWarningLabel(), strategyInspector.blockedBySummary || ""],
     ];
 
-    return cards
+    return `${councilSurfaceTabsHtml("matrix")}<section class="kbc-matrix-grid" aria-label="Matrix diagnostics">${cards
       .map(([key, value, reason, extra]) => `
         <div class="kbc-strategy-card">
           <span>${escapeHtml(key)}</span>
@@ -4759,7 +5091,7 @@ function getDisplayName(item) {
           ${extra ? `<small>${escapeHtml(extra)}</small>` : ""}
         </div>
       `)
-      .join("");
+      .join("")}</section>`;
   }
 
   function strategyBarHtml() {
@@ -17043,8 +17375,8 @@ function getDisplayName(item) {
         left: 12px;
         right: auto;
         top: 8px;
-        width: min(1000px, calc(100vw - 350px));
-        height: 310px;
+        width: min(1180px, calc(100vw - 24px));
+        height: min(700px, calc(100vh - 24px));
         min-width: 320px;
         min-height: 120px;
         max-width: calc(100vw - 24px);
@@ -17083,6 +17415,48 @@ function getDisplayName(item) {
       #kbc-strategy-bar-cards {
         display: grid;
         grid-template-columns: repeat(8, minmax(90px, 1fr));
+        gap: 6px;
+      }
+
+      .kbc-council-surface-tabs {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 4px;
+        padding: 3px;
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 7px;
+        background: rgba(0,0,0,0.24);
+      }
+
+      .kbc-council-surface-tabs button {
+        min-height: 28px;
+        padding: 5px 10px;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        background: transparent;
+        color: rgba(255,255,255,0.74);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+      }
+
+      .kbc-council-surface-tabs button:hover,
+      .kbc-council-surface-tabs button:focus-visible {
+        color: white;
+        border-color: rgba(159,199,255,0.55);
+        outline: none;
+      }
+
+      .kbc-council-surface-tabs button.is-active {
+        color: white;
+        border-color: rgba(124,227,139,0.65);
+        background: rgba(124,227,139,0.16);
+      }
+
+      .kbc-matrix-grid {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(140px, 1fr));
         gap: 6px;
       }
 
@@ -17139,6 +17513,305 @@ function getDisplayName(item) {
         gap: 8px;
         padding-bottom: 6px;
         border-bottom: 1px solid var(--kbc-council-line);
+      }
+
+      .kbc-council-hero-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .kbc-council-freshness {
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(124,227,139,0.14);
+        color: var(--kbc-buy);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .kbc-council-shell[data-kbc-freshness="stale"] .kbc-council-freshness,
+      .kbc-council-shell[data-kbc-freshness="error"] .kbc-council-freshness {
+        background: rgba(255,211,106,0.16);
+        color: var(--kbc-hold);
+      }
+
+      .kbc-council-stage {
+        display: grid;
+        grid-template-columns: minmax(155px, 0.72fr) minmax(360px, 2fr) minmax(210px, 1fr);
+        gap: 8px;
+        align-items: stretch;
+      }
+
+      .kbc-council-status-rail,
+      .kbc-council-decision,
+      .kbc-council-chronicle-preview {
+        min-width: 0;
+        padding: 9px;
+        border: 1px solid var(--kbc-council-line);
+        border-radius: 7px;
+        background: rgba(0,0,0,0.2);
+      }
+
+      .kbc-council-status-rail h2,
+      .kbc-council-decision h2 {
+        margin: 0 0 7px;
+        font-size: 12px;
+      }
+
+      .kbc-council-status-rail {
+        display: grid;
+        align-content: start;
+        gap: 5px;
+      }
+
+      .kbc-council-status-rail .kbc-council-summary-tile {
+        padding: 5px 6px;
+      }
+
+      .kbc-council-decision {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 210px;
+        padding: 18px 22px;
+        border-color: rgba(214,177,106,0.48);
+        background: linear-gradient(135deg, rgba(176,133,70,0.18), rgba(74,48,24,0.1));
+        text-align: center;
+      }
+
+      .kbc-council-decision h2 {
+        margin: 4px 0 8px;
+        color: #f7e5bb;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(16px, 2vw, 24px);
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-decision > p {
+        margin: 0 auto 12px;
+        max-width: 620px;
+        color: rgba(255,255,255,0.84);
+        line-height: 1.35;
+      }
+
+      .kbc-council-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(80px, 1fr));
+        gap: 5px;
+      }
+
+      .kbc-council-metric {
+        min-width: 0;
+        padding: 6px;
+        border: 1px solid rgba(214,177,106,0.28);
+        border-radius: 5px;
+        background: rgba(0,0,0,0.16);
+      }
+
+      .kbc-council-metric span,
+      .kbc-council-execution-strip span {
+        display: block;
+        color: var(--kbc-council-muted);
+        font-size: 8px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .kbc-council-metric strong {
+        display: block;
+        margin-top: 2px;
+        color: #f5d58b;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-metric[data-kbc-availability="unavailable"] strong,
+      .kbc-council-metric[data-kbc-availability="not-applicable"] strong {
+        color: rgba(255,255,255,0.48);
+      }
+
+      .kbc-council-execution-strip {
+        display: grid;
+        grid-template-columns: 0.8fr 1.2fr 1.2fr;
+        gap: 5px;
+        margin-top: 8px;
+        text-align: left;
+      }
+
+      .kbc-council-execution-strip > div {
+        min-width: 0;
+        padding: 6px;
+        border-top: 1px solid rgba(255,255,255,0.14);
+      }
+
+      .kbc-council-execution-strip strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 9px;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-chronicle-preview header strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 12px;
+      }
+
+      .kbc-council-chronicle-preview > p {
+        margin: 5px 0 7px;
+        color: var(--kbc-council-muted);
+        font-size: 9px;
+      }
+
+      .kbc-council-chronicle-preview ol {
+        display: grid;
+        gap: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .kbc-council-chronicle-preview li {
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr);
+        gap: 6px;
+        padding: 6px 0;
+        border-top: 1px solid rgba(255,255,255,0.1);
+      }
+
+      .kbc-council-chronicle-preview time {
+        color: var(--kbc-council-muted);
+        font-size: 9px;
+      }
+
+      .kbc-council-chronicle-preview li strong,
+      .kbc-council-chronicle-preview li span,
+      .kbc-council-chronicle-preview li small {
+        display: block;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-chronicle-preview li strong {
+        color: var(--kbc-observe);
+        font-size: 8px;
+      }
+
+      .kbc-council-chronicle-preview li small {
+        margin-top: 2px;
+        color: var(--kbc-council-muted);
+      }
+
+      .kbc-council-lanes {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        gap: 6px;
+      }
+
+      .kbc-council-lane {
+        --kbc-lane-color: #9fc7ff;
+        min-width: 0;
+        padding: 8px;
+        border: 1px solid rgba(159,199,255,0.38);
+        border: 1px solid color-mix(in srgb, var(--kbc-lane-color) 45%, transparent);
+        border-radius: 6px;
+        background: rgba(159,199,255,0.08);
+        background: color-mix(in srgb, var(--kbc-lane-color) 9%, rgba(0,0,0,0.2));
+      }
+
+      .kbc-council-lane-meat { --kbc-lane-color: #c479ff; }
+      .kbc-council-lane-engine { --kbc-lane-color: #71df77; }
+      .kbc-council-lane-territory { --kbc-lane-color: #f0b631; }
+      .kbc-council-lane-energy { --kbc-lane-color: #51b7ff; }
+
+      .kbc-council-lane header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 5px;
+      }
+
+      .kbc-council-lane header span,
+      .kbc-council-lane header strong {
+        display: block;
+      }
+
+      .kbc-council-lane header > div > span {
+        color: var(--kbc-lane-color);
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .kbc-council-lane header strong {
+        margin-top: 2px;
+        font-size: 14px;
+      }
+
+      .kbc-council-lane-decision {
+        color: var(--kbc-council-muted);
+        font-size: 8px;
+        font-weight: 700;
+      }
+
+      .kbc-council-lane p {
+        margin: 7px 0 2px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-lane small {
+        display: block;
+        min-height: 24px;
+        color: var(--kbc-council-muted);
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+      }
+
+      .kbc-council-progress {
+        height: 5px;
+        margin-top: 7px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(0,0,0,0.34);
+      }
+
+      .kbc-council-progress span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--kbc-lane-color);
+      }
+
+      .kbc-council-progress.is-unavailable span {
+        width: 100%;
+        opacity: 0.18;
+        background: repeating-linear-gradient(90deg, transparent 0 5px, var(--kbc-lane-color) 5px 7px);
+      }
+
+      .kbc-council-details {
+        padding: 7px;
+        border: 1px solid var(--kbc-council-line);
+        border-radius: 6px;
+        background: rgba(0,0,0,0.16);
+      }
+
+      .kbc-council-details > summary {
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .kbc-council-details[open] > summary {
+        margin-bottom: 7px;
+      }
+
+      .kbc-council-details .kbc-council-focus,
+      .kbc-council-details .kbc-council-speaker {
+        margin-bottom: 6px;
       }
 
       .kbc-council-hero strong {
@@ -17427,8 +18100,17 @@ function getDisplayName(item) {
           grid-template-columns: repeat(4, minmax(90px, 1fr));
         }
 
-        .kbc-council-summary {
-          grid-template-columns: repeat(2, minmax(120px, 1fr));
+        .kbc-council-stage {
+          grid-template-columns: minmax(150px, 0.8fr) minmax(340px, 2fr);
+        }
+
+        .kbc-council-chronicle-preview {
+          grid-column: 1 / -1;
+        }
+
+        .kbc-council-lanes,
+        .kbc-matrix-grid {
+          grid-template-columns: repeat(2, minmax(140px, 1fr));
         }
 
         .kbc-council-grid {
@@ -17437,9 +18119,32 @@ function getDisplayName(item) {
       }
 
       @media (max-width: 700px) {
+        .kbc-council-stage,
+        .kbc-council-lanes,
+        .kbc-matrix-grid,
         .kbc-council-summary,
         .kbc-council-grid {
           grid-template-columns: 1fr;
+        }
+
+        .kbc-council-decision {
+          padding: 12px;
+        }
+
+        .kbc-council-metrics,
+        .kbc-council-execution-strip {
+          grid-template-columns: repeat(2, minmax(90px, 1fr));
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .kbc-council-shell *,
+        .kbc-council-shell *::before,
+        .kbc-council-shell *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
         }
       }
 
@@ -18025,6 +18730,16 @@ function getDisplayName(item) {
 
     strategyBar?.querySelector("#kbc-hide-strategy-bar")?.addEventListener("click", () => {
       config.strategyBar = false;
+      saveConfig();
+      refreshPanel();
+    });
+
+    strategyBar?.addEventListener("click", (event) => {
+      const surfaceButton = event.target?.closest?.("[data-kbc-surface]");
+      if (!surfaceButton) return;
+      const surface = surfaceButton.getAttribute("data-kbc-surface");
+      if (!['council', 'matrix'].includes(surface)) return;
+      config.councilUi = surface === "council";
       saveConfig();
       refreshPanel();
     });
@@ -18670,6 +19385,19 @@ function getDisplayName(item) {
 
       getStrategyInspector() {
         return strategyInspector;
+      },
+
+      getCouncilUiState() {
+        const liveSnapshot = safe("Council live resource snapshot", () => buildCouncilLiveSnapshot(getGame())) || { resources: {}, rates: {} };
+        return buildCouncilUiState(strategyInspector, {
+          generatedAt: new Date().toISOString(),
+          liveSnapshot,
+          config,
+          statusText: lastStatus,
+          scriptVersion: SCRIPT_VERSION,
+          sourceKind: scenarioSourceTag(),
+          cycleId: scenarioHarnessContext.active ? `scenario-cycle-${scenarioHarnessContext.cycleRevision}` : null,
+        });
       },
 
       getRunHistory() {

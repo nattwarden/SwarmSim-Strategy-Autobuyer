@@ -52,12 +52,13 @@ deterministic fixture data.
 
 Goal: prove hierarchy and interaction before production art integration.
 
-- [ ] Add Council Chamber as a selectable UI surface
-- [ ] Build responsive chamber, parchment, status, lane, and timeline regions
-- [ ] Render the current recommendation and execution state from fixtures
-- [ ] Render all four lane cards and global safety state
-- [ ] Implement tabs, modes, keyboard focus, and reduced-motion behavior
-- [ ] Add Matrix Diagnostics navigation
+- [x] Add Council Chamber as a selectable UI surface
+- [x] Build responsive chamber, parchment, status, lane, and timeline regions
+- [x] Render the current runtime recommendation and execution state
+- [ ] Render all three UI1 fixtures through a deterministic shell test
+- [x] Render all four lane cards and global safety state
+- [x] Implement tabs, modes, keyboard focus, and reduced-motion behavior
+- [x] Add Matrix Diagnostics navigation
 - [ ] Verify layout at agreed viewport and zoom cases
 
 Exit gate: a plain but complete HTML/CSS shell communicates the full decision

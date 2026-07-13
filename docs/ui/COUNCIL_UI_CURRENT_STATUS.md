@@ -5,9 +5,9 @@ Updated: 2026-07-13
 ## Current state
 
 - **Visual north star:** selected and stored
-- **Completed documentation milestones:** UI0 and UI1 authored locally
-- **Active delivery milestone:** UI2 — functional chamber shell
-- **Runtime implementation:** not started in this UI track
+- **Completed milestones:** UI0 and UI1
+- **Active delivery milestone:** UI2 — visual acceptance pending
+- **Runtime implementation:** functional UI2 shell implemented locally
 - **Strategy behavior:** intentionally unchanged
 
 The clean Council Chamber image is the canonical composition reference. It is
@@ -48,17 +48,35 @@ contract without requesting changes to planner choices or safety gates.
 - [x] Explicit null/availability and freshness rules
 - [x] Confirmation that the visual goal needs observability, not new strategy
 
-## Active milestone: UI2
+## UI2 implementation result
 
-UI2 proves the information hierarchy as a functional semantic HTML/CSS shell
-using deterministic fixtures before production graphics are integrated.
+The configured runtime source now contains:
+
+- a read-only `buildCouncilUiState(...)` presentation adapter
+- live meat, larvae, territory, and Energy bank/rate capture
+- separate recommendation, coordinator selection, authority, and execution state
+- Council Chamber and Matrix Diagnostics surface buttons
+- semantic status rail, central decision surface, four primary lane cards, and
+  a legacy Chronicle preview that explicitly does not claim causal event links
+- freshness, unavailable-value, safety, keyboard-focus, responsive, and
+  reduced-motion presentation states
+- public read-only `getCouncilUiState()` diagnostics
+
+The reference chamber and production artwork are intentionally absent from the
+runtime. UI2 proves information hierarchy before UI3 graphics integration.
+
+### UI2 remaining acceptance
+
+- [ ] deterministic shell render of all three UI1 state fixtures
+- [ ] live visual smoke at desktop width, below 1100 px, and below 700 px
+- [ ] browser zoom smoke at 100%, 125%, and 150%
+- [ ] confirm Council ↔ Matrix switching in the installed userscript
 
 ## Exact next action
 
-Choose the narrowest runtime UI boundary for a pure `buildCouncilUiState(...)`
-adapter and render the `autobuyer-completed-purchase`, `advisor-hold`, and
-`stale-unavailable` fixtures into a plain Council shell. Do not integrate the
-large reference image or change planner behavior in the first UI2 slice.
+Install the rebuilt canonical userscript and complete the UI2 visual smoke
+matrix. Capture any overflow, unreadable state, or switching failure before
+closing UI2 and beginning UI3 integration.
 
 ## Known decisions
 
@@ -76,6 +94,13 @@ large reference image or change planner behavior in the first UI2 slice.
 - final production crop, WebP/PNG variants, and asset budget
 - final Swedish/English localization policy
 
+## UI3 asset intake note
+
+The first two generated ornate-frame candidates received on 2026-07-13 were
+rejected before repository intake. Both were 1672 × 941 `Format24bppRgb`, had
+no alpha channel, and contained a baked checkerboard. A corrected asset must be
+a true 1920 × 1080 RGBA PNG with transparent center and exterior.
+
 ## Validation snapshot
 
 UI0 is committed at `3b434a3`. The UI1 documentation and fixtures passed the
@@ -89,3 +114,16 @@ following pure checks on 2026-07-13:
 
 UI1 changes no runtime behavior and generates no evidence files. Git history is
 the source of truth for the commit containing this status.
+
+The UI2 implementation preserves planner behavior and hard safety defaults. Its
+source-level acceptance requires `npm run check:ui-shell`, the full repository
+suite, canonical build parity, and `git diff --check`; live visual acceptance
+remains the unchecked UI2 gate above.
+
+Pre-commit source validation on 2026-07-13 passed:
+
+- `npm run build`
+- `npm run verify`
+- `node --check dev-src/runtime-sections/runtime-main.js`
+- `node --check src/SwarmSim-Strategy-Autobuyer.user.js`
+- `git diff --check`
