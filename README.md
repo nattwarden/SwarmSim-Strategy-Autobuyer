@@ -6,7 +6,9 @@ Current script version in `src/`: **6.0.0**.
 
 The product vision, active game model, and distilled strategy knowledge live in
 `docs/BOOK-00-vision-goals-and-dreams.md`, `docs/SWARMSIM_GAME_MODEL.md`, and
-`docs/BOOK-01` through `docs/BOOK-05`, plus the current M6 handoff docs.
+`docs/BOOK-01` through `docs/BOOK-06`, plus the current M7 foundation and
+handoff docs. The running script remains the accepted `6.0.0`; M7 targets
+`7.0.0` and is not implemented by the documentation package.
 
 ## Repository layout
 

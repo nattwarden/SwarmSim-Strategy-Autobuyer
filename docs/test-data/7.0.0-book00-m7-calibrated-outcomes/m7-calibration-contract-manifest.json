@@ -1,0 +1,179 @@
+{
+  "schemaVersion": "m7-calibration-contract-manifest.v1",
+  "milestone": "M7",
+  "targetVersion": "7.0.0",
+  "productCapability": "Calibrated WAIT-relative shared outcomes for supported Energy abilities in the six-domain coordinator",
+  "baseline": {
+    "m6ImplementationSha": "9da1b2312cc603c29f9d3add2270499fdbc1b269",
+    "m6EvidenceSha": "60297dfbd8b686affd701258db40e94fb8ce3c53",
+    "councilUi3Sha": "40c258a7cf19d9660b2c13caf3b5d9b4e0e74da5",
+    "fixedCouncilLayoutSha": "04bb94678ba9ac29d03e2b2c00760ffb40510e55",
+    "runtimeVersion": "6.0.0"
+  },
+  "schemas": {
+    "calibration": "strategic-outcome-calibration.v1",
+    "coordinator": "six-domain-strategic-coordinator.v1",
+    "abilitySource": "energy-ability-timing-advisor.v1",
+    "ascensionSource": "ascension-mutagen-advisor.v1"
+  },
+  "statusValues": [
+    "COMPARABLE",
+    "UNRANKED",
+    "UNSUPPORTED",
+    "INVALID"
+  ],
+  "formulaStatusValues": [
+    "source-verified",
+    "runtime-derived",
+    "estimated",
+    "incomplete",
+    "mismatch",
+    "unsupported"
+  ],
+  "rankableFormulaStatuses": [
+    "source-verified",
+    "runtime-derived"
+  ],
+  "requiredIdentityFields": [
+    "snapshotId",
+    "snapshotHash",
+    "decisionCycleId",
+    "activeMilestone",
+    "metricId",
+    "metricUnit",
+    "horizonId",
+    "horizonSeconds",
+    "formulaSetId",
+    "sourceRevision"
+  ],
+  "requiredCalibrationFields": [
+    "schemaVersion",
+    "calibrationId",
+    "snapshotId",
+    "snapshotHash",
+    "decisionCycleId",
+    "sourceDomainId",
+    "sourceSchemaVersion",
+    "actionId",
+    "baselineActionId",
+    "activeMilestone",
+    "metricId",
+    "metricUnit",
+    "horizonId",
+    "horizonSeconds",
+    "actionValue",
+    "baselineValue",
+    "delta",
+    "direction",
+    "comparabilityStatus",
+    "formulaStatus",
+    "confidence",
+    "uncertainty",
+    "missingInputs",
+    "warnings",
+    "provenance"
+  ],
+  "metricRules": [
+    {
+      "direction": "LOWER_IS_BETTER",
+      "deltaFormula": "baselineValue - actionValue",
+      "canonicalUse": "milestone ETA seconds"
+    },
+    {
+      "direction": "HIGHER_IS_BETTER",
+      "deltaFormula": "actionValue - baselineValue",
+      "canonicalUse": "identical-unit milestone progress"
+    }
+  ],
+  "abilityActions": {
+    "supportedWhenInputsValidate": [
+      "CLONE_LARVAE",
+      "HOUSE_OF_MIRRORS",
+      "LARVA_RUSH",
+      "MEAT_RUSH",
+      "TERRITORY_RUSH"
+    ],
+    "baseline": "WAIT",
+    "unsupported": [
+      "SWARMWARP"
+    ],
+    "authorityClass": "ADVISOR_ONLY"
+  },
+  "ascension": {
+    "actions": [
+      "CONTINUE_RUN",
+      "ASCEND_NOW"
+    ],
+    "authorityClass": "ADVISOR_ONLY",
+    "breakEvenAloneIsComparable": false,
+    "forbiddenStandaloneConversion": "horizonSeconds - breakEvenSeconds",
+    "requiredForComparability": [
+      "same next-run horizon",
+      "same named milestone",
+      "same metric id and unit",
+      "continue-run milestone value",
+      "ascend-now milestone value",
+      "verified recovery assumptions"
+    ]
+  },
+  "forbiddenRankInputs": [
+    "raw lane score",
+    "ability advisor score",
+    "purchase economicScore",
+    "priority bonus",
+    "urgency bonus",
+    "scenario id or label",
+    "expected winner",
+    "missing value coerced to zero",
+    "break-even horizon surplus mislabeled as milestone ETA"
+  ],
+  "authority": {
+    "newExecutionKeysAllowed": false,
+    "abilityExecutionAllowed": false,
+    "ascensionExecutionAllowed": false,
+    "mutagenSpendAllowed": false,
+    "advisorWinnerPurchaseFallbackAllowed": false,
+    "existingBoundedPurchaseExecutionMustRemainExact": true
+  },
+  "uiPreservation": {
+    "requiredCommits": [
+      "40c258a7cf19d9660b2c13caf3b5d9b4e0e74da5",
+      "04bb94678ba9ac29d03e2b2c00760ffb40510e55"
+    ],
+    "fixedDesktopWidthPx": 1180,
+    "fixedDesktopHeightPx": 700,
+    "manualResize": false,
+    "movable": true,
+    "layoutStorageKey": "kbcSwarmBotCouncilPanelLayout_v2",
+    "responsiveBreakpointPx": 1100,
+    "runtimeAssetCount": 13,
+    "runtimeAssetBudgetBytes": 600000,
+    "requiredChecks": [
+      "check:ui-shell",
+      "check:ui2:fixtures",
+      "check:ui3:assets"
+    ]
+  },
+  "acceptanceGroups": [
+    "wait-relative-eta-calibration",
+    "ability-global-win-advisor-only",
+    "ability-honest-loss",
+    "zero-and-negative-deltas",
+    "missing-metric-unranked",
+    "identity-and-unit-mismatch",
+    "formula-status-gating",
+    "swarmwarp-unsupported",
+    "break-even-only-ascension-unranked",
+    "pure-identical-unit-ascension-fixture",
+    "effect-ledger-no-double-count",
+    "observability-ui3-safety-regression"
+  ],
+  "productionParityGate": {
+    "required": true,
+    "claim": "At least one real supported Energy ability produces a valid WAIT-relative common milestone result",
+    "failureStatus": "INSUFFICIENT_MODEL_EVIDENCE"
+  },
+  "evidenceAllowlist": [
+    "docs/test-data/7.0.0-book00-m7-calibrated-outcomes/verification-<short-sha>.md"
+  ]
+}

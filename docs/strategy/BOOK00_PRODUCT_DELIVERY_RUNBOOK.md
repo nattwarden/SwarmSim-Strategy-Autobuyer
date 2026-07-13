@@ -451,19 +451,67 @@ trigger in one coherent view.
 
 Completion checklist:
 
-- [ ] All six domains use the versioned shared outcome contract.
-- [ ] Hard safety is independent from economic ranking.
-- [ ] Advisor-only domains cannot gain execution authority accidentally.
-- [ ] Reversible execution uses bounded, revalidated actions.
-- [ ] Cross-domain effects are represented without double counting.
-- [ ] Decision and execution remain consistent across cycles.
-- [ ] The automated coverage map reports actual mechanics and invariants, not
+- [x] All six domains use the versioned shared outcome contract.
+- [x] Hard safety is independent from economic ranking.
+- [x] Advisor-only domains cannot gain execution authority accidentally.
+- [x] Reversible execution uses bounded, revalidated actions.
+- [x] Cross-domain effects are represented without double counting.
+- [x] Decision and execution remain consistent across cycles.
+- [x] The automated coverage map reports actual mechanics and invariants, not
       inferred scenario labels.
 
 Player-facing release sentence:
 
 > The bot now coordinates Meat, Larva, Territory, Energy, abilities, and
 > Ascension as one economy and explains the best next strategic move.
+
+Formal closure:
+
+- implementation: `9da1b2312cc603c29f9d3add2270499fdbc1b269`;
+- evidence: `60297dfbd8b686affd701258db40e94fb8ce3c53`.
+
+### Milestone 7 - Calibrated shared outcomes
+
+Implementation foundation:
+
+- `docs/strategy/BOOK00_M7_CALIBRATED_SHARED_OUTCOMES_FOUNDATION.md`
+- `docs/test-data/7.0.0-book00-m7-calibrated-outcomes/m7-calibration-contract-manifest.json`
+- `docs/prompts/implement-book00-m7-calibrated-shared-outcomes.md`
+
+Product capability:
+
+Derive a real WAIT-relative shared milestone result for at least one supported
+Energy ability and let the six-domain coordinator compare it with normal
+progression without widening execution authority.
+
+Player-visible change:
+
+Council and Inspector show the ability action, WAIT baseline, named milestone,
+horizon, raw values, calibrated delta, provenance, uncertainty, missing inputs,
+and advisor-only authority.
+
+Completion checklist:
+
+- [ ] Action and WAIT use one immutable identity, milestone, metric, unit,
+      horizon, formula set, and source revision.
+- [ ] At least one production-parity supported Energy ability yields a real
+      common milestone result.
+- [ ] Zero, negative, and missing deltas retain their honest meanings.
+- [ ] Formula mismatch/incomplete states remain unranked.
+- [ ] Break-even-only Ascension remains unranked; horizon surplus is not
+      mislabeled as milestone ETA improvement.
+- [ ] Advisor winners remain non-executable and cannot fall through.
+- [ ] Existing bounded purchase identity/revalidation remains unchanged.
+- [ ] Council UI3 commit `40c258a` and fixed-layout commit `04bb946` remain
+      present, including `1180 x 700`, `resize: none`, movable/responsive
+      behavior, and layout key v2.
+- [ ] Focused, UI, full exact-SHA, and separate evidence gates pass.
+
+Player-facing release sentence:
+
+> The bot now uses calibrated, WAIT-relative milestone outcomes when comparing
+> supported Energy abilities with normal progression, while unsupported or
+> weakly evidenced future-run choices remain explicitly unranked.
 
 ## Milestone exit review
 
@@ -481,7 +529,8 @@ If question 1 or 2 has no concrete answer, do not declare the milestone done.
 
 ## Immediate next action
 
-Read `BOOK00_CURRENT_STATUS.md`, create an isolated M6 worktree from the clean
-foundation on `origin/main`, and execute the M6 Copilot work order. Do not rank
-the six domains by combining their local scores, and do not widen irreversible
-authority while building the shared coordinator.
+Read `BOOK00_CURRENT_STATUS.md`, create an isolated M7 worktree from current
+`origin/main`, and execute
+`docs/prompts/implement-book00-m7-calibrated-shared-outcomes.md`. Preserve
+Council UI3 and the fixed Council window, do not fabricate shared conversions,
+and do not widen irreversible authority.

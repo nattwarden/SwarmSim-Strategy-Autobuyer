@@ -33,14 +33,21 @@ git rev-parse origin/main
 git log -8 --oneline --decorate
 ```
 
-Observed immediately before the Milestone 6 integration fix:
+Observed before the M7 foundation work:
 
-- branch: `main`;
-- integrated M5 hotfix implementation: `a4221ea4ae741d1dc86e09bbafef616200f87d0c`;
-- integrated M5 hotfix evidence / starting `HEAD` / `origin/main`:
-  `53de2f8666f27da09f3fd743351e282e5193b432`;
-- runtime version: `5.0.1`;
-- working tree: clean before the M6 integration fix.
+- branch baseline: `origin/main`;
+- accepted M6 implementation:
+  `9da1b2312cc603c29f9d3add2270499fdbc1b269`;
+- accepted M6 evidence:
+  `60297dfbd8b686affd701258db40e94fb8ce3c53`;
+- Council UI3 implementation:
+  `40c258a7cf19d9660b2c13caf3b5d9b4e0e74da5`;
+- fixed Council window implementation / current baseline:
+  `04bb94678ba9ac29d03e2b2c00760ffb40510e55`;
+- runtime version: `6.0.0`;
+- Council desktop layout: fixed `1180 x 700`, movable, `resize: none`, layout
+  key `kbcSwarmBotCouncilPanelLayout_v2`;
+- working tree: clean before the M7 documentation branch was created.
 
 If observed Git state differs, update this board before implementation.
 
@@ -72,24 +79,34 @@ If observed Git state differs, update this board before implementation.
 - Current M5 hotfix release: `5.0.1`.
 - Starting with Milestone 4, release major version follows the active BOOK-00
   milestone. M6 therefore starts at `6.0.0`.
+- Milestone 6 added the six-domain strategic coordinator at `6.0.0`. Formal
+  closure: implementation `9da1b2312cc603c29f9d3add2270499fdbc1b269`,
+  evidence `60297dfbd8b686affd701258db40e94fb8ce3c53`.
+- M6 runtime is integrated, verified, and preserved as the executable `6.0.0`
+  baseline for M7.
+- Council UI3 and its fixed desktop window are integrated through `40c258a` and
+  `04bb946`; both are mandatory M7 baselines.
 
 ## Active milestone
 
-**Milestone 6 — Six-domain strategic coordinator (foundation and implementation handoff)**
+**Milestone 7 - Calibrated shared outcomes**
 
-M6 must bind the four purchase domains, M4 Energy ability advisor, and M5
-Ascension/Mutagen advisor into one immutable decision identity and one coherent
-recommendation without comparing incompatible local scores.
+M7 must replace unproven advisor-to-global conversions with a versioned,
+WAIT-relative calibration contract. The first live vertical slice is a
+supported Energy ability whose action and WAIT baseline produce the same named
+milestone metric from one immutable snapshot and horizon.
 
-Milestone 6 player-visible target:
+Milestone 7 player-visible target:
 
-> The player sees the active milestone, best allowed action, important
-> alternatives, projected outcomes, blockers, confidence, authority, and the
-> trigger for reconsideration in one Council/Inspector view.
+> The player sees whether a supported Energy ability is genuinely better than
+> waiting and normal progression for the active milestone, including raw
+> action/baseline values, delta, provenance, uncertainty, and advisor-only
+> authority.
 
-Existing bounded reversible authority may be reused only for the exact global
-purchase winner after immediate revalidation. Energy abilities, Ascension,
-Mutagen, WAIT, and uncertainty remain non-executable.
+Ascension/Mutagen adopts the calibration contract but remains globally
+unranked until both current-run and next-run branches expose the same verified
+milestone metric. Energy abilities, Ascension, and Mutagen remain
+non-executable.
 
 ## Milestone 2 completion checklist
 
@@ -133,138 +150,154 @@ Mutagen, WAIT, and uncertainty remain non-executable.
 
 ## Milestone 6 completion checklist
 
-- [ ] Exactly six canonical domains use the shared versioned M6 outcome.
-- [ ] All domains share one immutable decision identity.
-- [ ] Global rank uses a real shared milestone outcome, not local scores.
-- [ ] Hard safety remains independent from economic ranking.
-- [ ] Advisor-only winners cannot gain authority or silently fall through.
-- [ ] Existing reversible execution remains exact, bounded, and revalidated.
-- [ ] Cross-domain causal effects cannot be double counted.
-- [ ] Decision and execution remain consistent across cycles.
-- [ ] Mechanic-based coverage, observability, focused acceptance, and exact-SHA
+- [x] Exactly six canonical domains use the shared versioned M6 outcome.
+- [x] All domains share one immutable decision identity.
+- [x] Global rank uses a real shared milestone outcome, not local scores.
+- [x] Hard safety remains independent from economic ranking.
+- [x] Advisor-only winners cannot gain authority or silently fall through.
+- [x] Existing reversible execution remains exact, bounded, and revalidated.
+- [x] Cross-domain causal effects cannot be double counted.
+- [x] Decision and execution remain consistent across cycles.
+- [x] Mechanic-based coverage, observability, focused acceptance, and exact-SHA
       evidence are complete.
+
+Formal closure:
+
+- implementation SHA: `9da1b2312cc603c29f9d3add2270499fdbc1b269`;
+- implementation tree: `c94a2e8e0b8487715a4b69b7bc7fe8960bc9a089`;
+- evidence SHA: `60297dfbd8b686affd701258db40e94fb8ce3c53`;
+- evidence path:
+  `docs/test-data/6.0.0-book00-m6-six-domain/verification-9da1b23.md`.
+
+## Milestone 6 exit review
+
+1. The running script now emits and ranks exactly six strategic domain
+   outcomes from one decision identity and can reuse only the exact revalidated
+   bounded purchase winner.
+2. The player sees one six-domain result, alternatives, blockers, confidence,
+   reconsideration, and authority in Council and Inspector.
+3. BOOK-00's central question is better answered because the four purchase
+   domains and two advisor domains now share one safety-first coordinator.
+4. Ability casts, Ascension, Mutagen spending, Swarmwarp, unsupported mutation
+   conversions, and new execution keys were intentionally excluded.
+5. Focused M6 acceptance plus the full exact-SHA suite protect identity,
+   comparability, authority isolation, double-count prevention, cycle
+   consistency, UI, Laboratory, and M2-M5 regression.
+6. The next best step is a product capability: calibrate a real advisor action
+   against WAIT on the same milestone/horizon.
 
 ## Current work package
 
-Implementation status: the M6 runtime is integrated on
-`codex/m6-integration-fix` above the accepted `5.0.1` UI/hotfix baseline.
-Focused and full exact-SHA verification remain pending until the implementation
-commit is immutable and pushed.
+Implementation status: documentation-only M7 foundation and Copilot handoff.
+No M7 runtime behavior or version change is part of this package.
 
 Product capability:
 
-- Combine all six BOOK-00 domains into one explainable strategic coordinator
-  without mixing incompatible local scores or widening irreversible authority.
+- Define the first honest calibration slice that lets a supported Energy
+  ability compete with WAIT and normal progression on the same named milestone
+  metric and horizon.
 
 Player-visible change:
 
-- Council and Inspector surface the six-domain coordinator result, winner,
-  alternatives, blockers, confidence, reconsideration trigger, and authority.
+- None until the M7 work order is implemented as `7.0.0`.
 
 Included:
 
-- current M1–M5 adapter and authority map;
-- shared six-domain identity and outcome contracts;
-- honest comparability and uncertainty rules;
-- causal effect ledger and double-count prevention;
-- execution/fallback/cycle consistency rules;
-- mechanic-based coverage contract;
+- `strategic-outcome-calibration.v1` contract;
+- WAIT-relative ETA/progress delta rules;
+- source/formula/identity alignment gates;
+- first live supported Energy-ability vertical slice;
+- strict Ascension placeholder that rejects break-even surplus as ETA;
+- Council UI3 and fixed-layout preservation contract;
 - twelve-group focused acceptance matrix;
-- complete Copilot implementation prompt.
+- complete Copilot implementation prompt and machine-readable manifest.
 
 Explicitly excluded:
 
-- any new execution key or wider reversible execution scope;
-- any Energy ability, Ascension, or Mutagen execution;
-- Swarmwarp or unsupported cross-domain mutation conversions;
-- Council artwork redesign.
+- runtime changes in this foundation package;
+- ability, Ascension, or Mutagen execution;
+- Swarmwarp and invented multi-run formulas;
+- new execution keys or purchase authority;
+- Council artwork or fixed-layout redesign.
 
 Authority:
 
-- documentation only;
-- future M6 authority may reuse only existing exact bounded purchase execution;
-- auto-Ascension, Mutagen spending, ability casts, Nightbug/Bat remain outside
-  authority.
+- documentation only in this package;
+- future M7 Energy-ability and Ascension/Mutagen outputs remain advisor-only;
+- accepted M2/M3/M6 purchase authority remains unchanged.
 
 Expected changed areas:
 
-- `dev-src/runtime-sections/runtime-main.js`
-- `src/SwarmSim-Strategy-Autobuyer.user.js`
-- `scripts/check-book00-m6-six-domain-coordinator.js`
-- `scripts/check-6.0.0-version-surfaces.js`
-- `package.json`
-- `package-lock.json`
-- `README.md`
-- `docs/strategy/BOOK00_M6_SIX_DOMAIN_COORDINATOR_FOUNDATION.md`
-- `docs/test-data/6.0.0-book00-m6-six-domain/m6-domain-contract-manifest.json`
-- `docs/prompts/implement-book00-m6-six-domain-coordinator.md`
+- `docs/strategy/BOOK00_M7_CALIBRATED_SHARED_OUTCOMES_FOUNDATION.md`
+- `docs/test-data/7.0.0-book00-m7-calibrated-outcomes/m7-calibration-contract-manifest.json`
+- `docs/prompts/implement-book00-m7-calibrated-shared-outcomes.md`
 - `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md`
-- this status board
+- `docs/strategy/BOOK00_CURRENT_STATUS.md`
+- `README.md`
 
 Stop condition:
 
-- every domain adapter, shared field, ranking rule, authority gate, acceptance
-  group, version surface, and Git/evidence step is explicit;
-- missing cross-domain conversion remains unranked rather than guessed;
-- Copilot can implement the bounded vertical slice without another planning
-  round.
+- calibration schema, metric math, identity gates, authority, UI preservation,
+  acceptance, versioning, Git/evidence protocol, and production-parity stop
+  condition are explicit;
+- Copilot can implement or honestly return `INSUFFICIENT_MODEL_EVIDENCE`
+  without another planning round.
 
 ## Immediate next actions
 
 Execute these in order:
 
-1. Create isolated branch/worktree `codex/m6-six-domain-coordinator` from the
-   clean M6 foundation on `origin/main`.
+1. Create `codex/m7-calibrated-shared-outcomes` from current clean
+   `origin/main`, retaining commits `40c258a` and `04bb946`.
 2. Give Copilot
-   `docs/prompts/implement-book00-m6-six-domain-coordinator.md`.
-3. Implement and release the coordinator as `6.0.0`.
-4. Run focused/full exact-SHA verification and push separate M6 evidence.
-5. Integrate to `main` only after the branch is accepted and explicitly
-   authorized.
+   `docs/prompts/implement-book00-m7-calibrated-shared-outcomes.md`.
+3. Implement the bounded live ability calibration slice as `7.0.0` or stop
+   with `INSUFFICIENT_MODEL_EVIDENCE` if no honest production-parity conversion
+   exists.
+4. Run focused/full exact-SHA verification, including all UI3/fixed-layout
+   checks, and push separate M7 evidence.
+5. Integrate to `main` only after review and explicit authorization.
 
 ## Known current blockers and cautions
 
-- Current purchase comparison covers four domains while M4 and M5 remain
-  separate advisor contracts; M6 must adapt, not rewrite, them.
-- Purchase `economicScore`, M4 ability `score`, and M5 qualitative outputs are
-  incompatible cross-domain rank inputs.
-- Honest live ability milestone conversion and Ascension recovery may remain
-  unavailable; those outcomes must stay visible but unranked/uncertain.
-- Advisor-only global winners must not silently fall through to a lower-ranked
-  purchase in the same decision cycle.
-- Cross-domain effects require an auditable causal ledger to prevent duplicate
-  benefit counting.
-- The focused testbed is deterministic only when staged count, command deltas,
-  and `velocity()` describe the same state; preserve that invariant.
-- Territory suffix tiers require canonical name plus variant identity. Do not
-  fall back to display-label lookup for execution.
+- M6's current Ascension adapter treats break-even horizon surplus as if it
+  could be ETA improvement; M7 must reject that shortcut.
+- A supported ability formula does not automatically provide a shared
+  milestone conversion.
+- WAIT/action identity, metric, unit, horizon, formula revision, and source
+  revision must all align.
+- Synthetic comparability cannot satisfy the required player-visible live
+  capability by itself.
+- Advisor winners must remain non-executable and must not fall through.
+- UI3 and the fixed Council `1180 x 700` layout are baseline functionality, not
+  M7 work to recreate.
 
 ## Do not do next
 
-- Do not widen Energy execution beyond Nexus/Lepidoptera production.
-- Do not add an execution key or grant Energy ability, Ascension, or Mutagen
-  execution authority.
-- Do not sort local lane/advisor scores together.
-- Do not treat missing cross-domain conversion as zero.
-- Do not execute a runner-up when an advisor-only action wins.
-- Do not globally rank mutation effects whose future-run conversion is missing.
-- Do not change hard safety defaults.
+- Do not use local scores or labels as shared value.
+- Do not coerce missing values to zero.
+- Do not label `horizon - breakEven` as milestone ETA improvement.
+- Do not grant ability, Ascension, or Mutagen execution authority.
+- Do not execute a purchase runner-up when an advisor action wins.
+- Do not duplicate or redesign Council UI3/fixed-layout work.
+- Do not change hard safety defaults or normal strategy thresholds.
 
 ## Next product milestone
 
-**Milestone 6 — Six-domain strategic coordinator**
+**Milestone 7 - Calibrated shared outcomes**
 
 Required product outcome:
 
-- emit exactly six domain outcomes from one immutable decision identity;
-- select the best allowed comparable action for one milestone/horizon;
-- keep hard blockers independent from economic rank;
-- prevent cross-domain double counting;
-- reuse only existing exact bounded reversible execution;
-- keep Energy abilities, Ascension, and Mutagen non-executable.
+- derive one real supported Energy-ability outcome relative to WAIT for the same
+  milestone and horizon;
+- compare that calibrated result with M6 purchase alternatives;
+- retain raw values, provenance, uncertainty, and explicit missing inputs;
+- refuse break-even-only Ascension comparability;
+- preserve advisor-only authority and all exact purchase gates;
+- preserve Council UI3 and fixed desktop/responsive layout behavior.
 
-Implementation starts from the M6 foundation, authored manifest, and Copilot
-work order prepared on `main`.
+Implementation starts from the M7 foundation, manifest, and Copilot work order
+prepared in this package.
 
 ## Handoff update template
 
@@ -285,6 +318,35 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 - Milestone 6 closure and Milestone 7 foundation
+
+- Agent: Codex
+- Worktree/branch: `codex/m7-calibrated-outcomes-foundation`
+- Baseline: current `origin/main` at fixed Council window commit
+  `04bb94678ba9ac29d03e2b2c00760ffb40510e55`, retaining Council UI3 commit
+  `40c258a7cf19d9660b2c13caf3b5d9b4e0e74da5`.
+- M6 closure: implementation `9da1b2312cc603c29f9d3add2270499fdbc1b269`,
+  tree `c94a2e8e0b8487715a4b69b7bc7fe8960bc9a089`, evidence
+  `60297dfbd8b686affd701258db40e94fb8ce3c53`.
+- Product capability changed: none; this package closes stale M6 status and
+  defines the implementation-ready M7 calibration slice.
+- Player-visible result: none until M7 is implemented as `7.0.0`.
+- Authored foundation paths:
+  - `docs/strategy/BOOK00_M7_CALIBRATED_SHARED_OUTCOMES_FOUNDATION.md`
+  - `docs/test-data/7.0.0-book00-m7-calibrated-outcomes/m7-calibration-contract-manifest.json`
+  - `docs/prompts/implement-book00-m7-calibrated-shared-outcomes.md`
+- Safety: no runtime, strategy, authority, threshold, or hard-default change.
+- UI preservation: M7 explicitly retains Council UI3, fixed `1180 x 700`
+  desktop layout, movable/no-resize behavior, responsive sizing, and layout key
+  `kbcSwarmBotCouncilPanelLayout_v2`.
+- Generated evidence paths: none; manifest and prompt are authored contract
+  data, not execution evidence.
+- Pre-commit checks: `npm run build`, `npm run check:ui-shell`,
+  `npm run check:ui2:fixtures`, `npm run check:ui3:assets`, `npm run verify`,
+  `git diff --check`, and `node scripts/validate-repo-guardrails.js` exited `0`.
+- Exact next action: run the M7 Copilot work order from a clean dedicated
+  branch based on current `origin/main`.
 
 ### 2026-07-13 — Milestone 6 foundation and Copilot handoff
 
