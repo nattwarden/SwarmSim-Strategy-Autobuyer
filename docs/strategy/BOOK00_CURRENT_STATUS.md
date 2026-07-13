@@ -72,19 +72,31 @@ If observed Git state differs, update this board before implementation.
   and remains excluded from coordinator execution authority. Exact-SHA branch
   checks passed against `42847a4258ba299132f0c7c8c85489371fe68a12`;
   the feature history was fast-forwarded to `main` at `e9918dd` on 2026-07-13.
+- The shadow slice was formally accepted on `main` by implementation
+  `6d5a020f7d47713f7abdb980a0b8324efce846a3` and evidence
+  `ec3aea2221fb5600e41a74bb476f16c9fea292ea`.
+- The bounded Milestone 3 execution slice is implemented on `main` at
+  `df402cea59da8bd3cb7591c2ce7117f2b1bd57ce`: only the current Nexus target or
+  Lepidoptera may receive Energy execution authority, after the whole-economy
+  winner, evidence, Nexus gate, identity, amount, and immediate Energy proposal
+  revalidation all pass.
 
 ## Active milestone
 
-**Milestone 3 — Energy production joins the economy**
+**Milestone 4 — Energy ability timing advisor (next; not yet implemented)**
 
-Player-visible target:
+Milestone 3 capability is implementation-complete. The transition is formally
+accepted only when the exact-SHA suite and separate evidence commit for the
+closure package pass. No Milestone 4 ability logic is included in that package.
 
-> The bot explains whether producing more Energy now is worth delaying Meat,
-> Larva, or Territory and shows the relevant Nexus or ability timing effect.
+Milestone 4 player-visible target:
 
-Authority begins in shadow/advisor mode. Reversible Energy production may only
-execute after its shared outcome fields and hard Nexus gate pass focused
-acceptance.
+> The player sees whether to cast or save a supported Energy ability, with
+> projected gain, Energy opportunity cost, milestone impact, horizon, and
+> confidence.
+
+Authority begins and remains advisor-only. Ability auto-cast stays disabled by
+default.
 
 ## Milestone 2 completion checklist
 
@@ -98,30 +110,42 @@ acceptance.
 - [x] One deterministic product state materially changes the first purchase:
       legacy `Engine: Hatchery` becomes coordinator `Territory: Stinger V x9`.
 
+## Milestone 3 completion checklist
+
+- [x] Energy reserve and recovery are shared outcome fields.
+- [x] Nexus protection remains a hard gate.
+- [x] Cap waste and delayed ability opportunity are visible where supported.
+- [x] Energy can honestly win, lose, or remain uncertain in focused states.
+- [x] Reversible Energy production receives authority only after the accepted
+      shadow slice, sufficient evidence, exact identity/amount revalidation,
+      and the production-only Nexus gate pass.
+
 ## Current work package
 
-Implementation status: integrated on `main`. Formal exact-SHA verification and
-the separate evidence/provenance commit are now in progress; acceptance is
-determined by the versioned provenance record once that evidence commit exists.
+Implementation status: bounded Energy execution is integrated on `main` at
+`df402cea59da8bd3cb7591c2ce7117f2b1bd57ce`. Formal exact-SHA verification and
+the separate evidence/provenance commit are the remaining acceptance gate.
 
 Product capability:
 
-- Add Energy production as the fourth domain in the shared whole-economy
-  comparison.
+- Allow a sufficiently evidenced Energy-production winner to make the first
+  reversible purchase through the shared whole-economy coordinator.
 
 Player-visible change:
 
-- Council/Inspector explains whether Nexus/Lepidoptera or another supported
-  reversible Energy-production investment is worth delaying Meat, Larva, or
-  Territory.
+- In Autobuyer mode, a winning supported Energy proposal can execute the exact
+  current Nexus or bounded Lepidoptera purchase shown by Council and Inspector;
+  Advisor mode continues to explain without buying.
 
 Included:
 
-- Energy reserve and recovery as shared outcome fields;
-- hard Nexus protection in the shared gate;
-- visible cap-waste and delayed-ability opportunity where runtime evidence
-  supports them;
-- shadow outcomes where Energy can honestly win, lose, or remain uncertain.
+- current Nexus upgrades and bounded Lepidoptera chunks only;
+- medium/high confidence and a positive score margin or no runner-up;
+- hard Nexus production gate before and during revalidation;
+- exact canonical identity, variant, target, and bounded amount matching;
+- a final Energy proposal rebuild immediately at the buy boundary;
+- duplicate sequential Energy execution suppression after a matched
+  coordinator purchase.
 
 Explicitly excluded:
 
@@ -130,46 +154,43 @@ Explicitly excluded:
 - Nightbug or Bat auto-buy;
 - broad score tuning or sweeps;
 - new Laboratory formulas unless separately authorized;
-- release/version work before the Milestone 3 shadow slice is accepted.
+- version bump or broad release work.
 
 Authority:
 
-- shadow/advisor only for the first Energy comparison slice;
-- existing Nexus protection remains authoritative;
-- no Energy execution authority until focused shadow acceptance passes.
+- bounded reversible coordinator execution for supported Energy production;
+- no authority in Advisor mode or when safe auto-buy is disabled;
+- no ability, Nightbug/Bat, Ascension, or Mutagen authority.
 
 Expected changed areas:
 
 - `dev-src/runtime-sections/runtime-main.js`
 - canonical userscript produced by `npm run build`
 - focused purchase-evaluator check
-- Inspector/Council/export fields needed for the Energy comparison
+- focused Energy execution acceptance
 - this status board at handoff
 
 Stop condition:
 
-- Energy emits the same versioned outcome contract from the same snapshot;
-- Energy can win, lose, and remain uncertain in focused honest states;
-- Nexus protection and ability/Ascension safety defaults remain unchanged;
-- the player can see Energy opportunity cost and switch conditions.
+- passing Nexus and Lepidoptera winners can receive authority after exact
+  revalidation;
+- a blocked Nexus gate and an Energy ability candidate cannot receive authority;
+- M2 Meat/Engine/Territory execution remains accepted;
+- canonical build, full verify, guardrails, and exact-SHA evidence pass.
 
 ## Immediate next actions
 
 Execute these in order:
 
-1. Define the smallest Energy-production proposal that uses existing runtime
-   evidence rather than a renamed lane score.
-2. Add Energy to the shared comparison in shadow/advisor mode.
-3. Expose reserve recovery, cap waste, and relevant ability-delay fields.
-4. Run only the focused Energy comparison acceptance required by the runbook.
-5. Keep reversible Energy execution disabled until shadow acceptance passes.
+1. Verify the immutable Milestone 3 closure SHA in an isolated worktree.
+2. Commit only the predeclared Milestone 3 closure provenance record.
+3. Confirm `HEAD == origin/main` and a clean tree.
+4. Begin Milestone 4 with advisor-only cast-versus-save scope.
 
 ## Known current blockers and cautions
 
-- Runtime/package surfaces now identify as 0.14.1. The accepted Milestone 2
-  branch is still not a published release until it is pushed and the formal
-  exact-SHA protocol is completed against that published implementation.
-- The current branch is ahead of its remote and has not been merged or pushed.
+- Formal Milestone 3 closure cannot be claimed until the exact-SHA evidence
+  commit exists on `origin/main`.
 - The focused testbed is deterministic only when staged count, command deltas,
   and `velocity()` describe the same state; preserve that invariant.
 - Territory suffix tiers require canonical name plus variant identity. Do not
@@ -177,13 +198,12 @@ Execute these in order:
 
 ## Do not do next
 
-- Do not run sweep150 or start another broad ranking exercise.
-- Do not grant Energy or abilities execution authority in the first M3 slice.
+- Do not widen Energy execution beyond Nexus/Lepidoptera production.
+- Do not grant any Energy ability execution authority in Milestone 4.
 - Do not build Ascension/Mutagen yet.
 - Do not change hard safety defaults.
-- Do not claim a released version from the unpushed feature branch.
 
-## Next product milestone preview
+## Next product milestone
 
 **Milestone 4 — Energy ability timing advisor**
 
@@ -195,8 +215,8 @@ Required product outcome:
 - show projected gain, Energy opportunity cost, reserve recovery, and the next
   condition that would change the recommendation.
 
-Start Milestone 4 only after Milestone 3 Energy-production comparison is
-accepted.
+Start Milestone 4 implementation only after the Milestone 3 closure evidence
+commit is on `origin/main` and the working tree is clean.
 
 ## Handoff update template
 
@@ -217,6 +237,33 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 — Milestone 3 bounded Energy-production execution
+
+- Agent: Codex
+- Worktree/branch: primary workspace, `main`
+- Code implementation SHA: `df402cea59da8bd3cb7591c2ce7117f2b1bd57ce`
+- Code tree SHA: `a9d14c6bc0a7e2571a0425409b778c2705f3a2bc`
+- Product capability changed: a sufficiently evidenced whole-economy Energy
+  winner may execute the exact current Nexus target or bounded Lepidoptera
+  chunk after immediate production-proposal revalidation.
+- Player-visible result: Autobuyer can act on the same supported Energy winner
+  Council/Inspector explains; Advisor remains read-only.
+- Safety: Nexus protection is an explicit precheck and revalidation gate;
+  abilities, Nightbug/Bat, Ascension, and Mutagen remain outside authority.
+- Pre-commit commands: `npm run build`,
+  `node scripts/validate-repo-guardrails.js`, `npm run verify`,
+  `npm run check:book00:m2:coordinator`, and `git diff --check` all exited `0`;
+  no evidence was generated.
+- Focused acceptance: supported Lepidoptera and protected Nexus winners pass;
+  a blocked Nexus gate and Clone Larvae candidate are denied; M2 exact Territory
+  execution remains matched.
+- Generated evidence paths: none.
+- Milestone checklist items completed: all Milestone 3 product items at the
+  authored implementation level.
+- Remaining blocker: exact-SHA verification and a separate provenance commit.
+- Exact next action: verify the final authored closure SHA, commit only the
+  allowlisted evidence record, then begin Milestone 4.
 
 ### 2026-07-13 — Milestone 3 Energy-production shadow comparison
 

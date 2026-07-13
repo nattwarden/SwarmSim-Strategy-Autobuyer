@@ -13,10 +13,17 @@
   global button styling.
 - Made The Swarm Council movable and resizable. Its position and size persist
   between sessions and are included in Reset views.
+- Added Energy production to the shared whole-economy comparison with reserve,
+  recovery, cap-waste, supported ability-delay, production-gain, and Nexus-gate
+  outcomes.
+- Allowed a sufficiently evidenced Energy winner to execute only the exact
+  current Nexus upgrade or bounded Lepidoptera chunk after immediate
+  production-proposal, identity, amount, and Nexus-gate revalidation.
 
 ## Safety and scope
 
-- No strategy scoring, purchase ranking, Laboratory formula, or execution
-  adapter changed.
+- The Energy execution change is limited to Nexus and Lepidoptera production;
+  other purchase domains retain their existing exact-execution boundaries.
 - Advisor and Autobuyer only map to the existing Smart authority flags.
-- Ability auto-cast and auto-Ascension safety defaults remain disabled.
+- Ability auto-cast, Energy Support Broker auto-cast, Nightbug/Bat auto-buy,
+  and auto-Ascension safety defaults remain disabled.
