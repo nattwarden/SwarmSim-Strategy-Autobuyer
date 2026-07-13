@@ -168,6 +168,7 @@ Expected changed areas:
 - canonical userscript produced by `npm run build`
 - focused purchase-evaluator check
 - focused Energy execution acceptance
+- one disposable production-parity exact Energy execution scenario
 - this status board at handoff
 
 Stop condition:
@@ -253,11 +254,14 @@ Exact next action:
   abilities, Nightbug/Bat, Ascension, and Mutagen remain outside authority.
 - Pre-commit commands: `npm run build`,
   `node scripts/validate-repo-guardrails.js`, `npm run verify`,
+  `npm run check:book00:m3:energy:execution`,
   `npm run check:book00:m2:coordinator`, and `git diff --check` all exited `0`;
-  no evidence was generated.
+  no retained evidence was generated.
 - Focused acceptance: supported Lepidoptera and protected Nexus winners pass;
   a blocked Nexus gate and Clone Larvae candidate are denied; M2 exact Territory
-  execution remains matched.
+  execution remains matched. The disposable production-parity scenario executes
+  `Energy: Lepidoptera x5` through canonical `unit:moth`, reports
+  `matchedExecution=yes`, verifies reset, and reports no state leakage.
 - Generated evidence paths: none.
 - Milestone checklist items completed: all Milestone 3 product items at the
   authored implementation level.

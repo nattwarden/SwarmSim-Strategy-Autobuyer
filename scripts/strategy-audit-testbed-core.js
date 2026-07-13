@@ -902,6 +902,55 @@ SCENARIOS["book00-m2-coordinator"] = {
   ],
 };
 
+SCENARIOS["book00-m3-energy-execution"] = {
+  ...SCENARIOS["sa1-03"],
+  id: "BOOK00-M3-ENERGY-EXECUTION",
+  title: "Bounded Energy Production Executes the Exact Coordinator Winner",
+  description: "A single disposable production-parity state that exercises the exact post-Nexus Lepidoptera coordinator buy path.",
+  cycles: 1,
+  executeActions: true,
+  unitCounts: {
+    meat: "1000",
+    larva: "100",
+    cocoon: "0",
+    territory: "0",
+    energy: "1000000",
+    nexus: "5",
+    moth: "0",
+    drone: "25",
+    queen: "0",
+    swarmling: "0",
+    stinger: "0",
+    spider: "0",
+    mosquito: "0",
+  },
+  armyUnitCounts: {},
+  passiveRates: {
+    meat: "0.001",
+    larva: "0.02",
+    territory: "0",
+    energy: "100",
+  },
+  config: {
+    smartMaxActionsPerRun: 1,
+    larvaEnginePriority: false,
+    meatGoalPlanner: false,
+    territoryPrepPlanner: false,
+    expansionArmySeedPlanner: false,
+    energyStrategy: true,
+    energyPlanner: true,
+    lepidopteraRoiMode: true,
+    nexusTarget: 5,
+    maxLepidopteraPerRun: 5,
+    postNexusEnergyReserveSeconds: 60,
+    postNexusLepidopteraMinBoostGainPercent: 0,
+  },
+  notes: [
+    "Milestone 3 execution acceptance only: the staged mature Energy state isolates the already-accepted Energy production domain at its exact buy boundary.",
+    "The disposable runner must report Energy/Lepidoptera authority, a real bounded command delta, and a matching canonical fingerprint without enabling abilities.",
+  ],
+};
+
 function getScenarioDefinition(scenarioId) {
   const normalizedId = String(scenarioId || "canary").toLowerCase();
   const v2Scenario = buildSa1V2Scenario(normalizedId);
