@@ -15255,11 +15255,29 @@ function getDisplayName(item) {
   }
 
   function isWholeEconomyExecutionLaneAllowed(lane) {
-    return ["Meat", "Engine", "Territory"].includes(String(lane || ""));
+    return ["Meat", "Engine", "Territory", "Energy"].includes(String(lane || ""));
   }
 
   function isWholeEconomyExecutionKeyAllowed(executionKey) {
-    return ["meat", "engine", "territory"].includes(String(executionKey || ""));
+    return ["meat", "engine", "territory", "energy"].includes(String(executionKey || ""));
+  }
+
+  function isEnergyProductionNexusGatePassed(proposal) {
+    if (proposal?.lane !== "Energy") return true;
+    return ["pass", "pass-protected-target", "not-applicable-post-target"]
+      .includes(String(proposal?.raw?.nexusProtectionGate || "unknown"));
+  }
+
+  function isSupportedEnergyProductionExecutionProposal(proposal) {
+    if (proposal?.lane !== "Energy" || proposal?.executionKey !== "energy") return false;
+    if (proposal?.decision !== "BUY" || (proposal?.blockers || []).length > 0) return false;
+    if (!isEnergyProductionNexusGatePassed(proposal)) return false;
+
+    const executionId = String(proposal?.executionId || "");
+    const executionKind = String(proposal?.executionKind || "");
+    const amount = normalizeBoundedAmountToken(proposal?.boundedAmount || proposal?.wouldBuyAmount || "0");
+    if (executionKind === "upgrade") return /^nexus[1-5]$/.test(executionId) && amount === "1";
+    return executionKind === "unit" && executionId === "moth" && isPositive(decimalFrom(amount, 0));
   }
 
   function confidenceAtLeastMedium(confidence) {
@@ -15355,12 +15373,14 @@ function getDisplayName(item) {
       else gatesFailed.push(`${name}: ${failReason}`);
     };
 
-    gate("reversible-scope", isWholeEconomyExecutionLaneAllowed(winner.lane) && isWholeEconomyExecutionKeyAllowed(selectedKey), "outside Meat/Engine/Territory reversible scope");
+    gate("reversible-scope", isWholeEconomyExecutionLaneAllowed(winner.lane) && isWholeEconomyExecutionKeyAllowed(selectedKey), "outside Meat/Engine/Territory/Energy reversible scope");
+    gate("energy-production-only", winner.lane !== "Energy" || isSupportedEnergyProductionExecutionProposal(proposal), "Energy authority is limited to supported Nexus/Lepidoptera production");
+    gate("energy-nexus-protection", isEnergyProductionNexusGatePassed(proposal), "Nexus protection gate did not pass");
     gate("decision-buy", winner.decision === "BUY", `winner decision ${winner.decision || "unknown"}`);
     gate("safe-eligible", winner.safeEligible === true, "winner is not safeEligible");
     gate("no-hard-blockers", blockers.length === 0, blockers[0] || "candidate has blockers");
     gate("confidence-medium-plus", confidenceAtLeastMedium(winner.confidence), `confidence ${winner.confidence || "unknown"}`);
-    const scoreMargin = Number.isFinite(Number(evaluation?.scoreMargin))
+    const scoreMargin = evaluation?.scoreMargin !== null && evaluation?.scoreMargin !== undefined && Number.isFinite(Number(evaluation.scoreMargin))
       ? Number(evaluation.scoreMargin)
       : (evaluation?.runnerUp ? null : Number.POSITIVE_INFINITY);
     gate("economic-evidence-sufficient", winner.evidenceFields >= 3 && (scoreMargin === Number.POSITIVE_INFINITY || scoreMargin > 0), "insufficient evidence or score margin");
@@ -15372,7 +15392,7 @@ function getDisplayName(item) {
     );
     gate("action-budget", Number(actionBudget || 0) >= 1, `budget ${Number(actionBudget || 0)} < 1`);
     gate("execution-mode-enabled", executionEnabled === true, "advisor-only or auto-buy-safe is disabled");
-    gate("no-ability-or-ascension-automation", isWholeEconomyExecutionLaneAllowed(winner.lane), "candidate implies ability/ascension scope");
+    gate("no-ability-or-ascension-automation", winner.lane !== "Energy" || isSupportedEnergyProductionExecutionProposal(proposal), "candidate implies ability/ascension scope");
 
     const preEligible = gatesFailed.length === 0;
     const selectedAmountToken = normalizeBoundedAmountToken(proposal?.boundedAmount || proposal?.wouldBuyAmount || winner.amount || "0");
@@ -15453,14 +15473,16 @@ function getDisplayName(item) {
     gate("still-safe-eligible", matchedRow?.safeEligible === true, "candidate no longer safeEligible");
     gate("still-no-hard-blockers", (matchedProposal?.blockers || []).length === 0 && (matchedRow?.blockers || []).length === 0, (matchedProposal?.blockers || matchedRow?.blockers || ["blocker"])[0]);
     gate("still-confidence-medium-plus", confidenceAtLeastMedium(matchedRow?.confidence), `confidence ${matchedRow?.confidence || "unknown"}`);
-    const scoreMargin = Number.isFinite(Number(evaluation?.scoreMargin))
+    const scoreMargin = evaluation?.scoreMargin !== null && evaluation?.scoreMargin !== undefined && Number.isFinite(Number(evaluation.scoreMargin))
       ? Number(evaluation.scoreMargin)
       : (evaluation?.runnerUp ? null : Number.POSITIVE_INFINITY);
     gate("still-economic-evidence-sufficient", (matchedRow?.evidenceFields || 0) >= 3 && (scoreMargin === Number.POSITIVE_INFINITY || scoreMargin > 0), "insufficient evidence or score margin after revalidation");
     gate("still-known-execution-key", isWholeEconomyExecutionKeyAllowed(base.selectedExecutionKey), "execution key moved outside allowed scope");
     gate("still-within-budget", Number(base.actionBudget || 0) >= 1, `budget ${Number(base.actionBudget || 0)} < 1`);
     gate("still-reversible-scope", isWholeEconomyExecutionLaneAllowed(base.selectedLane), "selected lane moved outside scope");
-    gate("still-no-ability-or-ascension", isWholeEconomyExecutionLaneAllowed(base.selectedLane), "selected candidate moved outside scope");
+    gate("still-energy-production-only", base.selectedLane !== "Energy" || isSupportedEnergyProductionExecutionProposal(matchedProposal), "Energy candidate moved outside supported Nexus/Lepidoptera production");
+    gate("still-energy-nexus-protection", isEnergyProductionNexusGatePassed(matchedProposal), "Nexus protection gate no longer passes");
+    gate("still-no-ability-or-ascension", base.selectedLane !== "Energy" || isSupportedEnergyProductionExecutionProposal(matchedProposal), "selected candidate moved outside scope");
 
     const revalidatedAmountToken = normalizeBoundedAmountToken(matchedProposal?.boundedAmount || matchedProposal?.wouldBuyAmount || matchedRow?.amount || "0");
     const revalidatedTarget = matchedProposal?.target || matchedRow?.target || "none";
@@ -15637,6 +15659,95 @@ function getDisplayName(item) {
     };
   }
 
+  function executeExactEnergyCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
+    const amount = parseBoundedAmountToken(expectedAmount);
+    const currentProposal = buildEnergyProductionProposal(game);
+    const currentAmount = normalizeBoundedAmountToken(currentProposal?.boundedAmount || currentProposal?.wouldBuyAmount || "0");
+    const proposalMatches = !!currentProposal
+      && isSupportedEnergyProductionExecutionProposal({ ...currentProposal, executionKey: "energy" })
+      && normalizeLabelKey(currentProposal.candidate) === normalizeLabelKey(expectedCandidate)
+      && String(currentProposal.executionId || "") === expectedExecutionId
+      && String(currentProposal.executionKind || "") === expectedExecutionKind
+      && String(currentProposal.executionVariant || "base") === expectedExecutionVariant
+      && currentAmount === normalizeBoundedAmountToken(expectedAmount);
+
+    if (!amount || !proposalMatches) {
+      return {
+        actionTaken: false,
+        bought: 0,
+        executedCandidate: expectedCandidate || "none",
+        executedExecutionId: "none",
+        executedExecutionKind: "none",
+        executedExecutionVariant: "base",
+        executedAmount: "0",
+        summary: "Energy exact execution unavailable or Nexus gate changed",
+      };
+    }
+
+    if (expectedExecutionKind === "upgrade") {
+      const upgrade = getNextNexusUpgrade(game);
+      if (
+        !upgrade?.isBuyable?.()
+        || String(upgrade.name || "") !== expectedExecutionId
+        || normalizeLabelKey(getDisplayName(upgrade)) !== normalizeLabelKey(expectedCandidate)
+        || normalizeBoundedAmountToken(amount) !== "1"
+      ) {
+        return {
+          actionTaken: false,
+          bought: 0,
+          executedCandidate: expectedCandidate || "none",
+          executedExecutionId: "none",
+          executedExecutionKind: "none",
+          executedExecutionVariant: "base",
+          executedAmount: "0",
+          summary: "Energy Nexus exact execution unavailable",
+        };
+      }
+
+      const before = decimalFrom(upgrade.count?.() || 0, 0);
+      const bought = safe(`Unified Energy ${getDisplayName(upgrade)}`, () => buyUpgradeAmount(commands, upgrade, amount, "Energy Upgrade"));
+      const delta = decimalFrom(upgrade.count?.() || 0, 0).minus(before);
+      return {
+        actionTaken: bought,
+        bought: bought ? 1 : 0,
+        executedCandidate: getDisplayName(upgrade),
+        executedExecutionId: upgrade.name,
+        executedExecutionKind: "upgrade",
+        executedExecutionVariant: "base",
+        executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
+        summary: bought ? `Bought ${getDisplayName(upgrade)}` : `Energy Nexus exact buy failed for ${getDisplayName(upgrade)}`,
+      };
+    }
+
+    const unit = resolveCoordinatorUnit(game, expectedExecutionId, expectedExecutionVariant, expectedCandidate);
+    if (!unit?.isBuyable?.() || String(unit.name || "") !== "moth") {
+      return {
+        actionTaken: false,
+        bought: 0,
+        executedCandidate: expectedCandidate || "none",
+        executedExecutionId: "none",
+        executedExecutionKind: "none",
+        executedExecutionVariant: "base",
+        executedAmount: "0",
+        summary: "Energy Lepidoptera exact execution unavailable",
+      };
+    }
+
+    const before = decimalFrom(unit.count?.() || 0, 0);
+    const bought = safe(`Unified Energy ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Energy Unit"));
+    const delta = decimalFrom(unit.count?.() || 0, 0).minus(before);
+    return {
+      actionTaken: bought,
+      bought: bought ? 1 : 0,
+      executedCandidate: getDisplayName(unit),
+      executedExecutionId: unit.name,
+      executedExecutionKind: "unit",
+      executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
+      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
+      summary: bought ? `Bought ${getDisplayName(unit)}` : `Energy Lepidoptera exact buy failed for ${getDisplayName(unit)}`,
+    };
+  }
+
   function executeUnifiedPurchaseWinner({ executionKey, game, commands, remainingActions, selectedLane, selectedCandidate, selectedExecutionId, selectedExecutionKind, selectedExecutionVariant, selectedAmount, selectedTarget, selectedFingerprint }) {
     if (!executionKey || remainingActions < 1) {
       return { label: "Unified", result: { actionTaken: false, bought: 0, summary: "no execution" } };
@@ -15672,6 +15783,9 @@ function getDisplayName(item) {
     } else if (executionKey === "territory") {
       label = "Territory";
       result = executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
+    } else if (executionKey === "energy") {
+      label = "Energy";
+      result = executeExactEnergyCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
     }
 
     const executedFingerprint = buildCoordinatorCandidateFingerprint({

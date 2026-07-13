@@ -196,7 +196,7 @@ async function main() {
     assert(report.lowConfidenceDeniedDecision.executionAuthority === false, "low-confidence candidate was incorrectly authorized");
 
     assert(report.unknownKeyDeniedDecision.executionAuthority === false, "candidate with unknown execution key was incorrectly authorized");
-    assert(/outside Meat\/Engine\/Territory reversible scope|execution key/.test(report.unknownKeyDeniedDecision.gatesFailed.join(" ")), "unknown execution key denial reason missing");
+    assert(/outside Meat\/Engine\/Territory\/Energy reversible scope|execution key/.test(report.unknownKeyDeniedDecision.gatesFailed.join(" ")), "unknown execution key denial reason missing");
 
     assert(report.revalidationFailedDecision.executionAuthority === false, "revalidation failure should remove authority");
     assert(report.revalidationFailedDecision.revalidationStatus === "failed", "revalidation failure status was not reported");

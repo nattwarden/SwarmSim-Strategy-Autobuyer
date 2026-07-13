@@ -10,6 +10,10 @@ function assert(condition, message) {
 }
 
 async function main() {
+  assert(userscript.includes("function executeExactEnergyCoordinatorCandidate"), "canonical runtime is missing the exact Energy execution adapter");
+  assert(userscript.includes('executionKey === "energy"'), "canonical coordinator does not dispatch the Energy execution key");
+  assert(userscript.includes("buildEnergyProductionProposal(game)"), "exact Energy execution does not rebuild the production proposal at the buy boundary");
+
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
@@ -66,6 +70,51 @@ async function main() {
         revalidationCandidates: [energyWinner],
       });
 
+      const nexusWinner = {
+        ...energyWinner,
+        executionId: "nexus5",
+        executionKind: "upgrade",
+        candidate: "Nexus 5",
+        target: "Nexus 5",
+        wouldBuyAmount: "1",
+        reason: "protected Nexus production target is buyable",
+        raw: {
+          ...energyWinner.raw,
+          nexusProtectionGate: "pass-protected-target",
+        },
+      };
+      const nexusExecution = api.buildExecutionDecision([nexusWinner], {
+        actionBudget: 1,
+        revalidationCandidates: [nexusWinner],
+      });
+
+      const blockedEnergyWinner = {
+        ...energyWinner,
+        reason: "Nexus protection no longer permits this Energy spend",
+        raw: {
+          ...energyWinner.raw,
+          nexusProtectionGate: "blocked",
+        },
+      };
+      const blockedEnergyExecution = api.buildExecutionDecision([blockedEnergyWinner], {
+        actionBudget: 1,
+        revalidationCandidates: [blockedEnergyWinner],
+      });
+
+      const abilityCandidate = {
+        ...energyWinner,
+        executionId: "clonelarvae",
+        executionKind: "upgrade",
+        candidate: "Clone Larvae",
+        target: "Clone Larvae",
+        wouldBuyAmount: "1",
+        reason: "ability candidate must remain outside Energy production authority",
+      };
+      const abilityExecution = api.buildExecutionDecision([abilityCandidate], {
+        actionBudget: 1,
+        revalidationCandidates: [abilityCandidate],
+      });
+
       const energyLoser = {
         ...energyWinner,
         reason: "small Energy-production gain",
@@ -102,7 +151,16 @@ async function main() {
       bot.runOnce();
       const inspector = bot.getStrategyInspector?.() || {};
 
-      return { winnerEvaluation, loserEvaluation, uncertainEvaluation, energyExecution, inspector };
+      return {
+        winnerEvaluation,
+        loserEvaluation,
+        uncertainEvaluation,
+        energyExecution,
+        nexusExecution,
+        blockedEnergyExecution,
+        abilityExecution,
+        inspector,
+      };
     });
 
     const winnerPreview = report.winnerEvaluation.wholeEconomyPreview;
@@ -127,8 +185,16 @@ async function main() {
     assert(uncertainRow?.sharedOutcome?.nexusProtectionGate === "blocked", "blocked Nexus gate missing");
     assert(uncertainRow?.confidence === "low", "uncertain Energy state should remain low-confidence");
 
-    assert(report.energyExecution.executionAuthority === false, "Energy received coordinator execution authority in the shadow slice");
-    assert(report.energyExecution.gatesFailed.join(" ").includes("outside Meat/Engine/Territory reversible scope"), "Energy execution denial did not preserve the bounded scope gate");
+    assert(report.energyExecution.executionAuthority === true, `passing Lepidoptera winner did not receive bounded Energy-production authority: ${JSON.stringify(report.energyExecution)}`);
+    assert(report.energyExecution.revalidationStatus === "passed", "Lepidoptera winner did not pass exact candidate revalidation");
+    assert(report.energyExecution.selectedExecutionKey === "energy", "Lepidoptera winner did not retain the Energy execution key");
+    assert(report.nexusExecution.executionAuthority === true, "protected Nexus target did not receive bounded Energy-production authority");
+    assert(report.nexusExecution.revalidationStatus === "passed", "protected Nexus target did not pass revalidation");
+
+    assert(report.blockedEnergyExecution.executionAuthority === false, "blocked Nexus gate granted Energy execution authority");
+    assert(report.blockedEnergyExecution.gatesFailed.join(" ").includes("energy-nexus-protection"), "blocked Nexus gate denial was not observable");
+    assert(report.abilityExecution.executionAuthority === false, "Energy ability gained production execution authority");
+    assert(report.abilityExecution.gatesFailed.join(" ").includes("energy-production-only"), "ability denial did not preserve the Energy production-only boundary");
 
     assert(Object.prototype.hasOwnProperty.call(report.inspector, "wholeEconomyEnergyCandidate"), "Inspector missing Energy candidate field");
     assert(Object.prototype.hasOwnProperty.call(report.inspector, "wholeEconomyEnergyNexusGate"), "Inspector missing Nexus gate field");
@@ -139,7 +205,7 @@ async function main() {
     await browser.close();
   }
 
-  console.log("BOOK00 M3 ENERGY SHADOW CHECK PASSED");
+  console.log("BOOK00 M3 ENERGY EXECUTION CHECK PASSED");
 }
 
 main().catch((error) => {
