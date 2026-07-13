@@ -1,0 +1,3082 @@
+{
+  "mode": "live",
+  "scenario": "sa1-sweep-113",
+  "runId": "live-2026-07-13T155113-038Z-sa1-sweep-113-run1",
+  "startedAt": "2026-07-13T15:51:13.038Z",
+  "completedAt": "2026-07-13T15:51:15.189Z",
+  "stateRevision": 1,
+  "scriptVersion": "0.13.0",
+  "repositoryCommit": null,
+  "scenarioHash": "sha256:8ecdb915a82b179d8ae60fe957532fa104a72fd05e64dec4125e42ad428318af",
+  "initialStateHash": "sha256:993b37c8819ee5f53e91a7fad359b2b5e3b450b23d0322215f59d55dfa051fc2",
+  "cycleNumber": 5,
+  "capturedAt": "2026-07-13T15:51:15.189Z",
+  "gameSourceKind": "production-url",
+  "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+  "gameSourceCommit": null,
+  "gameBuildVersion": null,
+  "browserKind": "chromium",
+  "browserVersion": "149.0.7827.55",
+  "browserMode": "headed",
+  "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+  "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+  "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+  "injectionMode": "playwright-addScriptTag",
+  "profileKind": "disposable-context",
+  "networkMode": "online-production",
+  "stateSetupMethod": "direct-game-service-unit-patch",
+  "stateMutationManifest": [
+    {
+      "id": "unit:meat",
+      "path": "game.unit(meat).count",
+      "before": "22601.192248",
+      "stagedValue": "22000",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit-rate:meat",
+      "path": "game.unit(meat).count-rate",
+      "before": "runtime-dependent",
+      "stagedValue": "0.2",
+      "method": "elapsed-seconds * configured rate",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:larva",
+      "path": "game.unit(larva).count",
+      "before": "692.631735",
+      "stagedValue": "675",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit-rate:larva",
+      "path": "game.unit(larva).count-rate",
+      "before": "runtime-dependent",
+      "stagedValue": "0.055",
+      "method": "elapsed-seconds * configured rate",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:cocoon",
+      "path": "game.unit(cocoon).count",
+      "before": "300",
+      "stagedValue": "300",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:territory",
+      "path": "game.unit(territory).count",
+      "before": "739698.0783",
+      "stagedValue": "1260",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit-rate:territory",
+      "path": "game.unit(territory).count-rate",
+      "before": "runtime-dependent",
+      "stagedValue": "3",
+      "method": "elapsed-seconds * configured rate",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:energy",
+      "path": "game.unit(energy).count",
+      "before": "600.64959309608540925",
+      "stagedValue": "600",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit-rate:energy",
+      "path": "game.unit(energy).count-rate",
+      "before": "runtime-dependent",
+      "stagedValue": "0.06",
+      "method": "elapsed-seconds * configured rate",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:drone",
+      "path": "game.unit(drone).count",
+      "before": "211.744",
+      "stagedValue": "160",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:queen",
+      "path": "game.unit(queen).count",
+      "before": "16",
+      "stagedValue": "16",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:swarmling",
+      "path": "game.unit(swarmling).count",
+      "before": "220",
+      "stagedValue": "220",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:stinger",
+      "path": "game.unit(stinger).count",
+      "before": "70",
+      "stagedValue": "70",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:spider",
+      "path": "game.unit(spider).count",
+      "before": "70",
+      "stagedValue": "70",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:mosquito",
+      "path": "game.unit(mosquito).count",
+      "before": "70",
+      "stagedValue": "70",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:nexus",
+      "path": "game.unit(nexus).count",
+      "before": "3",
+      "stagedValue": "3",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+      "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+      "before": "120",
+      "stagedValue": "10",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:expansionArmySeedMinEtaImprovementRatio",
+      "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+      "before": "0.05",
+      "stagedValue": "0.002",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:expansionArmySeedMaxChunkPercent",
+      "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+      "before": "10",
+      "stagedValue": "15",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:territoryMinEtaImprovementSeconds",
+      "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+      "before": "2",
+      "stagedValue": "0",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:territoryMinEtaImprovementRatio",
+      "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+      "before": "0.001",
+      "stagedValue": "0",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:meatChainReserveMultiplier",
+      "path": "kbcSwarmBot.config.meatChainReserveMultiplier",
+      "before": "2",
+      "stagedValue": "4",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:meatChainMaxPaybackSeconds",
+      "path": "kbcSwarmBot.config.meatChainMaxPaybackSeconds",
+      "before": "1800",
+      "stagedValue": "450",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:advisorOnly",
+      "path": "kbcSwarmBot.config.advisorOnly",
+      "before": "false",
+      "stagedValue": "false",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "unit:drone",
+      "path": "game.unit(drone).count",
+      "before": "160",
+      "stagedValue": "160",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    }
+  ],
+  "stateMutationManifestHash": "sha256:59c0b9591a2aa0236ca886e32011248d94d03eb8dcedde613a255141eb18a69e",
+  "preResetStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+  "postCycleStateHash": "sha256:d70f6ef1461bf9463a7c6685a27909a5ca5dd30be8d5d9caab68d780209639dc",
+  "postScenarioStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+  "resetMethod": "restore-captured-property-descriptors",
+  "resetVerified": true,
+  "stateLeakageDetected": false,
+  "activePhase": "Larva engine upgrade",
+  "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+  "activeTarget": "Expansion",
+  "selectedLane": "Engine",
+  "selectedDecision": "BUY",
+  "selectedAction": "Expansion",
+  "selectedUnit": "Expansion",
+  "selectedAmount": null,
+  "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+  "hardBlockers": "reserve, Nexus save, energy plan, ability disabled",
+  "softBlockers": "construct nexus / Nexus, Lepidoptera, meat-chain target, Twin Prep",
+  "actionBudget": "2/4",
+  "legalAlternatives": [
+    {
+      "lane": "Engine",
+      "decision": "BUY",
+      "candidate": "Expansion",
+      "reason": "highest larva-engine priority",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 90000
+    },
+    {
+      "lane": "Clone Prep",
+      "decision": "BUY",
+      "candidate": "cocoon",
+      "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+      "blockers": [],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 92000
+    }
+  ],
+  "rejectedAlternatives": [
+    {
+      "lane": "Energy",
+      "decision": "HOLD",
+      "candidate": "construct nexus",
+      "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+      "blockers": [
+        "energy protected for Nexus",
+        "Nexus save"
+      ],
+      "blockerCategories": [
+        "protected-resource",
+        "energy-plan"
+      ],
+      "score": 82567.77971197054
+    },
+    {
+      "lane": "Meat",
+      "decision": "HOLD",
+      "candidate": "drone",
+      "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+      "blockers": [
+        "larva protected for Clone Cocoon Buffer",
+        "cost uses protected resource"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 6110
+    },
+    {
+      "lane": "Territory",
+      "decision": "HOLD",
+      "candidate": "swarmling",
+      "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+      "blockers": [
+        "larva protected for Clone Cocoon Buffer",
+        "cost uses protected resource"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 316.256738973087
+    },
+    {
+      "lane": "Ability",
+      "decision": "HOLD",
+      "candidate": "Clone Larvae",
+      "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+      "blockers": [
+        "clone buffer required",
+        "ability auto-cast disabled"
+      ],
+      "blockerCategories": [
+        "reserve",
+        "ability-disabled"
+      ],
+      "score": 38000
+    },
+    {
+      "lane": "Upgrade",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Twin",
+      "decision": "HOLD",
+      "candidate": "twin swarmlings",
+      "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+      "blockers": [
+        "handled by twin planner"
+      ],
+      "blockerCategories": [],
+      "score": 0
+    }
+  ],
+  "bestLegalAlternative": "Expansion",
+  "bestRejectedAlternative": "Clone Buffer Planner",
+  "rejectionReasons": [
+    "saving energy for Nexus 4/5, ETA 6h 45m",
+    "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+    "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+    "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+    "no lane-specific candidate this run",
+    "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+  ],
+  "laneProposals": [
+    {
+      "lane": "Engine",
+      "decision": "BUY",
+      "candidate": "Expansion",
+      "reason": "highest larva-engine priority",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 90000
+    },
+    {
+      "lane": "Energy",
+      "decision": "HOLD",
+      "candidate": "construct nexus",
+      "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+      "blockers": [
+        "energy protected for Nexus",
+        "Nexus save"
+      ],
+      "blockerCategories": [
+        "protected-resource",
+        "energy-plan"
+      ],
+      "score": 82567.77971197054
+    },
+    {
+      "lane": "Meat",
+      "decision": "HOLD",
+      "candidate": "drone",
+      "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+      "blockers": [
+        "larva protected for Clone Cocoon Buffer",
+        "cost uses protected resource"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 6110
+    },
+    {
+      "lane": "Territory",
+      "decision": "HOLD",
+      "candidate": "swarmling",
+      "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+      "blockers": [
+        "larva protected for Clone Cocoon Buffer",
+        "cost uses protected resource"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 316.256738973087
+    },
+    {
+      "lane": "Clone Prep",
+      "decision": "BUY",
+      "candidate": "cocoon",
+      "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+      "blockers": [],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 92000
+    },
+    {
+      "lane": "Ability",
+      "decision": "HOLD",
+      "candidate": "Clone Larvae",
+      "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+      "blockers": [
+        "clone buffer required",
+        "ability auto-cast disabled"
+      ],
+      "blockerCategories": [
+        "reserve",
+        "ability-disabled"
+      ],
+      "score": 38000
+    },
+    {
+      "lane": "Upgrade",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Twin",
+      "decision": "HOLD",
+      "candidate": "twin swarmlings",
+      "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+      "blockers": [
+        "handled by twin planner"
+      ],
+      "blockerCategories": [],
+      "score": 0
+    }
+  ],
+  "goalMetricName": "runHistoryLength",
+  "goalMetricBefore": "20",
+  "goalMetricAfter": "20",
+  "goalMetricDelta": "0",
+  "resourceBankBefore": {
+    "meat": "22000.003",
+    "larva": "675.000825",
+    "territory": "1260.045",
+    "energy": "600.0009"
+  },
+  "resourceBankAfter": {
+    "meat": "22000.1232",
+    "larva": "675.03388",
+    "territory": "1261.848",
+    "energy": "600.03696"
+  },
+  "productionBefore": null,
+  "productionAfter": null,
+  "targetEtaBefore": null,
+  "targetEtaAfter": null,
+  "meaningfulProgress": true,
+  "councilMatchesPlanner": true,
+  "inspectorMatchesPlanner": true,
+  "exportMatchesPlanner": null,
+  "selectedActionActuallyExecuted": null,
+  "stateTransitionMatchesReport": true,
+  "headed": true,
+  "screenshotPaths": [],
+  "videoPath": null,
+  "tracePath": null,
+  "browserLeftOpenOnFailure": true,
+  "assessmentLabel": "GOOD",
+  "assessmentJustification": "Scenario run produced planner decisions with observable cycle transitions.",
+  "environmentProvenance": {
+    "nodeVersion": "v24.14.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "browserProvenance": {
+    "browserKind": "chromium",
+    "browserVersion": "149.0.7827.55",
+    "browserExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe"
+  },
+  "gameSource": {
+    "url": "https://www.swarmsim.com/#/tab/territory",
+    "kind": "production-url"
+  },
+  "userscriptProvenance": {
+    "path": "src/SwarmSim-Strategy-Autobuyer.user.js",
+    "hash": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386"
+  },
+  "cycles": [
+    {
+      "auditId": "SA1-SWEEP-113",
+      "stateId": "SA1-SWEEP-113",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:242b31c0602d8a6a0a7cfd7c04eb9b173f2755ac77e6a3a9774d522036925210",
+      "initialStateHash": "sha256:993b37c8819ee5f53e91a7fad359b2b5e3b450b23d0322215f59d55dfa051fc2",
+      "cycleNumber": 1,
+      "capturedAt": "2026-07-13T15:51:13.166Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "22601.192248",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "692.631735",
+          "stagedValue": "675",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.055",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "300",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "739698.0783",
+          "stagedValue": "1260",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "600.64959309608540925",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "211.744",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "16",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "220",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "3",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainReserveMultiplier",
+          "path": "kbcSwarmBot.config.meatChainReserveMultiplier",
+          "before": "2",
+          "stagedValue": "4",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainMaxPaybackSeconds",
+          "path": "kbcSwarmBot.config.meatChainMaxPaybackSeconds",
+          "before": "1800",
+          "stagedValue": "450",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:59c0b9591a2aa0236ca886e32011248d94d03eb8dcedde613a255141eb18a69e",
+      "preResetStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "postCycleStateHash": "sha256:20f4fb40dfac4bf8c5cbcd7a5c812e5dca70645afe2d7bdf9cb7d17cbff1dc8e",
+      "postScenarioStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, ability disabled",
+      "softBlockers": "construct nexus / Nexus, Lepidoptera, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.77224451197
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "Clone Buffer Planner",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 6h 45m",
+        "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+        "no lane-specific candidate this run",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.77224451197
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "20",
+      "goalMetricAfter": "20",
+      "goalMetricDelta": "0",
+      "resourceBankBefore": {
+        "meat": "22000.003",
+        "larva": "675.000825",
+        "territory": "1260.045",
+        "energy": "600.0009"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.0236",
+        "larva": "675.00649",
+        "territory": "1260.354",
+        "energy": "600.00708"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    },
+    {
+      "auditId": "SA1-SWEEP-113",
+      "stateId": "SA1-SWEEP-113",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:242b31c0602d8a6a0a7cfd7c04eb9b173f2755ac77e6a3a9774d522036925210",
+      "initialStateHash": "sha256:993b37c8819ee5f53e91a7fad359b2b5e3b450b23d0322215f59d55dfa051fc2",
+      "cycleNumber": 2,
+      "capturedAt": "2026-07-13T15:51:13.290Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "22601.192248",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "692.631735",
+          "stagedValue": "675",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.055",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "300",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "739698.0783",
+          "stagedValue": "1260",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "600.64959309608540925",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "211.744",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "16",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "220",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "3",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainReserveMultiplier",
+          "path": "kbcSwarmBot.config.meatChainReserveMultiplier",
+          "before": "2",
+          "stagedValue": "4",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainMaxPaybackSeconds",
+          "path": "kbcSwarmBot.config.meatChainMaxPaybackSeconds",
+          "before": "1800",
+          "stagedValue": "450",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:59c0b9591a2aa0236ca886e32011248d94d03eb8dcedde613a255141eb18a69e",
+      "preResetStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "postCycleStateHash": "sha256:5a69844a40891bd425814290036d0ac7d0528671079029a65b02fbadd824a692",
+      "postScenarioStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, ability disabled",
+      "softBlockers": "construct nexus / Nexus, Lepidoptera, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.77399882136
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "Clone Buffer Planner",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 6h 45m",
+        "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+        "no lane-specific candidate this run",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.77399882136
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "20",
+      "goalMetricAfter": "20",
+      "goalMetricDelta": "0",
+      "resourceBankBefore": {
+        "meat": "22000.025",
+        "larva": "675.006875",
+        "territory": "1260.375",
+        "energy": "600.0075"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.0484",
+        "larva": "675.01331",
+        "territory": "1260.726",
+        "energy": "600.01452"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    },
+    {
+      "auditId": "SA1-SWEEP-113",
+      "stateId": "SA1-SWEEP-113",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:242b31c0602d8a6a0a7cfd7c04eb9b173f2755ac77e6a3a9774d522036925210",
+      "initialStateHash": "sha256:993b37c8819ee5f53e91a7fad359b2b5e3b450b23d0322215f59d55dfa051fc2",
+      "cycleNumber": 3,
+      "capturedAt": "2026-07-13T15:51:13.388Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "22601.192248",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "692.631735",
+          "stagedValue": "675",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.055",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "300",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "739698.0783",
+          "stagedValue": "1260",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "600.64959309608540925",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "211.744",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "16",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "220",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "3",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainReserveMultiplier",
+          "path": "kbcSwarmBot.config.meatChainReserveMultiplier",
+          "before": "2",
+          "stagedValue": "4",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainMaxPaybackSeconds",
+          "path": "kbcSwarmBot.config.meatChainMaxPaybackSeconds",
+          "before": "1800",
+          "stagedValue": "450",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:59c0b9591a2aa0236ca886e32011248d94d03eb8dcedde613a255141eb18a69e",
+      "preResetStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "postCycleStateHash": "sha256:af411184edd7274477df0a30e4d5b4d0389da71030f52ba27d8a8b64115ac7a1",
+      "postScenarioStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, ability disabled",
+      "softBlockers": "construct nexus / Nexus, Lepidoptera, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.7758152302
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "Clone Buffer Planner",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 6h 45m",
+        "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+        "no lane-specific candidate this run",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.7758152302
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "20",
+      "goalMetricAfter": "20",
+      "goalMetricDelta": "0",
+      "resourceBankBefore": {
+        "meat": "22000.0498",
+        "larva": "675.013695",
+        "territory": "1260.747",
+        "energy": "600.01494"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.068",
+        "larva": "675.0187",
+        "territory": "1261.02",
+        "energy": "600.0204"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    },
+    {
+      "auditId": "SA1-SWEEP-113",
+      "stateId": "SA1-SWEEP-113",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:242b31c0602d8a6a0a7cfd7c04eb9b173f2755ac77e6a3a9774d522036925210",
+      "initialStateHash": "sha256:993b37c8819ee5f53e91a7fad359b2b5e3b450b23d0322215f59d55dfa051fc2",
+      "cycleNumber": 4,
+      "capturedAt": "2026-07-13T15:51:13.531Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "22601.192248",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "692.631735",
+          "stagedValue": "675",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.055",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "300",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "739698.0783",
+          "stagedValue": "1260",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "600.64959309608540925",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "211.744",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "16",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "220",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "3",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainReserveMultiplier",
+          "path": "kbcSwarmBot.config.meatChainReserveMultiplier",
+          "before": "2",
+          "stagedValue": "4",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainMaxPaybackSeconds",
+          "path": "kbcSwarmBot.config.meatChainMaxPaybackSeconds",
+          "before": "1800",
+          "stagedValue": "450",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:59c0b9591a2aa0236ca886e32011248d94d03eb8dcedde613a255141eb18a69e",
+      "preResetStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "postCycleStateHash": "sha256:85790d2cb022fc7b4e4ef1b4def9df59345b1e20edecd8ac51177464264a44a1",
+      "postScenarioStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, ability disabled",
+      "softBlockers": "construct nexus / Nexus, Lepidoptera, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.77746086556
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "Clone Buffer Planner",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 6h 45m",
+        "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+        "no lane-specific candidate this run",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.77746086556
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "20",
+      "goalMetricAfter": "20",
+      "goalMetricDelta": "0",
+      "resourceBankBefore": {
+        "meat": "22000.0692",
+        "larva": "675.01903",
+        "territory": "1261.038",
+        "energy": "600.02082"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.0964",
+        "larva": "675.02651",
+        "territory": "1261.446",
+        "energy": "600.02892"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    },
+    {
+      "auditId": "SA1-SWEEP-113",
+      "stateId": "SA1-SWEEP-113",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:242b31c0602d8a6a0a7cfd7c04eb9b173f2755ac77e6a3a9774d522036925210",
+      "initialStateHash": "sha256:993b37c8819ee5f53e91a7fad359b2b5e3b450b23d0322215f59d55dfa051fc2",
+      "cycleNumber": 5,
+      "capturedAt": "2026-07-13T15:51:13.665Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "22601.192248",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "692.631735",
+          "stagedValue": "675",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.055",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "300",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "739698.0783",
+          "stagedValue": "1260",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "600.64959309608540925",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "211.744",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "16",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "220",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "70",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "3",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainReserveMultiplier",
+          "path": "kbcSwarmBot.config.meatChainReserveMultiplier",
+          "before": "2",
+          "stagedValue": "4",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:meatChainMaxPaybackSeconds",
+          "path": "kbcSwarmBot.config.meatChainMaxPaybackSeconds",
+          "before": "1800",
+          "stagedValue": "450",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:59c0b9591a2aa0236ca886e32011248d94d03eb8dcedde613a255141eb18a69e",
+      "preResetStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "postCycleStateHash": "sha256:d70f6ef1461bf9463a7c6685a27909a5ca5dd30be8d5d9caab68d780209639dc",
+      "postScenarioStateHash": "sha256:0b261ca8e51cb396388a8cadd0ca541a1c7d1c8035edad1ec72ab681ca037550",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, ability disabled",
+      "softBlockers": "construct nexus / Nexus, Lepidoptera, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.77971197054
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "Clone Buffer Planner",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 6h 45m",
+        "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+        "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+        "no lane-specific candidate this run",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 6h 45m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 82567.77971197054
+        },
+        {
+          "lane": "Meat",
+          "decision": "HOLD",
+          "candidate": "drone",
+          "reason": "unlock/action candidate blocked; cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 6110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "cloned larvae protected for Clone Cocoon Buffer; post-clone lock active; protecting actual Clone Larvae bank/debt snapshot (1.88K target, 16% recovered)",
+          "blockers": [
+            "larva protected for Clone Cocoon Buffer",
+            "cost uses protected resource"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 316.256738973087
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "BUY",
+          "candidate": "cocoon",
+          "reason": "post-clone buffer recovery; cloned larvae must be cocooned before normal spending (300 / 1.88K)",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 92000
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "Clone Larvae",
+          "reason": "cocoon buffer cannot absorb cloned larvae yet; build buffer first; auto-cast disabled",
+          "blockers": [
+            "clone buffer required",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "reserve",
+            "ability-disabled"
+          ],
+          "score": 38000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "20",
+      "goalMetricAfter": "20",
+      "goalMetricDelta": "0",
+      "resourceBankBefore": {
+        "meat": "22000.098",
+        "larva": "675.02695",
+        "territory": "1261.47",
+        "energy": "600.0294"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.1232",
+        "larva": "675.03388",
+        "territory": "1261.848",
+        "energy": "600.03696"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    }
+  ],
+  "nullFieldReasons": {
+    "topLevel": {
+      "gameSourceCommit": "production-url-not-pinned",
+      "gameBuildVersion": "production-build-version-not-exposed",
+      "productionBefore": "canary-does-not-read-full-production-matrix",
+      "productionAfter": "canary-does-not-read-full-production-matrix",
+      "targetEtaBefore": "eta-surface-not-consistently-exposed",
+      "targetEtaAfter": "eta-surface-not-consistently-exposed",
+      "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+      "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+      "repositoryCommit": "null-in-canary-output",
+      "selectedAmount": "null-in-canary-output",
+      "videoPath": "null-in-canary-output",
+      "tracePath": "null-in-canary-output"
+    },
+    "byCycle": [
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      }
+    ]
+  },
+  "watchControlTest": null,
+  "watchControlState": {
+    "mode": "live",
+    "paused": false,
+    "stopRequested": false,
+    "nextRequested": false,
+    "cycleCompleted": 5,
+    "events": []
+  },
+  "partialResult": false,
+  "runnerVerdict": "PASS",
+  "setupFailure": null,
+  "runError": null,
+  "artifactPaths": {
+    "resultJsonPath": "docs/test-data/strategy-audit-1/sa1-sweep-113/live/live-2026-07-13T155113-038Z-sa1-sweep-113-run1/live-2026-07-13T155113-038Z-sa1-sweep-113-run1-result.json",
+    "resultMdPath": "docs/test-data/strategy-audit-1/sa1-sweep-113/live/live-2026-07-13T155113-038Z-sa1-sweep-113-run1/live-2026-07-13T155113-038Z-sa1-sweep-113-run1-result.md",
+    "screenshotPaths": [],
+    "tracePath": null,
+    "videoPath": null
+  }
+}

@@ -1,0 +1,2961 @@
+{
+  "mode": "live",
+  "scenario": "sa1-04-rank-bp-y80",
+  "runId": "live-2026-07-13T155457-353Z-sa1-04-rank-bp-y80-run1",
+  "startedAt": "2026-07-13T15:54:57.354Z",
+  "completedAt": "2026-07-13T15:54:59.915Z",
+  "stateRevision": 1,
+  "scriptVersion": "0.13.0",
+  "repositoryCommit": null,
+  "scenarioHash": "sha256:8ecdb915a82b179d8ae60fe957532fa104a72fd05e64dec4125e42ad428318af",
+  "initialStateHash": "sha256:5edc2261e2ce0b2e249afb26084b1b228e05fb4b5ad0e24d00870327c67ade23",
+  "cycleNumber": 5,
+  "capturedAt": "2026-07-13T15:54:59.915Z",
+  "gameSourceKind": "production-url",
+  "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+  "gameSourceCommit": null,
+  "gameBuildVersion": null,
+  "browserKind": "chromium",
+  "browserVersion": "149.0.7827.55",
+  "browserMode": "headed",
+  "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+  "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+  "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+  "injectionMode": "playwright-addScriptTag",
+  "profileKind": "disposable-context",
+  "networkMode": "online-production",
+  "stateSetupMethod": "direct-game-service-unit-patch",
+  "stateMutationManifest": [
+    {
+      "id": "unit:meat",
+      "path": "game.unit(meat).count",
+      "before": "35",
+      "stagedValue": "22000",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit-rate:meat",
+      "path": "game.unit(meat).count-rate",
+      "before": "runtime-dependent",
+      "stagedValue": "0.2",
+      "method": "elapsed-seconds * configured rate",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:larva",
+      "path": "game.unit(larva).count",
+      "before": "10.386",
+      "stagedValue": "1500",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit-rate:larva",
+      "path": "game.unit(larva).count-rate",
+      "before": "runtime-dependent",
+      "stagedValue": "0.1",
+      "method": "elapsed-seconds * configured rate",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:cocoon",
+      "path": "game.unit(cocoon).count",
+      "before": "0",
+      "stagedValue": "300",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:territory",
+      "path": "game.unit(territory).count",
+      "before": "0",
+      "stagedValue": "1200",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit-rate:territory",
+      "path": "game.unit(territory).count-rate",
+      "before": "runtime-dependent",
+      "stagedValue": "3",
+      "method": "elapsed-seconds * configured rate",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:energy",
+      "path": "game.unit(energy).count",
+      "before": "0",
+      "stagedValue": "600",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit-rate:energy",
+      "path": "game.unit(energy).count-rate",
+      "before": "runtime-dependent",
+      "stagedValue": "0.06",
+      "method": "elapsed-seconds * configured rate",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:drone",
+      "path": "game.unit(drone).count",
+      "before": "0",
+      "stagedValue": "160",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:queen",
+      "path": "game.unit(queen).count",
+      "before": "0",
+      "stagedValue": "16",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:swarmling",
+      "path": "game.unit(swarmling).count",
+      "before": "0",
+      "stagedValue": "220",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:stinger",
+      "path": "game.unit(stinger).count",
+      "before": "0",
+      "stagedValue": "70",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:spider",
+      "path": "game.unit(spider).count",
+      "before": "0",
+      "stagedValue": "70",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:mosquito",
+      "path": "game.unit(mosquito).count",
+      "before": "0",
+      "stagedValue": "70",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "unit:nexus",
+      "path": "game.unit(nexus).count",
+      "before": "0",
+      "stagedValue": "3",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    },
+    {
+      "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+      "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+      "before": "120",
+      "stagedValue": "10",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:expansionArmySeedMinEtaImprovementRatio",
+      "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+      "before": "0.05",
+      "stagedValue": "0.002",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:expansionArmySeedMaxChunkPercent",
+      "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+      "before": "10",
+      "stagedValue": "15",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:territoryMinEtaImprovementSeconds",
+      "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+      "before": "2",
+      "stagedValue": "0",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:territoryMinEtaImprovementRatio",
+      "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+      "before": "0.001",
+      "stagedValue": "0",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "config:advisorOnly",
+      "path": "kbcSwarmBot.config.advisorOnly",
+      "before": "false",
+      "stagedValue": "false",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "unit:drone",
+      "path": "game.unit(drone).count",
+      "before": "160",
+      "stagedValue": "160",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    }
+  ],
+  "stateMutationManifestHash": "sha256:fc0d9fc1c6e08062dc059b5ec9a91c5558b4316785ee2667c126a048f47059ad",
+  "preResetStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+  "postCycleStateHash": "sha256:395b7384e0a0d6706f8c29b4c851cf26b58f299551d80b48d0265efb297fedd9",
+  "postScenarioStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+  "resetMethod": "restore-captured-property-descriptors",
+  "resetVerified": true,
+  "stateLeakageDetected": false,
+  "activePhase": "Larva engine upgrade",
+  "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+  "activeTarget": "Expansion",
+  "selectedLane": "Engine",
+  "selectedDecision": "BUY",
+  "selectedAction": "Expansion",
+  "selectedUnit": "Expansion",
+  "selectedAmount": null,
+  "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+  "hardBlockers": "reserve, Nexus save, energy plan, payback, ability disabled",
+  "softBlockers": "construct nexus / Nexus, meat-chain target, Twin Prep",
+  "actionBudget": "2/4",
+  "legalAlternatives": [
+    {
+      "lane": "Engine",
+      "decision": "BUY",
+      "candidate": "Expansion",
+      "reason": "highest larva-engine priority",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 90000
+    },
+    {
+      "lane": "Meat",
+      "decision": "BUY",
+      "candidate": "drone",
+      "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+      "blockers": [],
+      "blockerCategories": [
+        "payback",
+        "reserve"
+      ],
+      "score": 8110
+    }
+  ],
+  "rejectedAlternatives": [
+    {
+      "lane": "Energy",
+      "decision": "HOLD",
+      "candidate": "construct nexus",
+      "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+      "blockers": [
+        "energy protected for Nexus",
+        "Nexus save"
+      ],
+      "blockerCategories": [
+        "protected-resource",
+        "energy-plan"
+      ],
+      "score": 81866.68462666667
+    },
+    {
+      "lane": "Territory",
+      "decision": "HOLD",
+      "candidate": "swarmling",
+      "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+      "blockers": [
+        "not meaningful"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 0
+    },
+    {
+      "lane": "Clone Prep",
+      "decision": "OBSERVE",
+      "candidate": "Cocoons",
+      "reason": "Cocooning upgrade not owned",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 0
+    },
+    {
+      "lane": "Ability",
+      "decision": "HOLD",
+      "candidate": "House of Mirrors",
+      "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+      "blockers": [
+        "army prep missing",
+        "ability auto-cast disabled"
+      ],
+      "blockerCategories": [
+        "ability-disabled"
+      ],
+      "score": 37000
+    },
+    {
+      "lane": "Upgrade",
+      "decision": "HOLD",
+      "candidate": "faster drones",
+      "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+      "blockers": [
+        "reserve guard"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 76000
+    },
+    {
+      "lane": "Twin",
+      "decision": "HOLD",
+      "candidate": "twin swarmlings",
+      "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+      "blockers": [
+        "handled by twin planner"
+      ],
+      "blockerCategories": [],
+      "score": 0
+    }
+  ],
+  "bestLegalAlternative": "Expansion",
+  "bestRejectedAlternative": "queen × 1",
+  "rejectionReasons": [
+    "saving energy for Nexus 4/5, ETA 8h 42m",
+    "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+    "Cocooning upgrade not owned",
+    "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+    "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+    "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+  ],
+  "laneProposals": [
+    {
+      "lane": "Engine",
+      "decision": "BUY",
+      "candidate": "Expansion",
+      "reason": "highest larva-engine priority",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 90000
+    },
+    {
+      "lane": "Energy",
+      "decision": "HOLD",
+      "candidate": "construct nexus",
+      "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+      "blockers": [
+        "energy protected for Nexus",
+        "Nexus save"
+      ],
+      "blockerCategories": [
+        "protected-resource",
+        "energy-plan"
+      ],
+      "score": 81866.68462666667
+    },
+    {
+      "lane": "Meat",
+      "decision": "BUY",
+      "candidate": "drone",
+      "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+      "blockers": [],
+      "blockerCategories": [
+        "payback",
+        "reserve"
+      ],
+      "score": 8110
+    },
+    {
+      "lane": "Territory",
+      "decision": "HOLD",
+      "candidate": "swarmling",
+      "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+      "blockers": [
+        "not meaningful"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 0
+    },
+    {
+      "lane": "Clone Prep",
+      "decision": "OBSERVE",
+      "candidate": "Cocoons",
+      "reason": "Cocooning upgrade not owned",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 0
+    },
+    {
+      "lane": "Ability",
+      "decision": "HOLD",
+      "candidate": "House of Mirrors",
+      "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+      "blockers": [
+        "army prep missing",
+        "ability auto-cast disabled"
+      ],
+      "blockerCategories": [
+        "ability-disabled"
+      ],
+      "score": 37000
+    },
+    {
+      "lane": "Upgrade",
+      "decision": "HOLD",
+      "candidate": "faster drones",
+      "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+      "blockers": [
+        "reserve guard"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 76000
+    },
+    {
+      "lane": "Twin",
+      "decision": "HOLD",
+      "candidate": "twin swarmlings",
+      "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+      "blockers": [
+        "handled by twin planner"
+      ],
+      "blockerCategories": [],
+      "score": 0
+    }
+  ],
+  "goalMetricName": "runHistoryLength",
+  "goalMetricBefore": "0",
+  "goalMetricAfter": "5",
+  "goalMetricDelta": "1",
+  "resourceBankBefore": {
+    "meat": "22000.002",
+    "larva": "1500.001",
+    "territory": "1200.03",
+    "energy": "600.0006"
+  },
+  "resourceBankAfter": {
+    "meat": "22000.2012",
+    "larva": "1500.1006",
+    "territory": "1203.018",
+    "energy": "600.06036"
+  },
+  "productionBefore": null,
+  "productionAfter": null,
+  "targetEtaBefore": null,
+  "targetEtaAfter": null,
+  "meaningfulProgress": true,
+  "councilMatchesPlanner": true,
+  "inspectorMatchesPlanner": true,
+  "exportMatchesPlanner": null,
+  "selectedActionActuallyExecuted": null,
+  "stateTransitionMatchesReport": true,
+  "headed": true,
+  "screenshotPaths": [],
+  "videoPath": null,
+  "tracePath": null,
+  "browserLeftOpenOnFailure": true,
+  "assessmentLabel": "GOOD",
+  "assessmentJustification": "Scenario run produced planner decisions with observable cycle transitions.",
+  "environmentProvenance": {
+    "nodeVersion": "v24.14.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "browserProvenance": {
+    "browserKind": "chromium",
+    "browserVersion": "149.0.7827.55",
+    "browserExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe"
+  },
+  "gameSource": {
+    "url": "https://www.swarmsim.com/#/tab/territory",
+    "kind": "production-url"
+  },
+  "userscriptProvenance": {
+    "path": "src/SwarmSim-Strategy-Autobuyer.user.js",
+    "hash": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386"
+  },
+  "cycles": [
+    {
+      "auditId": "SA1-04-RANK-BP-Y80",
+      "stateId": "SA1-04-RANK-BP-Y80",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:e109daffa4e55318976bf9aa87d779631731d697c86293b7ed85ace5f6c3f947",
+      "initialStateHash": "sha256:5edc2261e2ce0b2e249afb26084b1b228e05fb4b5ad0e24d00870327c67ade23",
+      "cycleNumber": 1,
+      "capturedAt": "2026-07-13T15:54:57.628Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "35",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "10.386",
+          "stagedValue": "1500",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.1",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "0",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "0",
+          "stagedValue": "1200",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "0",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "0",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "0",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "0",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:fc0d9fc1c6e08062dc059b5ec9a91c5558b4316785ee2667c126a048f47059ad",
+      "preResetStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "postCycleStateHash": "sha256:8167880a310d8a18ec368cbb435d9354f2c368ba3936bda4244108e455f00a6c",
+      "postScenarioStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, payback, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target, Twin Prep",
+      "actionBudget": "4/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks twin drones, progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Twin",
+          "decision": "BUY",
+          "candidate": "twin drones",
+          "reason": "target-aware twin support for nest; active action drone uses/supports drone; reserve/recovery ok; reserve/recovery 15x ok",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 78000
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.66802666667
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.66802666667
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks twin drones, progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "BUY",
+          "candidate": "twin drones",
+          "reason": "target-aware twin support for nest; active action drone uses/supports drone; reserve/recovery ok; reserve/recovery 15x ok",
+          "blockers": [],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 78000
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "0",
+      "goalMetricAfter": "1",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.002",
+        "larva": "1500.001",
+        "territory": "1200.03",
+        "energy": "600.0006"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.051",
+        "larva": "1500.0255",
+        "territory": "1200.765",
+        "energy": "600.0153"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    },
+    {
+      "auditId": "SA1-04-RANK-BP-Y80",
+      "stateId": "SA1-04-RANK-BP-Y80",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:e109daffa4e55318976bf9aa87d779631731d697c86293b7ed85ace5f6c3f947",
+      "initialStateHash": "sha256:5edc2261e2ce0b2e249afb26084b1b228e05fb4b5ad0e24d00870327c67ade23",
+      "cycleNumber": 2,
+      "capturedAt": "2026-07-13T15:54:57.946Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "35",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "10.386",
+          "stagedValue": "1500",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.1",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "0",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "0",
+          "stagedValue": "1200",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "0",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "0",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "0",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "0",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:fc0d9fc1c6e08062dc059b5ec9a91c5558b4316785ee2667c126a048f47059ad",
+      "preResetStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "postCycleStateHash": "sha256:8735c0c60a1450bd95899c34402cd5cce252155b7904da48f7473a6695c2dd1d",
+      "postScenarioStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, payback, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67558666666
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67558666666
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "1",
+      "goalMetricAfter": "2",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.0676",
+        "larva": "1500.0338",
+        "territory": "1201.014",
+        "energy": "600.02028"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.1148",
+        "larva": "1500.0574",
+        "territory": "1201.722",
+        "energy": "600.03444"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    },
+    {
+      "auditId": "SA1-04-RANK-BP-Y80",
+      "stateId": "SA1-04-RANK-BP-Y80",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:e109daffa4e55318976bf9aa87d779631731d697c86293b7ed85ace5f6c3f947",
+      "initialStateHash": "sha256:5edc2261e2ce0b2e249afb26084b1b228e05fb4b5ad0e24d00870327c67ade23",
+      "cycleNumber": 3,
+      "capturedAt": "2026-07-13T15:54:58.099Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "35",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "10.386",
+          "stagedValue": "1500",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.1",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "0",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "0",
+          "stagedValue": "1200",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "0",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "0",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "0",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "0",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:fc0d9fc1c6e08062dc059b5ec9a91c5558b4316785ee2667c126a048f47059ad",
+      "preResetStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "postCycleStateHash": "sha256:1d766031a3ed91e14277ae3368742d42fa5ea77700582d6e94cad5ca69614913",
+      "postScenarioStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, payback, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67890666667
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67890666667
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "2",
+      "goalMetricAfter": "3",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.1162",
+        "larva": "1500.0581",
+        "territory": "1201.743",
+        "energy": "600.03486"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.1454",
+        "larva": "1500.0727",
+        "territory": "1202.181",
+        "energy": "600.04362"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    },
+    {
+      "auditId": "SA1-04-RANK-BP-Y80",
+      "stateId": "SA1-04-RANK-BP-Y80",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:e109daffa4e55318976bf9aa87d779631731d697c86293b7ed85ace5f6c3f947",
+      "initialStateHash": "sha256:5edc2261e2ce0b2e249afb26084b1b228e05fb4b5ad0e24d00870327c67ade23",
+      "cycleNumber": 4,
+      "capturedAt": "2026-07-13T15:54:58.236Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "35",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "10.386",
+          "stagedValue": "1500",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.1",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "0",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "0",
+          "stagedValue": "1200",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "0",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "0",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "0",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "0",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:fc0d9fc1c6e08062dc059b5ec9a91c5558b4316785ee2667c126a048f47059ad",
+      "preResetStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "postCycleStateHash": "sha256:7506f03e827063729017b0aa741e83d89957b09ea0de23198254fde0a5c0cdfc",
+      "postScenarioStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, payback, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.68176666666
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.68176666666
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "3",
+      "goalMetricAfter": "4",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.1458",
+        "larva": "1500.0729",
+        "territory": "1202.187",
+        "energy": "600.04374"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.1726",
+        "larva": "1500.0863",
+        "territory": "1202.589",
+        "energy": "600.05178"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    },
+    {
+      "auditId": "SA1-04-RANK-BP-Y80",
+      "stateId": "SA1-04-RANK-BP-Y80",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:e109daffa4e55318976bf9aa87d779631731d697c86293b7ed85ace5f6c3f947",
+      "initialStateHash": "sha256:5edc2261e2ce0b2e249afb26084b1b228e05fb4b5ad0e24d00870327c67ade23",
+      "cycleNumber": 5,
+      "capturedAt": "2026-07-13T15:54:58.379Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "userscriptContentSha256": "sha256:ca09f01be2429f04c994cc1b7a8dca6ddd3a136d927d1fa6beba88437c15c386",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "unit:meat",
+          "path": "game.unit(meat).count",
+          "before": "35",
+          "stagedValue": "22000",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:meat",
+          "path": "game.unit(meat).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.2",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:larva",
+          "path": "game.unit(larva).count",
+          "before": "10.386",
+          "stagedValue": "1500",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:larva",
+          "path": "game.unit(larva).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.1",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:cocoon",
+          "path": "game.unit(cocoon).count",
+          "before": "0",
+          "stagedValue": "300",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:territory",
+          "path": "game.unit(territory).count",
+          "before": "0",
+          "stagedValue": "1200",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:territory",
+          "path": "game.unit(territory).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "3",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:energy",
+          "path": "game.unit(energy).count",
+          "before": "0",
+          "stagedValue": "600",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit-rate:energy",
+          "path": "game.unit(energy).count-rate",
+          "before": "runtime-dependent",
+          "stagedValue": "0.06",
+          "method": "elapsed-seconds * configured rate",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:queen",
+          "path": "game.unit(queen).count",
+          "before": "0",
+          "stagedValue": "16",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:swarmling",
+          "path": "game.unit(swarmling).count",
+          "before": "0",
+          "stagedValue": "220",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:stinger",
+          "path": "game.unit(stinger).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:spider",
+          "path": "game.unit(spider).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:mosquito",
+          "path": "game.unit(mosquito).count",
+          "before": "0",
+          "stagedValue": "70",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "unit:nexus",
+          "path": "game.unit(nexus).count",
+          "before": "0",
+          "stagedValue": "3",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementSeconds",
+          "before": "120",
+          "stagedValue": "10",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.expansionArmySeedMinEtaImprovementRatio",
+          "before": "0.05",
+          "stagedValue": "0.002",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:expansionArmySeedMaxChunkPercent",
+          "path": "kbcSwarmBot.config.expansionArmySeedMaxChunkPercent",
+          "before": "10",
+          "stagedValue": "15",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementSeconds",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementSeconds",
+          "before": "2",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:territoryMinEtaImprovementRatio",
+          "path": "kbcSwarmBot.config.territoryMinEtaImprovementRatio",
+          "before": "0.001",
+          "stagedValue": "0",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "160",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:fc0d9fc1c6e08062dc059b5ec9a91c5558b4316785ee2667c126a048f47059ad",
+      "preResetStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "postCycleStateHash": "sha256:395b7384e0a0d6706f8c29b4c851cf26b58f299551d80b48d0265efb297fedd9",
+      "postScenarioStateHash": "sha256:77f31eb0fe6ef0f1b0b5819a8a613812a353370f53b7e07cb3fc86f7e0d0ea13",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Larva engine upgrade",
+      "activeGoal": "Buy Expansion now; it is the strongest larva-engine upgrade.",
+      "activeTarget": "Expansion",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Expansion",
+      "selectedUnit": "Expansion",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Expansion: BUY Expansion: highest larva-engine priority",
+      "hardBlockers": "reserve, Nexus save, energy plan, payback, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.68462666667
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "bestLegalAlternative": "Expansion",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+        "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Expansion",
+          "reason": "highest larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 90000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.68462666667
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "swarmling",
+          "reason": "Army seed HOLD: best candidate swarmling only improves Expansion ETA by 0s, below 10s minimum.",
+          "blockers": [
+            "not meaningful"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "HOLD",
+          "candidate": "faster drones",
+          "reason": "target-aware production support for nest; active action drone uses/supports drone; blocked: costs 66 drone; after buy 94; reserve 1.42x < required 2x",
+          "blockers": [
+            "reserve guard"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 76000
+        },
+        {
+          "lane": "Twin",
+          "decision": "HOLD",
+          "candidate": "twin swarmlings",
+          "reason": "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+          "blockers": [
+            "handled by twin planner"
+          ],
+          "blockerCategories": [],
+          "score": 0
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "4",
+      "goalMetricAfter": "5",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.174",
+        "larva": "1500.087",
+        "territory": "1202.61",
+        "energy": "600.05226"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.2012",
+        "larva": "1500.1006",
+        "territory": "1203.018",
+        "energy": "600.06036"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "GOOD",
+      "assessmentJustification": "planner produced decision and cycle transition was observable"
+    }
+  ],
+  "nullFieldReasons": {
+    "topLevel": {
+      "gameSourceCommit": "production-url-not-pinned",
+      "gameBuildVersion": "production-build-version-not-exposed",
+      "productionBefore": "canary-does-not-read-full-production-matrix",
+      "productionAfter": "canary-does-not-read-full-production-matrix",
+      "targetEtaBefore": "eta-surface-not-consistently-exposed",
+      "targetEtaAfter": "eta-surface-not-consistently-exposed",
+      "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+      "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+      "repositoryCommit": "null-in-canary-output",
+      "selectedAmount": "null-in-canary-output",
+      "videoPath": "null-in-canary-output",
+      "tracePath": "null-in-canary-output"
+    },
+    "byCycle": [
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      }
+    ]
+  },
+  "watchControlTest": null,
+  "watchControlState": {
+    "mode": "live",
+    "paused": false,
+    "stopRequested": false,
+    "nextRequested": false,
+    "cycleCompleted": 5,
+    "events": []
+  },
+  "partialResult": false,
+  "runnerVerdict": "PASS",
+  "setupFailure": null,
+  "runError": null,
+  "artifactPaths": {
+    "resultJsonPath": "docs/test-data/strategy-audit-1/sa1-04-rank-bp-y80/live/live-2026-07-13T155457-353Z-sa1-04-rank-bp-y80-run1/live-2026-07-13T155457-353Z-sa1-04-rank-bp-y80-run1-result.json",
+    "resultMdPath": "docs/test-data/strategy-audit-1/sa1-04-rank-bp-y80/live/live-2026-07-13T155457-353Z-sa1-04-rank-bp-y80-run1/live-2026-07-13T155457-353Z-sa1-04-rank-bp-y80-run1-result.md",
+    "screenshotPaths": [],
+    "tracePath": null,
+    "videoPath": null
+  }
+}
