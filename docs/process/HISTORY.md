@@ -19,6 +19,11 @@ docs/release-notes/
 
 ## Version notes
 
+- 6.0.0: Added the six-domain strategic coordinator runtime slice, exposing one
+  immutable decision identity, coordinated Council/Inspector state, advisor-only
+  alternatives, bounded reversible execution gating, effect audits, shared-cost
+  conflict reporting, and a public strategicCoordinator API. Formal verification
+  and evidence are pending.
 - M6 foundation (unreleased): Defined the implementation-ready six-domain
   strategic coordinator contract for `6.0.0`, including one immutable decision
   identity, honest shared-outcome comparability, hard-safety separation,

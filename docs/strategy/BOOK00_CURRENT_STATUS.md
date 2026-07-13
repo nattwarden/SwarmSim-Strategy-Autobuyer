@@ -33,13 +33,13 @@ git rev-parse origin/main
 git log -8 --oneline --decorate
 ```
 
-Observed immediately before the Milestone 6 foundation package:
+Observed immediately before the Milestone 6 implementation package:
 
 - branch: `main`;
 - integrated M5 implementation: `c10d8c5a9160708e1d657ad5f08496dfb8e2e698`;
 - integrated M5 evidence / starting `HEAD` / `origin/main`:
   `af6a41b9534b6ff682a2903d938fa17686a3a9d2`;
-- runtime version: `5.0.0`;
+- runtime version: `6.0.0`;
 - working tree: clean before the authored M6 foundation scope.
 
 If observed Git state differs, update this board before implementation.
@@ -145,19 +145,18 @@ Mutagen, WAIT, and uncertainty remain non-executable.
 
 ## Current work package
 
-Implementation status: the complete M6 contract/acceptance handoff is authored
-on `main`. No M6 runtime behavior or `6.0.0` version change is included in this
-foundation package.
+Implementation status: the M6 contract/acceptance handoff is authored and the
+6.0.0 runtime slice is being implemented on `codex/m6-six-domain-coordinator`.
 
 Product capability:
 
-- Prepare Copilot to combine all six BOOK-00 domains into one explainable
-  strategic coordinator without mixing incompatible local scores or widening
-  irreversible authority.
+- Combine all six BOOK-00 domains into one explainable strategic coordinator
+  without mixing incompatible local scores or widening irreversible authority.
 
 Player-visible change:
 
-- None yet. This work package is implementation foundation and work order only.
+- Council and Inspector surface the six-domain coordinator result, winner,
+  alternatives, blockers, confidence, reconsideration trigger, and authority.
 
 Included:
 
@@ -172,7 +171,6 @@ Included:
 
 Explicitly excluded:
 
-- runtime implementation or version bump to `6.0.0` in this foundation package;
 - any new execution key or wider reversible execution scope;
 - any Energy ability, Ascension, or Mutagen execution;
 - Swarmwarp or unsupported cross-domain mutation conversions;
@@ -187,6 +185,13 @@ Authority:
 
 Expected changed areas:
 
+- `dev-src/runtime-sections/runtime-main.js`
+- `src/SwarmSim-Strategy-Autobuyer.user.js`
+- `scripts/check-book00-m6-six-domain-coordinator.js`
+- `scripts/check-6.0.0-version-surfaces.js`
+- `package.json`
+- `package-lock.json`
+- `README.md`
 - `docs/strategy/BOOK00_M6_SIX_DOMAIN_COORDINATOR_FOUNDATION.md`
 - `docs/test-data/6.0.0-book00-m6-six-domain/m6-domain-contract-manifest.json`
 - `docs/prompts/implement-book00-m6-six-domain-coordinator.md`
