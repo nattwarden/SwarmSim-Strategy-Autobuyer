@@ -2433,6 +2433,18 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
     row.hardBlockers = planner?.hardBlockers || null;
     row.softBlockers = planner?.inspectorAfter?.waits || null;
     row.actionBudget = planner?.inspectorAfter?.overseerActionsUsed || null;
+    row.coordinatorExecutionAuthority = planner?.inspectorAfter?.coordinatorExecutionAuthority || null;
+    row.coordinatorSelectedLane = planner?.inspectorAfter?.coordinatorSelectedLane || null;
+    row.coordinatorSelectedCandidate = planner?.inspectorAfter?.coordinatorSelectedCandidate || null;
+    row.coordinatorSelectedExecutionKey = planner?.inspectorAfter?.coordinatorSelectedExecutionKey || null;
+    row.coordinatorSelectedAmount = planner?.inspectorAfter?.coordinatorSelectedAmount || null;
+    row.coordinatorRevalidationStatus = planner?.inspectorAfter?.coordinatorRevalidationStatus || null;
+    row.coordinatorGatesPassed = planner?.inspectorAfter?.coordinatorGatesPassed || null;
+    row.coordinatorGatesFailed = planner?.inspectorAfter?.coordinatorGatesFailed || null;
+    row.coordinatorFallbackReason = planner?.inspectorAfter?.coordinatorFallbackReason || null;
+    row.coordinatorExecuted = planner?.inspectorAfter?.coordinatorExecuted || null;
+    row.coordinatorMatchedExecution = planner?.inspectorAfter?.coordinatorMatchedExecution || null;
+    row.coordinatorExecutionResult = planner?.inspectorAfter?.coordinatorExecutionResult || null;
 
     row.legalAlternatives = legalAlternatives;
     row.rejectedAlternatives = rejectedAlternatives;

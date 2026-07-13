@@ -51,9 +51,25 @@ If observed Git state differs, update this board before implementation.
 > rebuild, opportunity cost, protected resources, risk, and whole-economy
 > effects are considered.
 
+## Milestone snapshot (2026-07-13)
+
+- Milestone 1 (Whole-Economy Shadow Preview): implemented and accepted on
+  `21adb7a`.
+- Milestone 2 (Bounded Whole-Economy Coordinator Execution): implementation
+  accepted at `b9019cfff8ba47077e32d1a1faa2183ab3009f61`, but focused product
+  acceptance is still blocked by a reproducible execution bug in deterministic
+  runtime scenario `sa1-02`.
+- Blocking defect from acceptance scenario:
+  coordinator reports `executionAuthority=true` with selected Engine candidate
+  `Expansion x1`, but execution returns `Engine exact execution unavailable`,
+  `executed=no`, and `matchedExecution=no`.
+- Remaining Milestone 2 limitation:
+  exact bounded coordinator execution is not yet reliable for all selected
+  reversible candidates in staged deterministic runtime states.
+
 ## Active milestone
 
-**Milestone 0 — Stabilize the launchpad**
+**Milestone 2 — Bounded Whole-Economy Coordinator Execution (acceptance blocked)**
 
 This is the one allowed infrastructure-first milestone. It must finish once and
 must not expand into more general test-platform work.
@@ -181,19 +197,15 @@ Execute these in order:
 
 ## Next product milestone preview
 
-**Milestone 1 — Whole-economy comparison preview**
+**Milestone 3 — Energy production joins the economy**
 
 Required product outcome:
 
-- Meat, Larva, and Army/Territory emit a shared versioned outcome;
-- all alternatives start from one pre-execution snapshot;
-- Inspector/Council shows milestone, horizon, winner, best alternative,
-  projected impact, and confidence;
-- the new comparison remains shadow/advisor-only;
-- existing 0.13.0 execution remains authoritative.
+- Energy production joins the shared whole-economy coordinator contract as a
+  bounded reversible domain with explicit authority and truthful execution
+  matching.
 
-The first Milestone 1 work order must not begin until Milestone 0 is explicitly
-checked complete in this file.
+Start Milestone 3 only after the blocked Milestone 2 acceptance scenario passes.
 
 ## Handoff update template
 
@@ -214,6 +226,32 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-13 — Milestone 2 focused acceptance (blocked)
+
+- Agent: Copilot
+- Worktree/branch: `feature/strategy-audit-testbed-runners`
+- Implementation SHA: `b9019cfff8ba47077e32d1a1faa2183ab3009f61`
+- Acceptance scenario: `sa1-02` via `npm run check:book00:m2:coordinator`
+- Scenario result: FAILED (reproducible)
+- Legacy first-choice order: `engine -> meat -> territory`
+- Legacy first BUY in scenario: `Engine: Expansion`
+- Coordinator selected winner: `Engine: Expansion x1` with
+  `executionAuthority=true`
+- Actual execution result: `executed=no`, `matchedExecution=no`,
+  `Engine exact execution unavailable`
+- Product capability changed: none (acceptance/handoff only)
+- Player-visible result: none
+- Commands and exit codes:
+  - `npm run build` -> 0
+  - `npm run check:purchase-evaluator` -> 0
+  - `npm run check:book00:m2:coordinator` -> 1
+  - `npm run validate:guardrails` -> 0
+  - `git diff --check` -> 0
+- Remaining blocker: coordinator exact execution adapter fails selected Engine
+  candidate in focused deterministic runtime acceptance scenario.
+- Exact next action: fix coordinator exact adapter resolution for selected
+  reversible candidates, then rerun the same single scenario.
 
 ### 2026-07-13 — Copilot preliminary Strategy Intelligence automation handoff
 
