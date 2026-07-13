@@ -10,4 +10,3 @@ Failing cases: 1
 - stateLeakageDetected: undefined
 - replay: npm run strategy:audit:live -- --scenario sa1-sweep-143 --cycles 5
 - artifact: docs/test-data/strategy-audit-1/sa1-sweep-143/live/live-2026-07-13T155219-978Z-sa1-sweep-143-run1/live-2026-07-13T155219-978Z-sa1-sweep-143-run1-result.json
-
