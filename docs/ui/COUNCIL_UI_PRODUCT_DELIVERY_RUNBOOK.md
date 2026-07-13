@@ -59,7 +59,8 @@ Goal: prove hierarchy and interaction before production art integration.
 - [x] Render all four lane cards and global safety state
 - [x] Implement tabs, modes, keyboard focus, and reduced-motion behavior
 - [x] Add Matrix Diagnostics navigation
-- [ ] Verify layout at agreed viewport and zoom cases
+- [x] Verify deterministic layout at agreed viewport and zoom cases
+- [ ] Complete installed-userscript switching and real-resource live smoke
 
 Exit gate: a plain but complete HTML/CSS shell communicates the full decision
 without requiring the reference image.

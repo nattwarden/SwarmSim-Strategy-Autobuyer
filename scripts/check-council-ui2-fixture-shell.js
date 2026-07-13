@@ -179,6 +179,12 @@ async function main() {
           const shell = document.querySelector(".kbc-council-shell");
           const stage = document.querySelector(".kbc-council-stage");
           const lanes = document.querySelector(".kbc-council-lanes");
+          const decision = document.querySelector(".kbc-council-decision");
+          const decisionEyebrow = decision.querySelector(".kbc-council-eyebrow");
+          const decisionExecution = decision.querySelector(".kbc-council-execution-strip");
+          const decisionRect = decision.getBoundingClientRect();
+          const eyebrowRect = decisionEyebrow.getBoundingClientRect();
+          const executionRect = decisionExecution.getBoundingClientRect();
           return {
             hasMain: !!document.querySelector("main.kbc-council-decision"),
             asideCount: document.querySelectorAll(".kbc-council-stage > aside").length,
@@ -192,6 +198,8 @@ async function main() {
             barWidth: Math.round(bar.getBoundingClientRect().width),
             barHeight: Math.round(bar.getBoundingClientRect().height),
             barResize: getComputedStyle(bar).resize,
+            decisionContentTopInset: Math.round(eyebrowRect.top - decisionRect.top),
+            decisionContentBottomInset: Math.round(decisionRect.bottom - executionRect.bottom),
             frameArt: getComputedStyle(shell, "::after").backgroundImage,
             parchmentArt: getComputedStyle(document.querySelector(".kbc-council-decision")).backgroundImage,
             laneArt: getComputedStyle(document.querySelector(".kbc-council-lane-art")).backgroundImage,
@@ -212,6 +220,8 @@ async function main() {
         if (Math.abs(result.barWidth - expectedBarWidth) > 2) failures.push(`${prefix}: expected fixed bar width ${expectedBarWidth}, got ${result.barWidth}`);
         if (Math.abs(result.barHeight - expectedBarHeight) > 2) failures.push(`${prefix}: expected fixed bar height ${expectedBarHeight}, got ${result.barHeight}`);
         if (result.barResize !== "none") failures.push(`${prefix}: manual Council resize remains enabled`);
+        if (testCase.width <= 700 && result.decisionContentTopInset < 34) failures.push(`${prefix}: parchment decision text enters the top ornament (${result.decisionContentTopInset}px inset)`);
+        if (testCase.width <= 700 && result.decisionContentBottomInset < 28) failures.push(`${prefix}: parchment decision text enters the bottom ornament (${result.decisionContentBottomInset}px inset)`);
         if (testCase.width > 1100 && !result.frameArt.includes("image/webp")) failures.push(`${prefix}: ornate frame art did not resolve`);
         if (testCase.width <= 1100 && result.frameArt.includes("image/webp")) failures.push(`${prefix}: responsive frame fallback did not activate`);
         if (!result.parchmentArt.includes("image/webp")) failures.push(`${prefix}: parchment art did not resolve`);

@@ -1,17 +1,19 @@
 # Council UI Current Status
 
-Updated: 2026-07-13
+Updated: 2026-07-14
 
 ## Current state
 
 - **Visual north star:** selected and stored
 - **Completed milestones:** UI0 and UI1
-- **Active delivery milestone:** UI3 — production-art integration in progress
-- **Runtime implementation:** functional UI2 shell with UI3 art hooks locally
+- **Active delivery milestone:** UI3 — production art implemented; live visual acceptance in progress
+- **Runtime implementation:** UI2 shell, UI3 production art, fixed desktop window,
+  and compact parchment text-safe inset
 - **Strategy behavior:** intentionally unchanged
 
-The clean Council Chamber image is the canonical composition reference. It is
-not yet approved as an optimized runtime asset.
+The clean Council Chamber image remains the canonical composition reference.
+Its approved UI3 layers are integrated as optimized runtime assets while live
+values remain semantic HTML/CSS.
 
 ## What UI0 established
 
@@ -62,22 +64,25 @@ The configured runtime source now contains:
   reduced-motion presentation states
 - public read-only `getCouncilUiState()` diagnostics
 
-The reference chamber and production artwork are intentionally absent from the
-runtime. UI2 proves information hierarchy before UI3 graphics integration.
+UI2 first proved information hierarchy without production graphics. UI3 now
+adds the approved chamber, frame, parchment, lane shields, and advisor shields
+without changing the UI2 state contract.
 
-### UI2 remaining acceptance
+### UI2 acceptance
 
 - [x] deterministic shell render of all three UI1 state fixtures
-- [ ] live visual smoke at desktop width, below 1100 px, and below 700 px
-- [ ] browser zoom smoke at 100%, 125%, and 150%
+- [x] deterministic visual smoke at desktop width, below 1100 px, and below 700 px
+- [x] deterministic browser-layout smoke at 100%, 125%, and 150% effective widths
 - [ ] confirm Council ↔ Matrix switching in the installed userscript
+- [ ] complete installed-userscript live smoke with real Tampermonkey resources
 
 ## Exact next action
 
-Publish the generated runtime assets, install the rebuilt canonical userscript,
-and complete the combined UI2/UI3 visual smoke matrix. Capture overflow,
-unreadable parchment text, failed resource loading, or Council/Matrix switching
-failures before accepting UI3.
+Install the rebuilt canonical userscript and complete the remaining live UI3
+smoke with real Tampermonkey resources: Council/Matrix switching, asset-load
+fallback, text contrast, and Advisor/Autobuyer states. The deterministic matrix
+now protects fixed dimensions, overflow, responsive frame fallback, and compact
+parchment text-safe insets.
 
 ## Known decisions
 
@@ -158,4 +163,9 @@ The follow-up `check:ui2:fixtures` renders all three state fixtures through the
 production Council CSS at four effective layout widths: desktop 100%, desktop
 125%, desktop 150%, and compact below 700 px. It verifies semantic regions,
 four primary lanes, decision metrics, Council/Matrix controls, breakpoint
-columns, and horizontal-overflow bounds without writing screenshots or evidence.
+columns, fixed dimensions, horizontal-overflow bounds, artwork fallbacks, and
+compact parchment text-safe insets without writing screenshots or evidence.
+
+On 2026-07-14, visual inspection reproduced compact decision text entering the
+parchment's upper ornament at 690 px. The compact padding was corrected and the
+fixture checker now enforces upper and lower text-safe insets for every state.
