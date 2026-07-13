@@ -162,6 +162,8 @@ This book changes slowly. Active implementation state and checklists live in:
 - `ui/COUNCIL_UI_CURRENT_STATUS.md`
 - `ui/COUNCIL_UI_PRODUCT_DELIVERY_RUNBOOK.md`
 - `ui/COUNCIL_UI_DATA_MAP.md`
+- `ui/COUNCIL_UI_STATE_CONTRACT.md`
+- `ui/COUNCIL_TIMELINE_EVENT_CONTRACT.md`
 
 UI milestones run parallel to strategy milestones. They may consume planner
 data, but completing a UI milestone is not evidence that a strategy milestone

@@ -9,7 +9,10 @@ The durable experience vision lives one level above in BOOK-06.
 2. `COUNCIL_UI_CURRENT_STATUS.md` — active milestone and exact next action
 3. `COUNCIL_UI_PRODUCT_DELIVERY_RUNBOOK.md` — milestone gates and checklists
 4. `COUNCIL_UI_DATA_MAP.md` — presentation needs mapped to runtime truth
-5. `reference/swarmbot-council-chamber-north-star.png` — visual north star
+5. `COUNCIL_UI_STATE_CONTRACT.md` — shared read-only presentation state
+6. `COUNCIL_TIMELINE_EVENT_CONTRACT.md` — causal Chronicle event model
+7. `fixtures/` — deterministic contract examples
+8. `reference/swarmbot-council-chamber-north-star.png` — visual north star
 
 ## Boundaries
 

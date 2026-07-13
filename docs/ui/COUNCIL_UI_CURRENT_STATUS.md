@@ -5,8 +5,8 @@ Updated: 2026-07-13
 ## Current state
 
 - **Visual north star:** selected and stored
-- **Documentation milestone:** UI0 authored locally
-- **Active delivery milestone:** UI1 — presentation contracts
+- **Completed documentation milestones:** UI0 and UI1 authored locally
+- **Active delivery milestone:** UI2 — functional chamber shell
 - **Runtime implementation:** not started in this UI track
 - **Strategy behavior:** intentionally unchanged
 
@@ -22,25 +22,43 @@ not yet approved as an optimized runtime asset.
 - Council Chamber, Council Chronicle, Compact Council, and Matrix Diagnostics
   are distinct surfaces over shared canonical state
 
-## Active milestone: UI1
+## UI1 audit result
 
-UI1 must define the data and event contracts before the visual shell is wired
-to the live bot.
+The runtime already exposes phase, goal, whole-economy recommendations,
+candidate economics, coordinator authority, fallback, execution result, lane
+decisions, and the major domain-specific planner states.
 
-### UI1 checklist
+The real gaps are presentation observability rather than strategy:
 
-- [ ] Verify every preliminary data-map row against canonical source
-- [ ] Mark each field available, derived, missing, or presentation-only
-- [ ] Specify `CouncilUiState` version 1
-- [ ] Specify `CouncilTimelineEvent` version 1
-- [ ] Create deterministic example states
-- [ ] Identify true data gaps separately from UI wishes
+- no monotonic cycle or decision id
+- live banks and production rates are readable but not part of inspector state
+- legacy advisor and purchase logs have locale time but no causal identity
+- phase, goal, and protected resources are partly formatted strings
+
+UI1 therefore defines a pure adapter contract and a future emitted-event
+contract without requesting changes to planner choices or safety gates.
+
+## UI1 delivered artifacts
+
+- [x] Canonical runtime source audit and exact source mapping
+- [x] `council-ui-state.v1`
+- [x] `council-timeline-event.v1`
+- [x] Autobuyer success, Advisor hold, and stale-data state fixtures
+- [x] Causal purchase chain and hold timeline fixtures
+- [x] Explicit null/availability and freshness rules
+- [x] Confirmation that the visual goal needs observability, not new strategy
+
+## Active milestone: UI2
+
+UI2 proves the information hierarchy as a functional semantic HTML/CSS shell
+using deterministic fixtures before production graphics are integrated.
 
 ## Exact next action
 
-Inspect the configured runtime source and canonical userscript for the fields
-listed in `COUNCIL_UI_DATA_MAP.md`. Record exact source identities and freshness
-rules. Do not change planner behavior during that audit.
+Choose the narrowest runtime UI boundary for a pure `buildCouncilUiState(...)`
+adapter and render the `autobuyer-completed-purchase`, `advisor-hold`, and
+`stale-unavailable` fixtures into a plain Council shell. Do not integrate the
+large reference image or change planner behavior in the first UI2 slice.
 
 ## Known decisions
 
@@ -58,7 +76,16 @@ rules. Do not change planner behavior during that audit.
 - final production crop, WebP/PNG variants, and asset budget
 - final Swedish/English localization policy
 
-## Working-tree note
+## Validation snapshot
 
-This status describes the authored UI documentation package. Formal completion
-still requires an isolated commit and the repository's applicable verification.
+UI0 is committed at `3b434a3`. The UI1 documentation and fixtures passed the
+following pure checks on 2026-07-13:
+
+- JSON parsing and fixture invariants: 3 states, 7 lanes per state, 5 unique events
+- `node scripts/validate-repo-guardrails.js`
+- `npm run build` (canonical userscript already up to date)
+- `npm run verify`
+- `git diff --check`
+
+UI1 changes no runtime behavior and generates no evidence files. Git history is
+the source of truth for the commit containing this status.

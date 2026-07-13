@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "council-ui-state-fixtures.v1",
+  "states": [
+    {
+      "fixtureId": "autobuyer-completed-purchase",
+      "generatedAt": "2026-07-13T20:37:36.250Z",
+      "source": {
+        "scriptVersion": "0.14.1",
+        "strategyTimestamp": "2026-07-13T20:37:36.000Z",
+        "cycleId": "cycle-1042",
+        "sourceKind": "live-browser",
+        "freshness": "fresh",
+        "ageMs": 250,
+        "staleAfterMs": 5000
+      },
+      "bot": {
+        "enabled": true,
+        "mode": "autobuyer",
+        "statusText": "Smart: 1/1 main actions, 0 side-tasks",
+        "runEverySeconds": 1
+      },
+      "strategy": {
+        "phase": { "id": null, "label": "Post-Nexus energy growth" },
+        "goal": { "id": null, "label": "Reach Lesser Hive Mind" },
+        "wholeEconomyWinner": { "domain": "Meat chain", "actionText": "Meat: Hive Neuron × 60 Qa" },
+        "activeSpeaker": "Flesh Smith",
+        "protectedResources": ["energy"]
+      },
+      "decision": {
+        "decisionId": "decision-1042",
+        "disposition": "execute",
+        "recommendation": { "domain": "Meat chain", "lane": "Meat", "candidate": "Hive Neuron", "amount": "60 Qa", "executionKey": null, "executionId": null, "executionKind": null, "executionVariant": null, "fingerprint": null },
+        "selection": { "domain": "Meat chain", "lane": "Meat", "candidate": "Hive Neuron", "amount": "60 Qa", "executionKey": "meat-hive-neuron", "executionId": "hiveneuron", "executionKind": "unit", "executionVariant": "base", "fingerprint": "unit:hiveneuron:base:60Qa" },
+        "reason": "Best whole-economy payback toward the active meat-chain goal.",
+        "target": "Lesser Hive Mind",
+        "economics": {
+          "payback": { "raw": 1694, "display": "28m 14s", "unit": "seconds", "availability": "available" },
+          "eta": { "raw": null, "display": "—", "unit": "seconds", "availability": "unavailable" },
+          "etaImprovement": { "raw": null, "display": "—", "unit": "seconds", "availability": "not-applicable" },
+          "reserveAfter": { "raw": "8.7", "display": "8.7×", "unit": "ratio", "availability": "available" },
+          "reserveRequired": { "raw": "2", "display": "2×", "unit": "ratio", "availability": "available" },
+          "reserveRecovery": { "raw": null, "display": "—", "unit": "seconds", "availability": "not-applicable" }
+        },
+        "authority": { "allowed": true, "source": "whole-economy-coordinator.v2", "confidence": "high", "gatesPassed": ["execution-mode-enabled", "winner-safe"], "gatesFailed": [], "revalidation": "passed", "fallbackPlanner": null, "fallbackReason": null },
+        "execution": { "status": "completed", "matchedSelection": true, "resultText": "Bought Hive Neuron × 60 Qa", "executedFingerprint": "unit:hiveneuron:base:60Qa" },
+        "blocker": null
+      },
+      "lanes": [
+        { "id": "engine", "label": "Larva / Engine", "decision": "hold", "candidate": "Hive Empress", "reason": "Engine reserve is rebuilding.", "blockers": ["reserve"], "current": { "raw": "26.40", "display": "26.40 Oc", "unit": "larvae", "availability": "formatted-only" }, "rate": { "raw": null, "display": "26.40 Oc/s", "unit": "larvae/second", "availability": "formatted-only" }, "target": { "raw": "2.31", "display": "2.31 QDc", "unit": "larvae", "availability": "formatted-only" }, "progressPercent": 74, "nextMilestone": "Hive Empress" },
+        { "id": "energy", "label": "Energy", "decision": "observe", "candidate": "Nexus protection", "reason": "Energy reserve remains protected.", "blockers": [], "current": { "raw": "8.14B", "display": "8.14B", "unit": "energy", "availability": "formatted-only" }, "rate": { "raw": null, "display": "—", "unit": "energy/second", "availability": "unavailable" }, "target": { "raw": null, "display": "Nexus protected", "unit": null, "availability": "formatted-only" }, "progressPercent": 81, "nextMilestone": "Nexus target" },
+        { "id": "meat", "label": "Meat Chain", "decision": "buy", "candidate": "Hive Neuron", "reason": "Selected whole-economy winner.", "blockers": [], "current": { "raw": null, "display": "92.2 T/s", "unit": "meat/second", "availability": "formatted-only" }, "rate": { "raw": null, "display": "92.2 T/s", "unit": "meat/second", "availability": "formatted-only" }, "target": { "raw": "26.40", "display": "26.40 Oc", "unit": "meat", "availability": "formatted-only" }, "progressPercent": 68, "nextMilestone": "Neural Cluster" },
+        { "id": "territory", "label": "Territory", "decision": "hold", "candidate": "Expansion", "reason": "Save-window is active.", "blockers": ["protected-resource"], "current": { "raw": "1.24", "display": "1.24 Udc", "unit": "territory", "availability": "formatted-only" }, "rate": { "raw": null, "display": "1.24 Udc/s", "unit": "territory/second", "availability": "formatted-only" }, "target": { "raw": null, "display": "Expansion in 4m 22s", "unit": null, "availability": "formatted-only" }, "progressPercent": 42, "nextMilestone": "Expansion" },
+        { "id": "clone", "label": "Clone Prep", "decision": "observe", "candidate": null, "reason": "No clone action selected.", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "not-applicable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "ability", "label": "Abilities", "decision": "hold", "candidate": "House of Mirrors", "reason": "Auto-cast is disabled.", "blockers": ["ability-disabled"], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "not-applicable" }, "target": { "raw": null, "display": "Advisor only", "unit": null, "availability": "formatted-only" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "twin", "label": "Twin / Upgrades", "decision": "hold", "candidate": "Twin Hive Neuron", "reason": "Threshold not reached.", "blockers": ["threshold"], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "not-applicable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": "Twin threshold" }
+      ],
+      "safety": { "autoCastAbilities": false, "autoAscend": false, "energySupportBrokerAllowAutoCast": false, "nexusProtection": "protected", "protectedResources": ["energy"], "strongestSeverity": "info" },
+      "availability": { "missing": ["strategy.phase.id", "strategy.goal.id"], "formattedOnly": [], "errors": [] }
+    },
+    {
+      "fixtureId": "advisor-hold",
+      "generatedAt": "2026-07-13T20:38:00.100Z",
+      "source": { "scriptVersion": "0.14.1", "strategyTimestamp": "2026-07-13T20:38:00.000Z", "cycleId": "cycle-1043", "sourceKind": "live-browser", "freshness": "fresh", "ageMs": 100, "staleAfterMs": 5000 },
+      "bot": { "enabled": true, "mode": "advisor", "statusText": "Smart: 0/1 main actions, 0 side-tasks", "runEverySeconds": 1 },
+      "strategy": { "phase": { "id": null, "label": "Nexus 5 preparation" }, "goal": { "id": null, "label": "Protect Energy for Nexus 5" }, "wholeEconomyWinner": { "domain": null, "actionText": null }, "activeSpeaker": "Beetle Magus", "protectedResources": ["energy"] },
+      "decision": {
+        "decisionId": "decision-1043",
+        "disposition": "hold",
+        "recommendation": null,
+        "selection": null,
+        "reason": "Energy is protected for Nexus 5.",
+        "target": "Nexus 5",
+        "economics": {
+          "payback": { "raw": null, "display": "—", "unit": "seconds", "availability": "unavailable" },
+          "eta": { "raw": 262, "display": "4m 22s", "unit": "seconds", "availability": "available" },
+          "etaImprovement": { "raw": null, "display": "—", "unit": "seconds", "availability": "unavailable" },
+          "reserveAfter": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" },
+          "reserveRequired": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" },
+          "reserveRecovery": { "raw": null, "display": "—", "unit": "seconds", "availability": "unavailable" }
+        },
+        "authority": { "allowed": false, "source": "whole-economy-coordinator.v2", "confidence": "unknown", "gatesPassed": [], "gatesFailed": ["advisor-only"], "revalidation": "not-run", "fallbackPlanner": null, "fallbackReason": "Advisor mode cannot execute." },
+        "execution": { "status": "not-attempted", "matchedSelection": null, "resultText": null, "executedFingerprint": null },
+        "blocker": { "code": "protected-resource", "text": "Energy protected for Nexus 5", "severity": "warning" }
+      },
+      "lanes": [
+        { "id": "engine", "label": "Larva / Engine", "decision": "hold", "candidate": "Expansion", "reason": "Territory is protected for the engine milestone.", "blockers": ["protected-resource"], "current": { "raw": null, "display": "—", "unit": "larvae", "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": "larvae/second", "availability": "unavailable" }, "target": { "raw": null, "display": "Expansion", "unit": null, "availability": "formatted-only" }, "progressPercent": null, "nextMilestone": "Expansion" },
+        { "id": "energy", "label": "Energy", "decision": "hold", "candidate": "Nexus 5", "reason": "Energy is protected for Nexus 5.", "blockers": ["protected-resource"], "current": { "raw": null, "display": "—", "unit": "energy", "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": "energy/second", "availability": "unavailable" }, "target": { "raw": null, "display": "Nexus 5", "unit": null, "availability": "formatted-only" }, "progressPercent": null, "nextMilestone": "Nexus 5" },
+        { "id": "meat", "label": "Meat Chain", "decision": "hold", "candidate": null, "reason": "No safe meat action passed current guards.", "blockers": ["protected-resource"], "current": { "raw": null, "display": "—", "unit": "meat", "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": "meat/second", "availability": "unavailable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "territory", "label": "Territory", "decision": "hold", "candidate": null, "reason": "No territory spend during the save-window.", "blockers": ["protected-resource"], "current": { "raw": null, "display": "—", "unit": "territory", "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": "territory/second", "availability": "unavailable" }, "target": { "raw": null, "display": "Expansion", "unit": null, "availability": "formatted-only" }, "progressPercent": null, "nextMilestone": "Expansion" },
+        { "id": "clone", "label": "Clone Prep", "decision": "observe", "candidate": null, "reason": "No clone action selected.", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "not-applicable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "ability", "label": "Abilities", "decision": "hold", "candidate": null, "reason": "Advisor mode and auto-cast disabled.", "blockers": ["ability-disabled"], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "not-applicable" }, "target": { "raw": null, "display": "Advisor only", "unit": null, "availability": "formatted-only" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "twin", "label": "Twin / Upgrades", "decision": "observe", "candidate": null, "reason": "No upgrade candidate emitted.", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "not-applicable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null }
+      ],
+      "safety": { "autoCastAbilities": false, "autoAscend": false, "energySupportBrokerAllowAutoCast": false, "nexusProtection": "protected", "protectedResources": ["energy"], "strongestSeverity": "warning" },
+      "availability": { "missing": ["strategy.phase.id", "strategy.goal.id"], "formattedOnly": [], "errors": [] }
+    },
+    {
+      "fixtureId": "stale-unavailable",
+      "generatedAt": "2026-07-13T20:39:20.000Z",
+      "source": { "scriptVersion": "0.14.1", "strategyTimestamp": "2026-07-13T20:39:00.000Z", "cycleId": null, "sourceKind": "live-browser", "freshness": "stale", "ageMs": 20000, "staleAfterMs": 5000 },
+      "bot": { "enabled": true, "mode": "autobuyer", "statusText": "Waiting for fresh game state", "runEverySeconds": 1 },
+      "strategy": { "phase": { "id": null, "label": "Unavailable" }, "goal": { "id": null, "label": "Unavailable" }, "wholeEconomyWinner": { "domain": null, "actionText": null }, "activeSpeaker": null, "protectedResources": null },
+      "decision": { "decisionId": null, "disposition": "unavailable", "recommendation": null, "selection": null, "reason": "Strategy data is stale.", "target": null, "economics": { "payback": { "raw": null, "display": "—", "unit": "seconds", "availability": "unavailable" }, "eta": { "raw": null, "display": "—", "unit": "seconds", "availability": "unavailable" }, "etaImprovement": { "raw": null, "display": "—", "unit": "seconds", "availability": "unavailable" }, "reserveAfter": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "reserveRequired": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "reserveRecovery": { "raw": null, "display": "—", "unit": "seconds", "availability": "unavailable" } }, "authority": { "allowed": false, "source": null, "confidence": "unknown", "gatesPassed": [], "gatesFailed": [], "revalidation": "unknown", "fallbackPlanner": null, "fallbackReason": null }, "execution": { "status": "unknown", "matchedSelection": null, "resultText": null, "executedFingerprint": null }, "blocker": { "code": "stale-data", "text": "Last strategy snapshot is older than the UI freshness threshold.", "severity": "error" } },
+      "lanes": [
+        { "id": "engine", "label": "Larva / Engine", "decision": "unavailable", "candidate": null, "reason": "Stale data", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "energy", "label": "Energy", "decision": "unavailable", "candidate": null, "reason": "Stale data", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "meat", "label": "Meat Chain", "decision": "unavailable", "candidate": null, "reason": "Stale data", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "territory", "label": "Territory", "decision": "unavailable", "candidate": null, "reason": "Stale data", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "clone", "label": "Clone Prep", "decision": "unavailable", "candidate": null, "reason": "Stale data", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "ability", "label": "Abilities", "decision": "unavailable", "candidate": null, "reason": "Stale data", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null },
+        { "id": "twin", "label": "Twin / Upgrades", "decision": "unavailable", "candidate": null, "reason": "Stale data", "blockers": [], "current": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "rate": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "target": { "raw": null, "display": "—", "unit": null, "availability": "unavailable" }, "progressPercent": null, "nextMilestone": null }
+      ],
+      "safety": { "autoCastAbilities": false, "autoAscend": false, "energySupportBrokerAllowAutoCast": false, "nexusProtection": "unknown", "protectedResources": null, "strongestSeverity": "error" },
+      "availability": { "missing": ["decision", "lanes", "resources"], "formattedOnly": [], "errors": [] }
+    }
+  ]
+}

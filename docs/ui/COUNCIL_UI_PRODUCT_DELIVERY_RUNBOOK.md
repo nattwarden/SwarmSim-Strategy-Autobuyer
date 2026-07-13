@@ -28,7 +28,7 @@ Goal: establish one visual target and one delivery system.
 - [x] Create BOOK-06 as the durable UI/experience vision
 - [x] Separate current status, runbook, and data mapping
 - [x] Define Council, Chronicle, Compact, and Matrix surfaces
-- [ ] Commit the documentation package without unrelated implementation files
+- [x] Commit the documentation package without unrelated implementation files
 
 Exit gate: a future agent can identify the target, boundaries, active milestone,
 and exact next action without relying on chat history.
@@ -37,13 +37,13 @@ and exact next action without relying on chat history.
 
 Goal: make every visible value traceable before layout implementation.
 
-- [ ] Audit current runtime fields against `COUNCIL_UI_DATA_MAP.md`
-- [ ] Define a versioned `CouncilUiState` contract
-- [ ] Define a versioned `CouncilTimelineEvent` contract
-- [ ] Specify unavailable, stale, loading, and error states
-- [ ] Specify display formatting without losing source precision
-- [ ] Add deterministic state fixtures for major phases and safety states
-- [ ] Confirm no UI field requires new strategy behavior
+- [x] Audit current runtime fields against `COUNCIL_UI_DATA_MAP.md`
+- [x] Define a versioned `CouncilUiState` contract
+- [x] Define a versioned `CouncilTimelineEvent` contract
+- [x] Specify unavailable, stale, loading, and error states
+- [x] Specify display formatting without losing source precision
+- [x] Add deterministic state fixtures for major phases and safety states
+- [x] Confirm no UI field requires new strategy behavior
 
 Exit gate: the chamber and timeline can be rendered entirely from documented,
 deterministic fixture data.
