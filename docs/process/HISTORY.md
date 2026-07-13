@@ -19,6 +19,10 @@ docs/release-notes/
 
 ## Version notes
 
+- 6.0.0: Added the six-domain strategic coordinator runtime slice, exposing one
+  immutable decision identity, coordinated Council/Inspector state, advisor-only
+  alternatives, bounded reversible execution gating, effect audits, shared-cost
+  conflict reporting, and a public strategicCoordinator API.
 - 5.0.1: Fixed live Ascension Energy ETA compatibility, surfaced structured M4
   and M5 advisor results in Council/Matrix, and clarified fallback status and
   Avoid guidance. All irreversible authority remains disabled by default.

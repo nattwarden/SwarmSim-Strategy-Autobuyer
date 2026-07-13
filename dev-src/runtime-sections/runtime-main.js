@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "5.0.1";
+  const AUTOBUYER_VERSION = "6.0.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -46,6 +46,57 @@
       }
     }).filter(Boolean).join(";");
   }
+
+  const STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION = "strategic-domain-outcome.v1";
+  const STRATEGIC_EFFECT_SCHEMA_VERSION = "strategic-effect.v1";
+  const SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION = "six-domain-strategic-coordinator.v1";
+  const SIX_DOMAIN_DECISION_HORIZONS = [
+    { horizonId: "short", horizonSeconds: 300 },
+    { horizonId: "medium", horizonSeconds: 1800 },
+    { horizonId: "long", horizonSeconds: 7200 },
+  ];
+  const SIX_DOMAIN_MANIFEST = {
+    schemaVersion: "m6-domain-contract-manifest.v1",
+    targetVersion: "6.0.0",
+    status: "runtime-coordinator",
+    baseline: {
+      mainIntegrationImplementationSha: "a4221ea4ae741d1dc86e09bbafef616200f87d0c",
+      mainIntegrationEvidenceSha: "53de2f8666f27da09f3fd743351e282e5193b432",
+      currentRuntimeVersion: "5.0.1",
+    },
+    schemas: {
+      domainOutcome: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
+      effect: STRATEGIC_EFFECT_SCHEMA_VERSION,
+      coordinator: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
+    },
+    domains: [
+      { domainId: "MEAT", label: "Meat chain", sourceContract: "whole-economy-outcome.v2", authorityClass: "BOUNDED_REVERSIBLE", allowedExecutionKeys: ["meat"] },
+      { domainId: "LARVA_ENGINE", label: "Larva/Engine", sourceContract: "whole-economy-outcome.v2", authorityClass: "BOUNDED_REVERSIBLE", allowedExecutionKeys: ["engine"] },
+      { domainId: "ARMY_TERRITORY", label: "Army/Territory", sourceContract: "whole-economy-outcome.v2", authorityClass: "BOUNDED_REVERSIBLE", allowedExecutionKeys: ["territory"] },
+      { domainId: "ENERGY_PRODUCTION", label: "Energy production", sourceContract: "whole-economy-outcome.v2", authorityClass: "BOUNDED_REVERSIBLE", allowedExecutionKeys: ["energy"], executionRestriction: "accepted Nexus target or bounded Lepidoptera production only" },
+      { domainId: "ENERGY_ABILITIES", label: "Energy abilities", sourceContract: "energy-ability-timing-advisor.v1", authorityClass: "ADVISOR_ONLY", allowedExecutionKeys: [], supportedActionIds: ["WAIT", "CLONE_LARVAE", "HOUSE_OF_MIRRORS", "LARVA_RUSH", "MEAT_RUSH", "TERRITORY_RUSH"], unsupportedActionIds: ["SWARMWARP"] },
+      { domainId: "ASCENSION_MUTAGEN", label: "Ascension/Mutagen", sourceContract: "ascension-mutagen-advisor.v1", authorityClass: "ADVISOR_ONLY", allowedExecutionKeys: [], supportedActionIds: ["CONTINUE_RUN", "ASCEND_NOW", "KEEP_UNALLOCATED", "HATCHERY_MUTATION"] },
+    ],
+    sharedIdentityFields: ["snapshotId", "snapshotHash", "decisionCycleId", "activeMilestone", "activeTarget", "horizonId", "horizonSeconds", "scriptVersion"],
+    allowedComparisonBases: ["milestone-eta-seconds", "same-unit-milestone-progress-delta", "versioned-source-or-runtime-derived-common-value"],
+    forbiddenComparisonInputs: ["raw-lane-score", "m4-ability-score", "priority-bonus", "urgency-bonus", "incompatible-local-roi", "scenario-name", "expected-winner"],
+    allowedExecutionKeys: ["meat", "engine", "territory", "energy"],
+    forbiddenExecutionClasses: ["ENERGY_ABILITIES", "ASCENSION_MUTAGEN", "WAIT", "UNCERTAIN"],
+    effectCausalRoles: ["DIRECT", "INTERMEDIATE", "FINAL", "OPPORTUNITY_COST"],
+    requiredMechanics: [
+      { mechanicId: "M6-SIX-DOMAIN-IDENTITY", domainId: "ALL", productionContract: "six-domain-strategic-coordinator.v1", invariants: ["exactly-six-domains", "shared-snapshot", "shared-cycle", "shared-milestone-target-horizon"] },
+      { mechanicId: "M6-HARD-SAFETY", domainId: "ALL", productionContract: "strategic-domain-outcome.v1.safety", invariants: ["safety-before-rank", "blocked-cannot-win", "safety-not-score"] },
+      { mechanicId: "M6-COMPARABILITY", domainId: "ALL", productionContract: "strategic-domain-outcome.v1.comparability", invariants: ["shared-basis-only", "missing-is-not-zero", "local-scores-forbidden"] },
+      { mechanicId: "M6-ABILITY-AUTHORITY", domainId: "ENERGY_ABILITIES", productionContract: "energy-ability-timing-advisor.v1", invariants: ["advisor-only", "no-cast", "no-purchase-fallback-when-selected"] },
+      { mechanicId: "M6-ASCENSION-AUTHORITY", domainId: "ASCENSION_MUTAGEN", productionContract: "ascension-mutagen-advisor.v1", invariants: ["advisor-only", "no-ascend", "no-mutagen-spend", "no-purchase-fallback-when-selected"] },
+      { mechanicId: "M6-DOUBLE-COUNT-AUDIT", domainId: "ALL", productionContract: "strategic-effect.v1", invariants: ["unique-effect-id", "one-final-causal-effect", "compatible-units", "no-causal-cycle"] },
+      { mechanicId: "M6-BOUNDED-EXECUTION", domainId: "REVERSIBLE_PURCHASES", productionContract: "whole-economy-execution-decision.v1", invariants: ["existing-keys-only", "exact-fingerprint", "immediate-revalidation", "bounded-amount"] },
+      { mechanicId: "M6-CYCLE-CONSISTENCY", domainId: "ALL", productionContract: "six-domain-strategic-coordinator.v1.executionPlan", invariants: ["one-main-action-per-decision", "new-cycle-after-action", "no-stale-authority"] },
+      { mechanicId: "M6-NON-MUTATION", domainId: "ALL", productionContract: "six-domain-strategic-coordinator.v1", invariants: ["input-unchanged", "live-state-unchanged-by-evaluator"] },
+      { mechanicId: "M6-OBSERVABILITY", domainId: "ALL", productionContract: "Council/Inspector/export/API", invariants: ["winner-visible", "alternatives-visible", "blockers-visible", "confidence-visible", "reconsideration-visible", "authority-visible"] },
+    ],
+    acceptanceGroups: ["six-domain-identity", "meat-winner", "larva-engine-winner", "army-territory-winner", "energy-production-winner", "energy-ability-winner-advisor-only", "ascension-winner-advisor-only", "hard-safety-outranks-value", "comparability-and-uncertainty", "effect-ledger-and-resource-conflicts", "bounded-execution-and-cycle-drift", "observability-coverage-and-safety-regression"],
+  };
 
   const DEFAULT_CONFIG = {
     enabled: true,
@@ -484,6 +535,8 @@
   let laneCandidates = [];
   let unifiedPurchaseProposalState = null;
   let wholeEconomyExecutionDecisionState = null;
+  let sixDomainStrategicCoordinatorState = null;
+  let sixDomainExecutionPlanState = null;
   let runHistory = [];
   let liveDiagnostics = null;
   let lastLaboratorySnapshot = null;
@@ -3021,10 +3074,46 @@ function getDisplayName(item) {
     const councilWinningLane = selectedMainAction?.lane || "none";
     const councilWinningCandidate = selectedMainAction?.candidate || "none";
     const energySupport = buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction);
+    const abilityTimingSnapshot = captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction);
+    const abilityTimingAdvisor = evaluateEnergyAbilityTimingSnapshot(abilityTimingSnapshot);
     const ascensionMutagenSnapshot = captureAscensionMutagenSnapshot(game, { smartFocus, selectedMainAction, goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus) });
     const ascensionMutagenAdvisor = evaluateAscensionMutagenSnapshot(ascensionMutagenSnapshot);
     const ascensionAdvisorMutagenPlan = laboratoryCloneJson(ascensionMutagenAdvisor?.mutagenPlan || null);
     const ascensionNowBranch = (ascensionMutagenAdvisor?.branches || []).find((branch) => branch?.actionId === "ASCEND_NOW") || null;
+    const sixDomainCoordinatorSnapshot = captureSixDomainDecisionSnapshot(game, {
+      smartFocus,
+      selectedMainAction,
+      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
+      activeMilestone: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
+      activeTarget: selectedMainAction?.target || smartFocus || "current strategic target",
+      purchaseProposalState: unifiedPurchaseProposalState || {
+        proposals: laneCandidates.slice(),
+        evaluation: buildUnifiedPurchaseEvaluator(laneCandidates, selectedMainAction),
+      },
+      purchaseEvaluation: purchaseEvaluator,
+      abilitySnapshot: abilityTimingAdvisor,
+      ascensionSnapshot: ascensionMutagenAdvisor,
+      selectedHorizonId: "medium",
+      selectedHorizonSeconds: 1800,
+    });
+    const strategicCoordinator = sixDomainStrategicCoordinatorState || evaluateSixDomainStrategicCoordinator(sixDomainCoordinatorSnapshot);
+    const strategicCoordinatorExecutionPlan = sixDomainExecutionPlanState || buildSixDomainExecutionPlan(strategicCoordinator, unifiedPurchaseProposalState || { proposals: laneCandidates.slice(), evaluation: buildUnifiedPurchaseEvaluator(laneCandidates, selectedMainAction) });
+    const councilUiState = {
+      schemaVersion: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
+      activeMilestone: strategicCoordinator.activeMilestone,
+      activeTarget: strategicCoordinator.activeTarget,
+      selectedHorizonId: strategicCoordinator.selectedHorizonId,
+      selectedHorizonSeconds: strategicCoordinator.selectedHorizonSeconds,
+      recommendation: strategicCoordinator.recommendation,
+      recommendedActionId: strategicCoordinator.recommendedActionId,
+      winner: strategicCoordinator.winner,
+      importantAlternatives: strategicCoordinator.importantAlternatives,
+      blockers: strategicCoordinator.blockers,
+      confidence: strategicCoordinator.confidence,
+      reconsiderCondition: strategicCoordinator.reconsiderCondition,
+      authorityState: strategicCoordinator.authorityState,
+      coverage: strategicCoordinator.coverage,
+    };
     const waitingSummary = getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries);
     const upcomingMilestone = getNextLikelyBuy(game, engine, protectedResources, candidateSummary);
     const momentum = buildMomentumSnapshot({
@@ -3225,6 +3314,28 @@ function getDisplayName(item) {
       ascensionAdvisorNewLarvaPerSecond: ascensionNowBranch?.newLarvaPerSecondAfterAscend || ascensionMutagenSnapshot?.mutagen?.newLarvaPerSecondAfterAscend || "0",
       ascensionAdvisorMutagenPlan,
       ascensionAdvisorExecutionAuthority: ascensionMutagenAdvisor?.executionAuthority === true ? "enabled" : "advisor-only",
+      abilityTimingAdvisor,
+      abilityTimingAdvisorSchema: abilityTimingAdvisor?.schemaVersion || "energy-ability-timing-advisor.v1",
+      abilityTimingAdvisorRecommendation: abilityTimingAdvisor?.recommendation || "SAVE",
+      abilityTimingAdvisorRecommendedActionId: abilityTimingAdvisor?.recommendedActionId || "WAIT",
+      abilityTimingAdvisorReason: abilityTimingAdvisor?.reason || "none",
+      abilityTimingAdvisorConfidence: abilityTimingAdvisor?.confidence || "low",
+      abilityTimingAdvisorReconsiderCondition: abilityTimingAdvisor?.reconsiderCondition || "none",
+      strategicCoordinator,
+      strategicCoordinatorSchema: strategicCoordinator?.schemaVersion || SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
+      strategicCoordinatorRecommendation: strategicCoordinator?.recommendation || "UNCERTAIN",
+      strategicCoordinatorRecommendedActionId: strategicCoordinator?.recommendedActionId || "WAIT",
+      strategicCoordinatorReason: strategicCoordinator?.reason || "none",
+      strategicCoordinatorReconsiderCondition: strategicCoordinator?.reconsiderCondition || "none",
+      strategicCoordinatorConfidence: strategicCoordinator?.confidence || "low",
+      strategicCoordinatorExecutionAuthority: strategicCoordinator?.executionAuthority === true ? "true" : "false",
+      strategicCoordinatorWinner: strategicCoordinator?.winner || null,
+      strategicCoordinatorAlternatives: strategicCoordinator?.importantAlternatives || [],
+      strategicCoordinatorSharedResourceConflicts: strategicCoordinator?.sharedResourceConflicts || [],
+      strategicCoordinatorCoverage: strategicCoordinator?.coverage || [],
+      strategicCoordinatorManifest: strategicCoordinator?.manifest || SIX_DOMAIN_MANIFEST,
+      strategicCoordinatorExecutionPlan,
+      councilUiState,
       ...momentum,
       momentumPrimaryPrioritySource: momentum.momentumPrimaryPrioritySource || "default",
       momentumPrimarySelectionReason: momentum.momentumPrimarySelectionReason || "default lane priority",
@@ -4380,6 +4491,690 @@ function getDisplayName(item) {
     });
   }
 
+  function sixDomainInfo(domainId) {
+    switch (String(domainId || "")) {
+    case "MEAT":
+      return { domainId: "MEAT", domainLabel: "Meat chain", lane: "Meat", authorityClass: "BOUNDED_REVERSIBLE", executionKey: "meat" };
+    case "LARVA_ENGINE":
+      return { domainId: "LARVA_ENGINE", domainLabel: "Larva/Engine", lane: "Engine", authorityClass: "BOUNDED_REVERSIBLE", executionKey: "engine" };
+    case "ARMY_TERRITORY":
+      return { domainId: "ARMY_TERRITORY", domainLabel: "Army/Territory", lane: "Territory", authorityClass: "BOUNDED_REVERSIBLE", executionKey: "territory" };
+    case "ENERGY_PRODUCTION":
+      return { domainId: "ENERGY_PRODUCTION", domainLabel: "Energy production", lane: "Energy", authorityClass: "BOUNDED_REVERSIBLE", executionKey: "energy" };
+    case "ENERGY_ABILITIES":
+      return { domainId: "ENERGY_ABILITIES", domainLabel: "Energy abilities", lane: "Energy abilities", authorityClass: "ADVISOR_ONLY", executionKey: null };
+    case "ASCENSION_MUTAGEN":
+      return { domainId: "ASCENSION_MUTAGEN", domainLabel: "Ascension/Mutagen", lane: "Ascension/Mutagen", authorityClass: "ADVISOR_ONLY", executionKey: null };
+    default:
+      return { domainId: String(domainId || "UNSUPPORTED"), domainLabel: String(domainId || "UNSUPPORTED"), lane: "unknown", authorityClass: "UNSUPPORTED", executionKey: null };
+    }
+  }
+
+  function sixDomainHorizonById(horizonId) {
+    return SIX_DOMAIN_DECISION_HORIZONS.find((row) => row.horizonId === horizonId) || SIX_DOMAIN_DECISION_HORIZONS[1];
+  }
+
+  function sixDomainComparableValue(outcome) {
+    const etaImprovement = sixDomainHasFiniteMetric(outcome?.outcome?.milestoneEtaImprovementSeconds)
+      ? Number(outcome?.outcome?.milestoneEtaImprovementSeconds)
+      : Number(outcome?.outcome?.etaImprovementSeconds);
+    if (Number.isFinite(etaImprovement)) return { basis: "milestone-eta-seconds", value: etaImprovement, unit: "seconds" };
+    const progressDelta = sixDomainHasFiniteMetric(outcome?.outcome?.projectedMilestoneProgressDelta)
+      ? Number(outcome?.outcome?.projectedMilestoneProgressDelta)
+      : NaN;
+    if (Number.isFinite(progressDelta)) return { basis: "same-unit-milestone-progress-delta", value: progressDelta, unit: "progress-delta" };
+    const sharedValue = sixDomainHasFiniteMetric(outcome?.comparability?.commonValue)
+      ? Number(outcome?.comparability?.commonValue)
+      : NaN;
+    if (Number.isFinite(sharedValue)) return { basis: "versioned-source-or-runtime-derived-common-value", value: sharedValue, unit: String(outcome?.comparability?.metricUnit || "value") };
+    return { basis: null, value: null, unit: null };
+  }
+
+  function sixDomainHasFiniteMetric(value) {
+    return value !== null && value !== undefined && Number.isFinite(Number(value));
+  }
+
+  function buildStrategicEffect(effectId, sourceActionId, sourceDomainId, causalRole, metric, unit, horizonId, delta, includedInRanking, derivedFromEffectIds = [], provenance = "runtime-derived") {
+    return {
+      schemaVersion: STRATEGIC_EFFECT_SCHEMA_VERSION,
+      effectId,
+      sourceActionId,
+      sourceDomainId,
+      causalRole,
+      metric,
+      unit,
+      horizonId,
+      delta: String(delta),
+      includedInRanking: !!includedInRanking,
+      derivedFromEffectIds: Array.isArray(derivedFromEffectIds) ? derivedFromEffectIds.slice() : [],
+      provenance,
+    };
+  }
+
+  function auditStrategicEffects(domainOutcome) {
+    const effects = Array.isArray(domainOutcome?.outcome?.effects) ? domainOutcome.outcome.effects.slice() : [];
+    const seenIds = new Set();
+    const duplicateIds = [];
+    const effectMap = new Map();
+    let causalCycleDetected = false;
+
+    for (const effect of effects) effectMap.set(String(effect?.effectId || ""), effect);
+
+    const detectCycle = (effect, visiting = new Set()) => {
+      const effectId = String(effect?.effectId || "");
+      if (!effectId) return false;
+      if (visiting.has(effectId)) return true;
+      visiting.add(effectId);
+      for (const parentId of effect?.derivedFromEffectIds || []) {
+        const parent = effectMap.get(String(parentId || ""));
+        if (parent && detectCycle(parent, visiting)) return true;
+      }
+      visiting.delete(effectId);
+      return false;
+    };
+
+    const includedFinalKeys = new Set();
+    let includedFinalEffectCount = 0;
+    for (const effect of effects) {
+      const effectId = String(effect?.effectId || "");
+      if (!effectId) continue;
+      if (seenIds.has(effectId)) duplicateIds.push(effectId);
+      seenIds.add(effectId);
+      if (effect?.includedInRanking && String(effect?.causalRole || "") === "FINAL") {
+        includedFinalEffectCount += 1;
+        const finalKey = [effect?.sourceActionId || "", effect?.metric || "", effect?.unit || "", effect?.horizonId || ""].join("|");
+        if (includedFinalKeys.has(finalKey)) duplicateIds.push(effectId);
+        includedFinalKeys.add(finalKey);
+      }
+      if (detectCycle(effect)) causalCycleDetected = true;
+    }
+
+    return laboratoryDeepFreeze({
+      schemaVersion: STRATEGIC_EFFECT_SCHEMA_VERSION,
+      status: duplicateIds.length || causalCycleDetected ? "FAIL" : "PASS",
+      duplicateEffectIds: Array.from(new Set(duplicateIds)),
+      causalCycleDetected,
+      includedFinalEffectCount,
+      warnings: duplicateIds.length ? ["duplicate effect ids or final causal chain detected"] : (causalCycleDetected ? ["causal cycle detected"] : []),
+    });
+  }
+
+  function captureSixDomainDecisionSnapshot(game, strategyContext = {}) {
+    const evaluationRevision = Number(scenarioHarnessContext.evaluationRevision) || 0;
+    const selectedHorizon = sixDomainHorizonById(strategyContext.selectedHorizonId || strategyContext.horizonId || "medium");
+    const purchaseProposalState = strategyContext.purchaseProposalState || {
+      proposals: Array.isArray(strategyContext.purchaseRows) ? strategyContext.purchaseRows.slice() : (laneCandidates || []).slice(),
+      evaluation: strategyContext.purchaseEvaluation || buildUnifiedPurchaseEvaluator(Array.isArray(strategyContext.purchaseRows) ? strategyContext.purchaseRows : (laneCandidates || []), strategyContext.selectedMainAction || null),
+    };
+    const abilitySnapshot = strategyContext.abilitySnapshot || evaluateEnergyAbilityTimingSnapshot(
+      captureEnergyAbilityTimingSnapshot(game, strategyContext.smartFocus || "", strategyContext.selectedMainAction || null)
+    );
+    const ascensionSnapshot = strategyContext.ascensionSnapshot || evaluateAscensionMutagenSnapshot(
+      captureAscensionMutagenSnapshot(game, {
+        smartFocus: strategyContext.smartFocus || strategyContext.goal || "",
+        selectedMainAction: strategyContext.selectedMainAction || null,
+        goal: strategyContext.goal || strategyContext.smartFocus || "current strategic target",
+      })
+    );
+    const snapshotId = String(strategyContext.snapshotId || `M6-LIVE-${evaluationRevision + 1}`);
+    const decisionCycleId = String(strategyContext.decisionCycleId || `cycle-${evaluationRevision + 1}`);
+    const activeMilestone = String(strategyContext.activeMilestone || strategyContext.goal || strategyContext.smartFocus || "current strategic milestone");
+    const activeTarget = String(strategyContext.activeTarget || strategyContext.selectedMainAction?.target || strategyContext.smartFocus || "current strategic target");
+
+    return laboratoryDeepFreeze(laboratoryCloneJson({
+      schemaVersion: "six-domain-decision-snapshot.v1",
+      snapshotId,
+      snapshotHash: `sha256:${snapshotId}`,
+      decisionCycleId,
+      evaluationRevision: evaluationRevision + 1,
+      source: {
+        scriptVersion: SCRIPT_VERSION,
+        activeMilestone,
+        activeTarget,
+      },
+      horizonId: selectedHorizon.horizonId,
+      horizonSeconds: selectedHorizon.horizonSeconds,
+      horizons: SIX_DOMAIN_DECISION_HORIZONS.slice(),
+      purchaseProposalState,
+      abilitySnapshot,
+      ascensionSnapshot,
+      selectedMainAction: laboratoryCloneJson(strategyContext.selectedMainAction || null),
+      selectedComparisonBasis: strategyContext.selectedComparisonBasis || "milestone-eta-seconds",
+      sharedContext: laboratoryCloneJson(strategyContext.sharedContext || {}),
+      manifest: SIX_DOMAIN_MANIFEST,
+    }));
+  }
+
+  function adaptPurchaseDomainOutcome(domainId, purchaseRow, sharedContext = {}) {
+    const domain = sixDomainInfo(domainId);
+    const row = purchaseRow ? laboratoryCloneJson(purchaseRow) : null;
+    const safetyStatus = row ? (row.safeEligible ? "ALLOWED" : (row.blockers && row.blockers.length ? "BLOCKED" : "BLOCKED")) : "UNSUPPORTED";
+    const comparability = row ? sixDomainComparableValue({ outcome: row.sharedOutcome || {}, comparability: row.comparability || {}, sharedComparableValue: row.sharedComparableValue }) : { basis: null, value: null, unit: null };
+    const comparable = Number.isFinite(comparability.value);
+    const milestoneEtaImprovementSeconds = comparable && comparability.basis === "milestone-eta-seconds" ? comparability.value : null;
+    const projectedMilestoneProgressDelta = comparable && comparability.basis === "same-unit-milestone-progress-delta" ? comparability.value : null;
+    const commonValue = comparable && comparability.basis === "versioned-source-or-runtime-derived-common-value" ? comparability.value : null;
+    const missingConversions = comparable ? [] : [domain.domainLabel === "Energy abilities" ? "validated milestone-eta conversion for an ability branch" : domain.domainLabel === "Ascension/Mutagen" ? "validated recovery-to-horizon conversion for Ascension" : `shared outcome conversion for ${domain.domainLabel}`];
+    const actionId = row?.candidate || row?.actionId || domain.domainLabel;
+    const boundedAmount = normalizeBoundedAmountToken(row?.boundedAmount || row?.amount || row?.wouldBuyAmount || "1");
+    const action = row ? {
+      actionId: String(actionId || domain.domainLabel),
+      label: String(row.candidate || domain.domainLabel),
+      class: "PURCHASE",
+      amount: boundedAmount,
+      executionKey: row.executionKey || domain.executionKey,
+      executionId: row.executionId || row.candidate || "none",
+      executionKind: row.executionKind || (row.candidate && String(row.candidate).includes("Upgrade") ? "upgrade" : "unit"),
+      executionVariant: row.executionVariant || "base",
+      fingerprint: buildCoordinatorCandidateFingerprint({
+        lane: row.lane,
+        executionKey: row.executionKey || domain.executionKey,
+        candidate: row.candidate,
+        executionId: row.executionId || row.candidate || "none",
+        executionKind: row.executionKind || (row.candidate && String(row.candidate).includes("Upgrade") ? "upgrade" : "unit"),
+        executionVariant: row.executionVariant || "base",
+        target: row.target || row.candidate || "none",
+        boundedAmount,
+      }),
+    } : {
+      actionId: `UNSUPPORTED-${domain.domainId}`,
+      label: `Unsupported ${domain.domainLabel}`,
+      class: "UNSUPPORTED",
+      amount: "0",
+      executionKey: null,
+      executionId: "none",
+      executionKind: "none",
+      executionVariant: "base",
+      fingerprint: "none",
+    };
+    const effectIdBase = `${snapshotActionId(sharedContext, action.actionId)}:${domain.domainId}`;
+    const effectMetric = milestoneEtaImprovementSeconds !== null ? "milestoneEtaImprovementSeconds" : (projectedMilestoneProgressDelta !== null ? "projectedMilestoneProgressDelta" : "commonValue");
+    const effectValue = milestoneEtaImprovementSeconds !== null ? milestoneEtaImprovementSeconds : (projectedMilestoneProgressDelta !== null ? projectedMilestoneProgressDelta : (commonValue !== null ? commonValue : 0));
+    const effects = Array.isArray(row?.effects) && row.effects.length ? row.effects.map((effect) => laboratoryCloneJson(effect)) : [
+      buildStrategicEffect(`${effectIdBase}:direct`, action.actionId, domain.domainId, "DIRECT", effectMetric, comparability.unit || "value", sharedContext.horizonId || "medium", effectValue, false, [], domain.authorityClass === "ADVISOR_ONLY" ? "advisor-only" : "runtime-derived"),
+      buildStrategicEffect(`${effectIdBase}:final`, action.actionId, domain.domainId, "FINAL", effectMetric, comparability.unit || "value", sharedContext.horizonId || "medium", effectValue, comparable && safetyStatus === "ALLOWED" && domain.authorityClass === "BOUNDED_REVERSIBLE", [`${effectIdBase}:direct`], domain.authorityClass === "ADVISOR_ONLY" ? "advisor-only" : "runtime-derived"),
+    ];
+    return laboratoryDeepFreeze({
+      schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
+      snapshotId: sharedContext.snapshotId || "unknown",
+      snapshotHash: sharedContext.snapshotHash || "unknown",
+      decisionCycleId: sharedContext.decisionCycleId || "unknown",
+      sourceSchemaVersion: row?.schemaVersion || "unknown",
+      domainId: domain.domainId,
+      domainLabel: domain.domainLabel,
+      authorityClass: domain.authorityClass,
+      action,
+      context: {
+        activeMilestone: sharedContext.activeMilestone || "unknown",
+        activeTarget: sharedContext.activeTarget || "unknown",
+        horizonId: sharedContext.horizonId || "medium",
+        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
+      },
+      safety: {
+        status: safetyStatus,
+        executionClass: domain.authorityClass,
+        hardBlockers: row?.blockers ? row.blockers.slice() : [],
+        protectedResourcesTouched: row?.costResources ? row.costResources.slice() : [],
+      },
+      comparability: {
+        status: comparable ? "COMPARABLE" : "UNRANKED",
+        basis: comparable ? comparability.basis : null,
+        metricUnit: comparable ? comparability.unit : null,
+        commonValue: comparable ? commonValue : null,
+        missingConversions,
+      },
+      outcome: {
+        milestoneEtaBeforeSeconds: row?.sharedOutcome?.etaSeconds ?? null,
+        milestoneEtaAfterSeconds: row?.sharedOutcome?.etaSeconds !== null && row?.sharedOutcome?.etaSeconds !== undefined && comparable && milestoneEtaImprovementSeconds !== null ? Math.max(0, Number(row.sharedOutcome.etaSeconds) - Number(milestoneEtaImprovementSeconds)) : null,
+        milestoneEtaImprovementSeconds,
+        projectedMilestoneProgressDelta,
+        recoverySeconds: row?.sharedOutcome?.reserveRecoverySeconds ?? row?.sharedOutcome?.energyReserveRecoverySeconds ?? null,
+        paybackSeconds: row?.sharedOutcome?.paybackSeconds ?? null,
+        opportunityCost: row?.reason || "none",
+        resourceCosts: row?.costResources ? row.costResources.slice() : [],
+        effects,
+      },
+      evidence: {
+        confidence: row?.confidence || (domain.authorityClass === "ADVISOR_ONLY" ? "medium" : "low"),
+        status: row ? "runtime-derived" : "unsupported",
+        supportingFields: row ? Object.keys(row).slice(0, 12) : [],
+        warnings: row ? [] : ["missing adapter emitted unsupported outcome"],
+      },
+      reason: row?.reason || (row ? `${domain.domainLabel} captured from live state.` : `No adapter available for ${domain.domainLabel}.`),
+      reconsiderCondition: row?.reconsiderCondition || (comparable ? "Reconsider if the shared comparison basis changes." : `Reconsider when ${missingConversions[0] || "a shared conversion"} becomes available.`),
+    });
+  }
+
+  function adaptAbilityDomainOutcome(abilityAdvisor, sharedContext = {}) {
+    const advisor = laboratoryCloneJson(abilityAdvisor || {});
+    const selectedActionId = String(advisor?.recommendedActionId || advisor?.recommendedAction || "WAIT");
+    const selectedBranch = Array.isArray(advisor?.branches) ? advisor.branches.find((branch) => String(branch?.actionId || "") === selectedActionId) || advisor.branches[0] || null : null;
+    const excludedActionIds = Array.isArray(advisor?.excludedActionIds) ? advisor.excludedActionIds.map((id) => String(id || "")) : [];
+    const unsupported = selectedActionId === "SWARMWARP" || excludedActionIds.includes(selectedActionId);
+    const comparable = sixDomainHasFiniteMetric(advisor?.milestoneEtaImprovementSeconds) || sixDomainHasFiniteMetric(selectedBranch?.milestoneEtaImprovementSeconds) || sixDomainHasFiniteMetric(advisor?.sharedComparableValue);
+    const comparisonValue = sixDomainHasFiniteMetric(advisor?.milestoneEtaImprovementSeconds)
+      ? Number(advisor.milestoneEtaImprovementSeconds)
+      : (sixDomainHasFiniteMetric(selectedBranch?.milestoneEtaImprovementSeconds)
+        ? Number(selectedBranch.milestoneEtaImprovementSeconds)
+        : (sixDomainHasFiniteMetric(advisor?.sharedComparableValue) ? Number(advisor.sharedComparableValue) : null));
+    const action = {
+      actionId: selectedActionId,
+      label: String(advisor?.recommendedLabel || selectedBranch?.label || selectedActionId),
+      class: unsupported ? "UNSUPPORTED" : (selectedActionId === "WAIT" ? "WAIT" : "ADVISOR_ONLY"),
+      amount: "1",
+      executionKey: null,
+      executionId: selectedActionId,
+      executionKind: "advisor",
+      executionVariant: "advisor-only",
+      fingerprint: `advisor:${selectedActionId}`,
+    };
+    const effects = Array.isArray(advisor?.effects) && advisor.effects.length ? advisor.effects.map((effect) => laboratoryCloneJson(effect)) : [
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ENERGY_ABILITIES", "DIRECT", comparable ? "milestoneEtaImprovementSeconds" : "missingConversion", comparable ? "seconds" : "value", sharedContext.horizonId || "medium", comparable ? comparisonValue : 0, false, [], "runtime-derived"),
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ENERGY_ABILITIES", "FINAL", comparable ? "milestoneEtaImprovementSeconds" : "missingConversion", comparable ? "seconds" : "value", sharedContext.horizonId || "medium", comparable ? comparisonValue : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], "runtime-derived"),
+    ];
+    return laboratoryDeepFreeze({
+      schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
+      snapshotId: sharedContext.snapshotId || "unknown",
+      snapshotHash: sharedContext.snapshotHash || "unknown",
+      decisionCycleId: sharedContext.decisionCycleId || "unknown",
+      sourceSchemaVersion: advisor?.schemaVersion || "energy-ability-timing-advisor.v1",
+      domainId: "ENERGY_ABILITIES",
+      domainLabel: "Energy abilities",
+      authorityClass: "ADVISOR_ONLY",
+      action,
+      context: {
+        activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone || "unknown",
+        activeTarget: sharedContext.activeTarget || advisor?.activeTarget || "unknown",
+        horizonId: sharedContext.horizonId || "medium",
+        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
+      },
+      safety: {
+        status: unsupported ? "UNSUPPORTED" : "ADVISOR_ONLY",
+        executionClass: unsupported ? "UNSUPPORTED" : "ADVISOR_ONLY",
+        hardBlockers: [],
+        protectedResourcesTouched: [],
+      },
+      comparability: {
+        status: comparable && !unsupported ? "COMPARABLE" : "UNRANKED",
+        basis: comparable && !unsupported ? (sixDomainHasFiniteMetric(advisor?.milestoneEtaImprovementSeconds) || sixDomainHasFiniteMetric(selectedBranch?.milestoneEtaImprovementSeconds) ? "milestone-eta-seconds" : "versioned-source-or-runtime-derived-common-value") : null,
+        metricUnit: comparable && !unsupported ? "seconds" : null,
+        commonValue: comparable ? comparisonValue : null,
+        missingConversions: comparable && !unsupported ? [] : [unsupported ? "Swarmwarp is unsupported" : "validated milestone-eta conversion for an ability branch"],
+      },
+      outcome: {
+        milestoneEtaBeforeSeconds: null,
+        milestoneEtaAfterSeconds: null,
+        milestoneEtaImprovementSeconds: comparable ? comparisonValue : null,
+        projectedMilestoneProgressDelta: null,
+        recoverySeconds: null,
+        paybackSeconds: null,
+        opportunityCost: advisor?.energyOpportunityCost || selectedBranch?.opportunityCost || "none",
+        resourceCosts: [],
+        effects,
+      },
+      evidence: {
+        confidence: advisor?.confidence || "low",
+        status: advisor?.schemaVersion ? "runtime-derived" : "unsupported",
+        supportingFields: advisor ? Object.keys(advisor).slice(0, 12) : [],
+        warnings: comparable ? [] : ["no validated milestone conversion for ability domain"],
+      },
+      reason: advisor?.reason || (unsupported ? "Swarmwarp remains unsupported." : "Energy abilities remain advisor-only."),
+      reconsiderCondition: advisor?.reconsiderCondition || (unsupported ? "Reconsider when Swarmwarp gains a verified model." : (comparable ? "Reconsider when the ability conversion changes." : "Reconsider when a validated shared conversion for the ability branch is available.")),
+    });
+  }
+
+  function adaptAscensionDomainOutcome(ascensionAdvisor, sharedContext = {}) {
+    const advisor = laboratoryCloneJson(ascensionAdvisor || {});
+    const selectedActionId = String(advisor?.recommendedActionId || advisor?.recommendedAction || "CONTINUE_RUN");
+    const selectedBranch = Array.isArray(advisor?.branches) ? advisor.branches.find((branch) => String(branch?.actionId || "") === selectedActionId) || advisor.branches[0] || null : null;
+    const comparable = sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) || sixDomainHasFiniteMetric(advisor?.projectedMilestoneProgressDelta) || sixDomainHasFiniteMetric(selectedBranch?.projectedMilestoneProgressDelta);
+    const comparisonValue = sixDomainHasFiniteMetric(advisor?.projectedMilestoneProgressDelta)
+      ? Number(advisor.projectedMilestoneProgressDelta)
+      : (sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? Math.max(0, Number(sharedContext.horizonSeconds || 1800) - Number(advisor.breakEvenSeconds)) : (sixDomainHasFiniteMetric(selectedBranch?.projectedMilestoneProgressDelta) ? Number(selectedBranch.projectedMilestoneProgressDelta) : null));
+    const action = {
+      actionId: selectedActionId,
+      label: String(advisor?.recommendation || selectedActionId),
+      class: selectedActionId === "CONTINUE_RUN" ? "ADVISOR_ONLY" : "ADVISOR_ONLY",
+      amount: "1",
+      executionKey: null,
+      executionId: selectedActionId,
+      executionKind: "advisor",
+      executionVariant: "advisor-only",
+      fingerprint: `advisor:${selectedActionId}`,
+    };
+    const effects = Array.isArray(advisor?.effects) && advisor.effects.length ? advisor.effects.map((effect) => laboratoryCloneJson(effect)) : [
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ASCENSION_MUTAGEN", "DIRECT", comparable ? "projectedMilestoneProgressDelta" : "missingRecoveryConversion", comparable ? "progress-delta" : "value", sharedContext.horizonId || "medium", comparable && comparisonValue !== null ? comparisonValue : 0, false, [], "runtime-derived"),
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ASCENSION_MUTAGEN", "FINAL", comparable ? "projectedMilestoneProgressDelta" : "missingRecoveryConversion", comparable ? "progress-delta" : "value", sharedContext.horizonId || "medium", comparable && comparisonValue !== null ? comparisonValue : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], "runtime-derived"),
+    ];
+    return laboratoryDeepFreeze({
+      schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
+      snapshotId: sharedContext.snapshotId || "unknown",
+      snapshotHash: sharedContext.snapshotHash || "unknown",
+      decisionCycleId: sharedContext.decisionCycleId || "unknown",
+      sourceSchemaVersion: advisor?.schemaVersion || "ascension-mutagen-advisor.v1",
+      domainId: "ASCENSION_MUTAGEN",
+      domainLabel: "Ascension/Mutagen",
+      authorityClass: "ADVISOR_ONLY",
+      action,
+      context: {
+        activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone || "unknown",
+        activeTarget: sharedContext.activeTarget || advisor?.activeTarget || "unknown",
+        horizonId: sharedContext.horizonId || "medium",
+        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
+      },
+      safety: {
+        status: "ADVISOR_ONLY",
+        executionClass: "ADVISOR_ONLY",
+        hardBlockers: [],
+        protectedResourcesTouched: [],
+      },
+      comparability: {
+        status: comparable ? "COMPARABLE" : "UNRANKED",
+        basis: comparable ? (sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? "milestone-eta-seconds" : "same-unit-milestone-progress-delta") : null,
+        metricUnit: comparable ? (sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? "seconds" : "progress-delta") : null,
+        commonValue: comparable ? comparisonValue : null,
+        missingConversions: comparable ? [] : ["validated recovery-to-horizon conversion for Ascension"],
+      },
+      outcome: {
+        milestoneEtaBeforeSeconds: null,
+        milestoneEtaAfterSeconds: null,
+        milestoneEtaImprovementSeconds: comparable && sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? Math.max(0, Number(sharedContext.horizonSeconds || 1800) - Number(advisor.breakEvenSeconds)) : null,
+        projectedMilestoneProgressDelta: comparable && !sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? comparisonValue : null,
+        recoverySeconds: sixDomainHasFiniteMetric(advisor?.breakEvenSeconds) ? Number(advisor.breakEvenSeconds) : null,
+        paybackSeconds: null,
+        opportunityCost: advisor?.currentRunOpportunityCost || "none",
+        resourceCosts: [],
+        effects,
+      },
+      evidence: {
+        confidence: advisor?.confidence || "low",
+        status: advisor?.schemaVersion ? "runtime-derived" : "unsupported",
+        supportingFields: advisor ? Object.keys(advisor).slice(0, 12) : [],
+        warnings: comparable ? [] : ["no validated recovery conversion for ascension domain"],
+      },
+      reason: advisor?.reason || "Ascension/Mutagen remains advisor-only.",
+      reconsiderCondition: advisor?.reconsiderCondition || (comparable ? "Reconsider when the recovery conversion changes." : "Reconsider when validated recovery evidence becomes available."),
+    });
+  }
+
+  function snapshotActionId(sharedContext, fallbackActionId) {
+    const snapshotId = String(sharedContext?.snapshotId || "snapshot");
+    return `${snapshotId}:${String(fallbackActionId || "action")}`;
+  }
+
+  function buildSixDomainCoverage(domainOutcomes, manifest = SIX_DOMAIN_MANIFEST) {
+    const snapshotIds = Array.from(new Set((domainOutcomes || []).map((outcome) => String(outcome?.snapshotId || "")))).filter(Boolean);
+    const decisionCycleIds = Array.from(new Set((domainOutcomes || []).map((outcome) => String(outcome?.decisionCycleId || "")))).filter(Boolean);
+    const comparableCount = (domainOutcomes || []).filter((outcome) => outcome?.comparability?.status === "COMPARABLE").length;
+    return (manifest.requiredMechanics || []).map((mechanic) => {
+      let status = "PASS";
+      let evidenceBasis = "structured coordinator result";
+      if (mechanic.mechanicId === "M6-SIX-DOMAIN-IDENTITY") {
+        status = domainOutcomes.length === 6 && snapshotIds.length === 1 && decisionCycleIds.length === 1 ? "PASS" : "FAIL";
+        evidenceBasis = `domains=${domainOutcomes.length}; snapshots=${snapshotIds.join(",") || "none"}; cycles=${decisionCycleIds.join(",") || "none"}`;
+      } else if (mechanic.mechanicId === "M6-COMPARABILITY") {
+        status = comparableCount > 0 ? "PASS" : "FAIL";
+        evidenceBasis = `comparableDomains=${comparableCount}`;
+      } else if (mechanic.mechanicId === "M6-HARD-SAFETY") {
+        status = (domainOutcomes || []).every((outcome) => outcome?.safety?.status && outcome.safety.status !== "UNKNOWN") ? "PASS" : "FAIL";
+        evidenceBasis = (domainOutcomes || []).map((outcome) => `${outcome.domainId}:${outcome.safety?.status || "unknown"}`).join(" | ");
+      } else if (mechanic.mechanicId === "M6-DOUBLE-COUNT-AUDIT") {
+        status = (domainOutcomes || []).every((outcome) => outcome?.effectAudit?.status === "PASS") ? "PASS" : "FAIL";
+        evidenceBasis = (domainOutcomes || []).map((outcome) => `${outcome.domainId}:${outcome.effectAudit?.status || "missing"}`).join(" | ");
+      } else if (mechanic.mechanicId === "M6-ABILITY-AUTHORITY") {
+        const ability = (domainOutcomes || []).find((outcome) => outcome.domainId === "ENERGY_ABILITIES");
+        status = ability?.authorityClass === "ADVISOR_ONLY" && ability?.safety?.status === "ADVISOR_ONLY" ? "PASS" : "FAIL";
+        evidenceBasis = ability ? `${ability.domainId}:${ability.action?.actionId || "unknown"}` : "missing ability outcome";
+      } else if (mechanic.mechanicId === "M6-ASCENSION-AUTHORITY") {
+        const ascension = (domainOutcomes || []).find((outcome) => outcome.domainId === "ASCENSION_MUTAGEN");
+        status = ascension?.authorityClass === "ADVISOR_ONLY" && ascension?.safety?.status === "ADVISOR_ONLY" ? "PASS" : "FAIL";
+        evidenceBasis = ascension ? `${ascension.domainId}:${ascension.action?.actionId || "unknown"}` : "missing ascension outcome";
+      } else if (mechanic.mechanicId === "M6-BOUNDED-EXECUTION") {
+        const reversible = (domainOutcomes || []).find((outcome) => outcome.authorityClass === "BOUNDED_REVERSIBLE" && outcome.safety?.status === "ALLOWED" && outcome.comparability?.status === "COMPARABLE");
+        status = reversible ? "PASS" : "FAIL";
+        evidenceBasis = reversible ? `${reversible.domainId}:${reversible.action?.executionKey || "none"}` : "no bounded reversible winner";
+      } else if (mechanic.mechanicId === "M6-CYCLE-CONSISTENCY") {
+        status = snapshotIds.length === 1 && decisionCycleIds.length === 1 ? "PASS" : "FAIL";
+        evidenceBasis = `snapshotIds=${snapshotIds.join(",") || "none"}; cycleIds=${decisionCycleIds.join(",") || "none"}`;
+      } else if (mechanic.mechanicId === "M6-NON-MUTATION") {
+        status = "PASS";
+        evidenceBasis = "evaluator input is cloned/frozen before evaluation";
+      }
+      return {
+        mechanicId: mechanic.mechanicId,
+        domainId: mechanic.domainId,
+        productionContract: mechanic.productionContract,
+        invariantId: (mechanic.invariants || ["unknown"])[0],
+        assertionId: `${mechanic.mechanicId}-ASSERTION`,
+        status,
+        evidenceBasis,
+      };
+    });
+  }
+
+  function evaluateSixDomainStrategicCoordinator(inputSnapshot = {}) {
+    const snapshot = laboratoryDeepFreeze(laboratoryCloneJson(inputSnapshot || {}));
+    const manifest = snapshot.manifest || SIX_DOMAIN_MANIFEST;
+    const purchaseRows = Array.isArray(snapshot.purchaseProposalState?.evaluation?.evaluated)
+      ? snapshot.purchaseProposalState.evaluation.evaluated
+      : (Array.isArray(snapshot.purchaseEvaluation?.evaluated)
+        ? snapshot.purchaseEvaluation.evaluated
+        : (Array.isArray(snapshot.purchaseRows) ? snapshot.purchaseRows : []));
+    const purchaseRowByDomain = {
+      MEAT: purchaseRows.find((row) => row.lane === "Meat") || null,
+      LARVA_ENGINE: purchaseRows.find((row) => row.lane === "Engine") || null,
+      ARMY_TERRITORY: purchaseRows.find((row) => row.lane === "Territory") || null,
+      ENERGY_PRODUCTION: purchaseRows.find((row) => row.lane === "Energy") || null,
+    };
+    const sharedContext = {
+      snapshotId: snapshot.snapshotId || "unknown",
+      snapshotHash: snapshot.snapshotHash || "unknown",
+      decisionCycleId: snapshot.decisionCycleId || "unknown",
+      activeMilestone: snapshot.source?.activeMilestone || snapshot.activeMilestone || "unknown",
+      activeTarget: snapshot.source?.activeTarget || snapshot.activeTarget || "unknown",
+      horizonId: snapshot.horizonId || "medium",
+      horizonSeconds: Number(snapshot.horizonSeconds || 1800),
+    };
+    const domainOutcomes = [
+      adaptPurchaseDomainOutcome("MEAT", purchaseRowByDomain.MEAT, sharedContext),
+      adaptPurchaseDomainOutcome("LARVA_ENGINE", purchaseRowByDomain.LARVA_ENGINE, sharedContext),
+      adaptPurchaseDomainOutcome("ARMY_TERRITORY", purchaseRowByDomain.ARMY_TERRITORY, sharedContext),
+      adaptPurchaseDomainOutcome("ENERGY_PRODUCTION", purchaseRowByDomain.ENERGY_PRODUCTION, sharedContext),
+      adaptAbilityDomainOutcome(snapshot.abilitySnapshot || snapshot.abilityAdvisor || snapshot.energyAbilityAdvisor || {}, sharedContext),
+      adaptAscensionDomainOutcome(snapshot.ascensionSnapshot || snapshot.ascensionAdvisor || snapshot.ascensionMutagenAdvisor || {}, sharedContext),
+    ].map((outcome) => ({ ...outcome, effectAudit: auditStrategicEffects(outcome) }));
+
+    const ranked = domainOutcomes.slice().sort((left, right) => {
+      const leftComparable = sixDomainComparableValue(left);
+      const rightComparable = sixDomainComparableValue(right);
+      if (left.effectAudit.status !== right.effectAudit.status) return left.effectAudit.status === "PASS" ? 1 : -1;
+      const leftHasValue = Number.isFinite(leftComparable.value);
+      const rightHasValue = Number.isFinite(rightComparable.value);
+      if (leftHasValue !== rightHasValue) return Number(rightHasValue) - Number(leftHasValue);
+      if (Number.isFinite(leftComparable.value) && Number.isFinite(rightComparable.value) && leftComparable.value !== rightComparable.value) return rightComparable.value - leftComparable.value;
+      const confidenceRank = (value) => ({ high: 3, medium: 2, low: 1 }[String(value || "low")] || 1);
+      const confidenceDelta = confidenceRank(right.evidence?.confidence) - confidenceRank(left.evidence?.confidence);
+      if (confidenceDelta !== 0) return confidenceDelta;
+      return String(left.domainId).localeCompare(String(right.domainId));
+    });
+
+    const eligibleRanked = ranked.filter((outcome) => (outcome.safety.status === "ALLOWED" || outcome.safety.status === "ADVISOR_ONLY") && outcome.comparability.status === "COMPARABLE" && outcome.effectAudit.status === "PASS");
+    const winner = eligibleRanked[0] || null;
+    const importantAlternatives = ranked.filter((outcome) => !winner || outcome.domainId !== winner.domainId).slice(0, 3);
+    const executionAuthority = !!winner && winner.authorityClass === "BOUNDED_REVERSIBLE";
+    const recommendation = !winner ? "UNCERTAIN" : (executionAuthority ? "ACT" : "WAIT");
+    const recommendedActionId = winner?.action?.actionId || "WAIT";
+    const sharedResourceCounts = new Map();
+    for (const outcome of domainOutcomes) {
+      for (const resource of outcome?.safety?.protectedResourcesTouched || []) {
+        const key = String(resource || "").trim().toLowerCase();
+        if (!key) continue;
+        sharedResourceCounts.set(key, (sharedResourceCounts.get(key) || 0) + 1);
+      }
+    }
+    const sharedResourceConflicts = Array.from(sharedResourceCounts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([resource, count]) => ({ resource, count, reportedOnce: true }));
+    const reason = winner
+      ? (executionAuthority ? winner.reason : `${winner.domainLabel} is best but remains advisor-only.`)
+      : "No allowed comparable action exists on this snapshot.";
+    const reconsiderCondition = winner
+      ? winner.reconsiderCondition
+      : "Reconsider when a domain provides a comparable shared-outcome conversion and one can rank honestly.";
+    const confidence = winner?.evidence?.confidence || (ranked.some((outcome) => outcome.evidence?.confidence === "medium") ? "medium" : "low");
+    const selectedComparisonBasis = winner?.comparability?.basis || null;
+    const blockers = importantAlternatives.flatMap((outcome) => outcome.safety?.hardBlockers || []);
+
+    return laboratoryDeepFreeze({
+      schemaVersion: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
+      mode: "advisor-only",
+      executionAuthority,
+      snapshotId: sharedContext.snapshotId,
+      snapshotHash: sharedContext.snapshotHash,
+      decisionCycleId: sharedContext.decisionCycleId,
+      activeMilestone: sharedContext.activeMilestone,
+      activeTarget: sharedContext.activeTarget,
+      horizons: snapshot.horizons || SIX_DOMAIN_DECISION_HORIZONS.slice(),
+      selectedHorizonId: snapshot.horizonId || "medium",
+      selectedHorizonSeconds: sharedContext.horizonSeconds,
+      recommendation,
+      recommendedActionId,
+      reason,
+      reconsiderCondition,
+      confidence,
+      comparisonBasis: selectedComparisonBasis || "unranked",
+      winner,
+      importantAlternatives,
+      blockers,
+      sharedResourceConflicts,
+      domainOutcomes,
+      authorityState: {
+        executionAuthority,
+        authorityClass: winner?.authorityClass || "NONE",
+        authorityReason: executionAuthority ? "bounded reversible execution candidate" : (winner?.authorityClass === "ADVISOR_ONLY" ? "advisor-only winner" : "no allowed comparable winner"),
+      },
+      effectAudit: domainOutcomes.map((outcome) => ({ domainId: outcome.domainId, audit: outcome.effectAudit })),
+      coverage: buildSixDomainCoverage(domainOutcomes, manifest),
+      manifest,
+      executionPlan: buildSixDomainExecutionPlan({
+        winner,
+        recommendation,
+        recommendedActionId,
+        executionAuthority,
+        reason,
+        sharedResourceConflicts,
+        snapshotId: sharedContext.snapshotId,
+        decisionCycleId: sharedContext.decisionCycleId,
+        activeMilestone: sharedContext.activeMilestone,
+        activeTarget: sharedContext.activeTarget,
+      }, snapshot.purchaseProposalState || { proposals: purchaseRows, evaluation: snapshot.purchaseEvaluation || null }),
+    });
+  }
+
+  function buildSixDomainExecutionPlan(result, purchaseProposalState) {
+    const winner = result?.winner || null;
+    const boundedCandidate = winner && winner.authorityClass === "BOUNDED_REVERSIBLE" ? winner : null;
+    const proposalState = purchaseProposalState || { proposals: [], evaluation: null };
+    const base = {
+      schemaVersion: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
+      decisionCycleId: result?.decisionCycleId || "unknown",
+      snapshotId: result?.snapshotId || "unknown",
+      activeMilestone: result?.activeMilestone || "unknown",
+      activeTarget: result?.activeTarget || "unknown",
+      recommendation: result?.recommendation || "UNCERTAIN",
+      recommendedActionId: result?.recommendedActionId || "WAIT",
+      executionAuthority: false,
+      reason: result?.reason || "none",
+      revalidationStatus: "not-applicable",
+      identityStatus: boundedCandidate ? "not-checked" : "not-applicable",
+      preRevalidationEligible: false,
+      boundedCandidate: boundedCandidate ? {
+        domainId: boundedCandidate.domainId,
+        actionId: boundedCandidate.action?.actionId || "unknown",
+        executionKey: boundedCandidate.action?.executionKey || null,
+        executionId: boundedCandidate.action?.executionId || null,
+        executionKind: boundedCandidate.action?.executionKind || null,
+        executionVariant: boundedCandidate.action?.executionVariant || "base",
+        amount: boundedCandidate.action?.amount || "0",
+        fingerprint: boundedCandidate.action?.fingerprint || "none",
+      } : null,
+    };
+
+    if (!boundedCandidate) {
+      return laboratoryDeepFreeze(base);
+    }
+
+    const purchaseDecision = buildWholeEconomyExecutionDecisionV1({
+      proposalState,
+      actionBudget: 1,
+      executionEnabled: true,
+    });
+    const identityMatches = purchaseDecision?.selectedLane === boundedCandidate.domainLabel.replace("Meat chain", "Meat").replace("Larva/Engine", "Engine").replace("Army/Territory", "Territory").replace("Energy production", "Energy")
+      && purchaseDecision?.selectedCandidate === boundedCandidate.action?.label
+      && purchaseDecision?.selectedExecutionKey === boundedCandidate.action?.executionKey
+      && purchaseDecision?.selectedExecutionId === boundedCandidate.action?.executionId
+      && purchaseDecision?.selectedExecutionKind === boundedCandidate.action?.executionKind
+      && String(purchaseDecision?.selectedExecutionVariant || "base") === String(boundedCandidate.action?.executionVariant || "base")
+      && normalizeBoundedAmountToken(purchaseDecision?.selectedAmount) === normalizeBoundedAmountToken(boundedCandidate.action?.amount)
+      && purchaseDecision?.selectedFingerprint === boundedCandidate.action?.fingerprint;
+    const preRevalidationEligible = identityMatches && purchaseDecision?.preRevalidationEligible === true && result?.executionAuthority === true;
+    return laboratoryDeepFreeze({
+      ...base,
+      executionDecision: purchaseDecision,
+      executionAuthority: false,
+      identityStatus: identityMatches ? "matched" : "mismatch",
+      preRevalidationEligible,
+      revalidationStatus: preRevalidationEligible ? "required" : "skipped-identity-mismatch",
+      reason: identityMatches ? (result?.reason || base.reason) : "global winner does not exactly match accepted purchase coordinator identity",
+    });
+  }
+
+  function applySixDomainExecutionRevalidation(plan, freshProposalState, freshCycle) {
+    const base = laboratoryCloneJson(plan || {});
+    if (!base?.boundedCandidate) {
+      return laboratoryDeepFreeze({
+        ...base,
+        executionAuthority: false,
+        revalidationStatus: "not-applicable",
+      });
+    }
+    if (base.identityStatus !== "matched" || base.preRevalidationEligible !== true) {
+      return laboratoryDeepFreeze({
+        ...base,
+        executionAuthority: false,
+        revalidationStatus: "skipped-identity-mismatch",
+        reason: "global winner identity did not match the accepted purchase coordinator",
+      });
+    }
+    if (freshCycle?.decisionCycleId && String(freshCycle.decisionCycleId) !== String(base.decisionCycleId || "")) {
+      return laboratoryDeepFreeze({
+        ...base,
+        executionAuthority: false,
+        revalidationStatus: "failed",
+        reason: "decision cycle changed before revalidation",
+      });
+    }
+    const revalidatedDecision = applyWholeEconomyExecutionRevalidationV1({
+      decision: base.executionDecision || createWholeEconomyExecutionDecisionBase(1),
+      revalidationState: freshProposalState || { proposals: [], evaluation: null },
+      actionBudget: 1,
+    });
+    const identityStillMatches = revalidatedDecision?.selectedExecutionKey === base.boundedCandidate.executionKey
+      && revalidatedDecision?.selectedExecutionId === base.boundedCandidate.executionId
+      && revalidatedDecision?.selectedExecutionKind === base.boundedCandidate.executionKind
+      && String(revalidatedDecision?.selectedExecutionVariant || "base") === String(base.boundedCandidate.executionVariant || "base")
+      && normalizeBoundedAmountToken(revalidatedDecision?.selectedAmount) === normalizeBoundedAmountToken(base.boundedCandidate.amount)
+      && revalidatedDecision?.selectedFingerprint === base.boundedCandidate.fingerprint;
+    return laboratoryDeepFreeze({
+      ...base,
+      executionDecision: revalidatedDecision,
+      executionAuthority: identityStillMatches && !!revalidatedDecision.executionAuthority,
+      identityStatus: identityStillMatches ? "matched" : "drifted",
+      revalidationStatus: identityStillMatches ? revalidatedDecision.revalidationStatus : "failed",
+      reason: identityStillMatches ? (revalidatedDecision.fallbackReason || base.reason) : "winner identity drifted during revalidation",
+    });
+  }
+
   function energyAbilityTimingNumber(value, fallback = 0) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -5322,6 +6117,18 @@ function getDisplayName(item) {
         },
         activeSpeaker: usefulCouncilText(inspector?.activeCouncilSpeaker) || null,
         protectedResources: null,
+        globalCoordinator: inspector?.strategicCoordinator ? {
+          schemaVersion: inspector.strategicCoordinator.schemaVersion,
+          recommendation: inspector.strategicCoordinator.recommendation,
+          recommendedActionId: inspector.strategicCoordinator.recommendedActionId,
+          winner: inspector.strategicCoordinator.winner || null,
+          alternatives: inspector.strategicCoordinator.importantAlternatives || [],
+          blockers: inspector.strategicCoordinator.blockers || [],
+          confidence: inspector.strategicCoordinator.confidence || "low",
+          reconsiderCondition: inspector.strategicCoordinator.reconsiderCondition || "none",
+          authorityState: inspector.strategicCoordinator.authorityState || null,
+          decisionCycleId: inspector.strategicCoordinator.decisionCycleId || null,
+        } : null,
       },
       decision: {
         decisionId: options.decisionId || null,
@@ -5603,8 +6410,23 @@ function getDisplayName(item) {
       `reconsider ${strategyInspector.ascensionAdvisorReconsiderCondition || "unknown"}`,
       strategyInspector.ascensionAdvisorExecutionAuthority || "advisor-only",
     ].join(" | ");
+    const coordinator = strategyInspector.strategicCoordinator || null;
+    const coordinatorWinner = coordinator?.winner;
+    const coordinatorDetails = [
+      `confidence ${coordinator?.confidence || "low"}`,
+      `authority ${coordinator?.authorityState?.authorityClass || "NONE"}`,
+      `cycle ${coordinator?.decisionCycleId || "unknown"}`,
+      `reconsider ${coordinator?.reconsiderCondition || "unknown"}`,
+    ].join(" | ");
     return `
       <section class="kbc-council-advisor-results" aria-label="Ability, Ascension and Mutagen advisors">
+        ${councilAdvisorCardHtml(
+          "Six-domain coordinator",
+          coordinator?.recommendation || "UNCERTAIN",
+          coordinatorWinner?.action?.label || coordinator?.recommendedActionId || "WAIT",
+          coordinator?.reason,
+          coordinatorDetails
+        )}
         ${councilAdvisorCardHtml(
           "Ability timing",
           strategyInspector.abilityTimingRecommendation || "SAVE",
@@ -6031,6 +6853,7 @@ function getDisplayName(item) {
       laneCard("Ability", laneByName.get("Ability")),
       ["Ability timing", `${strategyInspector.abilityTimingRecommendation || "SAVE"} ${strategyInspector.abilityTimingRecommendedAction || "Save Energy"}`, strategyInspector.abilityTimingReason || "none", `confidence ${strategyInspector.abilityTimingConfidence || "low"}; reconsider ${strategyInspector.abilityTimingReconsiderCondition || "unknown"}`],
       ["Ascension & Mutagen", strategyInspector.ascensionAdvisorRecommendation || "CONTINUE_RUN", strategyInspector.ascensionAdvisorReason || "none", `break-even ${strategyInspector.ascensionAdvisorBreakEvenSeconds ?? "n/a"}s; mutagen ${strategyInspector.ascensionAdvisorMutagenPlan?.recommendedActionId || "KEEP_UNALLOCATED"}; ${strategyInspector.ascensionAdvisorExecutionAuthority || "advisor-only"}`],
+      ["Six-domain coordinator", `${strategyInspector.strategicCoordinatorRecommendation || "UNCERTAIN"} ${strategyInspector.strategicCoordinatorRecommendedActionId || "WAIT"}`, strategyInspector.strategicCoordinatorReason || "none", `confidence ${strategyInspector.strategicCoordinatorConfidence || "low"}; authority ${strategyInspector.strategicCoordinator?.authorityState?.authorityClass || "NONE"}; reconsider ${strategyInspector.strategicCoordinatorReconsiderCondition || "unknown"}`],
       laneCard("Twin / Upgrade", laneByName.get("Upgrade") || laneByName.get("Twin")),
       ["Next likely buy", strategyInspector.nextLikelyBuy || strategyInspector.waits, liveDiagnosticsWarningLabel(), strategyInspector.blockedBySummary || ""],
     ];
@@ -17172,6 +17995,8 @@ function getDisplayName(item) {
     cloneBufferPlannerState = null;
     unifiedPurchaseProposalState = null;
     wholeEconomyExecutionDecisionState = null;
+    sixDomainStrategicCoordinatorState = null;
+    sixDomainExecutionPlanState = null;
     abilityPrepPlannerState = null;
     postNexusEnergyPlannerState = null;
     territoryPrepPlannerState = null;
@@ -17258,24 +18083,71 @@ function getDisplayName(item) {
 
     let engine = analyzeLarvaEngine(game);
     let protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
+    const smartFocus = decideSmartFocus(engine);
     unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
     let coordinatorExecutedKey = null;
-
-    wholeEconomyExecutionDecisionState = buildWholeEconomyExecutionDecisionV1({
-      proposalState: unifiedPurchaseProposalState,
-      actionBudget: Math.max(0, maxActions - mainActions),
-      executionEnabled: !config.advisorOnly && !!config.autoBuySafeDecisions,
+    const m6DecisionOwnsMainCycle = true;
+    const preExecutionWinner = unifiedPurchaseProposalState?.evaluation?.winner || null;
+    const preExecutionMainAction = preExecutionWinner ? {
+      lane: preExecutionWinner.lane,
+      candidate: preExecutionWinner.candidate,
+      target: preExecutionWinner.target,
+      reason: preExecutionWinner.reason,
+    } : null;
+    const m6AbilityAdvisor = evaluateEnergyAbilityTimingSnapshot(captureEnergyAbilityTimingSnapshot(game, smartFocus, preExecutionMainAction));
+    const m6AscensionAdvisor = evaluateAscensionMutagenSnapshot(captureAscensionMutagenSnapshot(game, {
+      smartFocus,
+      selectedMainAction: preExecutionMainAction,
+      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
+    }));
+    const m6Snapshot = captureSixDomainDecisionSnapshot(game, {
+      smartFocus,
+      selectedMainAction: preExecutionMainAction,
+      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
+      activeMilestone: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
+      activeTarget: preExecutionMainAction?.target || smartFocus || "current strategic target",
+      purchaseProposalState: unifiedPurchaseProposalState,
+      abilitySnapshot: m6AbilityAdvisor,
+      ascensionSnapshot: m6AscensionAdvisor,
+      selectedHorizonId: "medium",
     });
+    sixDomainStrategicCoordinatorState = evaluateSixDomainStrategicCoordinator(m6Snapshot);
+    sixDomainExecutionPlanState = buildSixDomainExecutionPlan(sixDomainStrategicCoordinatorState, unifiedPurchaseProposalState);
 
-    if (wholeEconomyExecutionDecisionState.preRevalidationEligible) {
+    if (sixDomainExecutionPlanState.preRevalidationEligible) {
       const revalidationProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
-      wholeEconomyExecutionDecisionState = applyWholeEconomyExecutionRevalidationV1({
-        decision: wholeEconomyExecutionDecisionState,
-        revalidationState: revalidationProposalState,
-        actionBudget: Math.max(0, maxActions - mainActions),
-      });
+      sixDomainExecutionPlanState = applySixDomainExecutionRevalidation(
+        sixDomainExecutionPlanState,
+        revalidationProposalState,
+        { decisionCycleId: sixDomainStrategicCoordinatorState.decisionCycleId }
+      );
       unifiedPurchaseProposalState = revalidationProposalState;
     }
+
+    const effectiveM6ExecutionAuthority = !config.advisorOnly
+      && !!config.autoBuySafeDecisions
+      && sixDomainExecutionPlanState.executionAuthority === true;
+    sixDomainStrategicCoordinatorState = laboratoryDeepFreeze({
+      ...laboratoryCloneJson(sixDomainStrategicCoordinatorState),
+      executionAuthority: effectiveM6ExecutionAuthority,
+      authorityState: {
+        ...laboratoryCloneJson(sixDomainStrategicCoordinatorState.authorityState || {}),
+        executionAuthority: effectiveM6ExecutionAuthority,
+        authorityReason: effectiveM6ExecutionAuthority
+          ? "exact bounded reversible winner passed same-cycle revalidation"
+          : (config.advisorOnly || !config.autoBuySafeDecisions
+            ? "Advisor mode or safe autobuy is disabled"
+            : sixDomainExecutionPlanState.reason || "M6 execution plan did not pass"),
+      },
+      executionPlan: laboratoryCloneJson(sixDomainExecutionPlanState),
+    });
+
+    wholeEconomyExecutionDecisionState = {
+      ...(sixDomainExecutionPlanState.executionDecision || createWholeEconomyExecutionDecisionBase(Math.max(0, maxActions - mainActions))),
+      executionAuthority: effectiveM6ExecutionAuthority,
+      authoritySource: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
+      fallbackReason: sixDomainExecutionPlanState.reason || "M6 did not authorize a bounded reversible action",
+    };
 
     if (canDoMoreMainActions() && wholeEconomyExecutionDecisionState.executionAuthority === true) {
       const unifiedAction = executeUnifiedPurchaseWinner({
@@ -17296,6 +18168,13 @@ function getDisplayName(item) {
         wholeEconomyExecutionDecisionState,
         { ...unifiedAction, executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey }
       );
+      sixDomainExecutionPlanState = laboratoryDeepFreeze({
+        ...laboratoryCloneJson(sixDomainExecutionPlanState),
+        executionDecision: laboratoryCloneJson(wholeEconomyExecutionDecisionState),
+        executed: wholeEconomyExecutionDecisionState.executed === true,
+        matchedExecution: wholeEconomyExecutionDecisionState.matchedExecution,
+        executedFingerprint: wholeEconomyExecutionDecisionState.executedFingerprint,
+      });
       addMainResult(unifiedAction.label, unifiedAction.result);
       if (Number(unifiedAction.result?.bought || 0) > 0 && wholeEconomyExecutionDecisionState.matchedExecution === "yes") {
         coordinatorExecutedKey = wholeEconomyExecutionDecisionState.selectedExecutionKey;
@@ -17314,13 +18193,19 @@ function getDisplayName(item) {
       wholeEconomyExecutionDecisionState = {
         ...wholeEconomyExecutionDecisionState,
         executed: false,
-        executionResult: "execution refused; fallback to existing planners",
-        executionLabel: "Unified",
+        executionResult: "execution refused; M6 holds this decision cycle",
+        executionLabel: "Six-domain coordinator",
         matchedExecution: "no",
       };
+      sixDomainExecutionPlanState = laboratoryDeepFreeze({
+        ...laboratoryCloneJson(sixDomainExecutionPlanState),
+        executionDecision: laboratoryCloneJson(wholeEconomyExecutionDecisionState),
+        executed: false,
+        matchedExecution: "no",
+      });
     }
 
-    if (canDoMoreMainActions() && coordinatorExecutedKey !== "engine") {
+    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "engine") {
       const engineAction = executeEngineGuardAction({ game, commands, engine });
       addMainResult("Larva engine", engineAction);
 
@@ -17330,29 +18215,27 @@ function getDisplayName(item) {
       }
     }
 
-    if (canDoMoreMainActions()) {
+    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const criticalUpgradeAction = handleCriticalProductionUpgrades(game, commands, protectedResources);
       addMainResult("Critical upgrades", criticalUpgradeAction);
     }
 
-    if (canDoMoreMainActions() && coordinatorExecutedKey !== "energy") {
+    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "energy") {
       const energyAction = executeEnergyGuardAction({ game, commands, protectedResources });
       addMainResult("Energy", energyAction);
     }
 
-    if (canDoMoreMainActions()) {
+    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const cloneBufferAction = executeCloneGuardAction({ game, commands });
       addMainResult("Clone buffer", cloneBufferAction);
-    } else {
+    } else if (!m6DecisionOwnsMainCycle) {
       executeCloneGuardAction({ game, commands });
     }
 
-    if (canDoMoreMainActions() && coordinatorExecutedKey !== "meat") {
+    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "meat") {
       const unlockAction = runUnlockPlanner(game, commands, protectedResources);
       addMainResult("Unlock planner", unlockAction);
     }
-
-    const smartFocus = decideSmartFocus(engine);
 
     if (protectedResources.has("territory")) {
       recordAdvisor("HOLD", "Territory spending", "saving territory for Expansion");
@@ -17400,7 +18283,7 @@ function getDisplayName(item) {
 
     recordAdvisor("INFO", "Smart focus", smartFocus);
 
-    if (config.buyUpgrades && canDoMoreMainActions()) {
+    if (!m6DecisionOwnsMainCycle && config.buyUpgrades && canDoMoreMainActions()) {
       upgrades = safe("Smart upgrades", () => buySmartUpgrades(game, commands, protectedResources)) || 0;
       if (upgrades > 0) {
         mainActions += upgrades;
@@ -17408,7 +18291,7 @@ function getDisplayName(item) {
       }
     }
 
-    if (config.buyUnits && canDoMoreMainActions()) {
+    if (!m6DecisionOwnsMainCycle && config.buyUnits && canDoMoreMainActions()) {
       units = safe("Smart units", () => buySmartUnits(
         game,
         commands,
@@ -17427,7 +18310,7 @@ function getDisplayName(item) {
 
     // Clone prep runs last as a side task. It may cocoon a small chunk, but it must
     // not prevent upgrades, Nexus, lepidoptera or normal unit decisions in the same run.
-    const clonePrep = manageCloneCocoons(game, commands);
+    const clonePrep = m6DecisionOwnsMainCycle ? null : manageCloneCocoons(game, commands);
     addSideResult("Clone prep", clonePrep);
 
     runAbilityPrepPlanner(game);
@@ -20543,7 +21426,7 @@ function getDisplayName(item) {
       },
 
       getStrategyInspector() {
-        return strategyInspector;
+        return laboratoryCloneJson(strategyInspector || null);
       },
 
       getCouncilUiState() {
@@ -20565,6 +21448,28 @@ function getDisplayName(item) {
 
       getLiveDiagnostics() {
         return liveDiagnostics || buildLiveDiagnostics(runHistory);
+      },
+
+      strategicCoordinator: {
+        schemaVersion: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
+        evaluate(snapshot = {}) {
+          return laboratoryCloneJson(evaluateSixDomainStrategicCoordinator(snapshot));
+        },
+        getCurrent() {
+          return laboratoryCloneJson(strategyInspector?.strategicCoordinator || null);
+        },
+        domainManifest() {
+          return laboratoryCloneJson(SIX_DOMAIN_MANIFEST);
+        },
+        coverage() {
+          return laboratoryCloneJson(strategyInspector?.strategicCoordinatorCoverage || strategyInspector?.strategicCoordinator?.coverage || []);
+        },
+        buildExecutionPlan(result = {}, purchaseProposalState = {}) {
+          return laboratoryCloneJson(buildSixDomainExecutionPlan(result, purchaseProposalState));
+        },
+        revalidateExecutionPlan(plan = {}, freshProposalState = {}, freshCycle = {}) {
+          return laboratoryCloneJson(applySixDomainExecutionRevalidation(plan, freshProposalState, freshCycle));
+        },
       },
 
       purchaseEvaluator: {
