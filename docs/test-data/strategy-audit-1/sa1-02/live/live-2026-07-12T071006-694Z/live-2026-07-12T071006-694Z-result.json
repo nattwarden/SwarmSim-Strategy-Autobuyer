@@ -1,0 +1,1889 @@
+{
+  "mode": "live",
+  "scenario": "sa1-02",
+  "runId": "live-2026-07-12T071006-694Z",
+  "startedAt": "2026-07-12T07:10:06.695Z",
+  "completedAt": "2026-07-12T07:10:11.439Z",
+  "stateRevision": 1,
+  "scriptVersion": "0.12.3",
+  "repositoryCommit": null,
+  "scenarioHash": "sha256:8ecdb915a82b179d8ae60fe957532fa104a72fd05e64dec4125e42ad428318af",
+  "initialStateHash": "sha256:c7266f92cbcd8b9eac577a714e31593c22872f5a0e5750508b752661d9d25539",
+  "cycleNumber": 5,
+  "capturedAt": "2026-07-12T07:10:11.439Z",
+  "gameSourceKind": "production-url",
+  "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+  "gameSourceCommit": null,
+  "gameBuildVersion": null,
+  "browserKind": "chromium",
+  "browserVersion": "149.0.7827.55",
+  "browserMode": "headed",
+  "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+  "userscriptBlobSha": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+  "userscriptContentSha256": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+  "injectionMode": "playwright-addScriptTag",
+  "profileKind": "disposable-context",
+  "networkMode": "online-production",
+  "stateSetupMethod": "direct-game-service-unit-patch",
+  "stateMutationManifest": [
+    {
+      "id": "config:advisorOnly",
+      "path": "kbcSwarmBot.config.advisorOnly",
+      "before": "false",
+      "stagedValue": "false",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "unit:drone",
+      "path": "game.unit(drone).count",
+      "before": "0",
+      "stagedValue": "160",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    }
+  ],
+  "stateMutationManifestHash": "sha256:d5f72c073386fcfa098c9f230e85063f4c13addedcc1e01366f484875ef3e096",
+  "preResetStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+  "postCycleStateHash": "sha256:c7aea9e68b7dbf1dc91ac010541774f0b4ae01f9144a58e2bedbdbcd77c92fc7",
+  "postScenarioStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+  "resetMethod": "restore-captured-property-descriptors",
+  "resetVerified": true,
+  "stateLeakageDetected": false,
+  "activePhase": "Nexus ramp (3/5)",
+  "activeGoal": "Reach construct nexus while protecting energy.",
+  "activeTarget": "drone",
+  "selectedLane": "Meat",
+  "selectedDecision": "BUY",
+  "selectedAction": "drone × 318",
+  "selectedUnit": "drone",
+  "selectedAmount": null,
+  "selectedReason": "Meat BUY drone: BUY drone: target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+  "hardBlockers": "Nexus save, energy plan, payback, reserve, ability disabled",
+  "softBlockers": "construct nexus / Nexus, meat-chain target",
+  "actionBudget": "1/4",
+  "legalAlternatives": [
+    {
+      "lane": "Meat",
+      "decision": "BUY",
+      "candidate": "drone",
+      "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+      "blockers": [],
+      "blockerCategories": [
+        "payback",
+        "reserve"
+      ],
+      "score": 8110
+    }
+  ],
+  "rejectedAlternatives": [
+    {
+      "lane": "Engine",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Energy",
+      "decision": "HOLD",
+      "candidate": "construct nexus",
+      "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+      "blockers": [
+        "energy protected for Nexus",
+        "Nexus save"
+      ],
+      "blockerCategories": [
+        "protected-resource",
+        "energy-plan"
+      ],
+      "score": 81866.67604666666
+    },
+    {
+      "lane": "Territory",
+      "decision": "HOLD",
+      "candidate": "Stinger V",
+      "reason": "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+      "blockers": [
+        "territory ROI below minimum"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 105.84821331501132
+    },
+    {
+      "lane": "Clone Prep",
+      "decision": "OBSERVE",
+      "candidate": "Cocoons",
+      "reason": "Cocooning upgrade not owned",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 0
+    },
+    {
+      "lane": "Ability",
+      "decision": "HOLD",
+      "candidate": "House of Mirrors",
+      "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+      "blockers": [
+        "army prep missing",
+        "ability auto-cast disabled"
+      ],
+      "blockerCategories": [
+        "ability-disabled"
+      ],
+      "score": 37000
+    },
+    {
+      "lane": "Upgrade",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Twin",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    }
+  ],
+  "bestLegalAlternative": "drone × 318",
+  "bestRejectedAlternative": "queen × 1",
+  "rejectionReasons": [
+    "no lane-specific candidate this run",
+    "saving energy for Nexus 4/5, ETA 8h 42m",
+    "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+    "Cocooning upgrade not owned",
+    "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+    "no lane-specific candidate this run",
+    "no lane-specific candidate this run"
+  ],
+  "laneProposals": [
+    {
+      "lane": "Engine",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Energy",
+      "decision": "HOLD",
+      "candidate": "construct nexus",
+      "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+      "blockers": [
+        "energy protected for Nexus",
+        "Nexus save"
+      ],
+      "blockerCategories": [
+        "protected-resource",
+        "energy-plan"
+      ],
+      "score": 81866.67604666666
+    },
+    {
+      "lane": "Meat",
+      "decision": "BUY",
+      "candidate": "drone",
+      "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+      "blockers": [],
+      "blockerCategories": [
+        "payback",
+        "reserve"
+      ],
+      "score": 8110
+    },
+    {
+      "lane": "Territory",
+      "decision": "HOLD",
+      "candidate": "Stinger V",
+      "reason": "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+      "blockers": [
+        "territory ROI below minimum"
+      ],
+      "blockerCategories": [
+        "reserve"
+      ],
+      "score": 105.84821331501132
+    },
+    {
+      "lane": "Clone Prep",
+      "decision": "OBSERVE",
+      "candidate": "Cocoons",
+      "reason": "Cocooning upgrade not owned",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 0
+    },
+    {
+      "lane": "Ability",
+      "decision": "HOLD",
+      "candidate": "House of Mirrors",
+      "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+      "blockers": [
+        "army prep missing",
+        "ability auto-cast disabled"
+      ],
+      "blockerCategories": [
+        "ability-disabled"
+      ],
+      "score": 37000
+    },
+    {
+      "lane": "Upgrade",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Twin",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    }
+  ],
+  "goalMetricName": "runHistoryLength",
+  "goalMetricBefore": "0",
+  "goalMetricAfter": "5",
+  "goalMetricDelta": "1",
+  "resourceBankBefore": {
+    "meat": "22000.0068",
+    "larva": "1500.0034",
+    "territory": "1200.102",
+    "energy": "600.00204"
+  },
+  "resourceBankAfter": {
+    "meat": "22000.1106",
+    "larva": "1500.0553",
+    "territory": "1201.659",
+    "energy": "600.03318"
+  },
+  "productionBefore": null,
+  "productionAfter": null,
+  "targetEtaBefore": null,
+  "targetEtaAfter": null,
+  "meaningfulProgress": true,
+  "councilMatchesPlanner": true,
+  "inspectorMatchesPlanner": true,
+  "exportMatchesPlanner": null,
+  "selectedActionActuallyExecuted": null,
+  "stateTransitionMatchesReport": true,
+  "headed": true,
+  "screenshotPaths": [],
+  "videoPath": null,
+  "tracePath": null,
+  "browserLeftOpenOnFailure": true,
+  "assessmentLabel": "QUESTIONABLE",
+  "assessmentJustification": "Scenario run completed, but one or more cycle-level observability checks were flagged QUESTIONABLE.",
+  "environmentProvenance": {
+    "nodeVersion": "v24.14.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "browserProvenance": {
+    "browserKind": "chromium",
+    "browserVersion": "149.0.7827.55",
+    "browserExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe"
+  },
+  "gameSource": {
+    "url": "https://www.swarmsim.com/#/tab/territory",
+    "kind": "production-url"
+  },
+  "userscriptProvenance": {
+    "path": "src/SwarmSim-Strategy-Autobuyer.user.js",
+    "hash": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0"
+  },
+  "cycles": [
+    {
+      "auditId": "SA1-02",
+      "stateId": "SA1-02",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:075934d1bb6fb7d428e179e869bd90ff386f651eeff17d583a5711080a6dd369",
+      "initialStateHash": "sha256:c7266f92cbcd8b9eac577a714e31593c22872f5a0e5750508b752661d9d25539",
+      "cycleNumber": 1,
+      "capturedAt": "2026-07-12T07:10:09.509Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "userscriptContentSha256": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:d5f72c073386fcfa098c9f230e85063f4c13addedcc1e01366f484875ef3e096",
+      "preResetStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "postCycleStateHash": "sha256:6e73c26966796040b0a37ffb70ffc8a660e24166f294f4a96fd8d3bbc0fe0327",
+      "postScenarioStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Nexus ramp (3/5)",
+      "activeGoal": "Reach construct nexus while protecting energy.",
+      "activeTarget": "drone",
+      "selectedLane": "Meat",
+      "selectedDecision": "BUY",
+      "selectedAction": "drone × 318",
+      "selectedUnit": "drone",
+      "selectedAmount": null,
+      "selectedReason": "Meat BUY drone: BUY drone: target unlock step for nest; converts larva into drone; unlocks twin drones, progress toward nest; reserve/payback guard ok",
+      "hardBlockers": "Nexus save, energy plan, payback, reserve, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks twin drones, progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.66768666667
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Army seed",
+          "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+          "blockers": [
+            "expansion not relevant yet"
+          ],
+          "blockerCategories": [
+            "energy-plan"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "bestLegalAlternative": "drone × 318",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "no lane-specific candidate this run",
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "no lane-specific candidate this run",
+        "no lane-specific candidate this run"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.66768666667
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks twin drones, progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Army seed",
+          "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+          "blockers": [
+            "expansion not relevant yet"
+          ],
+          "blockerCategories": [
+            "energy-plan"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "0",
+      "goalMetricAfter": "1",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.0068",
+        "larva": "1500.0034",
+        "territory": "1200.102",
+        "energy": "600.00204"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.0332",
+        "larva": "1500.0166",
+        "territory": "1200.498",
+        "energy": "600.00996"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "QUESTIONABLE",
+      "assessmentJustification": "planner decision existed but runOnce reported false"
+    },
+    {
+      "auditId": "SA1-02",
+      "stateId": "SA1-02",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:075934d1bb6fb7d428e179e869bd90ff386f651eeff17d583a5711080a6dd369",
+      "initialStateHash": "sha256:c7266f92cbcd8b9eac577a714e31593c22872f5a0e5750508b752661d9d25539",
+      "cycleNumber": 2,
+      "capturedAt": "2026-07-12T07:10:09.604Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "userscriptContentSha256": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:d5f72c073386fcfa098c9f230e85063f4c13addedcc1e01366f484875ef3e096",
+      "preResetStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "postCycleStateHash": "sha256:f4a3fa460d7873ff30080ab1e217dc84163996ac26f5e4bc58285fd33e054091",
+      "postScenarioStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Nexus ramp (3/5)",
+      "activeGoal": "Reach construct nexus while protecting energy.",
+      "activeTarget": "drone",
+      "selectedLane": "Meat",
+      "selectedDecision": "BUY",
+      "selectedAction": "drone × 318",
+      "selectedUnit": "drone",
+      "selectedAmount": null,
+      "selectedReason": "Meat BUY drone: BUY drone: target unlock step for nest; converts larva into drone; unlocks twin drones, progress toward nest; reserve/payback guard ok",
+      "hardBlockers": "Nexus save, energy plan, payback, reserve, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target, Twin Prep",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks twin drones, progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67034666667
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Army seed",
+          "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+          "blockers": [
+            "expansion not relevant yet"
+          ],
+          "blockerCategories": [
+            "energy-plan"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "bestLegalAlternative": "drone × 318",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "no lane-specific candidate this run",
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "no lane-specific candidate this run",
+        "no lane-specific candidate this run"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67034666667
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks twin drones, progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Army seed",
+          "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+          "blockers": [
+            "expansion not relevant yet"
+          ],
+          "blockerCategories": [
+            "energy-plan"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "1",
+      "goalMetricAfter": "2",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.035",
+        "larva": "1500.0175",
+        "territory": "1200.525",
+        "energy": "600.0105"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.0522",
+        "larva": "1500.0261",
+        "territory": "1200.783",
+        "energy": "600.01566"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "QUESTIONABLE",
+      "assessmentJustification": "planner decision existed but runOnce reported false"
+    },
+    {
+      "auditId": "SA1-02",
+      "stateId": "SA1-02",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:075934d1bb6fb7d428e179e869bd90ff386f651eeff17d583a5711080a6dd369",
+      "initialStateHash": "sha256:c7266f92cbcd8b9eac577a714e31593c22872f5a0e5750508b752661d9d25539",
+      "cycleNumber": 3,
+      "capturedAt": "2026-07-12T07:10:09.699Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "userscriptContentSha256": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:d5f72c073386fcfa098c9f230e85063f4c13addedcc1e01366f484875ef3e096",
+      "preResetStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "postCycleStateHash": "sha256:a16f7e2bad722fc5e6702769a95b21898caa90907fdda1abfb96df6c0dda2f7b",
+      "postScenarioStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Nexus ramp (3/5)",
+      "activeGoal": "Reach construct nexus while protecting energy.",
+      "activeTarget": "drone",
+      "selectedLane": "Meat",
+      "selectedDecision": "BUY",
+      "selectedAction": "drone × 318",
+      "selectedUnit": "drone",
+      "selectedAmount": null,
+      "selectedReason": "Meat BUY drone: BUY drone: target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+      "hardBlockers": "Nexus save, energy plan, payback, reserve, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target",
+      "actionBudget": "1/4",
+      "legalAlternatives": [
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67238666667
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Stinger V",
+          "reason": "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+          "blockers": [
+            "territory ROI below minimum"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 105.84821331501132
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "bestLegalAlternative": "drone × 318",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "no lane-specific candidate this run",
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "no lane-specific candidate this run",
+        "no lane-specific candidate this run"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67238666667
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Stinger V",
+          "reason": "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+          "blockers": [
+            "territory ROI below minimum"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 105.84821331501132
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "2",
+      "goalMetricAfter": "3",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.055",
+        "larva": "1500.0275",
+        "territory": "1200.825",
+        "energy": "600.0165"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.0712",
+        "larva": "1500.0356",
+        "territory": "1201.068",
+        "energy": "600.02136"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "QUESTIONABLE",
+      "assessmentJustification": "planner decision existed but runOnce reported false"
+    },
+    {
+      "auditId": "SA1-02",
+      "stateId": "SA1-02",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:075934d1bb6fb7d428e179e869bd90ff386f651eeff17d583a5711080a6dd369",
+      "initialStateHash": "sha256:c7266f92cbcd8b9eac577a714e31593c22872f5a0e5750508b752661d9d25539",
+      "cycleNumber": 4,
+      "capturedAt": "2026-07-12T07:10:09.799Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "userscriptContentSha256": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:d5f72c073386fcfa098c9f230e85063f4c13addedcc1e01366f484875ef3e096",
+      "preResetStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "postCycleStateHash": "sha256:847bd28333b9a9acc41a90236ae5501dafd02309c6cd71aaca6cd9d2dc189942",
+      "postScenarioStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Nexus ramp (3/5)",
+      "activeGoal": "Reach construct nexus while protecting energy.",
+      "activeTarget": "drone",
+      "selectedLane": "Meat",
+      "selectedDecision": "BUY",
+      "selectedAction": "drone × 318",
+      "selectedUnit": "drone",
+      "selectedAmount": null,
+      "selectedReason": "Meat BUY drone: BUY drone: target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+      "hardBlockers": "Nexus save, energy plan, payback, reserve, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target",
+      "actionBudget": "1/4",
+      "legalAlternatives": [
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67418666667
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Stinger V",
+          "reason": "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+          "blockers": [
+            "territory ROI below minimum"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 105.84821331501132
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "bestLegalAlternative": "drone × 318",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "no lane-specific candidate this run",
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "no lane-specific candidate this run",
+        "no lane-specific candidate this run"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67418666667
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Stinger V",
+          "reason": "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+          "blockers": [
+            "territory ROI below minimum"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 105.84821331501132
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "3",
+      "goalMetricAfter": "4",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.0732",
+        "larva": "1500.0366",
+        "territory": "1201.098",
+        "energy": "600.02196"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.0914",
+        "larva": "1500.0457",
+        "territory": "1201.371",
+        "energy": "600.02742"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "QUESTIONABLE",
+      "assessmentJustification": "planner decision existed but runOnce reported false"
+    },
+    {
+      "auditId": "SA1-02",
+      "stateId": "SA1-02",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:075934d1bb6fb7d428e179e869bd90ff386f651eeff17d583a5711080a6dd369",
+      "initialStateHash": "sha256:c7266f92cbcd8b9eac577a714e31593c22872f5a0e5750508b752661d9d25539",
+      "cycleNumber": 5,
+      "capturedAt": "2026-07-12T07:10:09.896Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "userscriptContentSha256": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "160",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:d5f72c073386fcfa098c9f230e85063f4c13addedcc1e01366f484875ef3e096",
+      "preResetStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "postCycleStateHash": "sha256:c7aea9e68b7dbf1dc91ac010541774f0b4ae01f9144a58e2bedbdbcd77c92fc7",
+      "postScenarioStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Nexus ramp (3/5)",
+      "activeGoal": "Reach construct nexus while protecting energy.",
+      "activeTarget": "drone",
+      "selectedLane": "Meat",
+      "selectedDecision": "BUY",
+      "selectedAction": "drone × 318",
+      "selectedUnit": "drone",
+      "selectedAmount": null,
+      "selectedReason": "Meat BUY drone: BUY drone: target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+      "hardBlockers": "Nexus save, energy plan, payback, reserve, ability disabled",
+      "softBlockers": "construct nexus / Nexus, meat-chain target",
+      "actionBudget": "1/4",
+      "legalAlternatives": [
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67604666666
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Stinger V",
+          "reason": "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+          "blockers": [
+            "territory ROI below minimum"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 105.84821331501132
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "bestLegalAlternative": "drone × 318",
+      "bestRejectedAlternative": "queen × 1",
+      "rejectionReasons": [
+        "no lane-specific candidate this run",
+        "saving energy for Nexus 4/5, ETA 8h 42m",
+        "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+        "Cocooning upgrade not owned",
+        "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+        "no lane-specific candidate this run",
+        "no lane-specific candidate this run"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "construct nexus",
+          "reason": "saving energy for Nexus 4/5, ETA 8h 42m",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 81866.67604666666
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for nest; converts larva into drone; unlocks progress toward nest; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Stinger V",
+          "reason": "territory ROI below minimum: ETA improvement ETA unchanged < ETA -2s and 0% < 0.10%",
+          "blockers": [
+            "territory ROI below minimum"
+          ],
+          "blockerCategories": [
+            "reserve"
+          ],
+          "score": 105.84821331501132
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "HOLD",
+          "candidate": "House of Mirrors",
+          "reason": "Territory army exists, but the mirror ritual still lacks its preferred units: Culicimorph V, Arachnomorph V, Stinger V.",
+          "blockers": [
+            "army prep missing",
+            "ability auto-cast disabled"
+          ],
+          "blockerCategories": [
+            "ability-disabled"
+          ],
+          "score": 37000
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "4",
+      "goalMetricAfter": "5",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "22000.0928",
+        "larva": "1500.0464",
+        "territory": "1201.392",
+        "energy": "600.02784"
+      },
+      "resourceBankAfter": {
+        "meat": "22000.1106",
+        "larva": "1500.0553",
+        "territory": "1201.659",
+        "energy": "600.03318"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "QUESTIONABLE",
+      "assessmentJustification": "planner decision existed but runOnce reported false"
+    }
+  ],
+  "nullFieldReasons": {
+    "topLevel": {
+      "gameSourceCommit": "production-url-not-pinned",
+      "gameBuildVersion": "production-build-version-not-exposed",
+      "productionBefore": "canary-does-not-read-full-production-matrix",
+      "productionAfter": "canary-does-not-read-full-production-matrix",
+      "targetEtaBefore": "eta-surface-not-consistently-exposed",
+      "targetEtaAfter": "eta-surface-not-consistently-exposed",
+      "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+      "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+      "repositoryCommit": "null-in-canary-output",
+      "selectedAmount": "null-in-canary-output",
+      "videoPath": "null-in-canary-output",
+      "tracePath": "null-in-canary-output"
+    },
+    "byCycle": [
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      },
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      }
+    ]
+  },
+  "watchControlTest": null,
+  "watchControlState": {
+    "mode": "live",
+    "paused": false,
+    "stopRequested": false,
+    "nextRequested": false,
+    "cycleCompleted": 5,
+    "events": []
+  },
+  "partialResult": false,
+  "runnerVerdict": "PASS",
+  "setupFailure": null,
+  "runError": null,
+  "artifactPaths": {
+    "resultJsonPath": "docs/test-data/strategy-audit-1/sa1-02/live/live-2026-07-12T071006-694Z/live-2026-07-12T071006-694Z-result.json",
+    "resultMdPath": "docs/test-data/strategy-audit-1/sa1-02/live/live-2026-07-12T071006-694Z/live-2026-07-12T071006-694Z-result.md",
+    "screenshotPaths": [],
+    "tracePath": null,
+    "videoPath": null
+  },
+  "determinism": null
+}

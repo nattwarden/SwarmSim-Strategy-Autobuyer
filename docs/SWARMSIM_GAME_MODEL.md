@@ -1,15 +1,17 @@
-# SwarmSim Game Model
+﻿# SwarmSim Game Model
 
-Version: 2026-07-09-canonical-0.8.8-planning
-Status: Canonical strategy model for SwarmSim Strategy Autobuyer.
+Version: 2026-07-10-current
+Status: Active strategy contract for SwarmSim Strategy Autobuyer.
 
-This is the single active game model for AI/Codex/Copilot agents. Older dated game model files were transitional snapshots and should not be used as active source material.
+This is the single active game model for AI/Codex/Copilot agents. Older dated
+game model files were transitional snapshots and must not be used as active
+source material.
 
-> **Verification note — 2026-07-09**
-> Status: CONFIRMED
-> Evidence: `docs/README.md`, `docs/live-logs/2026-07-09-clean-start-game-observation.md`, `docs/live-logs/2026-07-09-clicked-mechanics-progression.md`
-> Supports: This file is the active strategy model, while the 2026-07-09 live logs are the active empirical context for clean start, sacrifice/rebuild, Faster/Twin distinctions, Hatchery/Expansion coupling, and territory/army observations.
-> Script implication: Future script reviews should compare code behavior against confirmed notes in this file and the live logs before changing strategy.
+This file defines:
+- what the bot is supposed to do and why
+- hard safety defaults that must not change without explicit user request
+- game principles every planner must respect
+- the lane architecture the bot is built around
 
 ## 0. Optimization posture
 
@@ -20,23 +22,20 @@ progression should be optimized logically within the selected user mode. Hard
 safety defaults are guardrails; they are not an instruction to under-buy when a
 normal reversible action is well-scored and unblocked.
 
-User-facing modes should be treated as separate risk/automation profiles:
+The bot has two modes:
 
-1. Advisor Mode
-   - explain opportunities, risks, and timing;
-   - avoid automatic buying unless explicitly enabled;
-   - help users who want to play more manually.
+1. **Self-playing Piano**
+   - The bot plays the game autonomously.
+   - It buys, plans, and progresses without the user needing to intervene.
+   - Hard safety defaults still apply — no ability auto-casts, no auto-ascend,
+     no blind buyMax unless explicitly enabled.
+   - All decisions are observable and explainable.
 
-2. Methodical Optimizer
-   - default Smart behavior;
-   - goal-driven, rebuild/payback-aware, and lane-coordinated;
-   - willing to buy when the evidence says the action is correct.
-
-3. High-Tempo Optimizer
-   - future explicit user-selected mode;
-   - may push normal progression harder;
-   - still must remain observable and must not bypass hard safety defaults or
-     irreversible actions without explicit user choice.
+2. **Player Companion**
+   - The bot acts as an advisor for players who want to play manually.
+   - It explains opportunities, risks, and timing.
+   - It does not buy unless the player explicitly enables auto-buy.
+   - It highlights what the best next step is and why.
 
 When this document says "safe", read it as "passes the explicit hard blockers
 and selected-mode risk rules", not as "passive".
@@ -60,41 +59,17 @@ Rules:
 - Current code in `src/` shows what is actually implemented.
 - This document describes desired strategy and planner behavior.
 
-## 2. Current baseline and next work
+## 2. Current verified runtime
 
-Current verified runtime:
+Current verified runtime: `0.12.3`
 
-```text
-0.12.3
-```
+Verdict: `0.12.3 LABORATORY LIVE EFFECTIVE COUNT VERIFIED`
 
-Current repository baseline:
+For what has been built and what comes next, see:
 
-```text
-132abd6be782f2d6f5bcc99c3e239ff741a6fdbb
-```
-
-Current status:
-
-Laboratory effective-count capture verified.
-Normal strategy behavior remains based on the existing multi-lane,
-post-Nexus, Council, Army Seed, and Energy Support architecture.
-
-Next work:
-
-```text
-Strategy Audit 0 — Early-Game Behavioral Baseline
-```
-
-The next step is not immediate strategy expansion. The immediate goal is to
-measure current decision quality in reproducible staged states and document
-where behavior is good, questionable, or inconclusive before proposing any
-strategy change.
-
-Related planning documents:
-
-- `docs/strategy/STRATEGY_INTELLIGENCE_ROADMAP.md`
-- `docs/strategy/STRATEGY_AUDIT_0_EARLY_GAME.md`
+- `docs/process/HISTORY.md` — version history
+- `docs/strategy/STRATEGY_INTELLIGENCE_ROADMAP.md` — current phase and next work
+- `docs/BOOK-03-verification-history-and-artifacts.md` — acceptance evidence map
 
 ## 3. Hard safety defaults
 
@@ -191,17 +166,17 @@ Logs should show UI name first and internal name when useful:
 
 ## 6. Core planner lanes
 
-The bot should be modeled as coordinated planner lanes, not one monolithic “best buy” rule.
+The bot is built as coordinated planner lanes, not one monolithic "best buy" rule.
 
-Required lanes:
+### Implemented lanes (as of 0.12.3)
 
-1. Engine / Larva lane
+1. **Engine / Larva lane**
    - Hatchery and Expansion readiness.
    - Save-windows.
    - Clone Buffer protected larvae.
    - Whether other lanes are allowed to spend meat/larvae/territory.
 
-2. Meat lane
+2. **Meat lane**
    - Meat goal planner.
    - Unlock planner.
    - Parent-step conversion.
@@ -209,29 +184,36 @@ Required lanes:
    - Twin opportunity-cost bypass.
    - Meat fallback and stall diagnostics.
 
-3. Army / Territory lane
+3. **Army / Territory lane**
    - Fighting-unit scanning.
    - Territory ROI toward Expansion.
-   - House of Mirrors army prep, without casting House of Mirrors.
+   - Army Seed planner.
+   - House of Mirrors army prep - advisor-only, no auto-cast.
    - Anti-starvation when meat dominates every run.
 
-4. Energy / Ability lane
+4. **Energy / Ability lane**
    - Nexus target and energy protection.
    - Lepidoptera ROI.
-   - Nightbug/Bat default HOLD unless a future mode explicitly needs them.
+   - Energy Support Broker (advisor/observability layer).
+   - Nightbug/Bat default HOLD.
    - Ability Prep as advisor/observability only.
    - No default ability casts.
 
-5. Clone lane
+5. **Clone lane**
    - Clone cocoon prep as side-task.
    - Clone Buffer debt/protection/spendable larvae.
    - No default Clone Larvae cast.
 
-> **Verification note — 2026-07-09**
-> Status: PARTIALLY CONFIRMED
-> Evidence: `docs/live-logs/2026-07-09-clean-start-game-observation.md` confirms locked/unavailable lanes can be observability noise at clean start; `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms territory can unlock Expansion and therefore affect the larva engine.
-> Supports: Lanes need coordination and diagnostics. Future/locked lanes should not appear as active blockers before their systems are visible.
-> Script implication: Keep lane separation, but improve coordinator/diagnostic behavior so locked future lanes, active blockers, and starved lanes are distinguishable.
+### Advisor and observability surfaces (implemented)
+
+- **Swarm Council** - real-time lane coordination UI showing each lane's status
+- **Strategy Inspector** - export format showing full decision state
+- **Laboratory** - read-only simulation for ability value comparison (gated, manually triggered)
+
+### Lane expansion
+
+The 5-lane model may need additional lanes as Strategy Intelligence work reveals
+gaps. Any new lane proposal requires a strategy decision record in `docs/strategy/`.
 
 ## 7. Multi-Lane Coordinator
 
@@ -283,7 +265,7 @@ Hard blockers override lane desire:
 
 > **Verification note — 2026-07-09**
 > Status: PARTIALLY CONFIRMED
-> Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` reports meat dominance with Territory `OBSERVE none`; live mechanics confirm Territory can matter through Expansion.
+> Evidence: `docs/process/HISTORY.md (0.8.8 entry)` reports meat dominance with Territory `OBSERVE none`; live mechanics confirm Territory can matter through Expansion.
 > Supports: A coordinator is the right design direction, but exact scoring and action cadence still need script/live-log validation.
 > Script implication: Implement coordinator changes narrowly, preserving hard blockers and hard safety defaults.
 
@@ -314,7 +296,7 @@ This is not permission to buy blindly. It is permission to avoid permanent lane 
 
 > **Verification note — 2026-07-09**
 > Status: PARTIALLY CONFIRMED
-> Evidence: `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` documents a 20/20 meat-action run with Territory `OBSERVE none` while army prep was missing.
+> Evidence: `docs/process/HISTORY.md (0.8.8 entry)` documents a 20/20 meat-action run with Territory `OBSERVE none` while army prep was missing.
 > Supports: Anti-starvation is needed as a planner coordination concept.
 > Script implication: Allow bounded scored Army/Territory actions after hard blockers and diagnostics. This is not a default buyMax permission.
 
@@ -365,7 +347,7 @@ HOLD Army Prep — Hatchery save-window active
 
 > **Verification note — 2026-07-09**
 > Status: PARTIALLY CONFIRMED
-> Evidence: `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms fighting units produce territory and Expansion uses territory to increase larvae; `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` reports missing top fighting units while House of Mirrors remains advisor-only.
+> Evidence: `docs/live-logs/2026-07-09-clicked-mechanics-progression.md` confirms fighting units produce territory and Expansion uses territory to increase larvae; `docs/process/HISTORY.md (0.8.8 entry)` reports missing top fighting units while House of Mirrors remains advisor-only.
 > Supports: Army/Territory lane needs independent scanning and better diagnostics.
 > Script implication: A small army seed may be appropriate only when safe and clearly explained; House of Mirrors must not auto-cast.
 
@@ -398,6 +380,6 @@ Recommended fields for 0.8.8:
 
 > **Verification note — 2026-07-09**
 > Status: CONFIRMED
-> Evidence: `docs/live-logs/2026-07-09-clean-start-game-observation.md` and `docs/prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md` both identify misleading or insufficient diagnostics.
+> Evidence: `docs/live-logs/2026-07-09-clean-start-game-observation.md` and `docs/process/HISTORY.md (0.8.8 entry)` both identify misleading or insufficient diagnostics.
 > Supports: Observability must distinguish actual BUY reasons from advisor-only HOLD reasons and distinguish locked future lanes from active blockers.
 > Script implication: Any next code change should keep behavior and Strategy Inspector/export aligned.

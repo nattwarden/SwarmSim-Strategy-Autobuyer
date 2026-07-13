@@ -104,6 +104,31 @@ npm run verify
 
 `npm run verify` runs build check plus guardrails validation.
 
+## Strategy Audit SA1 matrix
+
+The repository has official one-command entry points for the SA1 mid-game
+breakpoint matrix:
+
+```bash
+npm run strategy:audit:matrix:sa1
+npm run strategy:audit:matrix:sa1:single
+npm run strategy:audit:matrix:sa1:isolated
+```
+
+The full command runs all configured SA1 breakpoint scenarios twice. The smoke
+command runs every scenario once. These fast paths reuse one Chrome window,
+browser context, and page for sequential runs. They fail on any run, reset
+failure, or state leakage. The `:isolated` command preserves a new
+Node process and Chrome instance per run for stronger final confirmation. All
+variants write timestamped JSON and Markdown artifacts under
+`docs/test-data/strategy-audit-1/<scenario-id>/live/`.
+
+This Strategy Audit flow stress-tests strategy decisions across staged states.
+It is separate from Laboratory's read-only counterfactual simulation and its
+version checks and guardrails; it does not replace Laboratory verification. The
+batch orchestration is a suitable pattern for a future Laboratory batch runner,
+but that integration is not implemented by these commands.
+
 ## Dev Workflow (Fast + Safe)
 
 Normal work:

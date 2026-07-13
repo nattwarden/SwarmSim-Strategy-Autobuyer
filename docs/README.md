@@ -1,62 +1,91 @@
-# docs
+# docs — SwarmSim Strategy Autobuyer
 
-Project documentation, prompts, release notes, game model notes, and live logs.
+## Start here
 
-## Active files
+Two primary references. Read both before touching anything.
 
-```text
-SWARMSIM_GAME_MODEL.md                    # canonical active game model
-HISTORY.md                                # summarized historical cleanup/version context
-PR_CHECKLIST.md                           # PR checklist for AI-assisted changes
-prompts/next-0.8.8-multi-lane-coordinator-territory-starvation.md
-live-logs/2026-07-09-clean-start-game-observation.md
-live-logs/2026-07-09-clicked-mechanics-progression.md
-live-logs/2026-07-10-0.10.1-energy-support-counterfactual.md
-live-logs/2026-07-10-energy-support-counterfactual-0.10.1.json
-live-logs/2026-07-10-base-game-claims-crosscheck.md
-```
+| File | What it is |
+|------|-----------|
+| `SWARMSIM_GAME_MODEL.md` | Active strategy contract — game rules, planner intent, hard safety defaults |
+| `GIT_VERIFICATION_PROTOCOL.md` | Mandatory protocol for formal version verification |
 
-## AI start here
+---
 
-Use this short sequence to avoid stale context:
+## Books
 
-1. `../AGENTS.md` for repository guardrails and hard safety defaults.
-2. `../AI.md` for AI workflow rules and reading order.
-3. `SWARMSIM_GAME_MODEL.md` for canonical strategy intent.
-4. `test-data/0.11.3-scenarios/scenario-summary.md` for latest strict verification snapshot.
-5. `live-logs/2026-07-10-base-game-claims-crosscheck.md` for claim-level CONFIRMED/PARTIAL/DEMOTED status.
+Books are the knowledge layer. Distilled findings, classified claims, and
+behavioral verdicts. Read a book first — go to a subfolder only when you need
+the raw source behind a specific claim.
 
-Current known unresolved verification item:
+| Book | Topic | Read when |
+|------|-------|-----------|
+| `BOOK-01-base-mechanics-and-claims.md` | Base mechanics and claims | Before changing planner logic or claim verdicts |
+| `BOOK-02-energy-house-of-mirrors-and-lab.md` | Energy, abilities, Laboratory | Before touching energy/ability logic or Lab captures |
+| `BOOK-03-verification-history-and-artifacts.md` | Verification history | Before claiming a version is verified; for forensics |
+| `BOOK-04-strategy-intelligence-findings.md` | Strategy Intelligence findings | Before running or interpreting SA0–SA9 results |
+| `BOOK-05-community-strategy-claims.md` | Community strategy claims | Before using 2015 community guides as bot logic |
 
-- `test-data/0.11.3-scenarios/scenario-summary.md`: scenario `R8` cycle 2 expected `BUY`, actual `OBSERVE`.
+### Book rules
 
-## Project posture
+A book entry is a **distilled, classified, stable finding** — not raw data,
+not a work order, not an architecture decision.
 
-The active strategy direction is methodical optimization.
+**Classification labels used in books:**
 
-The bot is not cautious by identity. It should be logical, evidence-based, and
-transparent. It should optimize normal progression when the math and selected
-user mode support action.
+| Label | Meaning |
+|-------|---------|
+| CONFIRMED | Verified by our live logs or bot behavior |
+| PARTIALLY CONFIRMED | Directionally validated; thresholds not fully measured |
+| UNCONFIRMED | Plausible, not yet tested in our context |
+| BOT BOUNDARY | Correct human strategy we deliberately do not automate |
+| OUTDATED / WRONG | Contradicted by our findings or game model |
+| OUT OF SCOPE | Correct claim, pertains to content we have not built yet |
+| `expected behavior` | SA finding: planner did the right thing |
+| `strategy defect` | SA finding: planner chose a clearly worse action |
+| `observability defect` | SA finding: decision unclear or missing from output |
+| `testbed defect` | SA finding: harness produced misleading conditions |
+| `harness limitation` | SA finding: testbed cannot distinguish the behaviors |
+| `inconclusive` | SA finding: insufficient data to classify |
 
-Hard safety defaults remain in place for high-risk or irreversible automation,
-such as ability auto-casts, Clone Larvae, House of Mirrors, auto-ascend,
-Nightbug/Bat defaults, and blind buyMax behavior. These defaults are guardrails,
-not an instruction to play timidly.
+**How to update books:**
+- Verify fact → add compact entry to relevant book section with source citation
+- SA scenario result → raw output to `test-data/strategy-audit/` first, distilled finding to BOOK-04
+- Changed conclusion → update existing entry in-place, no duplicate file
 
-Future user-facing modes should distinguish:
+**When to create a new book:**
+Only when a whole new knowledge domain emerges with at least 3 distinct findings
+that fit no existing book. Name it BOOK-06, BOOK-07, etc. and list it here.
 
-- Advisor Mode: tips and explanations for manual play.
-- Methodical Optimizer: default Smart behavior with rebuild/payback-aware buys.
-- High-Tempo Optimizer: future explicit mode for pushing progression harder
-  while preserving hard blockers and observability.
+---
 
-## Structure
+## Subfolders (archives and working material)
 
-```text
-release-notes/
-prompts/
-live-logs/
-```
+| Folder | What it contains |
+|--------|-----------------|
+| `strategy/` | Architecture decision records (ADRs), planning docs, specs |
+| `live-logs/` | Source observation logs, acceptance evidence, raw screenshots |
+| `test-data/` | Versioned raw test artifacts and scenario results |
+| `prompts/` | Active work orders for implementation agents |
+| `release-notes/` | Per-version changelog |
+| `process/` | Governance: verification protocol, PR checklist, history, modularization plan |
+
+---
+
+## AI agent reading order
+
+Before any code change:
+
+1. `../AGENTS.md` — repo guardrails and hard safety defaults
+2. `../AI.md` — AI workflow rules
+3. `SWARMSIM_GAME_MODEL.md` — active strategy contract
+4. Relevant book (BOOK-01 through BOOK-05)
+5. `strategy/` document if the work is architecture-level
+6. `prompts/` work order if one exists for the task
+7. `live-logs/` source log only when a specific claim needs payload verification
+8. `test-data/` only for raw artifact forensics
+
+Do not read `live-logs/` or `test-data/` before the books. The books tell you
+what the source material already concluded.
 
 ## Source-of-truth note
 

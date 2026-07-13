@@ -21,3 +21,12 @@
 - Laboratory remains development-gated, live-gated, manually triggered, read-only, and simulation-only.
 - Ability auto-cast defaults remain disabled.
 - Ascension auto mode remains disabled.
+
+## Post-release audit evidence (2026-07-12)
+
+- Added Strategy Audit 0 staging support in the testbed runner for `armyUnitCounts`, including synthetic territory-producing army units used only in audit state construction.
+- Recorded SA0-05 live evidence showing Territory lane candidate visibility (example: `Stinger V`) with rejection due to ROI/minimum-improvement threshold, not lane starvation.
+- Recorded SA0-06 live evidence showing a formally legal tiny Territory/Army action rejected as non-meaningful (`0s` ETA gain below `2m` minimum).
+- Updated Strategy Intelligence books with these outcomes and linked artifacts.
+
+No userscript strategy ranking, safety defaults, or production gameplay logic was changed by these audit-documentation updates.

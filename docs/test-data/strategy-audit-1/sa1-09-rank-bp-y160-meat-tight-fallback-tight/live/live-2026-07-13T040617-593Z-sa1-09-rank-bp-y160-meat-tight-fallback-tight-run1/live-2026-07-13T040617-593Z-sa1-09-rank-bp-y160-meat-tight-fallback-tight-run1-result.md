@@ -1,0 +1,27 @@
+# Strategy Audit Testbed - LIVE Result
+
+- Run ID: live-2026-07-13T040617-593Z-sa1-09-rank-bp-y160-meat-tight-fallback-tight-run1
+- Started: 2026-07-13T04:06:17.593Z
+- Completed: 2026-07-13T04:06:19.742Z
+- URL: https://www.swarmsim.com/#/tab/territory
+- Userscript: src/SwarmSim-Strategy-Autobuyer.user.js
+- Userscript SHA256: sha256:9a2c1e44a78c7900054c6108073f3083be47a62daff6d113a4e11193fe970a80
+- Verdict: FAIL
+- Partial result: yes
+
+## Cycle Summary
+
+## Control Test
+- not applicable
+
+## Artifacts
+- JSON: docs/test-data/strategy-audit-1/sa1-09-rank-bp-y160-meat-tight-fallback-tight/live/live-2026-07-13T040617-593Z-sa1-09-rank-bp-y160-meat-tight-fallback-tight-run1/live-2026-07-13T040617-593Z-sa1-09-rank-bp-y160-meat-tight-fallback-tight-run1-result.json
+- Markdown: docs/test-data/strategy-audit-1/sa1-09-rank-bp-y160-meat-tight-fallback-tight/live/live-2026-07-13T040617-593Z-sa1-09-rank-bp-y160-meat-tight-fallback-tight-run1/live-2026-07-13T040617-593Z-sa1-09-rank-bp-y160-meat-tight-fallback-tight-run1-result.md
+- Screenshots: none
+- Trace: none
+- Video: none
+
+## Notes
+- Canary validates infrastructure contract only.
+- No Strategy Audit 0 scenario matrix is executed.
+- Planner output is observed from runOnce and never injected.

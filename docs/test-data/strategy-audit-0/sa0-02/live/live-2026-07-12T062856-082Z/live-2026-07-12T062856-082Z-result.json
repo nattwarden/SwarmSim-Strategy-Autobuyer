@@ -1,0 +1,639 @@
+{
+  "mode": "live",
+  "scenario": "sa0-02",
+  "runId": "live-2026-07-12T062856-082Z",
+  "startedAt": "2026-07-12T06:28:56.084Z",
+  "completedAt": "2026-07-12T06:28:59.051Z",
+  "stateRevision": 1,
+  "scriptVersion": "0.12.3",
+  "repositoryCommit": null,
+  "scenarioHash": "sha256:64ed09b08b36f6871629709d09eb75b5a0fb2e70c9a3c53b342ce425119e06ff",
+  "initialStateHash": "sha256:0b9dea3d86ab300be7c57af5a7ee45dc9205e7f3dd1a739829f30b98efb3ea34",
+  "cycleNumber": 1,
+  "capturedAt": "2026-07-12T06:28:59.051Z",
+  "gameSourceKind": "production-url",
+  "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+  "gameSourceCommit": null,
+  "gameBuildVersion": null,
+  "browserKind": "chromium",
+  "browserVersion": "149.0.7827.55",
+  "browserMode": "headed",
+  "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+  "userscriptBlobSha": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+  "userscriptContentSha256": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+  "injectionMode": "playwright-addScriptTag",
+  "profileKind": "disposable-context",
+  "networkMode": "online-production",
+  "stateSetupMethod": "direct-game-service-unit-patch",
+  "stateMutationManifest": [
+    {
+      "id": "config:advisorOnly",
+      "path": "kbcSwarmBot.config.advisorOnly",
+      "before": "false",
+      "stagedValue": "false",
+      "method": "direct config override",
+      "restorationMethod": "restore captured config values"
+    },
+    {
+      "id": "unit:drone",
+      "path": "game.unit(drone).count",
+      "before": "0",
+      "stagedValue": "25",
+      "method": "Object.defineProperty(count) dynamic decimal",
+      "restorationMethod": "restore original property descriptor/value"
+    }
+  ],
+  "stateMutationManifestHash": "sha256:cf7dfa3bd049ae4b2a1a7fc5ca9dd9ae64f3a95de5e11587050078bfbec1ff99",
+  "preResetStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+  "postCycleStateHash": "sha256:bb1584f91f0c8a0ce5cf888c4809923ee6473ccc71e9146f792f4ca71991f2a2",
+  "postScenarioStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+  "resetMethod": "restore-captured-property-descriptors",
+  "resetVerified": true,
+  "stateLeakageDetected": false,
+  "activePhase": "Pre-Nexus meat/territory setup",
+  "activeGoal": "Meat-chain target: queen; current action: drone.",
+  "activeTarget": "Hatchery",
+  "selectedLane": "Engine",
+  "selectedDecision": "BUY",
+  "selectedAction": "Hatchery",
+  "selectedUnit": "Hatchery",
+  "selectedAmount": null,
+  "selectedReason": "Engine BUY Hatchery: BUY Hatchery: larva-engine priority",
+  "hardBlockers": "payback, reserve, Nexus save, energy plan",
+  "softBlockers": "meat-chain target",
+  "actionBudget": "2/4",
+  "legalAlternatives": [
+    {
+      "lane": "Engine",
+      "decision": "BUY",
+      "candidate": "Hatchery",
+      "reason": "larva-engine priority",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 80000
+    },
+    {
+      "lane": "Meat",
+      "decision": "BUY",
+      "candidate": "drone",
+      "reason": "target unlock step for queen; converts meat into drone; unlocks progress toward queen; reserve/payback guard ok",
+      "blockers": [],
+      "blockerCategories": [
+        "payback",
+        "reserve"
+      ],
+      "score": 8110
+    }
+  ],
+  "rejectedAlternatives": [
+    {
+      "lane": "Energy",
+      "decision": "HOLD",
+      "candidate": "Energy spending",
+      "reason": "saving energy for Nexus",
+      "blockers": [
+        "energy protected for Nexus",
+        "Nexus save"
+      ],
+      "blockerCategories": [
+        "protected-resource",
+        "energy-plan"
+      ],
+      "score": 80000
+    },
+    {
+      "lane": "Territory",
+      "decision": "HOLD",
+      "candidate": "Army seed",
+      "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+      "blockers": [
+        "expansion not relevant yet"
+      ],
+      "blockerCategories": [
+        "energy-plan"
+      ],
+      "score": 0
+    },
+    {
+      "lane": "Clone Prep",
+      "decision": "OBSERVE",
+      "candidate": "Cocoons",
+      "reason": "Cocooning upgrade not owned",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 0
+    },
+    {
+      "lane": "Ability",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Upgrade",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Twin",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    }
+  ],
+  "bestLegalAlternative": "Hatchery",
+  "bestRejectedAlternative": "swarmling × 1",
+  "rejectionReasons": [
+    "saving energy for Nexus",
+    "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+    "Cocooning upgrade not owned",
+    "no lane-specific candidate this run",
+    "no lane-specific candidate this run",
+    "no lane-specific candidate this run"
+  ],
+  "laneProposals": [
+    {
+      "lane": "Engine",
+      "decision": "BUY",
+      "candidate": "Hatchery",
+      "reason": "larva-engine priority",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 80000
+    },
+    {
+      "lane": "Energy",
+      "decision": "HOLD",
+      "candidate": "Energy spending",
+      "reason": "saving energy for Nexus",
+      "blockers": [
+        "energy protected for Nexus",
+        "Nexus save"
+      ],
+      "blockerCategories": [
+        "protected-resource",
+        "energy-plan"
+      ],
+      "score": 80000
+    },
+    {
+      "lane": "Meat",
+      "decision": "BUY",
+      "candidate": "drone",
+      "reason": "target unlock step for queen; converts meat into drone; unlocks progress toward queen; reserve/payback guard ok",
+      "blockers": [],
+      "blockerCategories": [
+        "payback",
+        "reserve"
+      ],
+      "score": 8110
+    },
+    {
+      "lane": "Territory",
+      "decision": "HOLD",
+      "candidate": "Army seed",
+      "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+      "blockers": [
+        "expansion not relevant yet"
+      ],
+      "blockerCategories": [
+        "energy-plan"
+      ],
+      "score": 0
+    },
+    {
+      "lane": "Clone Prep",
+      "decision": "OBSERVE",
+      "candidate": "Cocoons",
+      "reason": "Cocooning upgrade not owned",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": 0
+    },
+    {
+      "lane": "Ability",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Upgrade",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    },
+    {
+      "lane": "Twin",
+      "decision": "OBSERVE",
+      "candidate": "none",
+      "reason": "no lane-specific candidate this run",
+      "blockers": [],
+      "blockerCategories": [],
+      "score": null
+    }
+  ],
+  "goalMetricName": "runHistoryLength",
+  "goalMetricBefore": "0",
+  "goalMetricAfter": "1",
+  "goalMetricDelta": "1",
+  "resourceBankBefore": {
+    "meat": "1000.0006",
+    "larva": "100.0001",
+    "territory": "0",
+    "energy": "0"
+  },
+  "resourceBankAfter": {
+    "meat": "1000.01836",
+    "larva": "100.00306",
+    "territory": "0",
+    "energy": "0"
+  },
+  "productionBefore": null,
+  "productionAfter": null,
+  "targetEtaBefore": null,
+  "targetEtaAfter": null,
+  "meaningfulProgress": true,
+  "councilMatchesPlanner": true,
+  "inspectorMatchesPlanner": true,
+  "exportMatchesPlanner": null,
+  "selectedActionActuallyExecuted": null,
+  "stateTransitionMatchesReport": true,
+  "headed": true,
+  "screenshotPaths": [],
+  "videoPath": null,
+  "tracePath": null,
+  "browserLeftOpenOnFailure": true,
+  "assessmentLabel": "QUESTIONABLE",
+  "assessmentJustification": "Canary validates testbed contract and cycle-level observability.",
+  "environmentProvenance": {
+    "nodeVersion": "v24.14.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "browserProvenance": {
+    "browserKind": "chromium",
+    "browserVersion": "149.0.7827.55",
+    "browserExecutablePath": "C:\\Users\\info\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe"
+  },
+  "gameSource": {
+    "url": "https://www.swarmsim.com/#/tab/territory",
+    "kind": "production-url"
+  },
+  "userscriptProvenance": {
+    "path": "src/SwarmSim-Strategy-Autobuyer.user.js",
+    "hash": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0"
+  },
+  "cycles": [
+    {
+      "auditId": "SA0-02",
+      "stateId": "SA0-02",
+      "stateRevision": 1,
+      "scriptVersion": null,
+      "repositoryCommit": null,
+      "scenarioHash": "sha256:edf09390207e5c14c93a1379169a36d1df2d53a449e020b4cece6850e677cfa3",
+      "initialStateHash": "sha256:0b9dea3d86ab300be7c57af5a7ee45dc9205e7f3dd1a739829f30b98efb3ea34",
+      "cycleNumber": 1,
+      "capturedAt": "2026-07-12T06:28:57.544Z",
+      "gameSourceKind": "production-url",
+      "gameSourceUrl": "https://www.swarmsim.com/#/tab/territory",
+      "gameSourceCommit": null,
+      "gameBuildVersion": null,
+      "browserKind": "chromium",
+      "browserVersion": "149.0.7827.55",
+      "browserMode": "headed",
+      "userscriptPath": "src/SwarmSim-Strategy-Autobuyer.user.js",
+      "userscriptBlobSha": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "userscriptContentSha256": "sha256:1c1104d5f30ba2eef1e510aa926f27271386a1fa28b50dcfb2a08a2e9aa789e0",
+      "injectionMode": "playwright-addScriptTag",
+      "profileKind": "disposable-context",
+      "networkMode": "online-production",
+      "stateSetupMethod": "direct-game-service-unit-patch",
+      "stateMutationManifest": [
+        {
+          "id": "config:advisorOnly",
+          "path": "kbcSwarmBot.config.advisorOnly",
+          "before": "false",
+          "stagedValue": "false",
+          "method": "direct config override",
+          "restorationMethod": "restore captured config values"
+        },
+        {
+          "id": "unit:drone",
+          "path": "game.unit(drone).count",
+          "before": "0",
+          "stagedValue": "25",
+          "method": "Object.defineProperty(count) dynamic decimal",
+          "restorationMethod": "restore original property descriptor/value"
+        }
+      ],
+      "stateMutationManifestHash": "sha256:cf7dfa3bd049ae4b2a1a7fc5ca9dd9ae64f3a95de5e11587050078bfbec1ff99",
+      "preResetStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "postCycleStateHash": "sha256:bb1584f91f0c8a0ce5cf888c4809923ee6473ccc71e9146f792f4ca71991f2a2",
+      "postScenarioStateHash": "sha256:b333e0102fac328d2d66d2e89b9d1c95d9143e018de837d3e2ae3a2dd6cc8d66",
+      "resetMethod": "restore-captured-property-descriptors",
+      "resetVerified": true,
+      "stateLeakageDetected": false,
+      "activePhase": "Pre-Nexus meat/territory setup",
+      "activeGoal": "Meat-chain target: queen; current action: drone.",
+      "activeTarget": "Hatchery",
+      "selectedLane": "Engine",
+      "selectedDecision": "BUY",
+      "selectedAction": "Hatchery",
+      "selectedUnit": "Hatchery",
+      "selectedAmount": null,
+      "selectedReason": "Engine BUY Hatchery: BUY Hatchery: larva-engine priority",
+      "hardBlockers": "payback, reserve, Nexus save, energy plan",
+      "softBlockers": "meat-chain target",
+      "actionBudget": "2/4",
+      "legalAlternatives": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Hatchery",
+          "reason": "larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 80000
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for queen; converts meat into drone; unlocks progress toward queen; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        }
+      ],
+      "rejectedAlternatives": [
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "Energy spending",
+          "reason": "saving energy for Nexus",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 80000
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Army seed",
+          "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+          "blockers": [
+            "expansion not relevant yet"
+          ],
+          "blockerCategories": [
+            "energy-plan"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "bestLegalAlternative": "Hatchery",
+      "bestRejectedAlternative": "swarmling × 1",
+      "rejectionReasons": [
+        "saving energy for Nexus",
+        "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+        "Cocooning upgrade not owned",
+        "no lane-specific candidate this run",
+        "no lane-specific candidate this run",
+        "no lane-specific candidate this run"
+      ],
+      "laneProposals": [
+        {
+          "lane": "Engine",
+          "decision": "BUY",
+          "candidate": "Hatchery",
+          "reason": "larva-engine priority",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 80000
+        },
+        {
+          "lane": "Energy",
+          "decision": "HOLD",
+          "candidate": "Energy spending",
+          "reason": "saving energy for Nexus",
+          "blockers": [
+            "energy protected for Nexus",
+            "Nexus save"
+          ],
+          "blockerCategories": [
+            "protected-resource",
+            "energy-plan"
+          ],
+          "score": 80000
+        },
+        {
+          "lane": "Meat",
+          "decision": "BUY",
+          "candidate": "drone",
+          "reason": "target unlock step for queen; converts meat into drone; unlocks progress toward queen; reserve/payback guard ok",
+          "blockers": [],
+          "blockerCategories": [
+            "payback",
+            "reserve"
+          ],
+          "score": 8110
+        },
+        {
+          "lane": "Territory",
+          "decision": "HOLD",
+          "candidate": "Army seed",
+          "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+          "blockers": [
+            "expansion not relevant yet"
+          ],
+          "blockerCategories": [
+            "energy-plan"
+          ],
+          "score": 0
+        },
+        {
+          "lane": "Clone Prep",
+          "decision": "OBSERVE",
+          "candidate": "Cocoons",
+          "reason": "Cocooning upgrade not owned",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": 0
+        },
+        {
+          "lane": "Ability",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Upgrade",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        },
+        {
+          "lane": "Twin",
+          "decision": "OBSERVE",
+          "candidate": "none",
+          "reason": "no lane-specific candidate this run",
+          "blockers": [],
+          "blockerCategories": [],
+          "score": null
+        }
+      ],
+      "goalMetricName": "runHistoryLength",
+      "goalMetricBefore": "0",
+      "goalMetricAfter": "1",
+      "goalMetricDelta": "1",
+      "resourceBankBefore": {
+        "meat": "1000.0006",
+        "larva": "100.0001",
+        "territory": "0",
+        "energy": "0"
+      },
+      "resourceBankAfter": {
+        "meat": "1000.01836",
+        "larva": "100.00306",
+        "territory": "0",
+        "energy": "0"
+      },
+      "productionBefore": null,
+      "productionAfter": null,
+      "targetEtaBefore": null,
+      "targetEtaAfter": null,
+      "meaningfulProgress": true,
+      "councilMatchesPlanner": true,
+      "inspectorMatchesPlanner": true,
+      "exportMatchesPlanner": null,
+      "selectedActionActuallyExecuted": null,
+      "stateTransitionMatchesReport": true,
+      "headed": true,
+      "screenshotPaths": [],
+      "videoPath": null,
+      "tracePath": null,
+      "browserLeftOpenOnFailure": true,
+      "assessmentLabel": "QUESTIONABLE",
+      "assessmentJustification": "planner decision existed but runOnce reported false"
+    }
+  ],
+  "nullFieldReasons": {
+    "topLevel": {
+      "gameSourceCommit": "production-url-not-pinned",
+      "gameBuildVersion": "production-build-version-not-exposed",
+      "productionBefore": "canary-does-not-read-full-production-matrix",
+      "productionAfter": "canary-does-not-read-full-production-matrix",
+      "targetEtaBefore": "eta-surface-not-consistently-exposed",
+      "targetEtaAfter": "eta-surface-not-consistently-exposed",
+      "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+      "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+      "repositoryCommit": "null-in-canary-output",
+      "selectedAmount": "null-in-canary-output",
+      "videoPath": "null-in-canary-output",
+      "tracePath": "null-in-canary-output"
+    },
+    "byCycle": [
+      {
+        "gameSourceCommit": "production-url-not-pinned",
+        "gameBuildVersion": "production-build-version-not-exposed",
+        "productionBefore": "canary-does-not-read-full-production-matrix",
+        "productionAfter": "canary-does-not-read-full-production-matrix",
+        "targetEtaBefore": "eta-surface-not-consistently-exposed",
+        "targetEtaAfter": "eta-surface-not-consistently-exposed",
+        "exportMatchesPlanner": "export-comparison-not-required-for-canary",
+        "selectedActionActuallyExecuted": "advisor-only-mode-avoids-live-mutation",
+        "scriptVersion": "null-in-canary-output",
+        "repositoryCommit": "null-in-canary-output",
+        "selectedAmount": "null-in-canary-output",
+        "videoPath": "null-in-canary-output",
+        "tracePath": "null-in-canary-output"
+      }
+    ]
+  },
+  "watchControlTest": null,
+  "watchControlState": {
+    "mode": "live",
+    "paused": false,
+    "stopRequested": false,
+    "nextRequested": false,
+    "cycleCompleted": 1,
+    "events": []
+  },
+  "partialResult": false,
+  "runnerVerdict": "PASS",
+  "setupFailure": null,
+  "runError": null,
+  "artifactPaths": {
+    "resultJsonPath": "docs/test-data/strategy-audit-0/sa0-02/live/live-2026-07-12T062856-082Z/live-2026-07-12T062856-082Z-result.json",
+    "resultMdPath": "docs/test-data/strategy-audit-0/sa0-02/live/live-2026-07-12T062856-082Z/live-2026-07-12T062856-082Z-result.md",
+    "screenshotPaths": [],
+    "tracePath": null,
+    "videoPath": null
+  },
+  "determinism": null
+}

@@ -1,0 +1,28 @@
+# Strategy Audit Testbed - LIVE Result
+
+- Run ID: live-2026-07-13T040442-300Z-sa1-04-rank-bp-y80-run1
+- Started: 2026-07-13T04:04:42.301Z
+- Completed: 2026-07-13T04:04:45.220Z
+- URL: https://www.swarmsim.com/#/tab/territory
+- Userscript: src/SwarmSim-Strategy-Autobuyer.user.js
+- Userscript SHA256: sha256:9a2c1e44a78c7900054c6108073f3083be47a62daff6d113a4e11193fe970a80
+- Verdict: PASS
+- Partial result: no
+
+## Cycle Summary
+- cycle 1: decision=BUY, action=drone × 318, lane=Meat, assessment=GOOD
+
+## Control Test
+- not applicable
+
+## Artifacts
+- JSON: docs/test-data/strategy-audit-1/sa1-04-rank-bp-y80/live/live-2026-07-13T040442-300Z-sa1-04-rank-bp-y80-run1/live-2026-07-13T040442-300Z-sa1-04-rank-bp-y80-run1-result.json
+- Markdown: docs/test-data/strategy-audit-1/sa1-04-rank-bp-y80/live/live-2026-07-13T040442-300Z-sa1-04-rank-bp-y80-run1/live-2026-07-13T040442-300Z-sa1-04-rank-bp-y80-run1-result.md
+- Screenshots: none
+- Trace: none
+- Video: none
+
+## Notes
+- Canary validates infrastructure contract only.
+- No Strategy Audit 0 scenario matrix is executed.
+- Planner output is observed from runOnce and never injected.

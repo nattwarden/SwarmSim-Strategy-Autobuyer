@@ -1,7 +1,7 @@
 {
   "name": "swarmsim-strategy-autobuyer",
   "private": true,
-  "version": "0.12.3",
+  "version": "0.13.0",
   "description": "SwarmSim Strategy Autobuyer tooling",
   "license": "UNLICENSED",
   "scripts": {
@@ -28,14 +28,25 @@
     "check:0.12.1:laboratory": "node scripts/verify-0.12.1-laboratory-live-runner.js",
     "check:0.12.2:laboratory": "node scripts/verify-0.12.1-laboratory-live-runner.js",
     "check:0.12.3:laboratory": "node scripts/verify-0.12.3-laboratory-effective-count.js",
+    "check:0.12.4:laboratory": "node scripts/verify-0.12.3-laboratory-effective-count.js",
     "verify:0.12.1:laboratory:live": "node scripts/verify-0.12.1-laboratory-live-runner.js",
     "verify:0.12.2:laboratory:hom-resolver": "node scripts/verify-0.12.1-laboratory-live-runner.js",
     "verify:0.12.3:laboratory:effective-count": "node scripts/verify-0.12.3-laboratory-effective-count.js",
+    "verify:0.12.4:laboratory:effective-count": "node scripts/verify-0.12.3-laboratory-effective-count.js",
+    "check:laboratory:phase2a": "node scripts/check-laboratory-phase2a-source-math.js",
+    "check:purchase-evaluator": "node scripts/check-unified-purchase-evaluator.js",
     "probe:strategy-audit:testbed:production": "node scripts/probe-strategy-audit-testbed-feasibility.js",
     "probe:strategy-audit:testbed:watch": "node scripts/probe-strategy-audit-testbed-feasibility.js --keep-open --pause-ms 5000 --slow-mo 50",
     "strategy:audit:fast": "node scripts/strategy-audit-testbed-fast.js",
     "strategy:audit:watch": "node scripts/strategy-audit-testbed-watch.js",
     "strategy:audit:live": "node scripts/strategy-audit-testbed-live.js",
+    "strategy:audit:matrix:sa1": "node scripts/run-sa1-breakpoint-matrix.js",
+    "strategy:audit:matrix:sa1:single": "node scripts/run-sa1-breakpoint-matrix.js --repeats 1",
+    "strategy:audit:matrix:sa1:isolated": "node scripts/run-sa1-breakpoint-matrix.js --isolated",
+    "strategy:audit:matrix:sa1:sweep150": "node scripts/run-sa1-breakpoint-matrix.js --sweep150 --repeats 1",
+    "strategy:audit:matrix:sa1:sweep150:isolated": "node scripts/run-sa1-breakpoint-matrix.js --sweep150 --repeats 1 --isolated",
+    "strategy:audit:matrix:sa1:v2": "node scripts/run-sa1-breakpoint-v2.js",
+    "strategy:audit:matrix:sa1:v2:wide": "node scripts/run-sa1-breakpoint-v2.js --wide",
     "check:0.11.1": "node scripts/check-0.11.1-invariants.js",
     "check:0.11.2": "node scripts/check-0.11.2-invariants.js",
     "check:0.11.3": "node scripts/check-0.11.3-invariants.js",
@@ -43,7 +54,7 @@
     "sync:from-canonical": "node scripts/extract-runtime-source.js",
     "hotfix:canonical": "npm run sync:from-canonical && npm run build && npm run verify",
     "validate:guardrails": "node scripts/validate-repo-guardrails.js",
-    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && node scripts/validate-repo-guardrails.js"
+    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.4:laboratory && node scripts/validate-repo-guardrails.js"
   },
   "dependencies": {
     "playwright": "^1.61.1"

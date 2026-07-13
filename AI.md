@@ -56,7 +56,7 @@ Repo/process guard:
 AGENTS.md
 ```
 
-Release history belongs in Git commits, tags, `docs/HISTORY.md`, and
+Release history belongs in Git commits, tags, `docs/process/HISTORY.md`, and
 `docs/release-notes/`.
 
 Development-only modular scaffolds:
@@ -79,7 +79,7 @@ Before code changes, read:
 5. Relevant prompt in `docs/prompts/`
 6. Relevant release notes or live logs if needed
 7. `reference/` only for strategy/math sanity checks
-8. `docs/MODULARIZATION_PLAN.md` for lane/overseer extraction work
+8. `docs/process/MODULARIZATION_PLAN.md` for lane/overseer extraction work
 9. Relevant `dev-src/` modules for scaffold/contract context
 
 Do not use old dated game-model files as active truth.
@@ -196,6 +196,22 @@ normal purchases. If the math says a normal action is correct and all hard
 blockers pass, the bot should be allowed to act within the selected mode.
 
 ## Work rules for AI agents
+
+### Strategy research fast path
+
+Keep browser-game research lightweight:
+
+1. Use Laboratory to compare counterfactual actions from one read-only snapshot.
+2. Use Strategy Audit to test actual strategy behavior across staged states.
+3. Run many SA1 cases locally with `npm run strategy:audit:matrix:sa1`; use
+   `:single` for smoke and `:isolated` only to confirm an important finding.
+4. Require `resetVerified=true` and `stateLeakageDetected=false`.
+5. Read the generated artifacts as a batch instead of starting one AI prompt per test.
+6. Reproduce a finding before proposing a narrow production change.
+7. Keep Laboratory findings advisory until separately verified; never widen
+   automation or safety defaults merely because one experiment looks favorable.
+
+Formal release evidence still follows `docs/process/GIT_VERIFICATION_PROTOCOL.md`.
 
 - Build against `src/SwarmSim-Strategy-Autobuyer.user.js` only.
 - Keep strategy and implementation separate: code shows actual behavior; the game

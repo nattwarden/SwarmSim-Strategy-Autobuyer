@@ -43,10 +43,10 @@ docs/SWARMSIM_GAME_MODEL.md
 The Laboratory contract is:
 
 ```text
-docs/laboratory/SWARMSIM_LABORATORY_PHASE_1.md
+docs/strategy/SWARMSIM_LABORATORY_PHASE_1.md
 ```
 
-Release history is tracked through Git commits, tags, `docs/HISTORY.md`, and `docs/release-notes/`.
+Release history is tracked through Git commits, tags, `docs/process/HISTORY.md`, and `docs/release-notes/`.
 
 Empirical evidence belongs under `docs/live-logs/` and versioned `docs/test-data/` paths.
 
@@ -58,7 +58,7 @@ Before changing code, read:
 2. `AI.md`
 3. `docs/SWARMSIM_GAME_MODEL.md`
 4. `scripts/canonical-build.config.json`
-5. `docs/GIT_VERIFICATION_PROTOCOL.md`
+5. `docs/process/GIT_VERIFICATION_PROTOCOL.md`
 6. relevant `docs/prompts/`
 7. relevant `docs/release-notes/`
 8. relevant `docs/live-logs/` and `docs/test-data/`
@@ -67,7 +67,7 @@ Before changing code, read:
 11. relevant verifier scripts and `package.json`
 12. `reference/` only when needed for sanity checks
 
-For modularization tasks, also read `docs/MODULARIZATION_PLAN.md` and relevant `dev-src/` modules.
+For modularization tasks, also read `docs/process/MODULARIZATION_PLAN.md` and relevant `dev-src/` modules.
 
 Search by function, constant, schema, and test name. Do not rely on line numbers from an older commit.
 
@@ -153,7 +153,7 @@ Do not invent branch, push, HEAD, origin/main, or working-tree status. Read it f
 Every formal code/version verification must follow:
 
 ```text
-docs/GIT_VERIFICATION_PROTOCOL.md
+docs/process/GIT_VERIFICATION_PROTOCOL.md
 ```
 
 This is a hard gate, not optional guidance.

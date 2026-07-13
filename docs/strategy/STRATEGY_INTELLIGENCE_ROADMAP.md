@@ -2,7 +2,7 @@
 
 ## Stable provenance
 
-- Current verified runtime: `0.12.3`
+- Current verified runtime: `0.12.4`
 - Runtime implementation commit: `c819c7d7adc8ab0280e06d25466f6697fb915409`
 - Mature-save acceptance evidence commit: `636cfb4b061ce9a0c72d273812a977ede0114c27`
 - Strategy Intelligence planning introduced: `3ec61fe48754fcdba5bfd17fcd0e4ef577e6cbf6`
@@ -17,6 +17,25 @@ Laboratory is currently strongest as a controlled comparison system for:
 - `HOUSE_OF_MIRRORS`
 
 It is not yet a general strategic scorer for normal purchases and competing planner lanes.
+
+Laboratory Phase 1 is one experiment family, not the intended final boundary.
+Future families may examine purchase timing, producer-versus-upgrade payback,
+reserve sensitivity, Expansion tradeoffs, and strategy breakpoints while
+preserving read-only simulation and explicit formula provenance.
+
+The SA1 breakpoint matrix establishes the repository's official one-command
+batch pattern for many staged Strategy Audit scenarios. It remains separate
+from Laboratory verification: SA1 stress-tests strategy decisions, while
+Laboratory verifiers protect snapshot, formula, determinism, gating, and
+non-mutation contracts. A future Laboratory batch runner can reuse the
+orchestration pattern to run many snapshots locally and return aggregated
+evidence for analysis; SA1 does not replace or currently implement that layer.
+
+Research should remain proportionate to the project: ask one concrete gameplay
+question, run the smallest useful Laboratory or Strategy Audit batch, inspect
+the artifacts, and reproduce only the findings worth pursuing. Prefer the fast
+single-window matrix; reserve process-isolated runs for confirmation. Add new
+process or experiment machinery only when a real recurring need justifies it.
 
 ## Product north star
 
@@ -43,7 +62,7 @@ Council and planner surfaces should eventually expose:
 
 ## Required phase order
 
-### 0.12.3
+### 0.12.4
 
 Verified technical foundation.
 
@@ -60,11 +79,45 @@ See:
 
 Early-game behavioral baseline from staged, reproducible states.
 
+Completed 2026-07-12 (SA0-01 through SA0-06).
+
 ### Strategy Audit 1
 
 Mid-game multi-lane decision quality.
 
-### 0.12.4
+Current SA1 evidence trend (2026-07-12):
+
+- Territory can be surfaced and made legal BUY in controlled audit scenarios.
+- Meat still tends to win in tested mid-game rebuild states, even under relaxed Territory gates and higher synthetic Territory yield.
+- Ordering-isolation no-selection behavior was traced to a testbed synthetic-unit execution artifact and corrected in the audit harness.
+
+Immediate SA1 focus:
+
+- isolate ranking breakpoints with audit-only score/priority sensitivity;
+- continue ranking/priority breakpoint mapping with audit-only sensitivity variants;
+- propose one narrow production fix only after reproducible breakpoint evidence.
+
+Official batch commands:
+
+```bash
+npm run strategy:audit:matrix:sa1
+npm run strategy:audit:matrix:sa1:single
+npm run strategy:audit:matrix:sa1:isolated
+```
+
+The first runs every current breakpoint scenario twice; the smoke command runs
+each once. Both reuse one Chrome window, context, and page for sequential runs.
+The isolated command starts a new process and Chrome instance per run for
+confirmation. Per-run JSON and Markdown artifacts are written under
+`docs/test-data/strategy-audit-1/<scenario-id>/live/`.
+
+See:
+
+- `docs/strategy/STRATEGY_AUDIT_1_MID_GAME.md`
+- `docs/strategy/STRATEGY_AUDIT_1_BREAKPOINT_MATRIX.md`
+- `docs/prompts/next-strategy-audit-1-mid-game.md`
+
+### 0.12.5
 
 Only if an audit identifies one narrow, concrete strategy or observability defect.
 
