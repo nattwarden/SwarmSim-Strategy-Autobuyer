@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      7.0.0
+// @version      8.0.0
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -30,7 +30,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "7.0.0";
+  const AUTOBUYER_VERSION = "8.0.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -87,7 +87,7 @@
   ];
   const SIX_DOMAIN_MANIFEST = {
     schemaVersion: "m6-domain-contract-manifest.v1",
-    targetVersion: "7.0.0",
+    targetVersion: "8.0.0",
     status: "runtime-coordinator",
     baseline: {
       mainIntegrationImplementationSha: "a4221ea4ae741d1dc86e09bbafef616200f87d0c",
@@ -2861,6 +2861,44 @@ function getDisplayName(item) {
     }, history);
   }
 
+  function laneCandidateHasEtaStallSignal(candidate) {
+    if (!candidate) return false;
+    const raw = candidate.raw || {};
+    const etaImprovement = rawMetricNumber(raw, "etaImprovementSeconds", NaN);
+    if (Number.isFinite(etaImprovement)) {
+      return etaImprovement <= 0;
+    }
+
+    const etaBefore = rawMetricNumber(raw, "etaBeforeSeconds", NaN);
+    if (Number.isFinite(etaBefore)) {
+      return etaBefore > 0;
+    }
+
+    const reasonText = `${candidate.reason || ""} ${(candidate.blockers || []).join(" ")}`.toLowerCase();
+    return /eta|payback|reserve|not meaningful|below minimum/.test(reasonText);
+  }
+
+  function countConsecutiveEtaGroundedReserveAbilityBlockedMainHolds(history = runHistory) {
+    return countConsecutiveMainHoldRunsMatching((run) => {
+      const blocked = String(run?.blockedBySummary || "").toLowerCase();
+      if (!(blocked.includes("reserve") && blocked.includes("ability disabled"))) return false;
+
+      const laneCandidates = Array.isArray(run?.laneCandidates) ? run.laneCandidates : [];
+      const holdRows = laneCandidates.filter((entry) => String(entry?.decision || "").toUpperCase() === "HOLD");
+      if (!holdRows.length) return false;
+
+      const meatHoldRows = laneCandidates.filter((entry) =>
+        String(entry?.lane || "").toLowerCase() === "meat"
+        && String(entry?.decision || "").toUpperCase() === "HOLD"
+      );
+      if (meatHoldRows.length) {
+        return meatHoldRows.some(laneCandidateHasEtaStallSignal);
+      }
+
+      return holdRows.some(laneCandidateHasEtaStallSignal);
+    }, history);
+  }
+
   function buildLiveDiagnostics(history = runHistory) {
     const recent = (history || []).slice(-20);
     const sideOnlyRuns = recent.filter((run) => Number(run.mainActions || 0) === 0 && Number(run.sideActions || 0) > 0).length;
@@ -3445,8 +3483,9 @@ function getDisplayName(item) {
       meatFallbackBlockedCandidate: meatFallbackState?.blockedCandidate || "none",
       skippedMeatCandidates: meatFallbackState?.skipped || [],
       topMeatBlockedBy: meatFallbackState?.topBlockedBy || "none",
-      stallBreakerActive: !!meatFallbackState?.stallBreakerActive,
+      stallBreakerActive: !!meatFallbackState?.stallBreakerActive || isMeatStallBreakerPatternReady(),
       recentMainHoldRuns: meatFallbackState?.recentMainHoldRuns ?? countConsecutiveRecentMainHoldRuns(),
+      etaGroundedReserveAbilityHoldRuns: countConsecutiveEtaGroundedReserveAbilityBlockedMainHolds(),
       fallbackRankDrop: meatFallbackState?.fallbackRankDrop ?? null,
       meatActionUnitPaybackBypassTriggered: !!meatActionState?.triggered,
       meatActionUnitPaybackBypassReason: meatActionState?.reason || "none",
@@ -15113,18 +15152,24 @@ function getDisplayName(item) {
   }
 
   function canActivateMeatStallBreaker(engine, protectedResources) {
+    if (!isMeatStallBreakerPatternReady()) return false;
+    if (engine?.expansionBuyable || engine?.hatcheryBuyable) return false;
+    if (protectedResources?.has("meat") || protectedResources?.has("territory")) return false;
+    return true;
+  }
+
+  function isMeatStallBreakerPatternReady() {
     if (!config.meatFallbackEnabled) return false;
     const recentMainHoldRuns = countConsecutiveRecentMainHoldRuns();
     const repeatedReserveAbilityBlockedHolds = countConsecutiveReserveAbilityBlockedMainHolds();
+    const repeatedEtaGroundedReserveAbilityBlockedHolds = countConsecutiveEtaGroundedReserveAbilityBlockedMainHolds();
     const acceleratedHoldThreshold = Math.min(Number(config.meatFallbackMinHoldRuns || 0), 2);
     const standardGatePassed = recentMainHoldRuns >= config.meatFallbackMinHoldRuns;
     const acceleratedGatePassed = acceleratedHoldThreshold > 0
       && recentMainHoldRuns >= acceleratedHoldThreshold
-      && repeatedReserveAbilityBlockedHolds >= acceleratedHoldThreshold;
-    if (!standardGatePassed && !acceleratedGatePassed) return false;
-    if (engine?.expansionBuyable || engine?.hatcheryBuyable) return false;
-    if (protectedResources?.has("meat") || protectedResources?.has("territory")) return false;
-    return true;
+      && repeatedReserveAbilityBlockedHolds >= acceleratedHoldThreshold
+      && repeatedEtaGroundedReserveAbilityBlockedHolds >= acceleratedHoldThreshold;
+    return standardGatePassed || acceleratedGatePassed;
   }
 
 
@@ -16786,6 +16831,7 @@ function getDisplayName(item) {
     const protectedCost = shouldAvoidProtectedCost(actionUnit, protectedResources || new Set());
     if (protectedCost) {
       const blockedBy = parentStepRefillBlockedByProtectedResource(protectedCost);
+      const continueWithNonTerritoryQueue = String(protectedCost || "").toLowerCase() === "territory";
       const reason = `action-unit refill blocked: ${protectedResourceHoldReason(protectedCost)}`;
       recordAdvisor("HOLD", actionLabel, reason);
       addLaneCandidate({
@@ -16815,7 +16861,13 @@ function getDisplayName(item) {
         antiPingpongGuardAllowedRefill: true,
         coordinatorRemainingBudgetReason: blockedBy,
       });
-      return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Parent step conversion ${parentName}`, noFollowUpReason: blockedBy };
+      return {
+        actionTaken: true,
+        bought: 0,
+        stopFurtherUnitBuys: !continueWithNonTerritoryQueue,
+        summary: `Parent step conversion ${parentName}`,
+        noFollowUpReason: blockedBy,
+      };
     }
 
     const guard = getMeatChainPurchaseAnalysis(actionUnit, refillNum);
@@ -17429,6 +17481,20 @@ function getDisplayName(item) {
     const collected = collectSmartUnitCandidates(game, engine, protectedResources);
     const candidates = collected.candidates || [];
     if (!candidates.length) {
+      const stallBreakerActive = isMeatStallBreakerPatternReady();
+      if (stallBreakerActive) {
+        recordMeatFallbackState({
+          candidate: "none",
+          reason: "meat stall breaker active under repeated reserve + ability-disabled HOLD pattern, but execution remained blocked by current safety gates or no ranked fallback candidate",
+          skipped: [],
+          topBlockedBy: "none",
+          strategicTarget,
+          blockedCandidate: "none",
+          stallBreakerActive: true,
+          recentMainHoldRuns: countConsecutiveRecentMainHoldRuns(),
+          fallbackRankDrop: null,
+        });
+      }
       syncCoordinatorHold("no safe chunk: no ranked unit candidates after protected-resource, save-window and payback guards");
       return 0;
     }
@@ -17649,7 +17715,7 @@ function getDisplayName(item) {
         topBlockedBy: topMeatBlockedBy,
         strategicTarget,
         blockedCandidate: topMeatCandidate ? getDisplayName(topMeatCandidate.unit) : "none",
-        stallBreakerActive: false,
+        stallBreakerActive: isMeatStallBreakerPatternReady(),
         recentMainHoldRuns,
         fallbackRankDrop: null,
       });

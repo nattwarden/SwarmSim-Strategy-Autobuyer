@@ -877,6 +877,25 @@ const SCENARIOS = {
   }
 };
 
+SCENARIOS["book00-m8-false-wait"] = {
+  ...SCENARIOS["sa1-09-rank-bp-y160-meat-tight-fallback-tight"],
+  id: "BOOK00-M8-FALSE-WAIT",
+  title: "False Wait Pattern with ETA-Grounded Meat Fallback",
+  description: "Focused M8 acceptance state for repeated reserve + ability-disabled HOLD cycles where fallback should activate without widening authority.",
+  cycles: 5,
+  executeActions: false,
+  config: {
+    ...SCENARIOS["sa1-09-rank-bp-y160-meat-tight-fallback-tight"].config,
+    meatFallbackMinHoldRuns: 5,
+    smartMaxActionsPerRun: 1
+  },
+  notes: [
+    "M8 focused acceptance uses advisor-only replay so repeated cycles can accumulate hold history without mutating live state.",
+    "Reserve and ability-disabled blockers remain present; fallback should activate under accelerated threshold cap 2 when ETA-stall evidence exists.",
+    "Safety boundaries are preserved: advisor-only domains remain non-executable and no new authority is granted."
+  ]
+};
+
 SCENARIOS["book00-m2-coordinator"] = {
   ...SCENARIOS["sa1-02"],
   id: "BOOK00-M2-COORDINATOR",
@@ -2558,6 +2577,21 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
     row.territoryPrepDecision = planner?.inspectorAfter?.territoryPrepDecision || null;
     row.territoryPrepReason = planner?.inspectorAfter?.territoryPrepReason || null;
     row.territoryPrepBlockedBy = planner?.inspectorAfter?.territoryPrepBlockedBy || null;
+    row.meatFallbackCandidate = planner?.inspectorAfter?.meatFallbackCandidate || null;
+    row.meatFallbackReason = planner?.inspectorAfter?.meatFallbackReason || null;
+    row.stallBreakerActive = planner?.inspectorAfter?.stallBreakerActive === true;
+    row.recentMainHoldRuns = Number.isFinite(Number(planner?.inspectorAfter?.recentMainHoldRuns))
+      ? Number(planner.inspectorAfter.recentMainHoldRuns)
+      : null;
+    row.etaGroundedReserveAbilityHoldRuns = Number.isFinite(Number(planner?.inspectorAfter?.etaGroundedReserveAbilityHoldRuns))
+      ? Number(planner.inspectorAfter.etaGroundedReserveAbilityHoldRuns)
+      : null;
+    row.mainActions = Number.isFinite(Number(planner?.runHistoryLast?.mainActions))
+      ? Number(planner.runHistoryLast.mainActions)
+      : null;
+    row.sideActions = Number.isFinite(Number(planner?.runHistoryLast?.sideActions))
+      ? Number(planner.runHistoryLast.sideActions)
+      : null;
 
     row.legalAlternatives = legalAlternatives;
     row.rejectedAlternatives = rejectedAlternatives;

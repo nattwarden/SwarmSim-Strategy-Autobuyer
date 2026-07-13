@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "m10-council-timeline-contract-manifest.v1",
+  "milestone": "M10",
+  "targetVersion": "10.0.0",
+  "productCapability": "Council timeline and cycle replay for decision observability",
+  "baseline": {
+    "runtimeVersion": "9.0.x",
+    "acceptedImplementationSha": "TBD",
+    "acceptedEvidenceSha": "TBD"
+  },
+  "timelineRowRequiredFields": [
+    "timestamp",
+    "cycleNumber",
+    "decisionType",
+    "selectedLane",
+    "selectedCandidate",
+    "reason",
+    "hardBlockers",
+    "protectedResources",
+    "authorityState"
+  ],
+  "replayCompareRequiredFields": [
+    "decisionChanged",
+    "laneChanged",
+    "candidateChanged",
+    "blockersChanged",
+    "metricDeltaSummary"
+  ],
+  "consistencyRequirements": {
+    "mustMatchInspectorExport": true,
+    "mustMatchStrategyDiagnostics": true,
+    "syntheticTimelineSourceAllowed": false
+  },
+  "authority": {
+    "abilityExecutionAllowedByDefault": false,
+    "ascensionExecutionAllowedByDefault": false,
+    "newExecutionKeysAllowed": false
+  },
+  "acceptanceGroups": [
+    "timeline-renders-recent-cycles",
+    "timeline-vs-inspector-field-consistency",
+    "timeline-replay-diff-shows-change",
+    "advisor-only-vs-execution-marking",
+    "timeline-under-repeated-hold-patterns"
+  ],
+  "requiredCommands": [
+    "npm run build",
+    "npm run check:ui-shell",
+    "npm run check:ui2:fixtures",
+    "npm run check:ui3:assets",
+    "npm run verify",
+    "git diff --check"
+  ],
+  "evidenceAllowlist": [
+    "docs/test-data/10.0.0-book00-m10-council-timeline-and-decision-replay/verification-<short-sha>.md"
+  ]
+}

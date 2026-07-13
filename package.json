@@ -1,7 +1,7 @@
 {
   "name": "swarmsim-strategy-autobuyer",
   "private": true,
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "SwarmSim Strategy Autobuyer tooling",
   "license": "UNLICENSED",
   "scripts": {
@@ -50,8 +50,10 @@
     "check:book00:m5:ascension-mutagen": "node scripts/check-book00-m5-ascension-mutagen-advisor.js",
     "check:book00:m6:six-domain": "node scripts/check-book00-m6-six-domain-coordinator.js",
     "check:book00:m7:calibrated-outcomes": "node scripts/check-book00-m7-calibrated-shared-outcomes.js",
+    "check:book00:m8:false-wait": "node scripts/check-book00-m8-false-wait.js",
     "check:6.0.0:versions": "node scripts/check-6.0.0-version-surfaces.js",
     "check:7.0.0:versions": "node scripts/check-7.0.0-version-surfaces.js",
+    "check:8.0.0:versions": "node scripts/check-8.0.0-version-surfaces.js",
     "probe:strategy-audit:testbed:production": "node scripts/probe-strategy-audit-testbed-feasibility.js",
     "probe:strategy-audit:testbed:watch": "node scripts/probe-strategy-audit-testbed-feasibility.js --keep-open --pause-ms 5000 --slow-mo 50",
     "strategy:audit:fast": "node scripts/strategy-audit-testbed-fast.js",
@@ -79,7 +81,7 @@
     "sync:from-canonical": "node scripts/extract-runtime-source.js",
     "hotfix:canonical": "npm run sync:from-canonical && npm run build && npm run verify",
     "validate:guardrails": "node scripts/validate-repo-guardrails.js",
-    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && npm run check:7.0.0:versions && npm run check:ui-shell && npm run check:ui2:fixtures && npm run check:ui3:assets && npm run check:laboratory:phase2a && npm run check:purchase-evaluator && npm run check:book00:m2:coordinator && npm run check:book00:m3:energy && npm run check:book00:m3:energy:execution && npm run check:book00:m4:ability-timing && npm run check:book00:m5:ascension-mutagen && npm run check:book00:m6:six-domain && npm run check:book00:m7:calibrated-outcomes && node scripts/validate-repo-guardrails.js"
+    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && npm run check:8.0.0:versions && npm run check:ui-shell && npm run check:ui2:fixtures && npm run check:ui3:assets && npm run check:laboratory:phase2a && npm run check:purchase-evaluator && npm run check:book00:m2:coordinator && npm run check:book00:m3:energy && npm run check:book00:m3:energy:execution && npm run check:book00:m4:ability-timing && npm run check:book00:m5:ascension-mutagen && npm run check:book00:m6:six-domain && npm run check:book00:m7:calibrated-outcomes && npm run check:book00:m8:false-wait && node scripts/validate-repo-guardrails.js"
   },
   "dependencies": {
     "playwright": "^1.61.1"

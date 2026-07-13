@@ -544,6 +544,97 @@ Escalate when: repeated Chrome replays disagree on blocker identity,
 ETA-comparability requires new cross-domain model formulas, or safety/execution
 boundaries become ambiguous.
 
+### Milestone 9 - Resource-scoped save locks
+
+Product capability:
+
+When a save-window protects one resource (for example Territory for Expansion),
+the coordinator keeps that resource locked while still allowing safe
+non-conflicting buys from other resources.
+
+Player-visible change:
+
+The bot no longer enters global HOLD just because Territory is protected for
+Expansion; Meat/Larva/Energy progression can continue when those actions do not
+spend protected Territory.
+
+Completion checklist:
+
+- [ ] Expansion save-window protects Territory spend only, not unrelated
+   resources.
+- [ ] Repeated HOLD loops caused by protected Territory can still execute safe
+   non-Territory actions when available.
+- [ ] Council and Inspector show which resource is protected and why other
+   domains remained executable or not.
+- [ ] Focused Chrome Playwright scenarios and full verification pass.
+- [ ] Exact-SHA implementation and separate evidence protocol is followed.
+
+Recommended run: **GPT-5.3-Codex (medium reasoning)** for bounded coordinator
+logic and blocker observability.
+
+Escalate when: resource-protection semantics conflict across lanes or protected
+resource identity becomes ambiguous in replay evidence.
+
+### Milestone 10 - Council timeline and decision replay
+
+Product capability:
+
+Add a first-class timeline in Council that shows per-cycle decisions, blockers,
+and key metric deltas so players can inspect why the bot waited, bought, or
+recommended an advisor action.
+
+Player-visible change:
+
+Council exposes a chronological decision trace (WAIT/HOLD/BUY/PLAN and lane
+context) with filterable blockers and compact ETA/progression before/after
+signals.
+
+Completion checklist:
+
+- [ ] Timeline shows recent cycle decisions with lane, candidate, reason,
+   blockers, and action type.
+- [ ] Timeline distinguishes advisor-only recommendations from executable buys.
+- [ ] At least one replay view compares two adjacent cycles and highlights what
+   changed.
+- [ ] Focused UI checks plus full verification pass.
+- [ ] Exact-SHA implementation and separate evidence protocol is followed.
+
+Recommended run: **GPT-5.3-Codex (medium reasoning)** for UI data shaping,
+rendering, and consistency checks.
+
+Escalate when: timeline payload volume harms performance or cycle-level source
+identity cannot be preserved across UI and inspector surfaces.
+
+### Milestone 11 - Opt-in execution for abilities and ascension
+
+Product capability:
+
+Add explicit opt-in execution modes for supported Energy ability auto-cast and
+Ascension auto-execution when confidence and safety gates are satisfied.
+
+Player-visible change:
+
+When the player enables the mode, the bot can execute supported ability casts
+and eligible ascensions automatically with clear reasons, thresholds, and
+reconsideration triggers.
+
+Completion checklist:
+
+- [ ] Auto-cast remains default OFF and can only run when explicitly enabled.
+- [ ] Auto-ascend remains default OFF and can only run when explicitly enabled.
+- [ ] Cast/ascend decisions require explicit confidence, blocker, and
+   cooldown/reconsideration gates.
+- [ ] Council and Inspector show why execution was allowed, delayed, or denied.
+- [ ] Focused Chrome Playwright scenarios and full verification pass.
+- [ ] Exact-SHA implementation and separate evidence protocol is followed.
+
+Recommended run: **GPT-5.3-Codex (medium reasoning)** for bounded execution
+gates, observability, and test coverage.
+
+Escalate when: supported cast/ascend candidates cannot be compared on a shared
+milestone basis, default-safety boundaries conflict with proposed behavior, or
+execution introduces irreversible-risk ambiguity.
+
 ## Milestone exit review
 
 At the end of every milestone, answer only these questions:

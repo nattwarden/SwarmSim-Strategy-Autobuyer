@@ -19,6 +19,7 @@ docs/release-notes/
 
 ## Version notes
 
+- 8.0.0: Added Milestone 8 ETA-grounded false-wait reduction with repeated reserve+ability-disabled hold-pattern tracking, accelerated stall-breaker activation visibility by cycle 3 in focused replay, focused M8 checker integration in the verify chain, and preserved hard safety defaults and advisor-only authority boundaries.
 - 7.0.0: Added M7 strategic outcome calibration (`strategic-outcome-calibration.v1`) with WAIT-relative identity/metric/horizon validation for Energy abilities, strict Ascension placeholder calibration that refuses break-even-surplus ETA conversion, calibrated advisor observability in Council/Inspector/export/API, and focused M7 acceptance/version checks while preserving existing bounded reversible execution authority and all hard safety defaults.
 - 6.0.0: Added the six-domain strategic coordinator runtime slice, exposing one
   immutable decision identity, coordinated Council/Inspector state, advisor-only

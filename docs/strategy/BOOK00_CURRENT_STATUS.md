@@ -44,14 +44,14 @@ Observed before the M7 foundation work:
   `40c258a7cf19d9660b2c13caf3b5d9b4e0e74da5`;
 - fixed Council window implementation / current baseline:
   `04bb94678ba9ac29d03e2b2c00760ffb40510e55`;
-- runtime version: `7.0.0`;
+- runtime version: `8.0.0`;
 - Council desktop layout: fixed `1180 x 700`, movable, `resize: none`, layout
   key `kbcSwarmBotCouncilPanelLayout_v2`;
 - working tree: clean before the M7 documentation branch was created.
 
 If observed Git state differs, update this board before implementation.
 
-Current runtime version: `7.0.0`
+Current runtime version: `8.0.0`
 
 ## Product north star
 
@@ -187,8 +187,8 @@ Formal closure:
 
 ## Current work package
 
-Implementation status: active M8 pre-slice execution on runtime `7.0.0` after
-the pre-M8 wait-lock hotfix.
+Implementation status: active M8 ETA-grounded blocker replay and focused-check
+integration on runtime `8.0.0`; fallback activation reproduction is still open.
 
 Product capability:
 
@@ -301,6 +301,38 @@ Required product outcome:
 Implementation proceeds from the pre-M8 hotfix baseline and must stay narrow,
 observable, and protocol-compliant.
 
+## Planned after M8
+
+**Milestone 9 - Resource-scoped save locks**
+
+Required product outcome:
+
+- protect only the resource that is under active save-window priority (for
+  example Territory for Expansion), while keeping unrelated resource lanes
+  executable when safe;
+- prevent global HOLD lock when only one resource is protected;
+- expose protected-resource identity and non-conflicting execution decisions in
+  Council/Inspector observability.
+
+Planned player-visible change:
+
+- Expansion save-window can hold Territory spend without freezing Meat/Larva/
+  Energy progression when those actions are otherwise safe.
+
+**Milestone 10 - Council timeline and decision replay**
+
+Planned player-visible change:
+
+- Council displays a cycle timeline with action type, lane, blockers, reasons,
+  and key before/after metrics to explain waits vs buys.
+
+**Milestone 11 - Opt-in execution for abilities and ascension**
+
+Planned player-visible change:
+
+- if enabled, supported ability/ascension execution can be automatic;
+- if not enabled, behavior remains advisor-only/default-safe as today.
+
 ## Handoff update template
 
 At every handoff, update the relevant checklist and append a short entry:
@@ -320,6 +352,69 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - M8 strict closure sync (cycle-3 stall-breaker visibility)
+
+- Agent: Copilot (GPT-5.3-Codex)
+- Worktree/branch: primary workspace, `main`
+- Product capability changed: M8 stall-breaker activation is now surfaced in
+  Inspector as soon as the ETA-grounded blocker pattern is active, even when
+  the same cycle still denies execution through existing safety/execution
+  gates.
+- Player-visible result: repeated `reserve` + `ability disabled` HOLD windows
+  now report stall-breaker activation by hold cycle 3 in focused replay.
+- Runtime changes:
+  - `dev-src/runtime-sections/runtime-main.js`
+  - `src/SwarmSim-Strategy-Autobuyer.user.js` (canonical rebuild)
+- Verification contract:
+  - `scripts/check-book00-m8-false-wait.js` now requires visible
+    stall-breaker activation no later than cycle 3.
+- Commands and exit codes:
+  - `npm run build` -> `0`
+  - `npm run check:book00:m8:false-wait` -> `0`
+  - `npm run verify` -> `0`
+  - `git diff --check` -> `0`
+- Focused result: `blocker cycles=5`, `eta-grounded-by-cycle3=3`,
+  `stall-breaker-cycle=3`.
+- Safety: hard defaults unchanged; advisor-only Ability/Ascension/Mutagen
+  authority remains non-executable.
+- Exact next action: run exact-SHA implementation/evidence separation per
+  `docs/process/GIT_VERIFICATION_PROTOCOL.md` when formal acceptance artifacts
+  are requested.
+
+### 2026-07-14 - M8 ETA-grounded blocker slice and focused verification
+
+- Agent: Copilot (GPT-5.3-Codex)
+- Worktree/branch: primary workspace, `main`
+- Product capability changed: accelerated false-wait gating now requires
+  repeated ETA-grounded HOLD evidence in addition to repeated
+  `reserve` + `ability disabled` blocker identity.
+- Player-visible result: Inspector/audit diagnostics now expose
+  ETA-grounded hold streak counts for the M8 blocker slice.
+- Runtime changes:
+  - `dev-src/runtime-sections/runtime-main.js`
+  - `src/SwarmSim-Strategy-Autobuyer.user.js` (canonical rebuild)
+- Tooling/verification changes:
+  - `scripts/strategy-audit-testbed-core.js` (M8 focused scenario + cycle diagnostics)
+  - `scripts/check-book00-m8-false-wait.js` (focused Chrome replay gate)
+  - `package.json` (`check:book00:m8:false-wait` + full verify chain)
+- Commands and exit codes:
+  - `npm run build` -> `0`
+  - `npm run check:book00:m8:false-wait` -> `0`
+  - `node scripts/validate-repo-guardrails.js` -> `0`
+  - `npm run verify` -> `0`
+  - `git diff --check` -> `0`
+- Generated evidence paths:
+  - `docs/test-data/strategy-audit-0/book00-m8-false-wait/live/*`
+- Safety: hard defaults unchanged; advisor-only Ability/Ascension/Mutagen
+  execution authority remains unchanged.
+- Remaining blocker: focused replay now confirms ETA-grounded blocker streak by
+  cycle 3, but this deterministic replay does not yet reproduce a concrete
+  meat fallback execution cycle (`stall-breaker-cycle=not-triggered-in-focused-replay`).
+- Exact next action: refine the M8 focused state so a legal blocked top Meat
+  candidate and lower bounded fallback candidate both appear in the same
+  repeated blocker window, then re-run the focused Chrome replay and keep
+  fallback activation at hold cycle 3 or earlier.
 
 ### 2026-07-14 - Pre-M8 wait-lock hotfix
 

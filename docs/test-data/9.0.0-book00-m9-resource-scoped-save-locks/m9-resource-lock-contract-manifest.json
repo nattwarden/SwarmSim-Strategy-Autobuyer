@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "m9-resource-lock-contract-manifest.v1",
+  "milestone": "M9",
+  "targetVersion": "9.0.0",
+  "productCapability": "Resource-scoped save-window locking that preserves safe non-conflicting progression",
+  "baseline": {
+    "runtimeVersion": "8.1.x",
+    "acceptedImplementationSha": "TBD",
+    "acceptedEvidenceSha": "TBD"
+  },
+  "contract": {
+    "saveWindowLockIsResourceScoped": true,
+    "globalHoldWhenSingleResourceProtected": false,
+    "territorySaveWindowBlocksOnlyTerritorySpend": true,
+    "nonConflictingSafeActionsRemainExecutable": true
+  },
+  "authority": {
+    "abilityExecutionAllowedByDefault": false,
+    "ascensionExecutionAllowedByDefault": false,
+    "newExecutionKeysAllowed": false,
+    "advisorDomainsRemainNonExecutable": true
+  },
+  "safety": {
+    "reserveGuardsRequired": true,
+    "paybackGuardsRequired": true,
+    "protectedResourceGuardsRequired": true,
+    "nexusProtectionRequired": true
+  },
+  "requiredDiagnostics": [
+    "protectedResources",
+    "coordinatorRemainingBudgetReason",
+    "blockedBySummary",
+    "recentMainHoldRuns",
+    "selectedLane",
+    "selectedDecision"
+  ],
+  "acceptanceGroups": [
+    "expansion-save-lock-territory-only",
+    "territory-protected-non-territory-buy-allowed",
+    "all-non-territory-unsafe-hold-remains-valid",
+    "advisor-only-authority-preserved",
+    "diagnostics-resource-scope-visible"
+  ],
+  "requiredCommands": [
+    "npm run build",
+    "npm run check:book00:m8:false-wait",
+    "npm run verify",
+    "git diff --check"
+  ],
+  "evidenceAllowlist": [
+    "docs/test-data/9.0.0-book00-m9-resource-scoped-save-locks/verification-<short-sha>.md"
+  ]
+}

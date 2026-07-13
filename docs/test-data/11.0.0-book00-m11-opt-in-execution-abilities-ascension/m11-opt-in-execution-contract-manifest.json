@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "m11-opt-in-execution-contract-manifest.v1",
+  "milestone": "M11",
+  "targetVersion": "11.0.0",
+  "productCapability": "Opt-in execution for supported abilities and ascension with strict safety gates",
+  "baseline": {
+    "runtimeVersion": "10.0.x",
+    "acceptedImplementationSha": "TBD",
+    "acceptedEvidenceSha": "TBD"
+  },
+  "defaults": {
+    "autoCastAbilitiesDefault": false,
+    "autoAscendDefault": false
+  },
+  "executionPreconditions": [
+    "optInEnabled",
+    "supportedAction",
+    "comparabilityValid",
+    "confidenceAtOrAboveThreshold",
+    "noHardBlocker",
+    "cooldownAndReconsiderationGatePass"
+  ],
+  "denyReasonsRequired": [
+    "opt-in disabled",
+    "comparability insufficient",
+    "confidence below threshold",
+    "blocker active",
+    "cooldown/reconsider pending"
+  ],
+  "authority": {
+    "newExecutionKeysAllowed": false,
+    "unsupportedAbilityExecutionAllowed": false,
+    "defaultAdvisorOnlyWhenOptInDisabled": true
+  },
+  "acceptanceGroups": [
+    "opt-in-disabled-stays-advisor-only",
+    "ability-opt-in-allowed-when-gates-pass",
+    "ability-opt-in-denied-when-gates-fail",
+    "ascension-opt-in-allowed-when-gates-pass",
+    "ascension-opt-in-denied-when-gates-fail",
+    "default-safety-unchanged"
+  ],
+  "requiredCommands": [
+    "npm run build",
+    "npm run verify",
+    "git diff --check"
+  ],
+  "evidenceAllowlist": [
+    "docs/test-data/11.0.0-book00-m11-opt-in-execution-abilities-ascension/verification-<short-sha>.md"
+  ]
+}
