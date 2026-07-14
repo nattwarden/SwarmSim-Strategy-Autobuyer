@@ -218,8 +218,16 @@ Formal closure:
 ## Current work package
 
 Implementation status: Milestone 8 is formally closed at `8.1.0`
-(implementation `c014158cea82696cbdb18506045e60126c676116`). No implementation
-work is currently in flight. The next open work package is Milestone 9.
+(implementation `c014158cea82696cbdb18506045e60126c676116`), but a critical
+production bug was found and fixed on top of it on 2026-07-14 (see handoff
+below): `m6DecisionOwnsMainCycle` was hardcoded `true`, disabling every
+legacy purchase path and leaving the bot unable to buy anything in live
+play. Fixed by setting it to `false`. `check:book00:m8:false-wait` now fails
+and needs a dedicated re-tuning pass (see "Known current blockers"). The
+next open work package is Milestone 9, but the M8 test re-tune should be
+done first since it blocks a clean `npm run verify`.
+
+Product capability (M9, not started):
 
 Product capability (M9, not started):
 
@@ -350,6 +358,66 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - Critical fix: bot bought nothing in live play (m6DecisionOwnsMainCycle)
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Reported by: player-supplied live savestate where Autobuyer mode never
+  bought anything despite Hatchery showing "immediately buyable" in the
+  Council decision card; Coordinator showed "Refused/fallback",
+  Execution "Not executed", strongest blocker "reserve, ability disabled".
+- Root cause: `dev-src/runtime-sections/runtime-main.js` had
+  `const m6DecisionOwnsMainCycle = true;` hardcoded in `smartRunOnce`. This
+  disabled every legacy execution path (Larva engine, Energy, Clone buffer,
+  Unlock planner/Meat, Smart upgrades, Smart units), leaving purchases
+  entirely dependent on the M6 six-domain coordinator's execution-authority
+  gate. That gate requires a comparable milestone-eta metric
+  (`etaImprovementSeconds` or an equivalent commonValue), but only the
+  Territory proposal in `buildUnifiedPurchaseProposals` ever populates it;
+  Engine, Meat, and Energy proposals never do, so those domains are
+  permanently `UNRANKED` and can never receive execution authority. Net
+  effect: the bot could observe/advise but never actually buy anything in
+  Autobuyer mode, regardless of preset or settings.
+- Secondary finding: the M8 8.1.0 stall-breaker acceptance
+  (`check:book00:m8:false-wait`) was inadvertently validated against this
+  same broken state. With `m6DecisionOwnsMainCycle=true`, `buySmartUnits`
+  (which contains the actual meat-fallback/stall-breaker purchase logic)
+  was never called; the test only observed a diagnostic
+  `stallBreakerActive` flag driven by the artificial always-HOLD run
+  history, not a real fallback purchase. The M8 closure record should be
+  treated as unverified for real fallback-purchase behavior until this is
+  re-tested.
+- Fix: set `m6DecisionOwnsMainCycle = false` in
+  `dev-src/runtime-sections/runtime-main.js`, restoring legacy per-lane
+  execution as the acting purchaser (guarded by `coordinatorExecutedKey`
+  checks so a lane M6 did win isn't double-bought same cycle). Ran
+  `npm run build` to rebuild the canonical
+  `src/SwarmSim-Strategy-Autobuyer.user.js`.
+- Commands and exit codes: `npm run build` -> `0`; `npm run verify` -> `1`
+  (fails only at `check:book00:m8:false-wait`; all other checks in the
+  chain passed, including `check:book00:m6:six-domain` and
+  `check:book00:m7:calibrated-outcomes`).
+- Product capability changed: Autobuyer mode can once again execute
+  Hatchery/Expansion, Energy/Nexus, meat-chain unlock, Clone buffer, and
+  generic Smart upgrade/unit purchases in live play. M6's Council UI and
+  advisory output are unaffected; M6 still claims execution for any lane it
+  can legitimately win under its own comparability rules.
+- Safety: no hard-default or authority-boundary changes; ability/ascension
+  auto-cast remain off; this only restores previously-shipped (M2-M5)
+  purchase logic that had been silently dead code since M6 was wired in.
+- Milestone checklist items completed: none formally; this is a hotfix on
+  top of the accepted 8.1.0 baseline, not new M9 scope.
+- Remaining blocker: `check:book00:m8:false-wait` needs its deterministic
+  scenario re-tuned to assert on real fallback-purchase behavior (via
+  `buySmartUnits` actually running) rather than the diagnostic
+  `stallBreakerActive` flag alone. M6's comparability gap for
+  Engine/Meat/Energy domains (missing `etaImprovementSeconds`/commonValue)
+  is also still open and should be addressed before M6 is relied on as the
+  primary purchase authority again.
+- Exact next action: re-tune `scripts/check-book00-m8-false-wait.js` and
+  its scenario against the now-functional legacy execution path, get
+  `npm run verify` fully green, then proceed to Milestone 9.
 
 ### 2026-07-14 - AI.md 8.1.0 hard-defaults documentation sync
 

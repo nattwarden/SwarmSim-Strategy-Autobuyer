@@ -18707,7 +18707,13 @@ function getDisplayName(item) {
     const smartFocus = decideSmartFocus(engine);
     unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
     let coordinatorExecutedKey = null;
-    const m6DecisionOwnsMainCycle = true;
+    // M6's execution-authority gate requires a comparable milestone-eta metric,
+    // which only the Territory proposal populates today (Engine/Meat/Energy
+    // stay UNRANKED and can never win). Leaving this true disables every
+    // proven legacy purchase path and the bot buys nothing. Keep it false so
+    // legacy lane execution remains the acting purchaser while M6 still runs
+    // for Council display and claims any lane it can actually win.
+    const m6DecisionOwnsMainCycle = false;
     const preExecutionWinner = unifiedPurchaseProposalState?.evaluation?.winner || null;
     const preExecutionMainAction = preExecutionWinner ? {
       lane: preExecutionWinner.lane,
