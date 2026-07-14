@@ -884,15 +884,37 @@ SCENARIOS["book00-m8-false-wait"] = {
   description: "Focused M8 acceptance state for repeated reserve + ability-disabled HOLD cycles where fallback should activate without widening authority.",
   cycles: 5,
   executeActions: false,
+  unitCounts: {
+    ...SCENARIOS["sa1-09-rank-bp-y160-meat-tight-fallback-tight"].unitCounts,
+    larva: "1500",
+    meat: "500000",
+    cocoon: "0",
+    drone: "500000",
+    queen: "50000",
+    nest: "20",
+    greaterqueen: "0"
+  },
+  passiveRates: {
+    ...SCENARIOS["sa1-09-rank-bp-y160-meat-tight-fallback-tight"].passiveRates,
+  },
   config: {
     ...SCENARIOS["sa1-09-rank-bp-y160-meat-tight-fallback-tight"].config,
     meatFallbackMinHoldRuns: 5,
-    smartMaxActionsPerRun: 1
+    smartMaxActionsPerRun: 1,
+    meatChainReserveMultiplier: 10000,
+    larvaEnginePriority: false,
+    prioritizeProductionUpgrades: false,
+    territoryPrepPlanner: false,
+    expansionArmySeedPlanner: false,
+    territoryArmySeedWhenEmpty: false,
+    territoryRoiMode: false,
+    focusTab: "meat"
   },
   notes: [
     "M8 focused acceptance uses advisor-only replay so repeated cycles can accumulate hold history without mutating live state.",
     "Reserve and ability-disabled blockers remain present; fallback should activate under accelerated threshold cap 2 when ETA-stall evidence exists.",
-    "Safety boundaries are preserved: advisor-only domains remain non-executable and no new authority is granted."
+    "Safety boundaries are preserved: advisor-only domains remain non-executable and no new authority is granted.",
+    "larvaEnginePriority/prioritizeProductionUpgrades are disabled here because the synthetic state's real Expansion/territory bank is incidentally buyable; this isolates the meat-lane fallback pattern under test now that legacy lane execution runs even in advisor-only replay (see m6DecisionOwnsMainCycle fix)."
   ]
 };
 

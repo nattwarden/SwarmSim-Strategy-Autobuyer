@@ -222,10 +222,12 @@ Implementation status: Milestone 8 is formally closed at `8.1.0`
 production bug was found and fixed on top of it on 2026-07-14 (see handoff
 below): `m6DecisionOwnsMainCycle` was hardcoded `true`, disabling every
 legacy purchase path and leaving the bot unable to buy anything in live
-play. Fixed by setting it to `false`. `check:book00:m8:false-wait` now fails
-and needs a dedicated re-tuning pass (see "Known current blockers"). The
-next open work package is Milestone 9, but the M8 test re-tune should be
-done first since it blocks a clean `npm run verify`.
+play. Fixed by setting it to `false`. `check:book00:m8:false-wait` failed
+immediately afterward because its scenario relied on the same bug (advisor-only
+replay was incidentally masked as permanent HOLD); the scenario has since been
+re-tuned (2026-07-14, see handoff below) to isolate the Meat lane and produce a
+genuine reserve/payback-guarded HOLD pattern, and `npm run verify` is fully
+green again. The next open work package is Milestone 9.
 
 Product capability (M9, not started):
 
@@ -358,6 +360,65 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - M8 false-wait scenario re-tuned against the fixed legacy execution path
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Context: follow-up to the `m6DecisionOwnsMainCycle` fix below.
+  `check:book00:m8:false-wait` failed with "expected ETA-grounded
+  reserve+ability-disabled hold streak by cycle 3" once legacy execution was
+  restored.
+- Root cause: the scenario's synthetic state (`book00-m8-false-wait` in
+  `scripts/strategy-audit-testbed-core.js`) had a genuinely buyable
+  Hatchery/Expansion and, after that was isolated, a genuinely buyable
+  Territory army-seed and meat-chain unit. With `m6DecisionOwnsMainCycle=true`
+  none of these paths ever ran (even in advisor-only replay), so the scenario
+  looked like a stable repeated-HOLD state purely by accident of the bug, not
+  by design. With the fix, every legacy lane now evaluates for real (advisor
+  mode still logs "WOULD BUY" and counts as a taken action), which broke the
+  test's repeated-HOLD assumption.
+- Fix: re-tuned the scenario (not the test's assertions) to isolate the Meat
+  lane as intended:
+  - Disabled `larvaEnginePriority`, `prioritizeProductionUpgrades`,
+    `territoryPrepPlanner`, `expansionArmySeedPlanner`,
+    `territoryArmySeedWhenEmpty`, `territoryRoiMode`, and set
+    `focusTab: "meat"` so Engine/Territory/Upgrade lanes can no longer
+    produce a main action, leaving Meat as the only evaluated lane.
+  - Adjusted `unitCounts` (larva, meat, drone, queen, nest, greaterqueen) so
+    the meat-chain goal planner resolves to a genuinely buyable but
+    meat-chain-internal conversion step (queen -> nest -> greater queen)
+    instead of "not buyable yet" or a base-resource (larva/meat) purchase
+    that bypasses the meat-chain reserve/payback guard entirely.
+  - Raised `meatChainReserveMultiplier` to `10000` for this scenario only, so
+    the reserve guard deterministically fails and the resulting `HOLD` lane
+    candidate carries a genuine `reserve`/`payback`-worded reason (needed for
+    `etaGroundedReserveAbilityHoldRuns` to count it), rather than relying on
+    exact real-game cost-curve numerics.
+  - Verified via a throwaway debug harness (reusing
+    `strategy-audit-testbed-core.js`'s existing `runMode`/live-scenario
+    plumbing, not a new test system) that all 5 cycles now produce a
+    genuine main-action HOLD with `hardBlockers` including `reserve` and
+    `ability disabled`, `etaGroundedReserveAbilityHoldRuns` reaching `2` by
+    cycle 3, and `stallBreakerActive` flipping `true` at cycle 3.
+- Commands and exit codes: `node scripts/check-book00-m8-false-wait.js` -> `0`
+  (`blocker cycles=5, eta-grounded-by-cycle3=3, stall-breaker-cycle=3`);
+  `npm run verify` -> `0` (fully green).
+- Product capability changed: none; this is a test-harness-only change
+  (`scripts/strategy-audit-testbed-core.js`). No runtime/userscript files
+  touched in this pass.
+- Safety: none affected; scenario-only config overrides are scoped to this
+  one deterministic test scenario and do not touch `AI.md`/`DEFAULT_CONFIG`
+  production defaults.
+- Milestone checklist items completed: closes the last open M8/8.1.0 hotfix
+  follow-up (the M8 test re-tune noted below).
+- Remaining blocker: M6's comparability gap for Engine/Meat/Energy domains
+  (missing `etaImprovementSeconds`/commonValue in
+  `buildUnifiedPurchaseProposals`) is still open and unrelated to this fix;
+  it should be addressed before M6 is relied on as the primary purchase
+  authority again.
+- Exact next action: start Milestone 9 (resource-scoped save locks) from
+  `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`.
 
 ### 2026-07-14 - Critical fix: bot bought nothing in live play (m6DecisionOwnsMainCycle)
 
