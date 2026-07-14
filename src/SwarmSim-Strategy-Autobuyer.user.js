@@ -3653,6 +3653,7 @@ function getDisplayName(item) {
       expansionArmySeedInsideSaveWindow: territoryPrepState?.expansionArmySeedInsideSaveWindow || "no",
       expansionArmySeedBestRejectedUnit: territoryPrepState?.expansionArmySeedBestRejectedUnit || "none",
       expansionArmySeedBestRejectedReason: territoryPrepState?.expansionArmySeedBestRejectedReason || "none",
+      territoryEconomicState: territoryPrepState?.territoryEconomicState || "not-evaluated",
       territoryLaneSaturated: territoryPrepState?.territoryLaneSaturated || "no",
       territorySaturationReason: territoryPrepState?.territorySaturationReason || "none",
       territorySaturationBestCandidate: territoryPrepState?.territorySaturationBestCandidate || "none",
@@ -7718,6 +7719,7 @@ function getDisplayName(item) {
       expansionArmySeedInsideSaveWindow: strategyInspector?.expansionArmySeedInsideSaveWindow || territoryPrepPlannerState?.expansionArmySeedInsideSaveWindow || "no",
       expansionArmySeedBestRejectedUnit: strategyInspector?.expansionArmySeedBestRejectedUnit || territoryPrepPlannerState?.expansionArmySeedBestRejectedUnit || "none",
       expansionArmySeedBestRejectedReason: strategyInspector?.expansionArmySeedBestRejectedReason || territoryPrepPlannerState?.expansionArmySeedBestRejectedReason || "none",
+      territoryEconomicState: strategyInspector?.territoryEconomicState || territoryPrepPlannerState?.territoryEconomicState || "not-evaluated",
       territoryLaneSaturated: strategyInspector?.territoryLaneSaturated || territoryPrepPlannerState?.territoryLaneSaturated || "no",
       territorySaturationReason: strategyInspector?.territorySaturationReason || territoryPrepPlannerState?.territorySaturationReason || "none",
       territorySaturationBestCandidate: strategyInspector?.territorySaturationBestCandidate || territoryPrepPlannerState?.territorySaturationBestCandidate || "none",
@@ -14509,30 +14511,63 @@ function getDisplayName(item) {
     return newDecimal(1);
   }
 
+  // A reporting-only cutoff for distinguishing "genuinely negligible" from
+  // "close but under the already-configured requirement": both the seconds-
+  // ratio and the ratio-ratio (gain divided by the existing minEtaGainSeconds
+  // / minEtaGainRatio thresholds) must be under 1% of their requirement.
+  // This never touches execution, scoring, the ETA formula, chunk percent,
+  // or the 120s/5% thresholds themselves - it only picks which of two
+  // display strings to show for an already-rejected candidate.
+  const TERRITORY_ECONOMIC_SATURATION_REPORTING_THRESHOLD = 0.01;
+
   // Pure classification, deliberately separated from buildTerritoryPrepProposal
   // so it can be exercised directly (see window.kbcSwarmBot.territorySaturationDiagnostics)
   // without needing a live game/browser clock. Does not change the ETA
   // formula, chunk percent, or the 120s/5% thresholds - it only reports how
-  // far the best already-evaluated candidate fell short of them.
+  // far the best already-evaluated candidate fell short of them, and
+  // distinguishes that from "no candidate ever reached the check" (resource-
+  // blocked) and "actually bought this cycle" (buyable).
   function classifyTerritorySaturation({ bestAccepted, evaluatedCandidateCount, bestEvaluatedCandidate, minEtaGainSeconds, minEtaGainRatio }) {
-    const territoryLaneSaturated = !bestAccepted && evaluatedCandidateCount > 0 && !!bestEvaluatedCandidate;
-    const bestGainSeconds = territoryLaneSaturated ? bestEvaluatedCandidate.etaGainSeconds : null;
-    const bestGainRatio = territoryLaneSaturated ? bestEvaluatedCandidate.etaGainRatio : null;
-    const territorySaturationReason = territoryLaneSaturated
-      ? `Territory saturated at current income: best safe army chunk (${bestEvaluatedCandidate.unitName}) improves Expansion ETA by ${formatSubSecondDuration(bestEvaluatedCandidate.etaGainSeconds)}, far below the ${formatDuration(minEtaGainSeconds)} / ${trimNumber(minEtaGainRatio * 100)}% requirement.`
-      : "none";
+    const hasEvaluatedCandidate = evaluatedCandidateCount > 0 && !!bestEvaluatedCandidate;
+    const bestGainSeconds = hasEvaluatedCandidate ? bestEvaluatedCandidate.etaGainSeconds : null;
+    const bestGainRatio = hasEvaluatedCandidate ? bestEvaluatedCandidate.etaGainRatio : null;
+    const secondsRequirementRatio = hasEvaluatedCandidate && minEtaGainSeconds > 0 ? bestGainSeconds / minEtaGainSeconds : null;
+    const ratioRequirementRatio = hasEvaluatedCandidate && minEtaGainRatio > 0 ? bestGainRatio / minEtaGainRatio : null;
+
+    let territoryEconomicState;
+    if (bestAccepted) {
+      territoryEconomicState = "buyable";
+    } else if (!hasEvaluatedCandidate) {
+      territoryEconomicState = "resource-blocked";
+    } else if (
+      Number.isFinite(secondsRequirementRatio) && Number.isFinite(ratioRequirementRatio)
+      && secondsRequirementRatio < TERRITORY_ECONOMIC_SATURATION_REPORTING_THRESHOLD
+      && ratioRequirementRatio < TERRITORY_ECONOMIC_SATURATION_REPORTING_THRESHOLD
+    ) {
+      territoryEconomicState = "economically-saturated";
+    } else {
+      territoryEconomicState = "below-threshold";
+    }
+
+    const territoryLaneSaturated = territoryEconomicState === "economically-saturated";
+
+    let territorySaturationReason = "none";
+    if (territoryEconomicState === "economically-saturated") {
+      territorySaturationReason = `Territory saturated at current income: best safe army chunk (${bestEvaluatedCandidate.unitName}) improves Expansion ETA by ${formatSubSecondDuration(bestGainSeconds)}, far below the ${formatDuration(minEtaGainSeconds)} / ${trimNumber(minEtaGainRatio * 100)}% requirement.`;
+    } else if (territoryEconomicState === "below-threshold") {
+      territorySaturationReason = `Best safe army chunk (${bestEvaluatedCandidate.unitName}) improves Expansion ETA by ${formatDuration(bestGainSeconds)} / ${trimNumber(bestGainRatio * 100)}%, just below the ${formatDuration(minEtaGainSeconds)} / ${trimNumber(minEtaGainRatio * 100)}% requirement.`;
+    }
 
     return {
+      territoryEconomicState,
       territoryLaneSaturated,
       territorySaturationReason,
-      territorySaturationBestCandidate: territoryLaneSaturated ? bestEvaluatedCandidate.unitName : "none",
+      territorySaturationBestCandidate: hasEvaluatedCandidate ? bestEvaluatedCandidate.unitName : "none",
       territorySaturationBestGainSecondsRaw: bestGainSeconds !== null ? String(bestGainSeconds) : "n/a",
       territorySaturationBestGainRatioRaw: bestGainRatio !== null ? String(bestGainRatio) : "n/a",
-      territorySaturationSecondsRequirementRatio: territoryLaneSaturated && minEtaGainSeconds > 0
-        ? String(bestGainSeconds / minEtaGainSeconds) : "n/a",
-      territorySaturationRatioRequirementRatio: territoryLaneSaturated && minEtaGainRatio > 0
-        ? String(bestGainRatio / minEtaGainRatio) : "n/a",
-      territorySaturationRelativeVelocityGain: territoryLaneSaturated ? String(bestEvaluatedCandidate.relativeVelocityGain) : "n/a",
+      territorySaturationSecondsRequirementRatio: secondsRequirementRatio !== null ? String(secondsRequirementRatio) : "n/a",
+      territorySaturationRatioRequirementRatio: ratioRequirementRatio !== null ? String(ratioRequirementRatio) : "n/a",
+      territorySaturationRelativeVelocityGain: hasEvaluatedCandidate ? String(bestEvaluatedCandidate.relativeVelocityGain) : "n/a",
     };
   }
 
@@ -14557,6 +14592,7 @@ function getDisplayName(item) {
     // report territoryLaneSaturated=false rather than staying stale from a
     // previous cycle.
     const NOT_SATURATED_FIELDS = {
+      territoryEconomicState: "not-evaluated",
       territoryLaneSaturated: false,
       territorySaturationReason: "none",
       territorySaturationBestCandidate: "none",
@@ -14947,10 +14983,20 @@ function getDisplayName(item) {
     };
 
     if (!bestAccepted) {
-      const holdReason = territoryLaneSaturated ? territorySaturationReason : (bestRejectedReason || "Army seed HOLD: no candidate improved Expansion ETA meaningfully.");
-      const blockedByTag = territoryLaneSaturated
-        ? "economically saturated"
-        : (bestBlockedCandidate ? "protected resource (temporary)" : "not meaningful");
+      // economically-saturated and below-threshold both already have an
+      // accurate, candidate-grounded reason from the classifier; resource-
+      // blocked keeps the guard's own "would spend a protected resource"
+      // text built in the loop above, since that already names the actual
+      // blocking resource.
+      const holdReason = (territorySaturation.territoryEconomicState === "economically-saturated" || territorySaturation.territoryEconomicState === "below-threshold")
+        ? territorySaturationReason
+        : (bestRejectedReason || "Army seed HOLD: no candidate improved Expansion ETA meaningfully.");
+      const blockedByTagByState = {
+        "economically-saturated": "economically saturated",
+        "below-threshold": "below threshold",
+        "resource-blocked": "protected resource (temporary)",
+      };
+      const blockedByTag = blockedByTagByState[territorySaturation.territoryEconomicState] || "not meaningful";
       addLaneCandidate({
         lane: "Territory",
         decision: "HOLD",
@@ -15583,12 +15629,15 @@ function getDisplayName(item) {
         : (territoryPrepPlannerState?.expansionArmySeedInsideSaveWindow || "no"),
       expansionArmySeedBestRejectedUnit: fields.expansionArmySeedBestRejectedUnit || territoryPrepPlannerState?.expansionArmySeedBestRejectedUnit || "none",
       expansionArmySeedBestRejectedReason: fields.expansionArmySeedBestRejectedReason || territoryPrepPlannerState?.expansionArmySeedBestRejectedReason || "none",
-      // Structured Territory-lane-saturation reporting: true only when at
-      // least one real candidate was scored against the ETA-improvement
-      // threshold and none of them met it. Never true for a clone-buffer/
-      // save-window/protected-resource block, and always explicit (never
-      // falls back to a stale previous-cycle value) so a BUY cycle can't
-      // leave a saturated flag set from an earlier HOLD cycle.
+      // Structured Territory economic-state reporting (see
+      // classifyTerritorySaturation): resource-blocked / below-threshold /
+      // economically-saturated / buyable / not-evaluated. territoryLaneSaturated
+      // is true only for economically-saturated - never for a merely-close
+      // below-threshold candidate or a clone-buffer/save-window/protected-
+      // resource block - and always explicit (never falls back to a stale
+      // previous-cycle value) so a BUY cycle can't leave a saturated flag
+      // set from an earlier HOLD cycle.
+      territoryEconomicState: fields.territoryEconomicState || territoryPrepPlannerState?.territoryEconomicState || "not-evaluated",
       territoryLaneSaturated: fields.territoryLaneSaturated ? "yes" : "no",
       territorySaturationReason: fields.territorySaturationReason || territoryPrepPlannerState?.territorySaturationReason || "none",
       territorySaturationBestCandidate: fields.territorySaturationBestCandidate || territoryPrepPlannerState?.territorySaturationBestCandidate || "none",
