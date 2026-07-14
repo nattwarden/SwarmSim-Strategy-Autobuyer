@@ -5,8 +5,9 @@
   "productCapability": "Resource-scoped save-window locking that preserves safe non-conflicting progression",
   "baseline": {
     "runtimeVersion": "8.1.x",
-    "acceptedImplementationSha": "TBD",
-    "acceptedEvidenceSha": "TBD"
+    "acceptedImplementationSha": "pending-commit",
+    "acceptedEvidenceSha": "pending-commit",
+    "note": "Resource-scoped locking was already implemented at the guard level (shouldAvoidProtectedCost only blocks candidates whose cost uses the protected resource); M9 closure adds the focused acceptance check (check:book00:m9:resource-locks) that proves it, rather than new runtime code."
   },
   "contract": {
     "saveWindowLockIsResourceScoped": true,

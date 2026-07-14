@@ -918,6 +918,41 @@ SCENARIOS["book00-m8-false-wait"] = {
   ]
 };
 
+SCENARIOS["book00-m9-resource-scoped-locks"] = {
+  ...SCENARIOS["sa1-02"],
+  id: "BOOK00-M9-RESOURCE-SCOPED-LOCKS",
+  title: "Expansion Save-Window Locks Territory Only",
+  description: "Expansion is inside its save window (Territory protected), while Meat has an ample, safe, non-conflicting buy available. Territory spend must stay blocked while the Meat buy still executes.",
+  cycles: 1,
+  executeActions: true,
+  unitCounts: {
+    ...SCENARIOS["sa1-02"].unitCounts,
+    meat: "500000",
+    larva: "1500",
+    drone: "500000",
+    queen: "50000",
+    nest: "20",
+    greaterqueen: "0",
+    territory: "50"
+  },
+  engine: {
+    hatcheryEtaSeconds: 3600,
+    expansionEtaSeconds: 300
+  },
+  config: {
+    saveForExpansionSeconds: 600,
+    territoryPrepPlanner: false,
+    expansionArmySeedPlanner: false,
+    territoryArmySeedWhenEmpty: false,
+    territoryRoiMode: false
+  },
+  notes: [
+    "M9 focused acceptance: Expansion ETA (300s) is inside saveForExpansionSeconds (600s), so Territory must remain protected.",
+    "Territory-side planners are disabled here only to isolate the assertion (no territory-spending candidate should exist to confuse the check); Meat lane is left fully active so it can execute for real.",
+    "Meat/larva bank is ample and the meat-chain goal resolves to a safe, guard-passing buy so a legal non-Territory action is available this cycle."
+  ]
+};
+
 SCENARIOS["book00-m2-coordinator"] = {
   ...SCENARIOS["sa1-02"],
   id: "BOOK00-M2-COORDINATOR",

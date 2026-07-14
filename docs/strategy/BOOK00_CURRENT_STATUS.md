@@ -227,7 +227,16 @@ immediately afterward because its scenario relied on the same bug (advisor-only
 replay was incidentally masked as permanent HOLD); the scenario has since been
 re-tuned (2026-07-14, see handoff below) to isolate the Meat lane and produce a
 genuine reserve/payback-guarded HOLD pattern, and `npm run verify` is fully
-green again. The next open work package is Milestone 9.
+green again.
+
+Milestone 9 (resource-scoped save locks) is closed as of 2026-07-14 (see
+handoff below): the guard-level implementation (`shouldAvoidProtectedCost`)
+already scoped protection to the specific resource being spent, so no new
+runtime code was needed. Added a focused acceptance check
+(`check:book00:m9:resource-locks`) proving Territory stays HOLD under an
+active Expansion save window while Meat/Engine/Upgrade remain BUY-eligible.
+`npm run verify` is green with the new check included. The next open work
+package has not been selected yet.
 
 Product capability (M9, not started):
 
@@ -360,6 +369,46 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - Milestone 9 closed: resource-scoped save locks (guard already correct, added acceptance check)
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Scope: `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`.
+- Finding: `shouldAvoidProtectedCost(item, protectedResources)` already checks
+  whether a specific candidate's cost uses one of the currently protected
+  resources, not whether ANY resource is protected. Combined with the
+  `m6DecisionOwnsMainCycle` fix (every legacy lane evaluates every cycle),
+  this means an active Expansion save window already only blocks
+  Territory-costing candidates; Meat/Engine/Energy/Upgrade candidates are
+  unaffected unless they themselves spend the protected resource. No global
+  HOLD lock existed to fix.
+- Verified via a new scenario, `book00-m9-resource-scoped-locks` (in
+  `scripts/strategy-audit-testbed-core.js`): Expansion ETA (300s) inside its
+  600s save window with an ample, safe Meat-chain buy available. Result:
+  Territory lane = `HOLD` with `protected-resource` blocker category; Meat,
+  Engine, and Upgrade lanes remained `BUY`-eligible in the same cycle.
+- Added `scripts/check-book00-m9-resource-scoped-locks.js` asserting exactly
+  that (Territory HOLD + protected-resource blocker, at least one
+  non-Territory lane BUY, no advisor-only/ability/ascension execution leak).
+  Wired into `package.json` as `check:book00:m9:resource-locks` and added to
+  the `verify` chain.
+- Commands and exit codes: `node scripts/check-book00-m9-resource-scoped-locks.js`
+  -> `0`; `npm run verify` -> `0` (fully green, including the new check).
+- Product capability changed: none (no runtime/userscript files touched);
+  this closes M9 by adding proof of already-correct behavior, not new
+  behavior.
+- Safety: unaffected; `autoCastAbilities`/`autoAscend` remain default `false`;
+  advisor-only domains remain non-executable (checked explicitly).
+- Milestone checklist items completed: M9 contract (resource-scoped lock,
+  Expansion/Territory case, authority/safety, diagnostics) verified and
+  closed per `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`
+  section 8 stop condition.
+- Remaining blocker: none for M9. M6's comparability gap for
+  Engine/Meat/Energy domains (still open, noted in the M8 handoff below) is
+  unrelated.
+- Exact next action: none selected yet; awaiting next milestone/task from
+  the user.
 
 ### 2026-07-14 - M8 false-wait scenario re-tuned against the fixed legacy execution path
 
