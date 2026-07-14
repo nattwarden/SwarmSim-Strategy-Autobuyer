@@ -3653,6 +3653,16 @@ function getDisplayName(item) {
       expansionArmySeedInsideSaveWindow: territoryPrepState?.expansionArmySeedInsideSaveWindow || "no",
       expansionArmySeedBestRejectedUnit: territoryPrepState?.expansionArmySeedBestRejectedUnit || "none",
       expansionArmySeedBestRejectedReason: territoryPrepState?.expansionArmySeedBestRejectedReason || "none",
+      territoryLaneSaturated: territoryPrepState?.territoryLaneSaturated || "no",
+      territorySaturationReason: territoryPrepState?.territorySaturationReason || "none",
+      territorySaturationBestCandidate: territoryPrepState?.territorySaturationBestCandidate || "none",
+      territorySaturationBestGainSecondsRaw: territoryPrepState?.territorySaturationBestGainSecondsRaw || "n/a",
+      territorySaturationBestGainRatioRaw: territoryPrepState?.territorySaturationBestGainRatioRaw || "n/a",
+      territorySaturationSecondsRequirementRatio: territoryPrepState?.territorySaturationSecondsRequirementRatio || "n/a",
+      territorySaturationRatioRequirementRatio: territoryPrepState?.territorySaturationRatioRequirementRatio || "n/a",
+      territorySaturationRelativeVelocityGain: territoryPrepState?.territorySaturationRelativeVelocityGain || "n/a",
+      territorySaturationBestBlockedCandidate: territoryPrepState?.territorySaturationBestBlockedCandidate || "none",
+      territorySaturationBestBlockedReason: territoryPrepState?.territorySaturationBestBlockedReason || "none",
       territoryDidNotBuyReason: coordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: territoryPrepState?.armyPrepMissingUnits || abilityPrepState?.houseOfMirrorsMissingUnits || "none",
       configSummary: compactConfigSummary(),
@@ -7708,6 +7718,16 @@ function getDisplayName(item) {
       expansionArmySeedInsideSaveWindow: strategyInspector?.expansionArmySeedInsideSaveWindow || territoryPrepPlannerState?.expansionArmySeedInsideSaveWindow || "no",
       expansionArmySeedBestRejectedUnit: strategyInspector?.expansionArmySeedBestRejectedUnit || territoryPrepPlannerState?.expansionArmySeedBestRejectedUnit || "none",
       expansionArmySeedBestRejectedReason: strategyInspector?.expansionArmySeedBestRejectedReason || territoryPrepPlannerState?.expansionArmySeedBestRejectedReason || "none",
+      territoryLaneSaturated: strategyInspector?.territoryLaneSaturated || territoryPrepPlannerState?.territoryLaneSaturated || "no",
+      territorySaturationReason: strategyInspector?.territorySaturationReason || territoryPrepPlannerState?.territorySaturationReason || "none",
+      territorySaturationBestCandidate: strategyInspector?.territorySaturationBestCandidate || territoryPrepPlannerState?.territorySaturationBestCandidate || "none",
+      territorySaturationBestGainSecondsRaw: strategyInspector?.territorySaturationBestGainSecondsRaw || territoryPrepPlannerState?.territorySaturationBestGainSecondsRaw || "n/a",
+      territorySaturationBestGainRatioRaw: strategyInspector?.territorySaturationBestGainRatioRaw || territoryPrepPlannerState?.territorySaturationBestGainRatioRaw || "n/a",
+      territorySaturationSecondsRequirementRatio: strategyInspector?.territorySaturationSecondsRequirementRatio || territoryPrepPlannerState?.territorySaturationSecondsRequirementRatio || "n/a",
+      territorySaturationRatioRequirementRatio: strategyInspector?.territorySaturationRatioRequirementRatio || territoryPrepPlannerState?.territorySaturationRatioRequirementRatio || "n/a",
+      territorySaturationRelativeVelocityGain: strategyInspector?.territorySaturationRelativeVelocityGain || territoryPrepPlannerState?.territorySaturationRelativeVelocityGain || "n/a",
+      territorySaturationBestBlockedCandidate: strategyInspector?.territorySaturationBestBlockedCandidate || territoryPrepPlannerState?.territorySaturationBestBlockedCandidate || "none",
+      territorySaturationBestBlockedReason: strategyInspector?.territorySaturationBestBlockedReason || territoryPrepPlannerState?.territorySaturationBestBlockedReason || "none",
       territoryDidNotBuyReason: strategyInspector?.territoryDidNotBuyReason || laneCoordinatorState?.territoryDidNotBuyReason || "none",
       armyPrepMissingUnits: strategyInspector?.armyPrepMissingUnits || territoryPrepPlannerState?.armyPrepMissingUnits || abilityPrepPlannerState?.houseOfMirrorsMissingUnits || "none",
       activeCouncilSpeaker: strategyInspector?.activeCouncilSpeaker || "none",
@@ -11401,6 +11421,19 @@ function getDisplayName(item) {
     return `${days}d ${restHours}h`;
   }
 
+  // formatDuration floors to whole seconds, so a genuinely tiny (sub-second)
+  // ETA gain and an exact 0s gain render identically ("0s") and look the
+  // same as "just below the threshold". This is only used for saturation
+  // reporting text; it does not change the ETA formula or any threshold.
+  function formatSubSecondDuration(seconds) {
+    const n = Number(seconds);
+    if (!Number.isFinite(n) || n < 0) return "n/a";
+    if (n === 0) return "0ms";
+    if (n < 0.001) return "<1ms";
+    if (n < 1) return `${Math.round(n * 1000)}ms`;
+    return formatDuration(n);
+  }
+
   function secondsToTimeParts(seconds) {
     const safeSeconds = Math.max(0, Math.floor(Number(seconds || 0)));
 
@@ -14476,6 +14509,33 @@ function getDisplayName(item) {
     return newDecimal(1);
   }
 
+  // Pure classification, deliberately separated from buildTerritoryPrepProposal
+  // so it can be exercised directly (see window.kbcSwarmBot.territorySaturationDiagnostics)
+  // without needing a live game/browser clock. Does not change the ETA
+  // formula, chunk percent, or the 120s/5% thresholds - it only reports how
+  // far the best already-evaluated candidate fell short of them.
+  function classifyTerritorySaturation({ bestAccepted, evaluatedCandidateCount, bestEvaluatedCandidate, minEtaGainSeconds, minEtaGainRatio }) {
+    const territoryLaneSaturated = !bestAccepted && evaluatedCandidateCount > 0 && !!bestEvaluatedCandidate;
+    const bestGainSeconds = territoryLaneSaturated ? bestEvaluatedCandidate.etaGainSeconds : null;
+    const bestGainRatio = territoryLaneSaturated ? bestEvaluatedCandidate.etaGainRatio : null;
+    const territorySaturationReason = territoryLaneSaturated
+      ? `Territory saturated at current income: best safe army chunk (${bestEvaluatedCandidate.unitName}) improves Expansion ETA by ${formatSubSecondDuration(bestEvaluatedCandidate.etaGainSeconds)}, far below the ${formatDuration(minEtaGainSeconds)} / ${trimNumber(minEtaGainRatio * 100)}% requirement.`
+      : "none";
+
+    return {
+      territoryLaneSaturated,
+      territorySaturationReason,
+      territorySaturationBestCandidate: territoryLaneSaturated ? bestEvaluatedCandidate.unitName : "none",
+      territorySaturationBestGainSecondsRaw: bestGainSeconds !== null ? String(bestGainSeconds) : "n/a",
+      territorySaturationBestGainRatioRaw: bestGainRatio !== null ? String(bestGainRatio) : "n/a",
+      territorySaturationSecondsRequirementRatio: territoryLaneSaturated && minEtaGainSeconds > 0
+        ? String(bestGainSeconds / minEtaGainSeconds) : "n/a",
+      territorySaturationRatioRequirementRatio: territoryLaneSaturated && minEtaGainRatio > 0
+        ? String(bestGainRatio / minEtaGainRatio) : "n/a",
+      territorySaturationRelativeVelocityGain: territoryLaneSaturated ? String(bestEvaluatedCandidate.relativeVelocityGain) : "n/a",
+    };
+  }
+
   function buildTerritoryPrepProposal(game, engine, protectedResources) {
     const armyPrep = getHouseOfMirrorsArmyPrep(game);
     const missingLabels = getArmyPrepMissingUnitLabels(game);
@@ -14490,6 +14550,24 @@ function getDisplayName(item) {
     const postNexusReady = nowNexus >= Number(config.nexusTarget || DEFAULT_CONFIG.nexusTarget);
     const expansionRelevant = !!engine?.expansion && (postNexusReady || Number.isFinite(engine?.expansionEta) || !!engine?.expansionBuyable);
     const insideSaveWindow = !!(protectedResources?.has("territory") || (Number.isFinite(engine?.expansionEta) && engine.expansionEta > 0 && engine.expansionEta <= config.saveForExpansionSeconds));
+
+    // Default saturation fields for every early-return branch below (planner
+    // disabled, not relevant yet, inside save-window, no army visible/buyable):
+    // none of these are an economic-saturation signal, so they must always
+    // report territoryLaneSaturated=false rather than staying stale from a
+    // previous cycle.
+    const NOT_SATURATED_FIELDS = {
+      territoryLaneSaturated: false,
+      territorySaturationReason: "none",
+      territorySaturationBestCandidate: "none",
+      territorySaturationBestGainSecondsRaw: "n/a",
+      territorySaturationBestGainRatioRaw: "n/a",
+      territorySaturationSecondsRequirementRatio: "n/a",
+      territorySaturationRatioRequirementRatio: "n/a",
+      territorySaturationRelativeVelocityGain: "n/a",
+      territorySaturationBestBlockedCandidate: "none",
+      territorySaturationBestBlockedReason: "none",
+    };
 
     if (!config.territoryPrepPlanner) {
       return recordTerritoryPrepPlannerState({
@@ -14519,6 +14597,7 @@ function getDisplayName(item) {
         expansionArmySeedInsideSaveWindow: insideSaveWindow,
         expansionArmySeedBestRejectedUnit: "none",
         expansionArmySeedBestRejectedReason: "planner disabled",
+        ...NOT_SATURATED_FIELDS,
       });
     }
 
@@ -14550,6 +14629,7 @@ function getDisplayName(item) {
         expansionArmySeedInsideSaveWindow: insideSaveWindow,
         expansionArmySeedBestRejectedUnit: "none",
         expansionArmySeedBestRejectedReason: "planner disabled",
+        ...NOT_SATURATED_FIELDS,
       });
     }
 
@@ -14593,6 +14673,7 @@ function getDisplayName(item) {
         expansionArmySeedInsideSaveWindow: insideSaveWindow,
         expansionArmySeedBestRejectedUnit: "none",
         expansionArmySeedBestRejectedReason: "expansion not relevant yet",
+        ...NOT_SATURATED_FIELDS,
       });
     }
 
@@ -14636,6 +14717,7 @@ function getDisplayName(item) {
         expansionArmySeedInsideSaveWindow: true,
         expansionArmySeedBestRejectedUnit: "none",
         expansionArmySeedBestRejectedReason: "inside save-window",
+        ...NOT_SATURATED_FIELDS,
       });
     }
 
@@ -14680,6 +14762,7 @@ function getDisplayName(item) {
         expansionArmySeedInsideSaveWindow: insideSaveWindow,
         expansionArmySeedBestRejectedUnit: "none",
         expansionArmySeedBestRejectedReason: "no visible territory army",
+        ...NOT_SATURATED_FIELDS,
       });
     }
 
@@ -14722,6 +14805,7 @@ function getDisplayName(item) {
         expansionArmySeedInsideSaveWindow: insideSaveWindow,
         expansionArmySeedBestRejectedUnit: "none",
         expansionArmySeedBestRejectedReason: "no buyable territory army",
+        ...NOT_SATURATED_FIELDS,
       });
     }
 
@@ -14735,6 +14819,13 @@ function getDisplayName(item) {
     let bestAccepted = null;
     let bestRejected = null;
     let bestRejectedReason = "no candidate evaluated";
+    // Tracked separately from bestRejected (which mixes guard-blocked and
+    // genuinely-evaluated candidates) so lane saturation can be classified
+    // purely from candidates that actually reached the ETA-improvement
+    // threshold check, never from ones a protected-resource guard skipped.
+    let bestBlockedCandidate = null;
+    let bestEvaluatedCandidate = null;
+    let evaluatedCandidateCount = 0;
 
     for (const unit of buyableUnits) {
       const num = getExpansionArmySeedBuyNum(unit);
@@ -14763,13 +14854,19 @@ function getDisplayName(item) {
           unitName: getDisplayName(unit),
           num,
           etaGainSeconds: territory.etaImprovement,
+          blockReason: block.reason,
         };
         if (!bestRejected || blockedCandidate.etaGainSeconds > bestRejected.etaGainSeconds) {
           bestRejected = blockedCandidate;
-          bestRejectedReason = `Army seed HOLD: ${getDisplayName(unit)} would spend a protected resource (${block.reason}).`;
+          bestRejectedReason = `Army seed HOLD: ${getDisplayName(unit)} is temporarily blocked by a protected resource (${block.reason}); this is a resource lock, not an economic saturation signal.`;
+        }
+        if (!bestBlockedCandidate || blockedCandidate.etaGainSeconds > bestBlockedCandidate.etaGainSeconds) {
+          bestBlockedCandidate = blockedCandidate;
         }
         continue;
       }
+
+      evaluatedCandidateCount += 1;
 
       const beforeSeconds = Number.isFinite(territory.etaBeforeSeconds) ? Math.max(0, territory.etaBeforeSeconds) : Infinity;
       const afterSeconds = Number.isFinite(territory.etaAfterSeconds) ? Math.max(0, territory.etaAfterSeconds) : Infinity;
@@ -14780,6 +14877,9 @@ function getDisplayName(item) {
         ? (Number.isFinite(etaGainSeconds) ? etaGainSeconds / beforeSeconds : 1)
         : (!Number.isFinite(beforeSeconds) && Number.isFinite(afterSeconds) ? 1 : 0);
       const territoryPerSecondAfter = territoryVelocityBefore.plus(decimalFrom(territory.addedVelocity || 0));
+      const relativeVelocityGain = territoryVelocityBefore.greaterThan(0)
+        ? decimalToNumber(decimalFrom(territory.addedVelocity || 0).dividedBy(territoryVelocityBefore), 0)
+        : 0;
 
       const meaningful = (!Number.isFinite(beforeSeconds) && Number.isFinite(afterSeconds))
         || (Number.isFinite(etaGainSeconds) && etaGainSeconds >= minEtaGainSeconds)
@@ -14797,6 +14897,7 @@ function getDisplayName(item) {
         etaAfterSeconds: afterSeconds,
         etaGainSeconds,
         etaGainRatio,
+        relativeVelocityGain,
         territoryPerSecondBefore: territoryVelocityBefore,
         territoryPerSecondAfter,
         raw: {
@@ -14812,6 +14913,10 @@ function getDisplayName(item) {
         },
       };
 
+      if (!bestEvaluatedCandidate || candidate.etaGainSeconds > bestEvaluatedCandidate.etaGainSeconds) {
+        bestEvaluatedCandidate = candidate;
+      }
+
       if (meaningful) {
         if (!bestAccepted || candidate.score > bestAccepted.score) bestAccepted = candidate;
       } else if (!bestRejected || candidate.etaGainSeconds > bestRejected.etaGainSeconds) {
@@ -14820,14 +14925,38 @@ function getDisplayName(item) {
       }
     }
 
+    // Saturation is only true when at least one candidate actually reached
+    // the ETA-improvement check (evaluatedCandidateCount > 0) and none of
+    // them met the already-configured 120s / 5% requirement (implied by
+    // !bestAccepted here). A lane where every candidate was skipped by the
+    // clone-buffer/protected-resource guard is reported as temporarily
+    // blocked instead - see the reason text built in the loop above.
+    const territorySaturation = classifyTerritorySaturation({
+      bestAccepted,
+      evaluatedCandidateCount,
+      bestEvaluatedCandidate,
+      minEtaGainSeconds,
+      minEtaGainRatio,
+    });
+    const territoryLaneSaturated = territorySaturation.territoryLaneSaturated;
+    const territorySaturationReason = territorySaturation.territorySaturationReason;
+    const territorySaturationFields = {
+      ...territorySaturation,
+      territorySaturationBestBlockedCandidate: bestBlockedCandidate?.unitName || "none",
+      territorySaturationBestBlockedReason: bestBlockedCandidate?.blockReason || "none",
+    };
+
     if (!bestAccepted) {
-      const holdReason = bestRejectedReason || "Army seed HOLD: no candidate improved Expansion ETA meaningfully.";
+      const holdReason = territoryLaneSaturated ? territorySaturationReason : (bestRejectedReason || "Army seed HOLD: no candidate improved Expansion ETA meaningfully.");
+      const blockedByTag = territoryLaneSaturated
+        ? "economically saturated"
+        : (bestBlockedCandidate ? "protected resource (temporary)" : "not meaningful");
       addLaneCandidate({
         lane: "Territory",
         decision: "HOLD",
         candidate: bestRejected?.unitName || "Army seed",
         reason: holdReason,
-        blockers: ["not meaningful"],
+        blockers: [blockedByTag],
         score: 0,
         target: "Expansion",
         resource: "territory",
@@ -14841,7 +14970,7 @@ function getDisplayName(item) {
         territoryPrepAmount: bestRejected?.num ? formatSwarmNumber(bestRejected.num) : "0",
         territoryPrepExpansionEtaBefore: expansionEtaBefore,
         territoryPrepExpansionEtaAfter: bestRejected && Number.isFinite(bestRejected.etaAfterSeconds) ? formatDuration(bestRejected.etaAfterSeconds) : "n/a",
-        territoryPrepBlockedBy: "not meaningful",
+        territoryPrepBlockedBy: blockedByTag,
         armyPrepMissingUnits: missingLabels.length ? missingLabels.join(", ") : "none",
         territoryPrepScannedFightingUnits: scannedFightingUnits.length,
         territoryPrepVisibleFightingUnits: visibleFightingUnits.length,
@@ -14858,10 +14987,11 @@ function getDisplayName(item) {
         expansionArmySeedEtaGainPercent: bestRejected && Number.isFinite(bestRejected.etaGainRatio) ? `${trimNumber(bestRejected.etaGainRatio * 100)}%` : "0%",
         expansionArmySeedTerritoryPerSecondBefore: bestRejected?.territoryPerSecondBefore ? formatSwarmNumber(bestRejected.territoryPerSecondBefore) : formatSwarmNumber(territoryVelocityBefore),
         expansionArmySeedTerritoryPerSecondAfter: bestRejected?.territoryPerSecondAfter ? formatSwarmNumber(bestRejected.territoryPerSecondAfter) : formatSwarmNumber(territoryVelocityBefore),
-        expansionArmySeedBlockedBy: "not meaningful",
+        expansionArmySeedBlockedBy: blockedByTag,
         expansionArmySeedInsideSaveWindow: insideSaveWindow,
         expansionArmySeedBestRejectedUnit: bestRejected?.unitName || "none",
         expansionArmySeedBestRejectedReason: holdReason,
+        ...territorySaturationFields,
       });
     }
 
@@ -14912,6 +15042,7 @@ function getDisplayName(item) {
       expansionArmySeedInsideSaveWindow: insideSaveWindow,
       expansionArmySeedBestRejectedUnit: bestRejected?.unitName || "none",
       expansionArmySeedBestRejectedReason: bestRejectedReason || "none",
+      ...territorySaturationFields,
       proposal: {
         ...bestAccepted,
         armySeed: true,
@@ -15452,6 +15583,22 @@ function getDisplayName(item) {
         : (territoryPrepPlannerState?.expansionArmySeedInsideSaveWindow || "no"),
       expansionArmySeedBestRejectedUnit: fields.expansionArmySeedBestRejectedUnit || territoryPrepPlannerState?.expansionArmySeedBestRejectedUnit || "none",
       expansionArmySeedBestRejectedReason: fields.expansionArmySeedBestRejectedReason || territoryPrepPlannerState?.expansionArmySeedBestRejectedReason || "none",
+      // Structured Territory-lane-saturation reporting: true only when at
+      // least one real candidate was scored against the ETA-improvement
+      // threshold and none of them met it. Never true for a clone-buffer/
+      // save-window/protected-resource block, and always explicit (never
+      // falls back to a stale previous-cycle value) so a BUY cycle can't
+      // leave a saturated flag set from an earlier HOLD cycle.
+      territoryLaneSaturated: fields.territoryLaneSaturated ? "yes" : "no",
+      territorySaturationReason: fields.territorySaturationReason || territoryPrepPlannerState?.territorySaturationReason || "none",
+      territorySaturationBestCandidate: fields.territorySaturationBestCandidate || territoryPrepPlannerState?.territorySaturationBestCandidate || "none",
+      territorySaturationBestGainSecondsRaw: fields.territorySaturationBestGainSecondsRaw || territoryPrepPlannerState?.territorySaturationBestGainSecondsRaw || "n/a",
+      territorySaturationBestGainRatioRaw: fields.territorySaturationBestGainRatioRaw || territoryPrepPlannerState?.territorySaturationBestGainRatioRaw || "n/a",
+      territorySaturationSecondsRequirementRatio: fields.territorySaturationSecondsRequirementRatio || territoryPrepPlannerState?.territorySaturationSecondsRequirementRatio || "n/a",
+      territorySaturationRatioRequirementRatio: fields.territorySaturationRatioRequirementRatio || territoryPrepPlannerState?.territorySaturationRatioRequirementRatio || "n/a",
+      territorySaturationRelativeVelocityGain: fields.territorySaturationRelativeVelocityGain || territoryPrepPlannerState?.territorySaturationRelativeVelocityGain || "n/a",
+      territorySaturationBestBlockedCandidate: fields.territorySaturationBestBlockedCandidate || territoryPrepPlannerState?.territorySaturationBestBlockedCandidate || "none",
+      territorySaturationBestBlockedReason: fields.territorySaturationBestBlockedReason || territoryPrepPlannerState?.territorySaturationBestBlockedReason || "none",
       proposal: fields.proposal || territoryPrepPlannerState?.proposal || null,
     };
 
@@ -22228,6 +22375,19 @@ function getDisplayName(item) {
         },
         countEtaGroundedReserveAbilityBlockedHolds(history = []) {
           return countConsecutiveEtaGroundedReserveAbilityBlockedMainHolds(history);
+        },
+      },
+
+      // Narrow, additive test hook: lets a check drive the Territory-lane
+      // saturation classifier directly with controlled candidate counts, so
+      // "guard-blocked (evaluatedCandidateCount=0)" versus "genuinely
+      // evaluated and economically saturated (evaluatedCandidateCount>0)"
+      // can be proven deterministically without depending on real-time game
+      // production regenerating a starved resource between setup and the
+      // next runOnce() cycle.
+      territorySaturationDiagnostics: {
+        classify(input = {}) {
+          return classifyTerritorySaturation(input);
         },
       },
 
