@@ -2,12 +2,12 @@
 
 Methodical Tampermonkey smart advisor/autobuyer for Swarm Simulator.
 
-Current script version in `src/`: **9.0.0**.
+Current script version in `src/`: **9.1.0**.
 
 The product vision, active game model, and distilled strategy knowledge live in
 `docs/BOOK-00-vision-goals-and-dreams.md`, `docs/SWARMSIM_GAME_MODEL.md`, and
 `docs/BOOK-01` through `docs/BOOK-06`, plus the current M7 contract and
-verification docs. The running script now implements `9.0.0`.
+verification docs. The running script now implements `9.1.0`.
 
 ## Repository layout
 

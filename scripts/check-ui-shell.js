@@ -15,7 +15,7 @@ const required = [
   ['config.autoBuySafeDecisions = !advisorMode;', "Autobuyer authority mapping is missing"],
   ['const COUNCIL_LAYOUT_STORAGE_KEY = "kbcSwarmBotCouncilPanelLayout_v2"', "fixed Council layout persistence is missing"],
   ['const COUNCIL_FIXED_WIDTH = 1180', "fixed Council width is missing"],
-  ['const COUNCIL_FIXED_HEIGHT = 700', "fixed Council height is missing"],
+  ['const COUNCIL_FIXED_HEIGHT = 860', "fixed Council height is missing"],
   ['function applyCouncilWindowLayout()', "fixed Council layout application is missing"],
   ['installWindowDragAndResize(strategyBar, COUNCIL_LAYOUT_STORAGE_KEY', "Council drag/resize is missing"],
   ['resize: none;', "Council manual resize must be disabled"],

@@ -67,7 +67,7 @@ Observed after M8 8.1.0 closure (2026-07-14):
   generated-evidence commit was required; this status-board update is the
   provenance record for the accepted run.
 
-Current runtime version: `9.0.0`
+Current runtime version: `9.1.0`
 
 ## Product north star
 
@@ -369,6 +369,87 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - M6 comparability gap closed for Engine/Meat/Energy purchase domains
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Baseline: `c014158cea82696cbdb18506045e60126c676116` plus the M9/M8 fixes above
+  (uncommitted at start of this package).
+- Context: known blocker noted in the M6 hotfix handoff below —
+  `buildUnifiedPurchaseProposals` only populated `raw.etaImprovementSeconds`
+  for the Territory proposal (and the pre-Nexus Lepidoptera ROI branch of
+  Energy). Engine (Hatchery/Expansion), Meat (goal-planner action unit), and
+  the Nexus-buyable/post-Nexus-Lepidoptera Energy branches never populated any
+  M6-comparable metric, so `adaptPurchaseDomainOutcome` always returned
+  `comparability.status = "UNRANKED"` for those three domains and they could
+  never win or gain execution authority under the M6 six-domain coordinator,
+  regardless of how strong the candidate was.
+- Root cause: `sixDomainComparableValue` accepts either
+  `outcome.milestoneEtaImprovementSeconds` (ETA basis) or
+  `outcome.projectedMilestoneProgressDelta` (progress-delta basis, already a
+  reserved M7 field used by the Ascension/Mutagen adapter), but
+  `evaluatePurchaseCandidate`'s `sharedOutcome` never read or exposed
+  `raw.projectedMilestoneProgressDelta`, and the three domains' proposal
+  builders never set it (or an ETA improvement).
+- Fix (per M7 rules: no generic weighted score, no fabricated zero, real
+  grounded metric only):
+  - `evaluatePurchaseCandidate`: added `projectedMilestoneProgressDelta` to
+    `sharedOutcome` (sourced from `raw.projectedMilestoneProgressDelta`,
+    `null` when absent) and to `evidenceFields`/`components` so confidence
+    reflects the added evidence honestly.
+  - Engine (Hatchery/Expansion) and Energy's Nexus-buyable branch: these are
+    discrete one-time unlocks. When buyable, set
+    `raw.projectedMilestoneProgressDelta = 100` — buying now completes the
+    milestone this cycle (0% -> 100% owned) vs. waiting, which leaves it
+    undone. Not set when not buyable (blocked candidates don't need ranking).
+  - Meat goal-planner action unit: same completion-event basis — when the
+    safety/reserve/payback guard passes (`safe === true`, decision BUY), set
+    `projectedMilestoneProgressDelta = 100` alongside the existing
+    payback/reserve `guard.raw` fields.
+  - Energy's post-Nexus Lepidoptera branch: reused the already-computed,
+    already-displayed `plan.boostGain` (Council's "Energy production gain")
+    as the progress-delta value when `plan.ok`, rather than inventing a new
+    number.
+  - ETA-basis metrics are checked first in `sixDomainComparableValue`, so
+    Territory and the Energy ROI branch (which already had real
+    `etaImprovementSeconds`) are unaffected and keep their existing basis.
+- Commands and exit codes: `npm run build` -> `0`;
+  `node --check src/SwarmSim-Strategy-Autobuyer.user.js` -> `0`;
+  `npm run check:book00:m6:six-domain` -> `0`;
+  `npm run check:book00:m7:calibrated-outcomes` -> `0`;
+  `npm run verify` -> `0` (full chain, including
+  `check:book00:m8:false-wait` at `blocker cycles=5,
+  eta-grounded-by-cycle3=3, stall-breaker-cycle=3` and
+  `check:book00:m9:resource-locks`).
+- Product capability changed: Engine, Meat, and Energy purchase proposals can
+  now become `comparability.status = "COMPARABLE"` in the M6 six-domain
+  coordinator (previously always `UNRANKED`), so M6 can honestly rank and, for
+  bounded-reversible lanes, grant execution authority to whichever domain
+  actually has the best evidence — not just Territory by default.
+- Safety: no hard-default or authority-boundary change; abilities/ascension
+  remain advisor-only; `m6DecisionOwnsMainCycle` stays `false` (legacy
+  per-lane execution remains the acting purchaser; M6 can still claim
+  execution for any lane it wins, guarded by `coordinatorExecutedKey` as
+  before).
+- Known follow-up (not fixed here, out of scope for a narrow fix): M6's
+  cross-domain ranking (`evaluateSixDomainStrategicCoordinator`'s sort)
+  compares `.value` numerically across domains without normalizing units —
+  Territory/Energy-ROI report raw ETA-improvement-seconds while
+  Engine/Meat/Energy-Nexus now report a 0-100 progress-delta scale. Both are
+  "higher is better" reductions so the sort direction is correct, but the
+  magnitudes are not unit-harmonized across domains. This is a pre-existing
+  M6 design characteristic, not introduced by this fix, and a full
+  cross-domain unit-harmonization is a larger, separate task.
+- Milestone checklist items completed: closes the comparability-gap follow-up
+  flagged in the "2026-07-14 - Critical fix: bot bought nothing in live play"
+  and "2026-07-14 - M8 false-wait scenario re-tuned" handoff entries below.
+- Remaining blocker: none for this fix. The cross-domain unit-harmonization
+  noted above remains open if a future milestone wants strictly
+  apples-to-apples ranking across all six domains.
+- Exact next action: none selected yet; awaiting next milestone/task from the
+  user (Milestone 10 - Council timeline and decision replay, or Milestone 11 -
+  opt-in execution, are the next planned candidates).
 
 ### 2026-07-14 - Milestone 9 closed: resource-scoped save locks (guard already correct, added acceptance check)
 

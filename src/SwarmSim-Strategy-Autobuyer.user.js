@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      9.0.0
+// @version      9.1.0
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -30,14 +30,14 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "9.0.0";
+  const AUTOBUYER_VERSION = "9.1.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
   const SETTINGS_LAYOUT_STORAGE_KEY = "kbcSwarmBotSettingsPanelLayout_v3";
   const COUNCIL_LAYOUT_STORAGE_KEY = "kbcSwarmBotCouncilPanelLayout_v2";
   const COUNCIL_FIXED_WIDTH = 1180;
-  const COUNCIL_FIXED_HEIGHT = 700;
+  const COUNCIL_FIXED_HEIGHT = 860;
   const LOG_LAYOUT_STORAGE_KEY = "kbcSwarmBotAdvisorPanelLayout_v1";
   const PURCHASE_LAYOUT_STORAGE_KEY = "kbcSwarmBotPurchasePanelLayout_v1";
   const SETTINGS_TAB_STORAGE_KEY = "kbcSwarmBotSettingsActiveTab_v1";
@@ -2126,6 +2126,7 @@ function getDisplayName(item) {
     const paybackLimit = rawMetricNumber(raw, "paybackLimitSeconds", NaN);
     const reserveRatio = rawMetricNumber(raw, "reserveRatio", NaN);
     const progressPercent = normalizeProgressPercentForRank(raw);
+    const milestoneProgressDelta = rawMetricNumber(raw, "projectedMilestoneProgressDelta", NaN);
     const reasonText = `${candidate?.reason || ""} ${candidate?.target || ""}`.toLowerCase();
     const components = {
       etaImprovement: Number.isFinite(etaImprovement) && etaImprovement > 0 ? Math.log10(etaImprovement + 1) * 120 : 0,
@@ -2133,6 +2134,7 @@ function getDisplayName(item) {
       payback: Number.isFinite(paybackSeconds) ? Math.max(-200, 120 - (paybackSeconds / Math.max(60, Number.isFinite(paybackLimit) ? paybackLimit : 1800)) * 120) : 0,
       reserve: Number.isFinite(reserveRatio) ? Math.min(120, Math.max(-200, (reserveRatio - 1) * 30)) : 0,
       progress: Number.isFinite(progressPercent) ? progressPercent : 0,
+      milestoneProgressDelta: Number.isFinite(milestoneProgressDelta) ? Math.min(120, Math.max(0, milestoneProgressDelta)) : 0,
       unlock: /unlock|target|milestone|action unit|parent-step|nexus|hatchery|expansion/.test(reasonText) ? 100 : 0,
       plannerEvidence: normalizeCandidateScore(candidate?.score, 0) * 0.0001,
       fallbackPenalty: candidate?.meatFallback ? -80 : 0,
@@ -2141,7 +2143,8 @@ function getDisplayName(item) {
     const economicScore = Object.values(components).reduce((sum, value) => sum + value, 0);
     const evidenceFields = [
       Number.isFinite(etaImprovement), Number.isFinite(eta), Number.isFinite(paybackSeconds),
-      Number.isFinite(reserveRatio), Number.isFinite(progressPercent), !!candidate?.target, !!candidate?.wouldBuyAmount,
+      Number.isFinite(reserveRatio), Number.isFinite(progressPercent), Number.isFinite(milestoneProgressDelta),
+      !!candidate?.target, !!candidate?.wouldBuyAmount,
     ].filter(Boolean).length;
     const sharedOutcome = {
       schemaVersion: "whole-economy-outcome.v2",
@@ -2174,6 +2177,9 @@ function getDisplayName(item) {
         : null,
       energyProductionGainPercent: Number.isFinite(rawMetricNumber(raw, "energyProductionGainPercent", NaN))
         ? roundWholeEconomy(rawMetricNumber(raw, "energyProductionGainPercent", NaN))
+        : null,
+      projectedMilestoneProgressDelta: Number.isFinite(milestoneProgressDelta)
+        ? roundWholeEconomy(milestoneProgressDelta)
         : null,
       nexusProtectionGate: String(raw?.nexusProtectionGate || (candidate?.lane === "Energy" ? "unknown" : "not-applicable")),
     };
@@ -17852,6 +17858,9 @@ function getDisplayName(item) {
           costAmount: cost,
           currentAmount: currentEnergy,
           velocity: energyVelocity,
+          // Nexus levels are discrete, one-time unlocks: buying now completes the
+          // milestone this cycle (0% -> 100% owned); waiting leaves it undone.
+          projectedMilestoneProgressDelta: 100,
           ...buildEnergyProductionOpportunityMetrics(game, cost, "pass-protected-target"),
         },
       };
@@ -17916,6 +17925,9 @@ function getDisplayName(item) {
           costAmount: spentEnergy,
           currentAmount: currentEnergy,
           velocity: energyVelocity,
+          // Reuse the already-computed, already-displayed energy production boost
+          // gain as the shared progress-delta basis; never fabricate a value.
+          ...(plan.ok && Number.isFinite(Number(plan.boostGain)) ? { projectedMilestoneProgressDelta: Number(plan.boostGain) } : {}),
           ...buildEnergyProductionOpportunityMetrics(game, spentEnergy, "not-applicable-post-target", plan.boostGain),
         },
       };
@@ -17994,7 +18006,14 @@ function getDisplayName(item) {
           executionVariant: "base",
           boundedAmount: "1",
           wouldBuyAmount: buyable ? "1" : "",
-          raw: { etaSeconds: buyable ? 0 : eta, progressPercent: (progress || 0) * 100 },
+          raw: {
+            etaSeconds: buyable ? 0 : eta,
+            progressPercent: (progress || 0) * 100,
+            // Hatchery/Expansion are discrete, one-time unlocks: buying now completes
+            // the milestone this cycle (0% -> 100% owned); waiting leaves it undone.
+            // This is a real completion event, not a fabricated score.
+            ...(buyable ? { projectedMilestoneProgressDelta: 100 } : {}),
+          },
         }, "engine");
       }
     }
@@ -18024,7 +18043,9 @@ function getDisplayName(item) {
           executionVariant: normalizeLabelKey(plan.actionUnit?.suffix || "") || "base",
           boundedAmount: normalizeBoundedAmountToken(num),
           wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
-          raw: guard?.raw || null,
+          // A safe target-path action-unit buy completes that purchase step this
+          // cycle (0% -> 100% done); this mirrors the Engine completion-event basis.
+          raw: safe ? { ...(guard?.raw || {}), projectedMilestoneProgressDelta: 100 } : (guard?.raw || null),
         }, "meat");
       }
     }
