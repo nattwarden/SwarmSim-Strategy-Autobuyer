@@ -111,12 +111,38 @@ These must not change unless explicitly requested:
 - `autoCastAbilities` defaults to false
 - `autoAscend` defaults to false
 - `energySupportBrokerAllowAutoCast` defaults to false
-- no Clone Larvae auto-cast by default
+- `autoCastCloneLarvae` defaults to true (explicit, user-authorized exception,
+  see below) - every other ability stays advisor-only
 - no House of Mirrors auto-cast by default
 - no Nightbug/Bat auto-buy by default
 - Nexus and Energy protection remain enabled
 - default Smart planners do not use blind aggressive buyMax behavior
 - Laboratory remains gated, manually triggered, read-only, and simulation-only
+
+### Narrow exception: Clone Ramp (Clone Larvae only)
+
+`autoCastCloneLarvae` (default `true`) is the one deliberate, user-requested
+exception to "no ability auto-cast by default." It only ever runs through the
+bounded Clone Ramp planner (`runCloneRampPlanner`/`executeCloneRampGuardAction`
+in `dev-src/runtime-sections/runtime-main.js`), which:
+
+- casts Clone Larvae at most once per `runOnce()` cycle, through the same
+  `buyUpgradeAmount(..., newDecimal(1), ...)` command path used for every other
+  single ability/upgrade purchase;
+- reads the ability's own real, live `bank()`/`cap()` (not a synthetic
+  formula) before every decision, and never casts if that would violate the
+  Nexus/Energy reserve or if the ability is not visible/buyable;
+- banks the cast's own output into cocoons with an exact, bounded amount
+  (never `buyMax`), leaving any pre-existing larva untouched;
+- performs exactly one "full cap" cast once bank reaches
+  `CLONE_RAMP_FULL_CAP_THRESHOLD_PERCENT` (99.9%) of cap, then releases the
+  action budget back to normal Meat progression until bank drops below that
+  threshold again.
+
+House of Mirrors, rush abilities, Swarmwarp, Ascension, and Mutagen remain
+fully advisor-only regardless of this flag; `autoCastAbilities` still
+gates every ability except this one narrow case. Do not widen this exception
+to any other ability without an equally explicit, separate user request.
 
 These are hard boundaries, not a directive to under-optimize reversible normal purchases.
 

@@ -167,6 +167,7 @@ These must not change unless explicitly requested:
 
 ```js
 autoCastAbilities: false
+autoCastCloneLarvae: true
 autoAscend: false
 saveEnergyForNexus: true
 nexusTarget: 5
@@ -195,12 +196,23 @@ Do not introduce as default automation:
 
 - Nightbug auto-buy.
 - Bat auto-buy.
-- Ability auto-cast.
-- Clone Larvae auto-cast.
+- Ability auto-cast (except the narrow Clone Ramp exception below).
 - House of Mirrors auto-cast.
 - Auto-ascend.
 - Aggressive buyMax in Smart Mode.
 - Blind highest-unit buying.
+
+**Narrow, explicit exception (user-authorized):** `autoCastCloneLarvae`
+defaults to `true`. Clone Larvae may auto-cast, but only through the bounded
+Clone Ramp planner (`runCloneRampPlanner`): at most one real cast per
+`runOnce()` cycle, gated on the ability's real live `bank()`/`cap()` and the
+Nexus/Energy reserve, with the cast's own output banked into cocoons via an
+exact bounded amount (never `buyMax`). Once bank reaches ~99.9% of cap, the
+ramp performs exactly one full-cap cast and then releases the action budget
+back to normal Meat progression. House of Mirrors, rush abilities, Swarmwarp,
+Ascension, and Mutagen remain advisor-only regardless of this flag. Do not
+widen this exception to any other ability without an equally explicit,
+separate user request.
 
 These are hard safety boundaries, not a directive to under-optimize reversible
 normal purchases. If the math says a normal action is correct and all hard

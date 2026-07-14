@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      9.2.0
+// @version      9.3.0
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -30,7 +30,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "9.2.0";
+  const AUTOBUYER_VERSION = "9.3.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -183,6 +183,11 @@
     cloneCocoonChunkPercent: 0.5,
     clonePrepCooldownSeconds: 60,
     autoCastAbilities: false,
+    // Narrow, explicit exception to autoCastAbilities: only the bounded Clone
+    // Ramp planner (runCloneRampPlanner) may auto-cast, and only Clone Larvae.
+    // All other abilities (House of Mirrors, rush abilities, Swarmwarp) stay
+    // advisor-only regardless of this flag.
+    autoCastCloneLarvae: true,
 
     territoryRoiMode: true,
     territoryMinEtaImprovementSeconds: 2,
@@ -328,6 +333,7 @@
       cloneCocoonChunkPercent: 0.5,
       clonePrepCooldownSeconds: 60,
       autoCastAbilities: false,
+      autoCastCloneLarvae: true,
       territoryRoiMode: true,
       territoryMinEtaImprovementSeconds: 2,
       territoryMinEtaImprovementRatio: 0.001,
@@ -541,6 +547,10 @@
   const CLONE_BUFFER_RECOVERY_COMPLETE_PERCENT = 99.9;
   const CLONE_BUFFER_RECOVERY_COMPLETE_DEBT_RATIO = 0.001;
   const TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT = 5;
+  // Clone Ramp: once real ability bank (larva+cocoon) reaches this percent of
+  // real ability cap, the next cast is the bounded "full-cap" cast; see
+  // runCloneRampPlanner.
+  const CLONE_RAMP_FULL_CAP_THRESHOLD_PERCENT = 99.9;
   const HOUSE_OF_MIRRORS_ARMY_TIERS = [
     { key: "culicimorph v", label: "Culicimorph V" },
     { key: "arachnomorph v", label: "Arachnomorph V" },
@@ -591,6 +601,12 @@
   let cloneBufferPlannerState = null;
   let cloneBufferPostCloneTargetSnapshotRaw = null;
   let cloneBufferPreviousMode = "none";
+  let cloneRampState = null;
+  // Latched once a full-cap Clone Larvae cast has run, so the ramp yields the
+  // action budget back to normal Meat progression instead of re-casting every
+  // cycle at a flat, no-longer-growing output. Clears itself the moment real
+  // bank/cap drops back below the full-cap threshold (see runCloneRampPlanner).
+  let cloneRampReleasedAtCap = false;
   let abilityPrepPlannerState = null;
   let postNexusEnergyPlannerState = null;
   let territoryPrepPlannerState = null;
@@ -801,6 +817,7 @@
     c.energySupportPreferSafeBackgroundLepidoptera = c.energySupportPreferSafeBackgroundLepidoptera !== false;
     c.offlineMode = !!c.offlineMode;
     c.nightbugStorageMode = !!c.nightbugStorageMode;
+    c.autoCastCloneLarvae = c.autoCastCloneLarvae !== false;
     c.abilityPlanner = !!c.abilityPlanner;
     c.ascensionPlanner = !!c.ascensionPlanner;
     c.cloneCocoonTargetPercent = clampNumber(c.cloneCocoonTargetPercent, 0, 200, DEFAULT_CONFIG.cloneCocoonTargetPercent);
@@ -3175,6 +3192,7 @@ function getDisplayName(item) {
     const parentStepState = parentStepPlannerState || null;
     const twinUnlockState = twinUnlockPlannerState || null;
     const cloneBufferState = cloneBufferPlannerState || null;
+    const cloneRampReportState = cloneRampState || null;
     const abilityPrepState = abilityPrepPlannerState || null;
     const postNexusEnergyState = postNexusEnergyPlannerState || null;
     const territoryPrepState = territoryPrepPlannerState || null;
@@ -3605,6 +3623,22 @@ function getDisplayName(item) {
       cloneBufferRecoveryComplete: cloneBufferState?.cloneBufferRecoveryComplete ? "yes" : "no",
       cloneBufferCompletionThreshold: cloneBufferState?.cloneBufferCompletionThreshold || "n/a",
       cloneBufferReason: cloneBufferState?.cloneBufferReason || "none",
+      cloneRampPhase: cloneRampReportState?.cloneRampPhase || "IDLE",
+      cloneRampReason: cloneRampReportState?.cloneRampReason || "Clone Ramp idle",
+      cloneRampCastExecuted: cloneRampReportState?.cloneRampExecuted ? "yes" : "no",
+      cloneRampBankBefore: cloneRampReportState?.cloneRampBankBefore || "0",
+      cloneRampCapBefore: cloneRampReportState?.cloneRampCapBefore || "0",
+      cloneRampBankPercentOfCap: Number.isFinite(cloneRampReportState?.cloneRampPercentOfCapBefore) ? cloneRampReportState.cloneRampPercentOfCapBefore : 0,
+      cloneRampBankAfter: cloneRampReportState?.cloneRampBankAfter || "0",
+      cloneRampCapAfter: cloneRampReportState?.cloneRampCapAfter || "0",
+      cloneRampBankPercentOfCapAfter: Number.isFinite(cloneRampReportState?.cloneRampPercentOfCapAfter) ? cloneRampReportState.cloneRampPercentOfCapAfter : 0,
+      cloneRampEnergyBefore: cloneRampReportState?.cloneRampEnergyBefore || "0",
+      cloneRampEnergyAfter: cloneRampReportState?.cloneRampEnergyAfter || "0",
+      cloneRampEnergyCost: cloneRampReportState?.cloneRampEnergyCost || "0",
+      cloneRampCastOutputAmount: cloneRampReportState?.cloneRampCastOutputAmount || "0",
+      cloneRampBankedAmount: cloneRampReportState?.cloneRampBankedAmount || "0",
+      cloneRampBlockedBy: cloneRampReportState?.cloneRampBlockedBy || "none",
+      cloneRampNextAction: cloneRampReportState?.cloneRampNextAction || "none",
       postNexusEnergyCandidate: postNexusEnergyState?.postNexusEnergyCandidate || "none",
       postNexusEnergyDecision: postNexusEnergyState?.postNexusEnergyDecision || "OBSERVE",
       postNexusEnergyReason: postNexusEnergyState?.postNexusEnergyReason || "none",
@@ -3878,6 +3912,12 @@ function getDisplayName(item) {
       ["Clone recovery complete", strategyInspector.cloneBufferRecoveryComplete || "no"],
       ["Clone completion threshold", strategyInspector.cloneBufferCompletionThreshold || "n/a"],
       ["Clone buffer reason", strategyInspector.cloneBufferReason || "none"],
+      ["Clone Ramp phase", strategyInspector.cloneRampPhase || "IDLE"],
+      ["Clone Ramp bank/cap", `${strategyInspector.cloneRampBankBefore || "0"} / ${strategyInspector.cloneRampCapBefore || "0"} (${trimNumber(strategyInspector.cloneRampBankPercentOfCap || 0)}%)`],
+      ["Clone Ramp cast executed", strategyInspector.cloneRampCastExecuted || "no"],
+      ["Clone Ramp reason", strategyInspector.cloneRampReason || "none"],
+      ["Clone Ramp blocked by", strategyInspector.cloneRampBlockedBy || "none"],
+      ["Clone Ramp next action", strategyInspector.cloneRampNextAction || "none"],
       ["Ability prep", `${strategyInspector.abilityPrepDecision || "none"} ${strategyInspector.abilityPrepCandidate || "none"}`],
       ["Ability prep reason", strategyInspector.abilityPrepReason || "none"],
       ["Ability prep type", strategyInspector.abilityPrepType || "none"],
@@ -7035,6 +7075,22 @@ function getDisplayName(item) {
       `cycle ${coordinator?.decisionCycleId || "unknown"}`,
       `reconsider ${coordinator?.reconsiderCondition || "unknown"}`,
     ].join(" | ");
+    const cloneRampPhase = strategyInspector.cloneRampPhase || "IDLE";
+    const cloneRampExecuted = strategyInspector.cloneRampCastExecuted === "yes";
+    const cloneRampRecommendation = cloneRampExecuted
+      ? "BUY"
+      : (cloneRampPhase === "PREPARE_BANK" || cloneRampPhase === "POST_CLONE_RELEASE" ? "HOLD" : "OBSERVE");
+    const cloneRampAction = `${strategyInspector.cloneRampBankBefore || "0"} / ${strategyInspector.cloneRampCapBefore || "0"} (${trimNumber(strategyInspector.cloneRampBankPercentOfCap || 0)}%)`;
+    const cloneRampReasonText = cloneRampExecuted
+      ? `${cloneRampPhase === "FINAL_CAST" ? "cloned at full cap" : `cloned +${strategyInspector.cloneRampCastOutputAmount || "0"}`}; banking as cocoons before the next cast; Energy after cast: ${strategyInspector.cloneRampEnergyAfter || "0"}`
+      : (strategyInspector.cloneRampReason || "Clone Ramp idle");
+    const cloneRampDetails = [
+      `phase ${cloneRampPhase}`,
+      `energy cost ${strategyInspector.cloneRampEnergyCost || "0"}`,
+      `blocked by ${strategyInspector.cloneRampBlockedBy || "none"}`,
+      `next: ${strategyInspector.cloneRampNextAction && strategyInspector.cloneRampNextAction !== "none" ? strategyInspector.cloneRampNextAction : "cast once, then bank cloned larvae as cocoons"}`,
+      "autoCastCloneLarvae only; all other abilities remain advisor-only",
+    ].join(" | ");
     return `
       <section class="kbc-council-advisor-results" aria-label="Ability, Ascension and Mutagen advisors">
         ${councilAdvisorCardHtml(
@@ -7043,6 +7099,13 @@ function getDisplayName(item) {
           coordinatorWinner?.action?.label || coordinator?.recommendedActionId || "WAIT",
           coordinator?.reason,
           coordinatorDetails
+        )}
+        ${councilAdvisorCardHtml(
+          "Clone Ramp",
+          cloneRampRecommendation,
+          cloneRampAction,
+          cloneRampReasonText,
+          cloneRampDetails
         )}
         ${councilAdvisorCardHtml(
           "Ability timing",
@@ -12548,7 +12611,15 @@ function getDisplayName(item) {
       return "MATURE";
     }
 
-    if (isPositive(bank)) return "POST_CLONE_LOCK";
+    // isPositive(bank) is true almost any time any larva/cocoon exists at all
+    // (bank() is a live larva+cocoon total, not a "just cloned" debt signal),
+    // so this auto-detected POST_CLONE_LOCK heuristic is otherwise a
+    // near-permanent false positive. When Clone Ramp owns Clone Larvae casting
+    // (config.autoCastCloneLarvae, the default), the Ramp itself already banks
+    // exactly its own cast output into cocoons and hands protection back to
+    // normal Meat progression afterward (runCloneRampPlanner); an explicit
+    // manual "post-clone-lock" cloneBufferMode override above still works.
+    if (isPositive(bank) && !config.autoCastCloneLarvae) return "POST_CLONE_LOCK";
 
     const capDec = decimalFrom(cap || 0);
     const larvaeDec = decimalFrom(larvae || 0);
@@ -12854,6 +12925,222 @@ function getDisplayName(item) {
     const didBuy = safe("Clone buffer recovery", () => buyUnitAmount(commands, cocoon, buyNum, "Clone Buffer"));
     cloneBufferPreviousMode = mode;
     return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed" };
+  }
+
+  function recordCloneRampState(fields = {}) {
+    cloneRampState = {
+      cloneRampPhase: fields.cloneRampPhase || cloneRampState?.cloneRampPhase || "IDLE",
+      cloneRampReason: fields.cloneRampReason || cloneRampState?.cloneRampReason || "Clone Ramp idle",
+      cloneRampExecuted: !!fields.cloneRampExecuted,
+      cloneRampBankBefore: fields.cloneRampBankBefore || cloneRampState?.cloneRampBankBefore || "0",
+      cloneRampCapBefore: fields.cloneRampCapBefore || cloneRampState?.cloneRampCapBefore || "0",
+      cloneRampPercentOfCapBefore: Number.isFinite(Number(fields.cloneRampPercentOfCapBefore))
+        ? Number(fields.cloneRampPercentOfCapBefore)
+        : (cloneRampState?.cloneRampPercentOfCapBefore ?? 0),
+      cloneRampBankAfter: fields.cloneRampBankAfter || cloneRampState?.cloneRampBankAfter || "0",
+      cloneRampCapAfter: fields.cloneRampCapAfter || cloneRampState?.cloneRampCapAfter || "0",
+      cloneRampPercentOfCapAfter: Number.isFinite(Number(fields.cloneRampPercentOfCapAfter))
+        ? Number(fields.cloneRampPercentOfCapAfter)
+        : (cloneRampState?.cloneRampPercentOfCapAfter ?? 0),
+      cloneRampEnergyBefore: fields.cloneRampEnergyBefore || cloneRampState?.cloneRampEnergyBefore || "0",
+      cloneRampEnergyAfter: fields.cloneRampEnergyAfter || cloneRampState?.cloneRampEnergyAfter || "0",
+      cloneRampEnergyCost: fields.cloneRampEnergyCost || cloneRampState?.cloneRampEnergyCost || "0",
+      cloneRampCastOutputAmount: fields.cloneRampCastOutputAmount || cloneRampState?.cloneRampCastOutputAmount || "0",
+      cloneRampBankedAmount: fields.cloneRampBankedAmount || cloneRampState?.cloneRampBankedAmount || "0",
+      cloneRampBlockedBy: fields.cloneRampBlockedBy || cloneRampState?.cloneRampBlockedBy || "none",
+      cloneRampNextAction: fields.cloneRampNextAction || cloneRampState?.cloneRampNextAction || "none",
+    };
+
+    return cloneRampState;
+  }
+
+  // Clone Ramp: the only ability the bot may auto-cast (config.autoCastCloneLarvae,
+  // default true; every other ability remains advisor-only via autoCastAbilities,
+  // which stays false). At most one Clone Larvae cast per runOnce() cycle, always
+  // through the real buyUpgradeAmount(num=1) command path already used for every
+  // other single ability/upgrade purchase in this file.
+  //
+  // Verified live mechanic (manual disposable-browser run against a reported save,
+  // see docs/test-data/clone-ramp/): the ability's own runtime bank()/cap() are
+  // real, live functions — bank() = current larva + cocoon (recomputed every call,
+  // not a stored "debt"), cap() is driven by larva/cocoon velocity and stays
+  // essentially fixed while those velocities don't change. Casting adds
+  // min(bank, cap) directly onto larva (cocoons untouched by the cast itself);
+  // moving that same amount into cocoons afterward does not shrink the total bank
+  // (larva+cocoon is conserved), it only shields the freshly produced larva from
+  // being spent by ordinary Meat/army purchases before the next cast. Because
+  // output = current bank while bank < cap, one cast+bank cycle roughly doubles
+  // the bank, so very few cycles are needed to approach cap; once bank >= cap,
+  // every further cast only ever yields cap (no benefit from ramping further),
+  // so the planner performs exactly one bounded "full cap" cast and then yields
+  // the action budget back to normal Meat progression until bank drops below the
+  // threshold again (cloneRampReleasedAtCap latch below).
+  function runCloneRampPlanner(game, commands, protectedResources) {
+    const noop = { actionTaken: false, bought: 0 };
+
+    if (!config.autoCastCloneLarvae) {
+      recordCloneRampState({ cloneRampPhase: "IDLE", cloneRampReason: "Clone Ramp disabled (autoCastCloneLarvae off)", cloneRampBlockedBy: "disabled" });
+      return noop;
+    }
+
+    const cloneAbility = getGameUpgrade(game, "clonelarvae");
+    if (!cloneAbility) {
+      recordCloneRampState({ cloneRampPhase: "IDLE", cloneRampReason: "Clone Larvae is unavailable from runtime", cloneRampBlockedBy: "no ability" });
+      return noop;
+    }
+
+    const bankBefore = decimalFrom(getCloneLarvaeBank(game));
+    const capBefore = decimalFrom(getCloneLarvaeCap(game));
+    const percentBefore = isPositive(capBefore) ? decimalToNumber(bankBefore.dividedBy(capBefore).times(100), 0) : 0;
+
+    if (percentBefore < CLONE_RAMP_FULL_CAP_THRESHOLD_PERCENT) {
+      cloneRampReleasedAtCap = false;
+    }
+
+    if (!isPositive(bankBefore)) {
+      recordCloneRampState({
+        cloneRampPhase: "IDLE",
+        cloneRampReason: "no larvae/cocoons banked yet for Clone Larvae",
+        cloneRampBankBefore: formatSwarmNumber(bankBefore),
+        cloneRampCapBefore: formatSwarmNumber(capBefore),
+        cloneRampPercentOfCapBefore: percentBefore,
+        cloneRampBlockedBy: "empty bank",
+      });
+      return noop;
+    }
+
+    const visible = isItemVisibleWithScenarioOverride(cloneAbility);
+    const buyable = !!cloneAbility?.isBuyable?.();
+    const energyCost = decimalFrom(getCostForResource(cloneAbility, "energy"));
+    const currentEnergy = decimalFrom(getCurrentResource(game, "energy"));
+    const energyVelocity = decimalFrom(getVelocity(game, "energy"));
+    const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
+    const reserveRequired = energyVelocity.times(reserveSeconds);
+    const energyAfterCast = currentEnergy.minus(energyCost);
+    const readyForFinalCast = percentBefore >= CLONE_RAMP_FULL_CAP_THRESHOLD_PERCENT;
+
+    const baseFields = {
+      cloneRampBankBefore: formatSwarmNumber(bankBefore),
+      cloneRampCapBefore: formatSwarmNumber(capBefore),
+      cloneRampPercentOfCapBefore: percentBefore,
+      cloneRampEnergyBefore: formatSwarmNumber(currentEnergy),
+      cloneRampEnergyCost: formatSwarmNumber(energyCost),
+    };
+
+    if (!visible || !buyable) {
+      recordCloneRampState({
+        ...baseFields,
+        cloneRampPhase: "PREPARE_BANK",
+        cloneRampReason: "Clone Larvae is not castable yet (locked, on cooldown, or not visible)",
+        cloneRampBlockedBy: "not castable",
+      });
+      return noop;
+    }
+
+    if (!decimalAtLeast(currentEnergy, energyCost)) {
+      recordCloneRampState({
+        ...baseFields,
+        cloneRampPhase: "PREPARE_BANK",
+        cloneRampReason: `waiting on Energy for Clone Larvae cast: ${formatSwarmNumber(currentEnergy)} / ${formatSwarmNumber(energyCost)}`,
+        cloneRampBlockedBy: "insufficient energy",
+      });
+      return noop;
+    }
+
+    if (energyAfterCast.lessThan(reserveRequired)) {
+      recordCloneRampState({
+        ...baseFields,
+        cloneRampPhase: "PREPARE_BANK",
+        cloneRampReason: "Clone Larvae cast would violate the Nexus/Energy reserve; holding",
+        cloneRampBlockedBy: "energy reserve",
+      });
+      return noop;
+    }
+
+    if (readyForFinalCast && cloneRampReleasedAtCap) {
+      recordCloneRampState({
+        ...baseFields,
+        cloneRampPhase: "POST_CLONE_RELEASE",
+        cloneRampReason: `already performed the full-cap cast this cycle (bank ${trimNumber(percentBefore)}% of cap); execution stays with normal Meat progression until bank falls again`,
+        cloneRampBlockedBy: "already released at cap",
+      });
+      return noop;
+    }
+
+    const phase = readyForFinalCast ? "FINAL_CAST" : "CAST_TO_GROW_BANK";
+    const reason = readyForFinalCast
+      ? `Clone Ramp ready: bank ${trimNumber(percentBefore)}% of cap; casting once for the full ${formatSwarmNumber(capBefore)} output, then releasing to Meat progression`
+      : `Clone Ramp growing bank: ${trimNumber(percentBefore)}% of cap (${formatSwarmNumber(bankBefore)} / ${formatSwarmNumber(capBefore)}); casting once and banking the result before the next cast`;
+
+    recordAdvisor(readyForFinalCast ? "BUY" : "BUY", "Clone Larvae", reason);
+    addLaneCandidate({
+      lane: "Clone Ramp",
+      decision: "BUY",
+      candidate: "Clone Larvae",
+      reason,
+      score: readyForFinalCast ? 96000 : 94000,
+      wouldBuyAmount: "1",
+      target: "Clone Larvae bank/cap",
+      resource: "energy",
+      raw: { costAmount: energyCost, currentAmount: currentEnergy, velocity: energyVelocity },
+    });
+
+    if (config.advisorOnly || !config.autoBuySafeDecisions) {
+      recordCloneRampState({ ...baseFields, cloneRampPhase: phase, cloneRampReason: reason, cloneRampBlockedBy: "advisor-only" });
+      recordMessage(`Advisor: WOULD CAST Clone Larvae — ${reason}`);
+      return { actionTaken: true, bought: 0, summary: "Would cast Clone Larvae (Clone Ramp)" };
+    }
+
+    const larvaUnit = getGameUnit(game, "larva");
+    const larvaBeforeCast = decimalFrom(larvaUnit?.count?.() || 0);
+
+    const didCast = safe("Clone Ramp cast", () => buyUpgradeAmount(commands, cloneAbility, newDecimal(1), "Clone Ramp"));
+
+    if (!didCast) {
+      recordCloneRampState({ ...baseFields, cloneRampPhase: "PREPARE_BANK", cloneRampReason: "Clone Larvae cast attempt did not register", cloneRampBlockedBy: "cast failed" });
+      return noop;
+    }
+
+    const larvaAfterCast = decimalFrom(getGameUnit(game, "larva")?.count?.() || 0);
+    const castOutputAmount = larvaAfterCast.minus(larvaBeforeCast);
+    const boundedBankAmount = decimalMin(castOutputAmount, larvaAfterCast);
+    let bankedAmount = newDecimal(0);
+
+    if (isPositive(boundedBankAmount)) {
+      const cocoonUnit = getGameUnit(game, "cocoon");
+      if (cocoonUnit?.isVisible?.() && cocoonUnit?.isBuyable?.()) {
+        const bankedOk = safe("Clone Ramp bank cloned larvae", () => buyUnitAmount(commands, cocoonUnit, boundedBankAmount, "Clone Ramp Bank"));
+        if (bankedOk) bankedAmount = boundedBankAmount;
+      }
+    }
+
+    const bankAfter = decimalFrom(getCloneLarvaeBank(game));
+    const capAfter = decimalFrom(getCloneLarvaeCap(game));
+    const percentAfter = isPositive(capAfter) ? decimalToNumber(bankAfter.dividedBy(capAfter).times(100), 0) : 0;
+    const energyAfter = decimalFrom(getCurrentResource(game, "energy"));
+
+    if (readyForFinalCast) {
+      cloneRampReleasedAtCap = true;
+    }
+
+    recordCloneRampState({
+      ...baseFields,
+      cloneRampPhase: phase,
+      cloneRampReason: reason,
+      cloneRampExecuted: true,
+      cloneRampBankAfter: formatSwarmNumber(bankAfter),
+      cloneRampCapAfter: formatSwarmNumber(capAfter),
+      cloneRampPercentOfCapAfter: percentAfter,
+      cloneRampEnergyAfter: formatSwarmNumber(energyAfter),
+      cloneRampCastOutputAmount: formatSwarmNumber(castOutputAmount),
+      cloneRampBankedAmount: formatSwarmNumber(bankedAmount),
+      cloneRampBlockedBy: "none",
+      cloneRampNextAction: readyForFinalCast
+        ? "handing execution back to normal Meat progression"
+        : "cast once more, then bank the result, until bank reaches cap",
+    });
+
+    return { actionTaken: true, bought: 1, summary: readyForFinalCast ? "Clone Ramp full-cap cast" : "Clone Ramp growth cast" };
   }
 
   function runUnlockPlanner(game, commands, protectedResources) {
@@ -17986,6 +18273,15 @@ function getDisplayName(item) {
     return runCloneBufferPlanner(game, commands);
   }
 
+  // Narrow, dedicated execution adapter for Clone Ramp. Kept independent from
+  // the M6 six-domain coordinator/unified purchase evaluator (which never
+  // grants execution authority to abilities, see SIX_DOMAIN_MANIFEST's
+  // M6-ABILITY-AUTHORITY invariant) so this narrow exception cannot widen the
+  // coordinator's own advisor-only ability boundary.
+  function executeCloneRampGuardAction({ game, commands, protectedResources }) {
+    return runCloneRampPlanner(game, commands, protectedResources);
+  }
+
   function buildEnergyProductionOpportunityMetrics(game, spentEnergyValue, nexusProtectionGate, energyProductionGainPercent = NaN) {
     const currentEnergy = decimalFrom(getCurrentResource(game, "energy"));
     const energyVelocity = decimalFrom(getVelocity(game, "energy"));
@@ -19117,6 +19413,11 @@ function getDisplayName(item) {
     }
 
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
+      const cloneRampAction = executeCloneRampGuardAction({ game, commands, protectedResources });
+      addMainResult("Clone Ramp", cloneRampAction);
+    }
+
+    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const cloneBufferAction = executeCloneGuardAction({ game, commands });
       addMainResult("Clone buffer", cloneBufferAction);
     } else if (!m6DecisionOwnsMainCycle) {
@@ -20008,7 +20309,12 @@ function getDisplayName(item) {
 
         <label title="Ability-casts är avstängda som standard. Rush-abilities är oftast dåliga här.">
           <input id="kbc-auto-cast-abilities" type="checkbox">
-          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. 0.8.3 planerar abilities i advisor-läge men castar aldrig Clone Larvae eller House of Mirrors automatiskt när detta är av.")}
+          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. Castar aldrig House of Mirrors, rush-abilities eller Swarmwarp automatiskt när detta är av. Clone Larvae styrs separat av Clone Ramp nedan.")}
+        </label>
+
+        <label title="Clone Ramp: den enda ability som får auto-castas, och bara Clone Larvae. Bounded till en cast per körning, banking i cocoons mellan casts, stannar vid full cap.">
+          <input id="kbc-auto-cast-clone-larvae" type="checkbox">
+          Clone Ramp: auto-casta Clone Larvae (on by default) ${helpIcon("På som standard i Smart Mode. Rampen castar Clone Larvae högst en gång per körning, bankar de nya larverna i cocoons, och lämnar tillbaka action-budgeten till Meat-planern efter en full-cap-cast. Alla andra abilities förblir advisor-only oavsett detta läge.")}
         </label>
       </div>
 
@@ -21868,6 +22174,12 @@ function getDisplayName(item) {
       refreshPanel();
     });
 
+    $("#kbc-auto-cast-clone-larvae").addEventListener("change", (e) => {
+      config.autoCastCloneLarvae = e.target.checked;
+      saveConfig();
+      refreshPanel();
+    });
+
     $("#kbc-auto-cast-abilities").addEventListener("change", (e) => {
       config.autoCastAbilities = e.target.checked;
       saveConfig();
@@ -22145,6 +22457,7 @@ function getDisplayName(item) {
     $("#kbc-clone-cocoon-target").value = config.cloneCocoonTargetPercent;
     $("#kbc-clone-cocoon-chunk").value = config.cloneCocoonChunkPercent;
     $("#kbc-clone-prep-cooldown").value = config.clonePrepCooldownSeconds;
+    $("#kbc-auto-cast-clone-larvae").checked = !!config.autoCastCloneLarvae;
     $("#kbc-auto-cast-abilities").checked = !!config.autoCastAbilities;
     $("#kbc-seconds").value = config.runEverySeconds;
     $("#kbc-order").value = config.purchaseOrder;

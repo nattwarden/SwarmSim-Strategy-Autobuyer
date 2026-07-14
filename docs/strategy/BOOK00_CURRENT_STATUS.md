@@ -3,12 +3,27 @@
 Status: Active handoff board. Update this file at every completed work package,
 blocked handoff, milestone transition, and accepted verification result.
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
-## Current status snapshot (2026-07-14)
+## Current status snapshot (2026-07-15)
 
-Runtime `9.1.0`, integrated on `main`. Closed and verified:
+Runtime `9.3.0`, integrated on `main`. Closed and verified:
 
+- Clone Ramp (`9.3.0`): a narrow, explicit, user-authorized exception to
+  "no ability auto-cast by default" — `autoCastCloneLarvae` (default `true`)
+  lets the bounded `runCloneRampPlanner` auto-cast Clone Larvae only, at most
+  once per `runOnce()` cycle, gated on the ability's real live `bank()`/
+  `cap()` and the Nexus/Energy reserve, banking the cast's own output into
+  cocoons with an exact bounded amount before releasing the action budget
+  back to normal Meat progression at ~99.9% of cap. Fixed an adjacent
+  pre-existing bug found during manual live verification: the legacy Clone
+  Buffer Planner's auto-detected `POST_CLONE_LOCK` mode triggered on any
+  positive `bank()` (true almost always, since `bank()` is a live larva+cocoon
+  total, not a "just cloned" debt signal) and drained protected larva behind
+  Clone Ramp's back; now gated off when `autoCastCloneLarvae` is on. See the
+  2026-07-15 handoff entry below for the verified live-mechanic evidence,
+  acceptance check, and mutation control. All other abilities remain
+  advisor-only.
 - M2 bounded exact-execution coordinator and M6 six-domain strategic
   coordinator (both implemented; see `docs/SWARMSIM_GAME_MODEL.md` section 7).
 - Milestone 8 (ETA-grounded false-wait reduction, `8.1.0`) and Milestone 9
@@ -100,7 +115,7 @@ Observed after M8 8.1.0 closure (2026-07-14):
   generated-evidence commit was required; this status-board update is the
   provenance record for the accepted run.
 
-Current runtime version: `9.1.0`
+Current runtime version: `9.3.0`
 
 ## Product north star
 
@@ -381,6 +396,165 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-15 - Clone Ramp: narrow, bounded Clone Larvae auto-cast (9.3.0)
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Baseline: `29c6da6` (9.2.0), clean working tree at start.
+- Requested by the user as an explicit, deliberate exception to the
+  documented "no Clone Larvae auto-cast by default" hard safety default (see
+  `AGENTS.md`/`AI.md`), scoped narrowly to Clone Larvae only; every other
+  ability (House of Mirrors, rush abilities, Swarmwarp, Ascension, Mutagen)
+  stays advisor-only, and `autoCastAbilities`/`autoAscend`/
+  `energySupportBrokerAllowAutoCast` all remain `false`.
+- Manual live verification (required before implementation): imported a
+  player-reported live save (`docs/test-data/clone-ramp/live-user-save.txt`)
+  into a real, disposable headless-Chrome `swarmsim.com` session (no
+  synthetic scenario staging) and directly exercised the real ability
+  commands. Confirmed the documented mechanic exactly:
+  - `bank()` = current `larva + cocoon`, recomputed live on every call - not
+    a stored "just cloned" debt.
+  - `cap()` is driven by `larva`/`cocoon` velocity and stays effectively
+    fixed while those velocities don't change.
+  - Casting adds `min(bank, cap)` directly onto `larva` (cocoons untouched by
+    the cast itself); Energy cost was a fixed `12000` across repeated casts
+    in the same session.
+  - Converting the newly produced `larva` into `cocoon` (bounded to exactly
+    that amount) preserves the total bank (`larva+cocoon` is conserved), it
+    only shields the new larva from ordinary Meat/army spending.
+  - Because output = current bank while `bank < cap`, one cast+bank cycle
+    roughly doubles the bank, so very few cycles reach `cap`; once
+    `bank >= cap`, every further cast only ever yields `cap` (no benefit from
+    ramping further).
+  - Found and fixed an adjacent bug this verification surfaced: the legacy
+    Clone Buffer Planner's auto-detected `POST_CLONE_LOCK` mode
+    (`resolveCloneBufferMode`) treated any positive `bank()` as "just
+    cloned, must lock" - true almost always, since `bank()` is a live total,
+    not a debt signal - so it drained the ramp's protected pre-existing
+    larva into cocoons behind its back in the same cycle. Reproduced with a
+    controlled before/after smoke test, then fixed narrowly: the
+    auto-detected heuristic no longer fires when `config.autoCastCloneLarvae`
+    is on (Clone Ramp now owns that protection correctly and exactly); an
+    explicit manual `cloneBufferMode: "post-clone-lock"` override is
+    unaffected. No existing check/scenario asserts on `cloneBufferMode`/
+    `POST_CLONE_LOCK` (confirmed by repo-wide grep), so this is a safe,
+    scoped correction, not a behavior change for anyone with the new flag
+    off.
+- Implementation (`dev-src/runtime-sections/runtime-main.js`, rebuilt into
+  `src/SwarmSim-Strategy-Autobuyer.user.js`):
+  - New config default `autoCastCloneLarvae: true` (also set in
+    `PRESETS.smart`, coerced in `normalizeConfig`), with a settings-panel
+    checkbox and inline documentation of the narrow-exception invariant.
+  - `runCloneRampPlanner`/`executeCloneRampGuardAction`: a fully independent
+    execution path (never routed through the M6 six-domain
+    coordinator/unified purchase evaluator, which keeps `ENERGY_ABILITIES`
+    advisor-only by design - `M6-ABILITY-AUTHORITY` invariant untouched).
+    Reports a structured phase (`IDLE`, `PREPARE_BANK`, `CAST_TO_GROW_BANK`,
+    `FINAL_CAST`, `POST_CLONE_RELEASE`) computed fresh from real game state
+    every cycle. Hard gates before any real command: `autoCastCloneLarvae`
+    on; ability visible and `isBuyable()`; enough Energy for the real cost
+    (`getCostForResource`); post-cast Energy stays at/above the existing
+    Nexus/Energy reserve (`postNexusEnergyReserveSeconds`); advisor-only/
+    safe-autobuy mode gates real execution exactly like every other planner.
+    Casts via the same `buyUpgradeAmount(..., newDecimal(1), ...)` path used
+    everywhere else (never a repeated/batched `Cast N`). Banks the cast's
+    *own* real observed output (`larvaAfterCast - larvaBeforeCast`, bounded
+    to at most current larva) into cocoons via `buyUnitAmount` with that
+    exact amount - never `buyMax`. A `CLONE_RAMP_FULL_CAP_THRESHOLD_PERCENT`
+    (99.9%) gate marks the next cast as the bounded full-cap cast; a
+    `cloneRampReleasedAtCap` latch (cleared once bank falls back below the
+    threshold) stops the ramp from re-casting every cycle once at cap,
+    handing the action budget back to normal Meat progression.
+  - Wired into `smartRunOnce()` right after the Energy step and before the
+    legacy Clone Buffer Planner, gated by the same `canDoMoreMainActions()`
+    budget as every other main-lane action (default `smartMaxActionsPerRun`
+    unchanged).
+  - `buildStrategyInspector`/Strategy Inspector rows/Council: added
+    `cloneRamp*` fields and a new "Clone Ramp" Council advisor card so
+    Council, Advisor log, and export/API observability show the same
+    bank/cap/phase/reason as the executed action (no separate contradicting
+    text).
+- New live-Chrome acceptance check
+  (`scripts/check-book00-clone-ramp-acceptance.js`,
+  `check:book00:clone-ramp`, added to `npm run verify`): imports the same
+  reported save into a disposable session and, from real game state only
+  (never bot self-reports alone), proves over 6 real `runOnce()` cycles:
+  1. Clone Ramp is the sole selected lane for the single bounded action slot
+     ahead of any other lane (Meat/"Hive Network" included) when its gates
+     pass.
+  2. Each executed cycle performs exactly one real cast: Energy strictly
+     decreases by a fixed real cost (`12000` in this save, identical across
+     cycles within 1% tolerance).
+  3. The cast's own output is banked into cocoons with an exact bounded
+     amount (cocoon delta matches the reported banked amount within 2%);
+     pre-existing larva is preserved (not devoured by an unbounded buy).
+  4. Real bank-percent-of-cap strictly increases across consecutive growth
+     cycles (observed `24.8% -> 49.6% -> 99.1%`).
+  5. Exactly one `FINAL_CAST` cycle occurs across all 6 cycles (observed at
+     cycle 4, bank `198%` of cap going in, cast output exactly the cap
+     amount).
+  6. After that cast, every subsequent cycle holds (`cloneRampCastExecuted
+     === "no"`, `"Clone Ramp"` absent from the selected lane), proving the
+     action budget returns to normal progression instead of re-casting
+     forever at a flat, no-longer-growing output.
+  7. House of Mirrors' real count never changes across any cycle, and
+     `autoCastAbilities`/`energySupportBrokerAllowAutoCast`/`autoAscend`
+     stay `false` throughout - no other ability leaks execution.
+- Mutation control (performed locally against a disposable scratch copy of
+  the built userscript, not committed, per the established M3/M6/live-
+  purchase-acceptance methodology): replaced the real
+  `buyUpgradeAmount(commands, cloneAbility, newDecimal(1), "Clone Ramp")`
+  cast line with a no-op (`didCast = false`) in a throwaway copy of
+  `src/SwarmSim-Strategy-Autobuyer.user.js` (the tracked file itself was
+  never touched) and re-ran the acceptance check against that copy only:
+  failed immediately and correctly at the very first assertion ("expected
+  the single selected lane to be Clone Ramp... got Meat") - because a failed
+  cast makes `runCloneRampPlanner` correctly report no action taken, so the
+  action budget falls through to the legacy Meat buyer instead, which the
+  check catches. Reverted by discarding the scratch copy (`git status`
+  confirmed no tracked file was ever modified during this step).
+- Commands and exit codes: `node -c dev-src/runtime-sections/runtime-main.js`
+  -> `0`; `node scripts/build-canonical-userscript.js --write` -> rebuilt;
+  `node -c src/SwarmSim-Strategy-Autobuyer.user.js` -> `0`;
+  `node scripts/check-book00-clone-ramp-acceptance.js` -> `0` ("BOOK00 CLONE
+  RAMP ACCEPTANCE PASSED", 4 executed cast cycles, 1 final-cast cycle,
+  first real ability Energy cost `12000`, reproduced on a second standalone
+  run); `npm run verify` -> every check up to and including the new
+  `check:book00:clone-ramp` and the final `validate-repo-guardrails.js`
+  passed (confirmed both inside and outside the full chain). One unrelated,
+  pre-existing failure was found in the chain:
+  `check:book00:territory-saturation` fails with "expected extreme state to
+  classify as economically-saturated, got territoryEconomicState=not-
+  evaluated" against live `swarmsim.com` state. Verified via a disposable
+  git worktree at the exact pre-Clone-Ramp baseline commit (`29c6da6`, this
+  package's `9.2.0`, no Clone Ramp changes present) that the identical
+  failure reproduces there too, so it is not caused by this change; most
+  likely live production game-state drift since that check was written. Out
+  of scope for this narrow package per the narrow-change rule; left
+  untouched and unfixed, flagged here for whoever picks it up next.
+- Files changed: `dev-src/runtime-sections/runtime-main.js` (+ canonical
+  rebuild `src/SwarmSim-Strategy-Autobuyer.user.js`),
+  `scripts/check-book00-clone-ramp-acceptance.js` (new),
+  `docs/test-data/clone-ramp/live-user-save.txt` (new, the reproduction
+  save), `package.json` (new `check:book00:clone-ramp` script, appended to
+  `verify`), `AGENTS.md`/`AI.md` (documented the narrow exception in Hard
+  safety defaults), this handoff entry.
+- Product capability changed: Smart Mode may now auto-cast Clone Larvae
+  through the bounded Clone Ramp planner. No other ability gained execution
+  authority; M6's `ENERGY_ABILITIES` domain remains advisor-only and
+  unmodified; `m6DecisionOwnsMainCycle` stays `false`.
+- Safety: `autoCastAbilities`, `autoAscend`, and
+  `energySupportBrokerAllowAutoCast` remain `false` (verified per-cycle in
+  the acceptance check); Nexus/Energy reserve protection is a hard gate
+  before every cast; at most one real ability cast per `runOnce()` cycle;
+  cocoon banking is exactly bounded, never `buyMax`.
+- Remaining blocker: none for this package. The Clone Buffer Planner's other
+  modes (`BUILDUP`/`MATURE`) and its percent-display formatting were not
+  otherwise touched; a deeper rework of that planner (beyond the one
+  auto-detection heuristic fixed here) remains a separate, future concern if
+  further contradictions surface.
+- Exact next action: none selected yet; awaiting next task from the user.
 
 ### 2026-07-14 - F7 closed: DEFAULT_CONFIG.unitStrategy now matches the Smart preset ("balanced")
 
