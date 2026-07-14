@@ -1595,6 +1595,68 @@ async function updateWatchOverlay(page, update) {
   }, update);
 }
 
+async function installStateVisibilityOverlay(page, initial) {
+  await page.evaluate((state) => {
+    const old = document.querySelector("#kbc-strategy-audit-state-overlay");
+    if (old) old.remove();
+
+    const esc = (value) => String(value == null ? "" : value).replace(/[&<>\"]/g, (ch) => {
+      if (ch === "&") return "&amp;";
+      if (ch === "<") return "&lt;";
+      if (ch === ">") return "&gt;";
+      return "&quot;";
+    });
+
+    const root = document.createElement("div");
+    root.id = "kbc-strategy-audit-state-overlay";
+    root.style.position = "fixed";
+    root.style.left = "16px";
+    root.style.bottom = "16px";
+    root.style.zIndex = "2147483646";
+    root.style.width = "460px";
+    root.style.maxWidth = "92vw";
+    root.style.maxHeight = "70vh";
+    root.style.overflow = "auto";
+    root.style.padding = "10px";
+    root.style.border = "1px solid #2a3a56";
+    root.style.borderRadius = "10px";
+    root.style.background = "rgba(8, 12, 19, 0.95)";
+    root.style.color = "#e8f1ff";
+    root.style.font = "12px/1.35 Consolas, Menlo, monospace";
+    root.style.boxShadow = "0 10px 30px rgba(0,0,0,0.35)";
+
+    root.innerHTML = [
+      '<div style="font-weight:700;margin-bottom:6px">TEST STATE OVERLAY</div>',
+      `<div><b>scenario:</b> <span data-kbc-state="scenario">${esc(state.scenario)}</span></div>`,
+      `<div><b>cycle:</b> <span data-kbc-state="cycle">${esc(state.cycle)}</span></div>`,
+      `<div><b>mode:</b> <span data-kbc-state="mode">${esc(state.mode)}</span></div>`,
+      `<div><b>staged:</b> <span data-kbc-state="staged">${esc(state.staged)}</span></div>`,
+      `<div><b>before:</b> <span data-kbc-state="before">${esc(state.before)}</span></div>`,
+      `<div><b>after:</b> <span data-kbc-state="after">${esc(state.after)}</span></div>`,
+      `<div><b>selected:</b> <span data-kbc-state="selected">${esc(state.selected)}</span></div>`,
+      '<div style="margin-top:6px;opacity:0.8">Shows the exact state values used by the sweep harness for this run.</div>'
+    ].join("");
+
+    document.body.appendChild(root);
+  }, initial);
+}
+
+async function updateStateVisibilityOverlay(page, update) {
+  return page.evaluate((state) => {
+    const root = document.querySelector("#kbc-strategy-audit-state-overlay");
+    if (!root) return { ok: false, reason: "overlay-missing" };
+    const set = (name, value) => {
+      const node = root.querySelector(`[data-kbc-state="${name}"]`);
+      if (node) node.textContent = String(value == null ? "" : value);
+    };
+    set("cycle", state.cycle);
+    set("before", state.before);
+    set("after", state.after);
+    set("selected", state.selected);
+    return { ok: true };
+  }, update);
+}
+
 function nullReasonMap() {
   return {};
 }
@@ -2453,6 +2515,16 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
   const initialDigest = await captureStateDigest(page);
   const initialStateHash = sha256Object(initialDigest);
 
+  await installStateVisibilityOverlay(page, {
+    scenario: `${scenarioState.id} - ${scenarioState.title}`,
+    cycle: `0/${scenarioState.cycles}`,
+    mode: cli.mode,
+    staged: staged.initialSummary,
+    before: `meat=${initialDigest?.resources?.meat || "0"}, larva=${initialDigest?.resources?.larva || "0"}, territory=${initialDigest?.resources?.territory || "0"}, energy=${initialDigest?.resources?.energy || "0"}`,
+    after: "pending",
+    selected: "pending",
+  });
+
   if (cli.mode === "watch") {
     await installWatchOverlay(page, {
       scenarioLabel: `${scenarioState.id} - ${scenarioState.title}`,
@@ -2659,6 +2731,13 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
       });
     }
 
+    await updateStateVisibilityOverlay(page, {
+      cycle: `${cycleNumber}/${scenarioState.cycles}`,
+      before: `meat=${row.resourceBankBefore?.meat || "0"}, larva=${row.resourceBankBefore?.larva || "0"}, territory=${row.resourceBankBefore?.territory || "0"}, energy=${row.resourceBankBefore?.energy || "0"}`,
+      after: `meat=${row.resourceBankAfter?.meat || "0"}, larva=${row.resourceBankAfter?.larva || "0"}, territory=${row.resourceBankAfter?.territory || "0"}, energy=${row.resourceBankAfter?.energy || "0"}`,
+      selected: `${row.selectedLane || "none"} / ${row.selectedDecision || "none"} / ${row.selectedAction || "none"}`,
+    });
+
     if (cli.captureScreenshots) {
       const shotPath = path.join(artifactDir, `cycle-${String(cycleNumber).padStart(2, "0")}.png`);
       await page.screenshot({ path: shotPath, fullPage: true });
@@ -2711,6 +2790,13 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
       error: unknownContamination ? "unknown state contamination" : "none"
     });
   }
+
+  await updateStateVisibilityOverlay(page, {
+    cycle: `${cycleRows.length}/${scenarioState.cycles}`,
+    before: cycleRows.length ? `meat=${cycleRows[cycleRows.length - 1]?.resourceBankBefore?.meat || "0"}, larva=${cycleRows[cycleRows.length - 1]?.resourceBankBefore?.larva || "0"}, territory=${cycleRows[cycleRows.length - 1]?.resourceBankBefore?.territory || "0"}, energy=${cycleRows[cycleRows.length - 1]?.resourceBankBefore?.energy || "0"}` : "n/a",
+    after: cycleRows.length ? `meat=${cycleRows[cycleRows.length - 1]?.resourceBankAfter?.meat || "0"}, larva=${cycleRows[cycleRows.length - 1]?.resourceBankAfter?.larva || "0"}, territory=${cycleRows[cycleRows.length - 1]?.resourceBankAfter?.territory || "0"}, energy=${cycleRows[cycleRows.length - 1]?.resourceBankAfter?.energy || "0"}` : "n/a",
+    selected: cycleRows.length ? `${cycleRows[cycleRows.length - 1]?.selectedLane || "none"} / ${cycleRows[cycleRows.length - 1]?.selectedDecision || "none"} / ${cycleRows[cycleRows.length - 1]?.selectedAction || "none"}` : "none",
+  });
 
   for (let i = 0; i < cycleRows.length; i += 1) {
     const row = cycleRows[i];
@@ -3147,6 +3233,9 @@ async function runScenarioMatrix(mode, matrixOptions) {
   const repeats = Math.max(1, Number(matrixOptions?.repeats) || 1);
   const cycles = Math.max(1, Number(matrixOptions?.cycles) || 1);
   if (!scenarios.length) throw new Error("scenario matrix requires at least one scenario");
+  const totalRuns = scenarios.length * repeats;
+  let runCounter = 0;
+  const matrixStartedAt = Date.now();
 
   const baseCliArgs = matrixOptions?.browserChannel
     ? ["--browser-channel", String(matrixOptions.browserChannel)]
@@ -3173,6 +3262,14 @@ async function runScenarioMatrix(mode, matrixOptions) {
 
     for (const scenario of scenarios) {
       for (let repeat = 1; repeat <= repeats; repeat += 1) {
+        runCounter += 1;
+        const percent = ((runCounter / totalRuns) * 100).toFixed(1);
+        const elapsedSeconds = Math.max(0, (Date.now() - matrixStartedAt) / 1000);
+        const avgSecondsPerRun = runCounter > 0 ? (elapsedSeconds / runCounter) : 0;
+        const remainingRuns = Math.max(0, totalRuns - runCounter);
+        const etaSeconds = Math.max(0, Math.round(avgSecondsPerRun * remainingRuns));
+        console.log(`[SA1 matrix] progress ${runCounter}/${totalRuns} (${percent}%) -> ${scenario} run ${repeat}/${repeats}; ETA ${etaSeconds}s`);
+
         const runId = `${mode}-${utcSlug(nowIso())}-${scenario}-run${repeat}`;
         const cli = buildCli([
           "--scenario", scenario,

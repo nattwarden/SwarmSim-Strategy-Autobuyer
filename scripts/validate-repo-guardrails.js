@@ -97,9 +97,9 @@ if (!fs.existsSync(canonicalScript)) {
     ["nexusTarget", "5"],
     ["cloneBufferPlanner", "true"],
     ["cloneBufferProtectLarvae", "true"],
-    ["smartUnitBuyPercent", "0.25"],
-    ["meatChainReserveMultiplier", "2"],
-    ["meatChainMaxPaybackSeconds", "1800"],
+    ["smartUnitBuyPercent", "0.35"],
+    ["meatChainReserveMultiplier", "1.25"],
+    ["meatChainMaxPaybackSeconds", "3600"],
   ];
 
   for (const [key, expected] of requiredDefaults) {

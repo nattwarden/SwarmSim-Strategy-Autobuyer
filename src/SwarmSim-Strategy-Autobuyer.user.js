@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      8.0.0
+// @version      8.1.0
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -30,7 +30,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "8.0.0";
+  const AUTOBUYER_VERSION = "8.1.0";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -87,7 +87,7 @@
   ];
   const SIX_DOMAIN_MANIFEST = {
     schemaVersion: "m6-domain-contract-manifest.v1",
-    targetVersion: "8.0.0",
+    targetVersion: "8.1.0",
     status: "runtime-coordinator",
     baseline: {
       mainIntegrationImplementationSha: "a4221ea4ae741d1dc86e09bbafef616200f87d0c",
@@ -144,8 +144,8 @@
     smartMaxActionsPerRun: 4,
 
     larvaEnginePriority: true,
-    saveForHatcherySeconds: 600,
-    saveForExpansionSeconds: 1800,
+    saveForHatcherySeconds: 180,
+    saveForExpansionSeconds: 600,
     expansionPriorityWeight: 2,
 
     prioritizeProductionUpgrades: true,
@@ -196,7 +196,7 @@
     expansionArmySeedMinEtaImprovementSeconds: 120,
     expansionArmySeedMinEtaImprovementRatio: 0.05,
     expansionArmySeedDoNotSpendInsideSaveWindow: true,
-    smartUnitBuyPercent: 0.25,
+    smartUnitBuyPercent: 0.35,
     meatChainCascade: true,
     meatChainTwinPrep: true,
     meatGoalPlanner: true,
@@ -204,12 +204,12 @@
     meatPlannerChunkPercent: 25,
     twinRecoveryBufferMultiplier: 0.5,
     meatChainPaybackGuard: true,
-    meatChainReserveMultiplier: 2,
-    meatChainMaxPaybackSeconds: 1800,
+    meatChainReserveMultiplier: 1.25,
+    meatChainMaxPaybackSeconds: 3600,
     meatFallbackEnabled: true,
-    meatFallbackMinHoldRuns: 5,
-    meatFallbackMaxRankDrop: 8,
-    meatFallbackChunkPercent: 10,
+    meatFallbackMinHoldRuns: 2,
+    meatFallbackMaxRankDrop: 12,
+    meatFallbackChunkPercent: 20,
     meatActionUnitPaybackBypass: true,
     meatActionUnitMinReserveRatio: 5,
     meatFallbackDoNotDropBelowActionUnit: true,
@@ -338,7 +338,7 @@
       purchaseOrder: "upgrades-first",
       unitBuyPercent: 0.85,
       upgradeBuyPercent: 0.65,
-      smartUnitBuyPercent: 0.25,
+      smartUnitBuyPercent: 0.35,
       meatChainCascade: true,
       meatChainTwinPrep: true,
       meatGoalPlanner: true,
@@ -346,12 +346,12 @@
       meatPlannerChunkPercent: 25,
       twinRecoveryBufferMultiplier: 0.5,
       meatChainPaybackGuard: true,
-      meatChainReserveMultiplier: 2,
-      meatChainMaxPaybackSeconds: 1800,
+      meatChainReserveMultiplier: 1.25,
+      meatChainMaxPaybackSeconds: 3600,
       meatFallbackEnabled: true,
-      meatFallbackMinHoldRuns: 5,
-      meatFallbackMaxRankDrop: 8,
-      meatFallbackChunkPercent: 10,
+      meatFallbackMinHoldRuns: 2,
+      meatFallbackMaxRankDrop: 12,
+      meatFallbackChunkPercent: 20,
       meatActionUnitPaybackBypass: true,
       meatActionUnitMinReserveRatio: 5,
       meatFallbackDoNotDropBelowActionUnit: true,

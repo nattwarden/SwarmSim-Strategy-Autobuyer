@@ -28,6 +28,18 @@ function buildSweepScenarioIds(total = 150) {
   return Array.from({ length: count }, (_, idx) => `sa1-sweep-${String(idx + 1).padStart(3, "0")}`);
 }
 
+function buildStratifiedSweepSample(totalUniverse = 150, sampleSize = 50) {
+  const universe = Math.max(1, Number(totalUniverse) || 150);
+  const sample = Math.max(1, Math.min(universe, Number(sampleSize) || 50));
+  if (sample >= universe) return buildSweepScenarioIds(universe);
+  const ids = [];
+  for (let i = 0; i < sample; i += 1) {
+    const index = 1 + Math.floor((i * (universe - 1)) / Math.max(1, sample - 1));
+    ids.push(`sa1-sweep-${String(index).padStart(3, "0")}`);
+  }
+  return Array.from(new Set(ids));
+}
+
 function argMap(argv) {
   const map = new Map();
   for (let i = 0; i < argv.length; i += 1) {
@@ -206,24 +218,27 @@ async function main() {
   const wide = args.get("--wide") === "true";
   const autoBootstrapSweep = args.get("--auto-bootstrap-sweep") !== "false";
   const sweepCycles = Math.max(1, Number(args.get("--bootstrap-cycles") || 5));
+  const bootstrapScenarioCount = Math.max(1, Number(args.get("--bootstrap-scenarios") || 12));
+  const bootstrapUniverse = Math.max(1, Number(args.get("--bootstrap-universe") || 150));
   const ladder = wide ? WIDE_COARSE_LADDER : COARSE_LADDER;
 
   let reps = collectSweepRepresentatives();
   if (autoBootstrapSweep && (!reps.lastMeat || !reps.firstEnergy || !reps.firstClone || !reps.nearestTerritoryMargin)) {
-    console.log("SA1 v2: representative sweep states missing; auto-running sweep150 bootstrap.");
+    const bootstrapScenarios = buildStratifiedSweepSample(bootstrapUniverse, bootstrapScenarioCount);
+    console.log(`SA1 v2: representative sweep states missing; auto-running stratified bootstrap (${bootstrapScenarios.length} scenarios from universe ${bootstrapUniverse}).`);
     const bootstrap = await runScenarioMatrix("live", {
-      scenarios: buildSweepScenarioIds(150),
+      scenarios: bootstrapScenarios,
       repeats: 1,
       cycles: sweepCycles,
     });
     if (bootstrap.exitCode !== 0) {
-      throw new Error("Sweep150 bootstrap failed while preparing SA1 v2 representatives.");
+      throw new Error("Bootstrap sweep failed while preparing SA1 v2 representatives.");
     }
     reps = collectSweepRepresentatives();
   }
 
   if (!reps.lastMeat || !reps.firstEnergy || !reps.firstClone || !reps.nearestTerritoryMargin) {
-    throw new Error("Sweep150 representatives are incomplete. Run strategy:audit:matrix:sa1:sweep150 first.");
+    throw new Error("Sweep representatives are incomplete. Run strategy:audit:matrix:sa1:sweep50 first or increase --bootstrap-scenarios.");
   }
 
   const seedPlan = [

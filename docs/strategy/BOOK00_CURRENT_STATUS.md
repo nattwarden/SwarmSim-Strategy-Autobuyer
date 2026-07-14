@@ -44,14 +44,14 @@ Observed before the M7 foundation work:
   `40c258a7cf19d9660b2c13caf3b5d9b4e0e74da5`;
 - fixed Council window implementation / current baseline:
   `04bb94678ba9ac29d03e2b2c00760ffb40510e55`;
-- runtime version: `8.0.0`;
+- runtime version: `8.1.0`;
 - Council desktop layout: fixed `1180 x 700`, movable, `resize: none`, layout
   key `kbcSwarmBotCouncilPanelLayout_v2`;
 - working tree: clean before the M7 documentation branch was created.
 
 If observed Git state differs, update this board before implementation.
 
-Current runtime version: `8.0.0`
+Current runtime version: `8.1.0`
 
 ## Product north star
 
@@ -188,7 +188,7 @@ Formal closure:
 ## Current work package
 
 Implementation status: active M8 ETA-grounded blocker replay and focused-check
-integration on runtime `8.0.0`; fallback activation reproduction is still open.
+integration on runtime `8.1.0`; fallback activation reproduction is still open.
 
 Product capability:
 

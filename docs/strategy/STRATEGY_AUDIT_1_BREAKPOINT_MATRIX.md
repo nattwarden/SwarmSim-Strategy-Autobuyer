@@ -6,6 +6,47 @@ This matrix defines the ranking-breakpoint test sequence for SA1 mid-game winner
 
 Goal: find the smallest reproducible change where Territory can beat Meat in the SA1-02 state family, without changing production defaults.
 
+## Quickstart (30 seconds)
+
+Default user-save anchor (fixed for now):
+
+- path: `docs/test-data/strategy-audit-0/default-user-save/save.txt`
+- verification command: `npm run strategy:audit:default-save:check`
+
+This default save is intentionally pinned for now (no save-switching workflow required).
+
+For normal iterative tuning, run these in order:
+
+1. Build representative sweep states quickly:
+
+```powershell
+npm run strategy:audit:matrix:sa1:sweep
+```
+
+2. Run targeted v2 breakpoint search:
+
+```powershell
+npm run strategy:audit:matrix:sa1:v2
+```
+
+3. Validate full guardrails before concluding:
+
+```powershell
+npm run verify
+```
+
+Progress visibility is printed live in terminal for matrix/v2 runs as:
+
+```text
+[SA1 matrix] progress n/total (x%) -> <scenario> run r/R; ETA <seconds>s
+```
+
+Calibration loop (efficient default):
+
+1. run 12 stratified points over full sweep universe;
+2. inspect lane summary + calibration hint in terminal;
+3. run another 12 points in the suggested narrowed range only if needed.
+
 ## Baseline reference
 
 - Baseline state: `sa1-02`
@@ -92,10 +133,49 @@ One-command generated 150-unique-state sweep (single run/state):
 npm run strategy:audit:matrix:sa1:sweep150
 ```
 
+Faster stratified 12-state sweep (recommended default for iterative tuning):
+
+```powershell
+npm run strategy:audit:matrix:sa1:sweep
+```
+
+Larger stratified sweep (when needed):
+
+```powershell
+npm run strategy:audit:matrix:sa1:sweep50
+```
+
+Custom sweep sizing (simple knobs):
+
+```powershell
+node scripts/run-sa1-sweep-matrix.js --sweep-size 12 --sweep-total 150 --sweep-strategy stratified --repeats 1
+```
+
+Sweep knobs:
+
+- `--sweep-size`: how many sweep scenarios to run (for example `12`, `24`, `50`)
+- `--sweep-total`: total sweep universe size (normally `150`)
+- `--sweep-strategy`: `stratified` (recommended) or `linear`
+- `--sweep-min-index`: optional lower bound for second-pass calibration (default `1`)
+- `--sweep-max-index`: optional upper bound for second-pass calibration (default `sweep-total`)
+
+Notes:
+
+- `stratified` spreads picks over the whole sweep universe.
+- `linear` takes the first `N` states (`sa1-sweep-001..N`).
+
 One-command targeted SA1 v2 coarse->fine breakpoint sweep:
 
 ```powershell
 npm run strategy:audit:matrix:sa1:v2
+```
+
+SA1 v2 now auto-bootstraps representatives with a stratified 12-scenario sweep by default (configurable via `--bootstrap-scenarios` and `--bootstrap-universe`).
+
+Example: explicit bootstrap sizing for SA1 v2:
+
+```powershell
+npm run strategy:audit:matrix:sa1:v2 -- --bootstrap-scenarios 50 --bootstrap-universe 150 --bootstrap-cycles 5
 ```
 
 One-command targeted SA1 v2 wide sweep (larger jumps + higher unlock tiers):
@@ -126,6 +206,29 @@ once. Both reuse one Chrome window, browser context, and page for sequential
 runs. Reset failure, detected state leakage, or any failed run makes
 the matrix exit non-zero. The isolated confirmation command preserves the
 original process-per-run behavior for stronger final confirmation.
+
+## Operator visibility (progress)
+
+Matrix runs print live progress in terminal for each child run:
+
+- current index and total (`n/total`)
+- completion percent
+- active scenario and repeat index
+- rolling ETA in seconds
+
+Example progress row:
+
+```text
+[SA1 matrix] progress 12/50 (24.0%) -> sa1-sweep-034 run 1/1; ETA 118s
+```
+
+This progress output is emitted by the shared matrix runner and is therefore
+visible from:
+
+- `strategy:audit:matrix:sa1`
+- `strategy:audit:matrix:sa1:sweep50`
+- `strategy:audit:matrix:sa1:sweep150`
+- `strategy:audit:matrix:sa1:v2` (for bootstrap/coarse/fine batches)
 
 Each child run writes temporary JSON and Markdown results. The runner streams
 every run to the terminal; findings are distilled into BOOK-04 and no raw run
