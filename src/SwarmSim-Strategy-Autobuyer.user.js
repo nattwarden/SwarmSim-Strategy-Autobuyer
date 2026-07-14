@@ -253,9 +253,15 @@
     focusTab: "meat",
 
     // expensive-first = prioritera dyraste köpbara unit
-    // balanced = dyra units + lite tab-prioritet
+    // balanced = dyra units + lite tab-prioritet (intentional Smart default, see F7)
     // cheap-fill = fyller mer som spelets vanliga köp-knappar
-    unitStrategy: "expensive-first",
+    // Matches PRESETS.smart.unitStrategy: a fresh install (no saved config,
+    // no preset explicitly applied yet) defaults to smartMode/preset "smart"
+    // and should behave like that preset from the first run, not diverge
+    // from it until a preset button is clicked. "expensive-first" remains a
+    // selectable manual choice (also used by the safe/progression/unitsOnly
+    // presets) and any saved user config still wins over this default.
+    unitStrategy: "balanced",
 
     pauseUnitsNearAscension: true,
     pauseUnitsAscensionPercent: 0.9,

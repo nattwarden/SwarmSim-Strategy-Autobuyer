@@ -389,6 +389,44 @@ Exact next action:
 
 ## Handoff log
 
+### 2026-07-14 - F7 closed: DEFAULT_CONFIG.unitStrategy now matches the Smart preset ("balanced")
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Baseline: `90cd81dfece557bc314a38a6226f0bcc4b95ed5b` (9.1.0).
+- Scope: audit finding F7 only (`unitStrategy` inconsistency between
+  `DEFAULT_CONFIG` and `PRESETS.smart`). `DEFAULT_CONFIG.unitStrategy`
+  changed from `"expensive-first"` to `"balanced"`; `PRESETS.smart.unitStrategy`
+  was already `"balanced"` and is unchanged.
+- Why this mattered beyond cosmetics: `config = loadConfig()` on a brand-new
+  install (no saved localStorage) resolves to `DEFAULT_CONFIG` directly —
+  `applyPreset("smart")`/`resetToRecommendedSettings()` are only invoked when
+  the player explicitly clicks a preset button, not automatically on first
+  load. Since `DEFAULT_CONFIG.preset`/`smartMode` already default to Smart
+  mode, a fresh install was running Smart mode with `unitStrategy:
+  "expensive-first"` — a value that diverges from what the Smart preset
+  itself declares. `balanced` is now the intentional, documented Smart
+  default from the very first run, not just after a preset is (re-)applied.
+- Preserved exactly, per scope: ranking/scoring logic (`unitStrategy`'s three
+  branches at the `config.unitStrategy === ...` checks are untouched);
+  `"expensive-first"` remains a fully selectable manual choice (still used
+  by the `safe`/`progression`/`unitsOnly` presets and the UI dropdown); any
+  saved user config is unaffected, since `loadConfig()`'s
+  `{ ...DEFAULT_CONFIG, ...saved }` merge already lets a saved
+  `unitStrategy` (explicit or inherited from a prior session) win over this
+  default.
+- Commands and exit codes: `npm run build` -> `0`; `npm run verify` -> `0`
+  (full chain, all prior checks including `check:book00:m8:false-wait` and
+  `check:live-purchase-acceptance` unaffected).
+- Files changed: `dev-src/runtime-sections/runtime-main.js` (+ canonical
+  rebuild `src/SwarmSim-Strategy-Autobuyer.user.js`), this handoff entry.
+- Safety: no hard-default, threshold, scoring, or lane-order change.
+- Remaining blocker: none. This closes F7 as scoped; the `unitsOnly`/`safe`/
+  `progression` presets' own `"expensive-first"` choices were left as-is
+  (not part of F7, which only flagged the Smart-preset/DEFAULT_CONFIG
+  mismatch).
+- Exact next action: none selected; awaiting next task.
+
 ### 2026-07-14 - F3 closed: stall-breaker gate reads structured blockerCategories instead of regex-over-text
 
 - Agent: Claude (Sonnet 5)
