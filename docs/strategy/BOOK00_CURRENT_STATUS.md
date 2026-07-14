@@ -240,9 +240,14 @@ active Expansion save window while Meat/Engine/Upgrade remain BUY-eligible.
 A full read-only repository audit was performed on 2026-07-14 against
 `2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (see the audit handoff entry and
 [REPOSITORY_AUDIT_REVIEW_2026-07-14.md](REPOSITORY_AUDIT_REVIEW_2026-07-14.md)).
-The selected next open work package is the verify-integrated acceptance check
-for real autobuy purchases:
-[BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md](BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md).
+
+The live purchase acceptance foundation
+([BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md](BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md))
+is implemented as of 2026-07-14 (see handoff below): `check:live-purchase-acceptance`
+is wired into `npm run verify` and proves, via real Chrome `runOnce()` cycles and
+count/resource deltas read from game state, that both the legacy purchase path and
+the M6-authorized purchase path actually buy something. Mutation control confirmed
+the check fails when `m6DecisionOwnsMainCycle` is reintroduced as `true`.
 
 Product capability (M9, not started):
 
@@ -269,18 +274,16 @@ protected resource identity becomes ambiguous in replay evidence.
 
 ## Immediate next actions
 
-M8 and M9 are closed. The audited baseline is
-`2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (9.1.0). Execute these in order:
+M8 and M9 are closed. The live purchase acceptance check
+(`check:live-purchase-acceptance`) is implemented and green in `npm run verify`
+as of 2026-07-14 (see handoff below). The audited baseline was
+`2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (9.1.0). Execute these next:
 
-1. Read
-   [BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md](BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md)
-   in full and implement the verify-integrated acceptance check for real
-   autobuy purchases (test-harness-only change; no runtime edits).
-2. Run the SA1 comparison described in
+1. Run the SA1 comparison described in
    [REPOSITORY_AUDIT_REVIEW_2026-07-14.md](REPOSITORY_AUDIT_REVIEW_2026-07-14.md)
    section 10 item 5 before any scoring/comparability change (audit finding
    F2).
-3. Record implementation/evidence SHAs and prepare separate commits per
+2. Record implementation/evidence SHAs and prepare separate commits per
    `docs/process/GIT_VERIFICATION_PROTOCOL.md`.
 
 Hard constraints from the 2026-07-14 audit:
@@ -288,8 +291,10 @@ Hard constraints from the 2026-07-14 audit:
 - Do not change scoring/comparability (`evaluatePurchaseCandidate`,
   `projectedMilestoneProgressDelta`, `sixDomainComparableValue`) before the
   SA1 evidence run above has been executed and documented.
-- Do not give M6 main-cycle ownership (`m6DecisionOwnsMainCycle`) again before
-  the live purchase acceptance check exists and passes.
+- `m6DecisionOwnsMainCycle` may now be reconsidered with the live purchase
+  acceptance check as a regression guard, but this remains out of scope for
+  the live purchase acceptance work package itself; no such change was made
+  here.
 
 ## Known current blockers and cautions
 
@@ -383,6 +388,165 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - Live purchase acceptance check implemented and wired into verify
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Baseline: `703d892fcca5a5c64acf0a6337f88af8d05267aa` (9.1.0), clean working
+  tree at start.
+- Scope: implemented
+  [BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md](BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md)
+  exactly (test-harness-only; no `dev-src/`/`src/` runtime, scoring, or
+  safety-default changes).
+- Verified root cause (F4, restated and confirmed from source): nothing in
+  `verify` exercised a real `runOnce()` cycle to prove an actual purchase.
+  `check-unified-purchase-evaluator.js`/`check-book00-m2/m6/m7*.js` feed
+  synthetic candidates directly into evaluator APIs; `check-book00-m8-false-wait.js`
+  asserts a HOLD pattern by design (reserve multiplier 10000 makes a purchase
+  impossible); `check-book00-m9-resource-scoped-locks.js` asserts lane BUY
+  eligibility, not an executed purchase. This exact gap let
+  `m6DecisionOwnsMainCycle = true` (commit `5639699`) ship as 6.0.0-8.1.0 with
+  a fully green `verify` while the bot could not buy anything in live
+  Autobuyer mode; the bug was only found by a player-supplied savestate and
+  fixed in `35090b9` (9.0.0).
+- Harness gap discovered during implementation (not in the original audit):
+  the existing testbed's `unitCounts` staging permanently overrides a unit's
+  `count()` with a synthetic `staged + rate*elapsed` formula. This formula
+  never reflects real cost deduction from a real `buy()` call, so no existing
+  scenario's `resourceBankBefore/After` can prove "resource delta consistent
+  with cost" for a staged resource — production-only drift is all that ever
+  shows. Fixed narrowly and additively in `strategy-audit-testbed-core.js`:
+  added an opt-in `realResourceSeeds` scenario field that calls the game
+  unit's own real `_setCount()` once during staging and then leaves `count()`
+  untouched, so real production AND real `buy()` cost deduction both become
+  observable from game state afterward. This is purely additive (new optional
+  field, existing scenarios that don't set it are byte-identical in
+  behavior); verified via the full `npm run verify` run below that no
+  existing check's assertions changed.
+- Also added (additive, non-breaking): `captureStateDigest` now accepts an
+  optional list of extra unit keys to include in the resource digest (a
+  scenario's new `trackedUnitKeys` field), and each cycle row now also
+  exposes `laneCoordinatorSelectedActions` (the same array the M9 check's
+  sibling scenarios already populate via `markSelectedLane`), giving the new
+  check a named lane/candidate/amount to cross-check against real game state
+  instead of inferring it.
+- Implemented scenarios (`scripts/strategy-audit-testbed-core.js`):
+  - `book00-live-purchase-legacy` (Scenario A): Meat lane isolated by
+    disabling `meatGoalPlanner` and `larvaEnginePriority`, which empties
+    `buildUnifiedPurchaseProposals` entirely (no Engine/Meat/Territory/Energy
+    proposal), so M6 `executionAuthority` is structurally `false` all cycle.
+    Real-seeds ample meat/larva; the only thing that can still buy is the
+    `!m6DecisionOwnsMainCycle`-gated legacy `collectSmartUnitCandidates` /
+    `buySmartUnits` generic smart-unit buyer, which is independent of
+    `meatGoalPlanner`. `smartMaxActionsPerRun: 1` bounds the cycle to one
+    action.
+  - `book00-live-purchase-m6` (Scenario B): reuses the already-accepted
+    Milestone 2 `book00-m2-coordinator` state verbatim (proven to make M6 and
+    the M2 unified evaluator agree on Territory/army-seed with real
+    `etaImprovementSeconds`), with one substantive change: `armyUnitCounts` is
+    emptied. Discovered while investigating why a real-seeded `stinger`
+    unit's count never changed after a reported "successful, matched" buy:
+    the M2 scenario's `armyUnitCounts` (e.g. `"Stinger V"`) creates a
+    fabricated, in-memory-only placeholder object with its own fake
+    `__kbcIncrement` counter, and `commands.buyUnit` special-cases these
+    placeholders and never touches real game state — so the original M2
+    acceptance state's Territory buy was always executing against a fake
+    object, not a real unit. Emptying `armyUnitCounts` forces the Territory
+    army-seed candidate to resolve to a real game unit (`swarmling` in this
+    staged state) so a genuine, observable count delta exists; `stinger` is
+    moved from the synthetic `unitCounts` formula to real-count seeding
+    (`_setCount`) purely so it stops competing as a fake option and instead
+    shows up as an honest, unchanged negative control alongside `spider`/
+    `mosquito`. Real resource-pool seeding (meat/larva) was also attempted for
+    this scenario but produced an unexplained small net resource increase
+    instead of a cost-consistent decrease (likely an interaction between the
+    still-synthetic `swarmling` unit's cost-curve read and the real resource
+    pool); reverted to the proven synthetic ample-resource staging for this
+    scenario rather than chase that further, since the executed unit's own
+    real count delta (independent of that pool) is already rigorous, exact
+    proof. `smartMaxActionsPerRun: 1` bounds the cycle to the single
+    M6-authorized action.
+- `scripts/check-live-purchase-acceptance.js` (new): runs both scenarios via
+  `runMode("live", ...)` (real Chrome against swarmsim.com, same mechanism as
+  the M8/M9 checks) and asserts, from real game state only (never bot logs or
+  eligibility flags):
+  - Scenario A: `coordinatorExecutionAuthority === "false"` and
+    `coordinatorExecuted === "no"` (proves the purchase is legacy-only, not
+    M6); a named `laneCoordinatorSelectedActions[0]` on the Meat lane; the
+    named candidate's real count strictly increased and matches the recorded
+    bought amount within 1%; meat and larva both strictly decreased by an
+    amount proportional to the purchase (real cost deduction); `mainActions
+    >= 1`; no ability/ascension/mutagen lane shows `BUY`.
+  - Scenario B: `coordinatorExecutionAuthority === "true"`,
+    `coordinatorExecuted === "yes"`, `coordinatorMatchedExecution === "yes"`,
+    and `coordinatorSelectedFingerprint === coordinatorExecutedFingerprint`;
+    the executed unit's real count strictly increased and matches
+    `coordinatorSelectedAmount` within 1%; `mainActions === 1` exactly
+    (proves the legacy path did not also spend an execution key the same
+    cycle); no ability/ascension/mutagen lane shows `BUY`.
+- Concrete count/resource deltas observed (representative run; small
+  fractional drift between runs is expected real production over the ~1-3s
+  cycle wall-clock, well inside the check's tolerances):
+  - Scenario A: candidate `drone`, count `0 -> 446` (delta 446, matches the
+    recorded bought amount); `meat` decreased by ~4364-4373; `larva`
+    decreased by ~445.8; `mainActions = 1`;
+    `coordinatorExecutionAuthority = false`.
+  - Scenario B: executed unit `swarmling`, count `220 -> 223` (delta 3,
+    matches `coordinatorSelectedAmount = 3` exactly); `mainActions = 1`;
+    fingerprint `Territory|territory|swarmling|swarmling|unit|base|House of
+    Mirrors prep|3` (selected == executed).
+- Mutation control (work order section 8), performed locally, not committed:
+  1. Set `m6DecisionOwnsMainCycle = true` in
+     `dev-src/runtime-sections/runtime-main.js`; `npm run build` -> exit `0`;
+     `node scripts/check-live-purchase-acceptance.js` -> exit `1`, failing at
+     "Scenario A: expected at least one legacy-path selected lane action
+     (laneCoordinatorSelectedActions)" — i.e. no purchase happened, exactly
+     reproducing the historical bug this check exists to catch.
+  2. Reverted via `git checkout -- dev-src/runtime-sections/runtime-main.js
+     src/SwarmSim-Strategy-Autobuyer.user.js`; `npm run build` -> exit `0`
+     ("already up to date", confirming an exact revert);
+     `node scripts/check-live-purchase-acceptance.js` -> exit `0`, green
+     again with the same deltas as above.
+- Commands and exit codes (final, on the clean reverted tree): `npm run
+  verify` -> `0` (full chain, including `check:live-purchase-acceptance` and
+  the pre-existing `check:book00:m8:false-wait` /
+  `check:book00:m9:resource-locks`); `git diff --check` -> `0` (no output).
+- Files changed: `scripts/strategy-audit-testbed-core.js` (real-seed staging
+  mechanism, `trackedUnitKeys`/`captureStateDigest` extension,
+  `laneCoordinatorSelectedActions` row field, two new scenarios),
+  `scripts/check-live-purchase-acceptance.js` (new), `package.json` (new
+  `check:live-purchase-acceptance` script, appended to `verify`),
+  `docs/strategy/BOOK00_CURRENT_STATUS.md` (this entry). No `dev-src/`,
+  `src/`, existing check assertions, or `AGENTS.md` safety sections touched;
+  `git diff --stat` against the recorded baseline confirms only these files.
+- Product capability changed: none (test-harness-only, per the work order's
+  forbidden-changes list); no runtime, scoring, comparability, gate,
+  threshold, lane-order, or hard-safety-default change.
+- Safety: `autoCastAbilities`/`autoAscend` remain `false` throughout both
+  scenarios (enforced by the existing harness's `stageCanaryState`, verified
+  by the check's advisor-only-leak assertion); no Laboratory involvement; no
+  new execution key.
+- What this still does not prove (work order section 10, restated): that
+  purchase decisions are strategically optimal; that the 9.1.0
+  comparability/scoring shift is correct (needs the separate SA1 comparison);
+  that advisor mode and autobuy mode produce identical decisions; behavior
+  across the full mid/late-game state space. Additionally, specific to this
+  implementation: Scenario B's shared ample-resource pool (meat/larva)
+  remains synthetically staged rather than real-cost-deducted, so this check
+  proves real cost deduction rigorously for Scenario A and proves an exact,
+  matched, real unit-count delta for Scenario B, but does not independently
+  prove Scenario B's resource-side cost arithmetic from a before/after
+  decrease the way Scenario A does; and this check depends on
+  swarmsim.com availability like every other live-Chrome check in `verify`.
+- Milestone checklist items completed: closes the open work package selected
+  in the prior audit handoff entry below.
+- Remaining blocker: none for this package. The SA1 comparison (audit finding
+  F2) and any `m6DecisionOwnsMainCycle` reconsideration remain open, separate
+  work.
+- Exact next action: run the SA1 9.0.0-vs-9.1.0 comparison described in
+  `REPOSITORY_AUDIT_REVIEW_2026-07-14.md` section 10 item 5 before any
+  scoring/comparability change.
 
 ### 2026-07-14 - Read-only repository audit recorded; live purchase acceptance selected as next work package
 

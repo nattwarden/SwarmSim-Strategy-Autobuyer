@@ -1027,6 +1027,68 @@ SCENARIOS["book00-m3-energy-execution"] = {
   ],
 };
 
+SCENARIOS["book00-live-purchase-legacy"] = {
+  id: "BOOK00-LIVE-PURCHASE-LEGACY",
+  title: "Legacy Purchase Path Executes a Real Meat-Chain Buy",
+  description: "Meat lane isolated with meatGoalPlanner and larvaEnginePriority disabled so buildUnifiedPurchaseProposals reports zero proposals; M6 execution authority cannot be true because it has nothing to compare. Any real purchase this cycle must come from the legacy generic smart-unit buyer, proving runOnce() executes a real, observable game-state purchase outside M6 authority.",
+  cycles: 1,
+  executeActions: true,
+  realResourceSeeds: {
+    meat: "500000",
+    larva: "1500",
+  },
+  engine: {
+    hatcheryEtaSeconds: 3600,
+    expansionEtaSeconds: 300,
+  },
+  config: {
+    smartMaxActionsPerRun: 1,
+    saveForExpansionSeconds: 600,
+    meatGoalPlanner: false,
+    larvaEnginePriority: false,
+    prioritizeProductionUpgrades: false,
+    territoryPrepPlanner: false,
+    expansionArmySeedPlanner: false,
+    territoryArmySeedWhenEmpty: false,
+    territoryRoiMode: false,
+    buyUpgrades: false,
+    focusTab: "meat",
+  },
+  trackedUnitKeys: ["drone", "queen", "nest"],
+  notes: [
+    "meatGoalPlanner disabled removes the only source of a Meat proposal for buildUnifiedPurchaseProposals, and larvaEnginePriority disabled removes the Engine proposal; with no Territory/Energy proposal either, the unified proposal list is empty and M6 executionAuthority cannot become true.",
+    "collectSmartUnitCandidates (the legacy generic smart-unit buyer) is independent of meatGoalPlanner and still scores/buys real, visible, buyable meat-tab units, so a real purchase can still happen through the !m6DecisionOwnsMainCycle-gated buySmartUnits path only.",
+    "Real resource seeding (_setCount) is used instead of the synthetic unitCounts formula so that the actual game buy() command deducts real cost from real resources, letting the check read a genuine before/after count and resource delta from game state.",
+  ],
+};
+
+SCENARIOS["book00-live-purchase-m6"] = {
+  ...SCENARIOS["book00-m2-coordinator"],
+  id: "BOOK00-LIVE-PURCHASE-M6",
+  title: "M6-Authorized Purchase Path Executes the Exact Coordinator Winner",
+  description: "Reuses the proven Milestone 2 acceptance state (a buyable Territory army-seed candidate with a real, meaningful Expansion ETA improvement, where M6's six-domain comparison and the M2 unified evaluator already agree) but empties armyUnitCounts so the Territory army-seed candidate resolves to a real, observable game unit instead of the M2 scenario's in-memory-only synthetic placeholder unit, and real-seeds the formerly-synthetic stinger unit out of unitCounts so it no longer competes as a fake option. smartMaxActionsPerRun 1 bounds the cycle to the single M6-authorized buy and proves the legacy path does not also spend the same execution key.",
+  cycles: 1,
+  executeActions: true,
+  unitCounts: (() => {
+    const { stinger, ...rest } = SCENARIOS["book00-m2-coordinator"].unitCounts;
+    return rest;
+  })(),
+  armyUnitCounts: {},
+  realResourceSeeds: {
+    stinger: "70",
+  },
+  config: {
+    ...SCENARIOS["book00-m2-coordinator"].config,
+    smartMaxActionsPerRun: 1,
+  },
+  trackedUnitKeys: ["stinger", "swarmling", "spider", "mosquito"],
+  notes: [
+    "Reuses the Milestone 2 acceptance state's proven shape (docs/strategy/BOOK00_M2_COORDINATOR foundation / sa1-02 lineage): zero starting territory and a slow real territory rate give an Army Seed buy measurable Expansion ETA value outside the protected save window.",
+    "The original M2 scenario's armyUnitCounts (e.g. \"Stinger V\") creates fabricated, in-memory-only placeholder unit objects with their own fake __kbcIncrement counter; buyUnit special-cases them and never touches real game state. Emptying armyUnitCounts here forces the Territory army-seed candidate to resolve to a real game unit (swarmling in this staged state) so a genuine before/after count delta is observable; stinger is moved from the synthetic unitCounts formula to real-count seeding (_setCount) purely so it stops competing as a fake option and shows up as an honest, unchanged negative control.",
+    "smartMaxActionsPerRun 1 makes the single bounded execution unambiguous. The check must observe coordinatorExecutionAuthority === true and coordinatorMatchedExecution === yes (M6 executed its own selected winner) with a real count delta on the executed unit (read via trackedUnitKeys, not hardcoded to any one unit name), not just a lane decision.",
+  ],
+};
+
 function getScenarioDefinition(scenarioId) {
   const normalizedId = String(scenarioId || "canary").toLowerCase();
   const v2Scenario = buildSa1V2Scenario(normalizedId);
@@ -2015,6 +2077,28 @@ async function stageCanaryState(page, state) {
 
     const manifest = [];
 
+    // Real-count seeding: unlike unitCounts (which permanently overrides count()
+    // with a synthetic staged+rate*elapsed formula), this sets the game's own
+    // internal count once via the real _setCount API and then leaves count()
+    // untouched, so real production AND real cost deduction from a live buy()
+    // call both remain accurate and independently observable afterward.
+    const realResourceSeeds = input.realResourceSeeds || {};
+    for (const [seedKey, seedValue] of Object.entries(realResourceSeeds)) {
+      const seedUnit = originalUnit ? originalUnit(seedKey) : game.unit(seedKey);
+      if (!seedUnit || typeof seedUnit._setCount !== "function") continue;
+      const before = String(seedUnit.count?.() || "0");
+      seedUnit._setCount(makeDecimal(seedValue));
+      patch(seedUnit, "isVisible", () => true, `isVisible override for real-seeded ${seedKey}`);
+      manifest.push({
+        id: `real-seed:${seedKey}`,
+        path: `game.unit(${seedKey})._setCount`,
+        before,
+        stagedValue: String(seedValue),
+        method: "real internal _setCount (production and buy-cost deduction remain live)",
+        restorationMethod: "none (disposable browser context; not part of config reset scope)"
+      });
+    }
+
     patch(game, "unit", (name) => {
       const found = originalUnit ? originalUnit(name) : null;
       return applyOverrides(found) || resolveSyntheticArmyUnit(name) || found;
@@ -2158,24 +2242,29 @@ async function applyScenarioRuntimePatch(page, patch) {
   }, patch || {});
 }
 
-async function captureStateDigest(page) {
-  return page.evaluate(() => {
+async function captureStateDigest(page, extraUnitKeys = []) {
+  return page.evaluate((keys) => {
     const game = window.angular.element(document.body).injector().get("game");
     const bot = window.kbcSwarmBot;
     const inspector = bot.getStrategyInspector?.() || null;
+    const resources = {
+      meat: String(game.unit("meat")?.count?.() || "0"),
+      larva: String(game.unit("larva")?.count?.() || "0"),
+      territory: String(game.unit("territory")?.count?.() || "0"),
+      energy: String(game.unit("energy")?.count?.() || "0")
+    };
+    for (const key of keys || []) {
+      if (Object.prototype.hasOwnProperty.call(resources, key)) continue;
+      resources[key] = String(game.unit(key)?.count?.() || "0");
+    }
     return {
       runHistoryLength: Array.isArray(bot.getRunHistory?.()) ? bot.getRunHistory().length : 0,
       inspectorTimestamp: inspector?.timestamp || null,
       phase: inspector?.phase || null,
       decision: inspector?.decision || null,
-      resources: {
-        meat: String(game.unit("meat")?.count?.() || "0"),
-        larva: String(game.unit("larva")?.count?.() || "0"),
-        territory: String(game.unit("territory")?.count?.() || "0"),
-        energy: String(game.unit("energy")?.count?.() || "0")
-      }
+      resources
     };
-  });
+  }, extraUnitKeys);
 }
 
 async function captureResetFingerprint(page) {
@@ -2569,7 +2658,7 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
   const staged = await stageCanaryState(page, scenarioState);
   const stateMutationManifestHash = sha256Object(staged.manifest);
   const preResetStateHash = sha256Object(staged.preResetDigest);
-  const initialDigest = await captureStateDigest(page);
+  const initialDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys);
   const initialStateHash = sha256Object(initialDigest);
 
   await installStateVisibilityOverlay(page, {
@@ -2623,9 +2712,9 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
       break;
     }
 
-    const beforeDigest = await captureStateDigest(page);
+    const beforeDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys);
     const planner = await runPlannerCycle(page);
-    const afterDigest = await captureStateDigest(page);
+    const afterDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys);
 
     const beforeHash = sha256Object(beforeDigest);
     const afterHash = sha256Object(afterDigest);
@@ -2680,6 +2769,7 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
     row.selectedAction = planner?.selectedAction || null;
     row.selectedUnit = planner?.inspectorAfter?.councilWinningCandidate || null;
     row.selectedAmount = planner?.inspectorAfter?.laneCoordinatorSelectedActions?.[0]?.amount || null;
+    row.laneCoordinatorSelectedActions = planner?.inspectorAfter?.laneCoordinatorSelectedActions || [];
     row.selectedReason = planner?.inspectorAfter?.mainReason || planner?.inspectorAfter?.reason || null;
     row.hardBlockers = planner?.hardBlockers || null;
     row.softBlockers = planner?.inspectorAfter?.waits || null;
