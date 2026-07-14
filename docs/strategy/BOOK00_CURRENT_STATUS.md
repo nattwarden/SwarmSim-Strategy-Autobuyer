@@ -351,6 +351,28 @@ Exact next action:
 
 ## Handoff log
 
+### 2026-07-14 - AI.md 8.1.0 hard-defaults documentation sync
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Product capability changed: none; documentation-only correction.
+- Change: `AI.md`'s hard-defaults reference block still listed the
+  pre-8.1.0 numeric values (`smartUnitBuyPercent: 0.25`,
+  `meatChainReserveMultiplier: 2`, `meatChainMaxPaybackSeconds: 1800`); these
+  are updated to the accepted 8.1.0 tuned values (`0.35`, `1.25`, `3600`) per
+  `docs/release-notes/SwarmSim-Strategy-Autobuyer-8.1.0-release-notes.md`, so
+  the reference block no longer contradicts the accepted 8.1.0 defaults.
+- Commands and exit codes: `npm run verify` -> `0` (same M8 focused result:
+  `blocker cycles=5, eta-grounded-by-cycle3=3, stall-breaker-cycle=3`).
+- Generated evidence paths: none (documentation-only change; no runtime
+  behavior touched).
+- Milestone checklist items completed: closes the last open M8/8.1.0 follow-up
+  noted in the prior handoff entry.
+- Remaining blocker: none. Milestone 8 (including 8.1.0) is fully closed with
+  no outstanding follow-ups.
+- Exact next action: start Milestone 9 (resource-scoped save locks) from
+  `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`.
+
 ### 2026-07-14 - M8/8.1.0 formal closure (exact-SHA verification)
 
 - Agent: Claude (Sonnet 5)
@@ -386,10 +408,9 @@ Exact next action:
   (`smartUnitBuyPercent`, `meatChainReserveMultiplier`,
   `meatChainMaxPaybackSeconds`, meat-fallback knobs, save-window seconds) were
   intentionally tuned for 8.1.0 as documented in the release notes and
-  `docs/SWARMSIM_GAME_MODEL.md`; `AI.md`'s supplementary hard-defaults list
-  still shows the pre-8.1.0 numeric values and should be refreshed in a
-  follow-up documentation-only pass so it does not read as contradicting the
-  accepted 8.1.0 defaults.
+  `docs/SWARMSIM_GAME_MODEL.md`; `AI.md`'s supplementary hard-defaults list has
+  been refreshed to the accepted 8.1.0 numeric values (see the 2026-07-14
+  documentation-sync handoff entry below).
 - Excluded from the commit: `docs/test-data/*` generated run artifacts
   (disposable per repository policy) and a stray untracked
   `tmp-user-save.txt` scratch file at repo root, unreferenced by any script.

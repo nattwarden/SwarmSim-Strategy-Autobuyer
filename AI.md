@@ -177,9 +177,9 @@ lepidopteraStopAtBoostPercent: 90
 territoryRoiMode: true
 territoryMinEtaImprovementSeconds: 2
 territoryMinEtaImprovementRatio: 0.001
-smartUnitBuyPercent: 0.25
-meatChainReserveMultiplier: 2
-meatChainMaxPaybackSeconds: 1800
+smartUnitBuyPercent: 0.35
+meatChainReserveMultiplier: 1.25
+meatChainMaxPaybackSeconds: 3600
 meatActionUnitPaybackBypass: true
 meatActionUnitMinReserveRatio: 5
 meatFallbackDoNotDropBelowActionUnit: true
