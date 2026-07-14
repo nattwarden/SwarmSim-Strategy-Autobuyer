@@ -51,6 +51,22 @@ Observed before the M7 foundation work:
 
 If observed Git state differs, update this board before implementation.
 
+Observed after M8 8.1.0 closure (2026-07-14):
+
+- accepted M8 8.1.0 implementation: `c014158cea82696cbdb18506045e60126c676116`;
+- implementation tree: `ab2554626960fabfb699a73584efd421502f1af0`;
+- verification worktree HEAD/tree matched the implementation SHA/tree exactly;
+- `origin/main` at verification time: `c014158cea82696cbdb18506045e60126c676116`
+  (equal to the implementation SHA; no intervening commits);
+- full `npm run verify` (including the live-Chrome
+  `check:book00:m8:false-wait` replay) passed with exit code `0` in both the
+  primary workspace and the isolated exact-SHA verification worktree, with
+  identical result: `blocker cycles=5, eta-grounded-by-cycle3=3,
+  stall-breaker-cycle=3`;
+- no tracked files changed during either verification run, so no separate
+  generated-evidence commit was required; this status-board update is the
+  provenance record for the accepted run.
+
 Current runtime version: `8.1.0`
 
 ## Product north star
@@ -91,18 +107,32 @@ Current runtime version: `8.1.0`
 
 ## Active milestone
 
-**Milestone 8 - ETA-grounded false-wait reduction**
+**Milestone 8 - ETA-grounded false-wait reduction (CLOSED at 8.1.0)**
 
-M8 turns the pre-M8 wait-lock hotfix into a narrow, source-grounded ETA slice
-for executable normal progression. The immediate scope is Meat fallback
-selection under repeated HOLD cycles where advisor-only ability opportunity
-exists but no legal advisor execution authority exists.
+M8 turned the pre-M8 wait-lock hotfix into a narrow, source-grounded ETA slice
+for executable normal progression. The scope was Meat fallback selection under
+repeated HOLD cycles where advisor-only ability opportunity exists but no legal
+advisor execution authority exists. The 8.1.0 closure additionally tuned Smart
+default chunk/fallback/reserve thresholds for more continuous progression (see
+`docs/release-notes/SwarmSim-Strategy-Autobuyer-8.1.0-release-notes.md`) while
+leaving hard irreversible safety defaults unchanged.
 
-Milestone 8 player-visible target:
+Milestone 8 player-visible target (met):
 
 > The player sees fewer repeated false `Wait` loops in Smart mode, with explicit
 > blocker reasons and bounded fallback progression that remains inside hard
 > safety defaults.
+
+Formal closure:
+
+- implementation SHA: `c014158cea82696cbdb18506045e60126c676116`;
+- implementation tree: `ab2554626960fabfb699a73584efd421502f1af0`;
+- exact-SHA verification worktree reproduced the identical passing result;
+- `HEAD` equals `origin/main` at the implementation SHA; working tree clean.
+
+**Next milestone: Milestone 9 - Resource-scoped save locks**, foundation at
+`docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`. Runtime
+implementation has not started.
 
 Energy abilities, Ascension, and Mutagen remain advisor-only and
 non-executable.
@@ -187,78 +217,44 @@ Formal closure:
 
 ## Current work package
 
-Implementation status: active M8 ETA-grounded blocker replay and focused-check
-integration on runtime `8.1.0`; fallback activation reproduction is still open.
+Implementation status: Milestone 8 is formally closed at `8.1.0`
+(implementation `c014158cea82696cbdb18506045e60126c676116`). No implementation
+work is currently in flight. The next open work package is Milestone 9.
 
-Product capability:
+Product capability (M9, not started):
 
-- Confirm and finalize a narrow ETA-grounded Meat fallback slice that reduces
-  repeated false `Wait` holds under the reproduced `reserve` +
-  `ability disabled` blocker pattern.
+- Resource-scoped save locks: keep only the actively save-windowed resource
+  (for example Territory for Expansion) locked, while safe non-conflicting
+  buys from other resources remain executable instead of a global HOLD.
 
-Player-visible change:
+Player-visible change (M9, planned):
 
-- Smart mode exits repeated false waits earlier in the verified blocker pattern
-  while preserving reserve/protected-resource safety gates.
+- The bot no longer enters global HOLD just because Territory is protected for
+  Expansion; Meat/Larva/Energy progression can continue when those actions do
+  not spend protected Territory.
 
-Included:
+Foundation document: `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`
+(implementation-ready handoff contract; target release `9.0.0`).
 
-- repeated HOLD blocker-pattern replay in Google Chrome via Playwright;
-- bounded fallback activation calibration under existing hold-history lag;
-- strict reserve/protected-resource and execution-authority preservation;
-- focused Strategy Audit validation and full repo verification.
+Recommended run: **GPT-5.3-Codex (medium reasoning)** for bounded coordinator
+logic and blocker observability.
 
-Explicitly excluded:
-
-- ability, Ascension, or Mutagen execution;
-- Swarmwarp and invented multi-run formulas;
-- new execution keys or purchase authority;
-- Council artwork or fixed-layout redesign.
-
-Authority:
-
-- advisor-only domains remain non-executable;
-- accepted M2/M3/M6 purchase authority remains unchanged;
-- fallback progression remains bounded and revalidated.
-
-Expected changed areas:
-
-- `src/SwarmSim-Strategy-Autobuyer.user.js`
-- `dev-src/runtime-sections/runtime-main.js`
-- `scripts/strategy-audit-testbed-core.js`
-- `scripts/run-sa1-breakpoint-matrix.js`
-- `package.json`
-- `docs/strategy/BOOK00_CURRENT_STATUS.md`
-- focused `docs/test-data/strategy-audit-*` outputs when explicitly generated
-  as evidence.
-
-Stop condition:
-
-- reported live blocker pattern is replayed in Google Chrome and fallback
-  activation appears by hold cycle 3 or earlier under the accelerated cap 2;
-- focused Strategy Audit and full verify suite pass without widening safety
-  defaults or execution authority;
-- handoff records exact SHA, commands, and evidence paths per protocol.
-
-Recommended run: **GPT-5.3-Codex (medium reasoning)** for scoped runtime,
-evidence interpretation, and narrow documentation synchronization.
-
-Escalate when: blocker telemetry remains inconsistent across three reproduced
-Chrome runs, ETA comparability is ambiguous, or the slice requires new shared
-milestone formulas beyond the scoped Meat fallback contract.
+Escalate when: resource-protection semantics conflict across lanes or
+protected resource identity becomes ambiguous in replay evidence.
 
 ## Immediate next actions
 
-Execute these in order:
+M8 is closed. Execute these in order for Milestone 9:
 
-1. Reproduce the reported live state in Google Chrome through Playwright and
-  capture three consecutive decision cycles with blocker traces.
-2. Confirm that fallback activation appears no later than hold cycle 3 for the
-  `reserve` + `ability disabled` pattern under the accelerated threshold cap 2.
-3. If the replay still stalls, implement only the scoped M8 ETA-grade Meat
-  fallback adjustment; otherwise preserve current logic and document closure.
-4. Run focused Strategy Audit plus full verification (`npm run verify`) and
-  keep evidence generation allowlisted.
+1. Read `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md` in
+  full before writing any runtime code.
+2. Record the current accepted baseline SHA
+  (`c014158cea82696cbdb18506045e60126c676116`) before implementation starts.
+3. Implement resource-scoped lock semantics in the coordinator/main-action flow
+  per the M9 contract, keeping other lanes executable when safe.
+4. Add focused acceptance for Expansion save-window + non-Territory
+  continuation, then run focused Strategy Audit plus full verification
+  (`npm run verify`).
 5. Record implementation/evidence SHAs and prepare separate commits per
   `docs/process/GIT_VERIFICATION_PROTOCOL.md`.
 
@@ -288,18 +284,20 @@ Execute these in order:
 
 ## Next product milestone
 
-**Milestone 8 - ETA-grounded false-wait reduction**
+**Milestone 9 - Resource-scoped save locks**
 
 Required product outcome:
 
-- convert repeated false-wait live patterns into bounded executable fallback
-  progression with explicit blocker visibility;
-- keep reserve/protected-resource gates and advisor-only authority intact;
-- use source-grounded ETA semantics where comparability is claimed;
-- preserve Council UI3 and fixed desktop/responsive layout behavior.
+- protect only the resource under active save-window priority (for example
+  Territory for Expansion), while keeping unrelated resource lanes executable
+  when safe;
+- prevent global HOLD lock when only one resource is protected;
+- expose protected-resource identity and non-conflicting execution decisions in
+  Council/Inspector observability.
 
-Implementation proceeds from the pre-M8 hotfix baseline and must stay narrow,
-observable, and protocol-compliant.
+Implementation proceeds from the accepted 8.1.0 baseline
+(`c014158cea82696cbdb18506045e60126c676116`) and must stay narrow, observable,
+and protocol-compliant.
 
 ## Planned after M8
 
@@ -352,6 +350,58 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - M8/8.1.0 formal closure (exact-SHA verification)
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`; isolated verification worktree
+  `../SwarmSim-verify-c014158` (detached at the implementation SHA)
+- Product capability changed: none beyond the already-authored 8.1.0 Smart
+  default tuning and M8 stall-breaker visibility; this package commits,
+  pushes, and formally verifies that already-completed work.
+- Implementation SHA: `c014158cea82696cbdb18506045e60126c676116`
+- Implementation tree SHA: `ab2554626960fabfb699a73584efd421502f1af0`
+- Verification worktree HEAD/tree: matched the implementation SHA/tree exactly
+- `origin/main` observed during verification: `c014158cea82696cbdb18506045e60126c676116`
+  (equal to the implementation SHA)
+- Commands and exit codes (identical in primary workspace and verification
+  worktree):
+  - `node --check src/SwarmSim-Strategy-Autobuyer.user.js` -> `0`
+  - `node scripts/validate-repo-guardrails.js` -> `0`
+  - `npm run build:check` -> `0`
+  - `npm run verify` -> `0` (build check, `check:0.12.3:laboratory`,
+    `check:8.1.0:versions`, `check:ui-shell`, `check:ui2:fixtures`,
+    `check:ui3:assets`, `check:laboratory:phase2a`,
+    `check:purchase-evaluator`, `check:book00:m2:coordinator` through
+    `check:book00:m8:false-wait`, guardrails)
+  - `git diff --check` -> `0`
+- Focused M8 result (both runs): `blocker cycles=5,
+  eta-grounded-by-cycle3=3, stall-breaker-cycle=3`
+- Evidence files: none generated; every command in the suite was a pure check
+  against this repo's configuration, so this status-board entry is the
+  provenance record.
+- Safety: hard irreversible defaults (`autoCastAbilities`, `autoAscend`,
+  Nexus/Energy protection, no Clone Larvae/House of Mirrors/Nightbug/Bat
+  auto-cast) unchanged. Smart-mode economic thresholds
+  (`smartUnitBuyPercent`, `meatChainReserveMultiplier`,
+  `meatChainMaxPaybackSeconds`, meat-fallback knobs, save-window seconds) were
+  intentionally tuned for 8.1.0 as documented in the release notes and
+  `docs/SWARMSIM_GAME_MODEL.md`; `AI.md`'s supplementary hard-defaults list
+  still shows the pre-8.1.0 numeric values and should be refreshed in a
+  follow-up documentation-only pass so it does not read as contradicting the
+  accepted 8.1.0 defaults.
+- Excluded from the commit: `docs/test-data/*` generated run artifacts
+  (disposable per repository policy) and a stray untracked
+  `tmp-user-save.txt` scratch file at repo root, unreferenced by any script.
+- Final sync gate: `HEAD` equals `origin/main` at
+  `c014158cea82696cbdb18506045e60126c676116`; primary working tree is clean of
+  tracked changes.
+- Milestone checklist items completed: Milestone 8 formal closure (all
+  checklist items above).
+- Remaining blocker: none for M8. `AI.md` hard-defaults numeric drift noted
+  above is a follow-up documentation task.
+- Exact next action: start Milestone 9 (resource-scoped save locks) from
+  `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`.
 
 ### 2026-07-14 - M8 strict closure sync (cycle-3 stall-breaker visibility)
 
