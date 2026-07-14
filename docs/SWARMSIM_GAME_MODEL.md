@@ -1,6 +1,6 @@
 ﻿# SwarmSim Game Model
 
-Version: 2026-07-10-current
+Version: 2026-07-14-current
 Status: Active strategy contract for SwarmSim Strategy Autobuyer.
 
 This is the single active game model for AI/Codex/Copilot agents. Older dated
@@ -65,15 +65,23 @@ Rules:
 
 ## 2. Current verified runtime
 
-Current verified runtime: `0.12.3`
+Current verified runtime: `9.1.0`
 
-Verdict: `0.12.3 LABORATORY LIVE EFFECTIVE COUNT VERIFIED`
+Status: the M2 bounded exact-execution coordinator and the M6 six-domain
+strategic coordinator (section 7) are both implemented and integrated on
+`main`, exercised in `npm run verify`, and formally accepted at exact-SHA
+checkpoints. See `docs/strategy/BOOK00_CURRENT_STATUS.md` for the current
+handoff snapshot and the exact accepted implementation/evidence SHAs; do not
+treat any single dated verdict string here as more current than that board.
 
 For what has been built and what comes next, see:
 
+- `docs/strategy/BOOK00_CURRENT_STATUS.md` — active handoff board and current work package
 - `docs/process/HISTORY.md` — version history
 - `docs/strategy/STRATEGY_INTELLIGENCE_ROADMAP.md` — current phase and next work
 - `docs/BOOK-03-verification-history-and-artifacts.md` — acceptance evidence map
+- `docs/strategy/SWARMSIM_LABORATORY_PHASE_1.md` — Laboratory contract (read-only, gated, manually triggered)
+- `docs/process/GIT_VERIFICATION_PROTOCOL.md` — mandatory exact-SHA verification sequence
 
 ## 3. Hard safety defaults
 
@@ -172,7 +180,7 @@ Logs should show UI name first and internal name when useful:
 
 The bot is built as coordinated planner lanes, not one monolithic "best buy" rule.
 
-### Implemented lanes (as of 0.12.3)
+### Implemented lanes and planners (as of 9.1.0)
 
 1. **Engine / Larva lane**
    - Hatchery and Expansion readiness.
@@ -186,7 +194,8 @@ The bot is built as coordinated planner lanes, not one monolithic "best buy" rul
    - Parent-step conversion.
    - Twin unlock threshold prep.
    - Twin opportunity-cost bypass.
-   - Meat fallback and stall diagnostics.
+   - Meat fallback and stall diagnostics (stall-breaker gate reads structured
+     `blockerCategories`, not free-text reason parsing).
 
 3. **Army / Territory lane**
    - Fighting-unit scanning.
@@ -194,34 +203,85 @@ The bot is built as coordinated planner lanes, not one monolithic "best buy" rul
    - Army Seed planner.
    - House of Mirrors army prep - advisor-only, no auto-cast.
    - Anti-starvation when meat dominates every run.
+   - Resource-scoped save locks: an active Expansion save window protects
+     only territory-costing candidates, not the other lanes.
 
-4. **Energy / Ability lane**
+4. **Energy production lane**
    - Nexus target and energy protection.
    - Lepidoptera ROI.
-   - Energy Support Broker (advisor/observability layer).
+   - Bounded execution for the accepted Nexus target or Lepidoptera production.
    - Nightbug/Bat default HOLD.
-   - Ability Prep as advisor/observability only.
-   - No default ability casts.
 
-5. **Clone lane**
+5. **Energy abilities lane (advisor-only)**
+   - Energy Support Broker and Ability Prep timing/observability.
+   - Clone Larvae / House of Mirrors / Rush ability opportunity cost.
+   - No default ability casts; no execution authority.
+
+6. **Ascension / Mutagen lane (advisor-only)**
+   - `CONTINUE_RUN` vs `ASCEND_NOW` vs `KEEP_UNALLOCATED` comparison.
+   - Recovery/break-even, next-run horizon, and Mutagen gain.
+   - No auto-ascend; no execution authority.
+
+7. **Clone lane**
    - Clone cocoon prep as side-task.
    - Clone Buffer debt/protection/spendable larvae.
    - No default Clone Larvae cast.
+
+Lanes 1-4 can gain bounded, revalidated execution authority through the
+coordinator (section 7). Lanes 5-6 are advisor-only by design and can never
+gain execution authority regardless of coordinator outcome (see hard safety
+defaults, section 3).
 
 ### Advisor and observability surfaces (implemented)
 
 - **Swarm Council** - real-time lane coordination UI showing each lane's status
 - **Strategy Inspector** - export format showing full decision state
-- **Laboratory** - read-only simulation for ability value comparison (gated, manually triggered)
+- **Laboratory** - read-only simulation for ability value comparison (gated,
+  manually triggered; contract: `docs/strategy/SWARMSIM_LABORATORY_PHASE_1.md`)
 
 ### Lane expansion
 
-The 5-lane model may need additional lanes as Strategy Intelligence work reveals
-gaps. Any new lane proposal requires a strategy decision record in `docs/strategy/`.
+The lanes above are already unified through the M6 six-domain coordinator
+(section 7), not isolated silos. Additional lanes/domains may still be
+needed as Strategy Intelligence work reveals gaps. Any new lane or domain
+proposal requires a strategy decision record in `docs/strategy/`.
 
 ## 7. Multi-Lane Coordinator
 
-The next architecture step is a central coordinator/arbiter that receives proposals from lanes.
+The coordinator described in this section is implemented, not a future step.
+It exists in two layers that both run every cycle:
+
+- **M2 unified purchase evaluator** — collects one proposal per executable
+  lane (Meat, Engine, Territory, Energy production) from a single
+  pre-execution snapshot, scores them, and can resolve and execute the exact
+  bounded winner through a canonical runtime id/kind/variant adapter.
+- **M6 six-domain strategic coordinator** — compares all six domains from
+  section 6 (the four executable lanes above plus the two advisor-only
+  domains, Energy abilities and Ascension/Mutagen) on one shared immutable
+  decision snapshot, and is the ranking shown in Council/Inspector as the
+  strategic "winner".
+
+**M6 only gains real execution authority when its selected winner exactly
+matches the M2 unified evaluator's winner, the M2 proposals are rebuilt and
+the plan is revalidated in the same cycle immediately before executing, and
+all hard gates pass.** If M6's pick disagrees with M2, or revalidation fails,
+or the winner is one of the two advisor-only domains, M6 does not execute
+anything that cycle (`executionAuthority: false`) and never falls through to
+a runner-up.
+
+**Legacy fixed lane order (Engine -> critical upgrades -> Energy -> Clone
+buffer -> Meat unlock planner -> Smart upgrades -> Smart units) remains the
+active fallback path and, in practice, performs most purchases.** M6 only
+claims a specific lane's purchase this cycle when it has execution
+authority for that lane and the buy actually matches; every other lane still
+executes through its own legacy code path in the same cycle (guarded so a
+lane M6 already bought is not bought twice). A change here
+(`m6DecisionOwnsMainCycle` in `dev-src/runtime-sections/runtime-main.js`)
+must not be made without the live purchase acceptance check
+(`check:live-purchase-acceptance` in `npm run verify`) passing first — a
+prior attempt to give M6 sole ownership of the main cycle shipped across
+four releases (6.0.0-8.1.0) with the bot unable to buy anything in live play,
+found only by a player report.
 
 Each lane should produce proposal-like data:
 

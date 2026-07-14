@@ -5,6 +5,39 @@ blocked handoff, milestone transition, and accepted verification result.
 
 Last reviewed: 2026-07-14
 
+## Current status snapshot (2026-07-14)
+
+Runtime `9.1.0`, integrated on `main`. Closed and verified:
+
+- M2 bounded exact-execution coordinator and M6 six-domain strategic
+  coordinator (both implemented; see `docs/SWARMSIM_GAME_MODEL.md` section 7).
+- Milestone 8 (ETA-grounded false-wait reduction, `8.1.0`) and Milestone 9
+  (resource-scoped save locks) are both closed.
+- Live purchase acceptance (`check:live-purchase-acceptance`): proves a real
+  `runOnce()` cycle actually buys something, through both the legacy path
+  and the M6-authorized path, with count/resource deltas read from game
+  state. Mutation-control verified.
+- SA1 9.0.0-vs-9.1.0 comparison: 0 winner/decision differences across the
+  7-scenario matrix. 9.1.0 scoring kept unchanged (audit finding F2 closed
+  as "no observed regression"; the underlying triple-count code smell is
+  tracked, not urgent).
+- F3 (stall-breaker decision gate now reads structured `blockerCategories`
+  instead of regex-over-text) and F7 (`DEFAULT_CONFIG.unitStrategy` now
+  matches the Smart preset, `"balanced"`) are both closed.
+
+Known architecture question, not a blocker: three ranking systems coexist
+(M6's six-domain comparison, M2's `economicScore`, and the fixed legacy lane
+order), and the legacy order remains the practical arbiter whenever M6 and
+M2 disagree (F1, `REPOSITORY_AUDIT_REVIEW_2026-07-14.md`). This is accepted,
+documented current architecture (see `docs/SWARMSIM_GAME_MODEL.md` section
+7) — not something blocking further work, but worth harmonizing later with
+real live-play evidence rather than a speculative refactor.
+
+Next direction: live observation of the accepted 9.1.0 baseline in real
+play, to surface the next strategy problem with actual evidence (rather
+than starting Milestone 10/11 speculatively). See "Immediate next actions"
+below.
+
 ## Read this first
 
 A new implementation agent should read, in order:
@@ -130,9 +163,9 @@ Formal closure:
 - exact-SHA verification worktree reproduced the identical passing result;
 - `HEAD` equals `origin/main` at the implementation SHA; working tree clean.
 
-**Next milestone: Milestone 9 - Resource-scoped save locks**, foundation at
-`docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`. Runtime
-implementation has not started.
+**Milestone 9 - Resource-scoped save locks (CLOSED)**, foundation at
+`docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`. See the
+2026-07-14 "Milestone 9 closed" handoff entry below for the closure record.
 
 Energy abilities, Ascension, and Mutagen remain advisor-only and
 non-executable.
@@ -249,52 +282,40 @@ count/resource deltas read from game state, that both the legacy purchase path a
 the M6-authorized purchase path actually buy something. Mutation control confirmed
 the check fails when `m6DecisionOwnsMainCycle` is reintroduced as `true`.
 
-Product capability (M9, not started):
+Since that audit, the following were closed narrowly, in order, each with a
+separate handoff entry below: the SA1 9.0.0-vs-9.1.0 comparison (F2 evidence;
+0 winner/decision differences, 9.1.0 scoring kept as-is), F3 (structured
+`blockerCategories` replace regex-over-text in the stall-breaker decision
+gate), and F7 (`DEFAULT_CONFIG.unitStrategy` now matches the Smart preset).
 
-Product capability (M9, not started):
-
-- Resource-scoped save locks: keep only the actively save-windowed resource
-  (for example Territory for Expansion) locked, while safe non-conflicting
-  buys from other resources remain executable instead of a global HOLD.
-
-Player-visible change (M9, planned):
-
-- The bot no longer enters global HOLD just because Territory is protected for
-  Expansion; Meat/Larva/Energy progression can continue when those actions do
-  not spend protected Territory.
-
-Foundation document: `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md`
-(implementation-ready handoff contract; target release `9.0.0`).
-
-Recommended run: **GPT-5.3-Codex (medium reasoning)** for bounded coordinator
-logic and blocker observability.
-
-Escalate when: resource-protection semantics conflict across lanes or
-protected resource identity becomes ambiguous in replay evidence.
+No work package is currently in flight. The next direction is live
+observation of the accepted baseline rather than a new coded milestone; see
+"Immediate next actions" below.
 
 ## Immediate next actions
 
-M8 and M9 are closed. The live purchase acceptance check
-(`check:live-purchase-acceptance`) is implemented and green in `npm run verify`
-as of 2026-07-14 (see handoff below). The audited baseline was
-`2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (9.1.0). Execute these next:
+M8, M9, the live purchase acceptance check, the SA1 9.0.0-vs-9.1.0
+comparison (F2 evidence), F3, and F7 are all closed as of 2026-07-14 (see
+handoff entries below for each). The audited baseline was
+`2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (9.1.0); current `main` is ahead
+of that with the closures above.
 
-1. Run the SA1 comparison described in
-   [REPOSITORY_AUDIT_REVIEW_2026-07-14.md](REPOSITORY_AUDIT_REVIEW_2026-07-14.md)
-   section 10 item 5 before any scoring/comparability change (audit finding
-   F2).
-2. Record implementation/evidence SHAs and prepare separate commits per
-   `docs/process/GIT_VERIFICATION_PROTOCOL.md`.
+No specific milestone is queued next. The next direction is live
+observation: run the accepted 9.1.0 baseline against real/live-like play
+(SA1 sweep matrix, or an actual reported save) and let the next strategy
+problem be selected from what that evidence actually shows, rather than
+starting Milestone 10/11 speculatively. If a concrete player-reported issue
+or a new verified finding emerges, treat that as the next work package.
 
-Hard constraints from the 2026-07-14 audit:
+Hard constraints (still active):
 
 - Do not change scoring/comparability (`evaluatePurchaseCandidate`,
-  `projectedMilestoneProgressDelta`, `sixDomainComparableValue`) before the
-  SA1 evidence run above has been executed and documented.
-- `m6DecisionOwnsMainCycle` may now be reconsidered with the live purchase
-  acceptance check as a regression guard, but this remains out of scope for
-  the live purchase acceptance work package itself; no such change was made
-  here.
+  `projectedMilestoneProgressDelta`, `sixDomainComparableValue`) without a
+  fresh SA1 (or equivalent live) evidence run documented alongside the
+  change.
+- Do not give M6 sole main-cycle ownership (`m6DecisionOwnsMainCycle =
+  true`) without the live purchase acceptance check passing against that
+  change first (it is designed to fail exactly that regression).
 
 ## Known current blockers and cautions
 
@@ -320,40 +341,12 @@ Hard constraints from the 2026-07-14 audit:
 - Do not duplicate or redesign Council UI3/fixed-layout work.
 - Do not change hard safety defaults or normal strategy thresholds.
 
-## Next product milestone
+## Planned future milestones (not started)
 
-**Milestone 9 - Resource-scoped save locks**
-
-Required product outcome:
-
-- protect only the resource under active save-window priority (for example
-  Territory for Expansion), while keeping unrelated resource lanes executable
-  when safe;
-- prevent global HOLD lock when only one resource is protected;
-- expose protected-resource identity and non-conflicting execution decisions in
-  Council/Inspector observability.
-
-Implementation proceeds from the accepted 8.1.0 baseline
-(`c014158cea82696cbdb18506045e60126c676116`) and must stay narrow, observable,
-and protocol-compliant.
-
-## Planned after M8
-
-**Milestone 9 - Resource-scoped save locks**
-
-Required product outcome:
-
-- protect only the resource that is under active save-window priority (for
-  example Territory for Expansion), while keeping unrelated resource lanes
-  executable when safe;
-- prevent global HOLD lock when only one resource is protected;
-- expose protected-resource identity and non-conflicting execution decisions in
-  Council/Inspector observability.
-
-Planned player-visible change:
-
-- Expansion save-window can hold Territory spend without freezing Meat/Larva/
-  Energy progression when those actions are otherwise safe.
+Milestone 9 (resource-scoped save locks) is closed — see the current status
+snapshot and handoff log, not this section. Nothing below has started;
+neither is queued as the immediate next action (see "Immediate next
+actions" above — that is live observation, not one of these).
 
 **Milestone 10 - Council timeline and decision replay**
 
