@@ -44,7 +44,7 @@ Observed before the M7 foundation work:
   `40c258a7cf19d9660b2c13caf3b5d9b4e0e74da5`;
 - fixed Council window implementation / current baseline:
   `04bb94678ba9ac29d03e2b2c00760ffb40510e55`;
-- runtime version: `8.1.0`;
+- runtime version: `9.0.0`;
 - Council desktop layout: fixed `1180 x 700`, movable, `resize: none`, layout
   key `kbcSwarmBotCouncilPanelLayout_v2`;
 - working tree: clean before the M7 documentation branch was created.
@@ -67,7 +67,7 @@ Observed after M8 8.1.0 closure (2026-07-14):
   generated-evidence commit was required; this status-board update is the
   provenance record for the accepted run.
 
-Current runtime version: `8.1.0`
+Current runtime version: `9.0.0`
 
 ## Product north star
 
