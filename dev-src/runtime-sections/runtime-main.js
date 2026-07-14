@@ -1944,6 +1944,11 @@ function getDisplayName(item) {
     if (/reserve|buffer|negative|below/.test(`${reasonText} ${blockerText}`)) categories.push("reserve");
     if (/nexus|lepidoptera|moth|energy plan|saving energy for nexus/.test(`${reasonText} ${blockerText}`)) categories.push("energy-plan");
     if (/auto-cast|ability auto-cast|abilities disabled|ability planner/.test(`${reasonText} ${blockerText}`)) categories.push("ability-disabled");
+    // Same signal laneCandidateHasEtaStallSignal's text fallback used to test
+    // directly against reason/blocker text; classified once here so the M8
+    // stall-breaker gate can read a structured category instead of re-parsing
+    // free text every time it counts hold runs.
+    if (/eta|payback|reserve|not meaningful|below minimum/.test(`${reasonText} ${blockerText}`)) categories.push("eta-stall-signal");
 
     return Array.from(new Set(categories));
   }
@@ -2833,11 +2838,22 @@ function getDisplayName(item) {
     return count;
   }
 
+  // Structured decision carrier for the stall-breaker gate: reads the
+  // blockerCategories already classified onto each lane candidate (once, at
+  // classification time in classifyCandidateBlockers) instead of re-parsing
+  // the human-readable blockedBySummary string. blockedBySummary itself is
+  // built from the same categories (see summarizeBlockerLabels) and remains
+  // unchanged for UI/observability; it is just no longer read back as a
+  // decision input here (F3).
+  function runHasLaneCandidateBlockerCategory(run, category) {
+    const laneCandidates = Array.isArray(run?.laneCandidates) ? run.laneCandidates : [];
+    return laneCandidates.some((entry) => entry?.blockerCategories?.includes(category));
+  }
+
   function countConsecutiveReserveAbilityBlockedMainHolds(history = runHistory) {
-    return countConsecutiveMainHoldRunsMatching((run) => {
-      const blocked = String(run?.blockedBySummary || "").toLowerCase();
-      return blocked.includes("reserve") && blocked.includes("ability disabled");
-    }, history);
+    return countConsecutiveMainHoldRunsMatching((run) =>
+      runHasLaneCandidateBlockerCategory(run, "reserve") && runHasLaneCandidateBlockerCategory(run, "ability-disabled"),
+    history);
   }
 
   function laneCandidateHasEtaStallSignal(candidate) {
@@ -2853,14 +2869,12 @@ function getDisplayName(item) {
       return etaBefore > 0;
     }
 
-    const reasonText = `${candidate.reason || ""} ${(candidate.blockers || []).join(" ")}`.toLowerCase();
-    return /eta|payback|reserve|not meaningful|below minimum/.test(reasonText);
+    return !!candidate.blockerCategories?.includes("eta-stall-signal");
   }
 
   function countConsecutiveEtaGroundedReserveAbilityBlockedMainHolds(history = runHistory) {
     return countConsecutiveMainHoldRunsMatching((run) => {
-      const blocked = String(run?.blockedBySummary || "").toLowerCase();
-      if (!(blocked.includes("reserve") && blocked.includes("ability disabled"))) return false;
+      if (!(runHasLaneCandidateBlockerCategory(run, "reserve") && runHasLaneCandidateBlockerCategory(run, "ability-disabled"))) return false;
 
       const laneCandidates = Array.isArray(run?.laneCandidates) ? run.laneCandidates : [];
       const holdRows = laneCandidates.filter((entry) => String(entry?.decision || "").toUpperCase() === "HOLD");
@@ -22167,6 +22181,20 @@ function getDisplayName(item) {
             decision = applyWholeEconomyExecutionRevalidationV1({ decision, revalidationState, actionBudget });
           }
           return laboratoryCloneJson(decision);
+        },
+      },
+
+      // Narrow, additive test hook (mirrors purchaseEvaluator above): lets a
+      // check drive the F3 structured stall-breaker gate directly, without
+      // needing a full staged game cycle, to prove that reworded reason/
+      // blocker display text does not change the gate's decision as long as
+      // blockerCategories are unchanged.
+      stallBreakerDiagnostics: {
+        countReserveAbilityBlockedHolds(history = []) {
+          return countConsecutiveReserveAbilityBlockedMainHolds(history);
+        },
+        countEtaGroundedReserveAbilityBlockedHolds(history = []) {
+          return countConsecutiveEtaGroundedReserveAbilityBlockedMainHolds(history);
         },
       },
 

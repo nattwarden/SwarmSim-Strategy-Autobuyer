@@ -389,6 +389,74 @@ Exact next action:
 
 ## Handoff log
 
+### 2026-07-14 - F3 closed: stall-breaker gate reads structured blockerCategories instead of regex-over-text
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Baseline: `129ed68cab524d783e503d2fc3755ddc5367894b` (9.1.0). Preceded by an
+  SA1 9.0.0-vs-9.1.0 comparison run (0 winner/decision differences across the
+  7-scenario matrix; 9.1.0 scoring kept unchanged, no code touched for that
+  step).
+- Scope: audit finding F3 only. Replaced the two decision-affecting
+  regex-over-text checks that gate the M8 stall breaker
+  (`isMeatStallBreakerPatternReady`) with structured `blockerCategories`
+  reads:
+  - `countConsecutiveReserveAbilityBlockedMainHolds` and
+    `countConsecutiveEtaGroundedReserveAbilityBlockedMainHolds` previously
+    re-parsed the rendered `blockedBySummary` string
+    (`.includes("reserve") && .includes("ability disabled")`). They now call
+    a new `runHasLaneCandidateBlockerCategory(run, category)` helper that
+    reads `run.laneCandidates[].blockerCategories` directly (already present
+    on every run-history entry; no new fields needed).
+  - `laneCandidateHasEtaStallSignal`'s text fallback (used only when
+    `raw.etaImprovementSeconds`/`etaBeforeSeconds` are both absent) previously
+    regex-tested `reason`/`blockers` text for `/eta|payback|reserve|not
+    meaningful|below minimum/`. That exact condition is now classified once,
+    at candidate-creation time, into a new `eta-stall-signal` category inside
+    `classifyCandidateBlockers`; the fallback is now a pure
+    `blockerCategories.includes("eta-stall-signal")` check.
+  - `blockedBySummary`/`summarizeBlockerLabels` and the diagnostics-only
+    `saveWindowRuns`/`classifyCoordinatorBudgetReason` regexes (UI/Inspector
+    text only, confirmed not read back into any decision) were left
+    unchanged, per scope.
+- Added a narrow, additive test hook,
+  `window.kbcSwarmBot.stallBreakerDiagnostics` (mirrors the existing
+  `purchaseEvaluator` test-hook pattern), exposing the two count functions
+  directly so a check can drive them without a full staged game cycle.
+- New regression check
+  `scripts/check-book00-f3-structured-stall-breaker.js`
+  (`check:book00:f3:structured-stall-breaker`, added to `verify`): builds
+  synthetic run histories with identical `blockerCategories` but (a) the
+  original-style reason wording, (b) a harmless rewording that would not
+  match the old text regex, and (c) a deliberately stale/misleading
+  `blockedBySummary` string. Asserts all three produce the same hold count
+  (3) for both the reserve+ability-disabled gate and the ETA-grounded gate —
+  proving the decision no longer depends on reason/blocker wording.
+- No scoring, lane order, threshold, or safety-default change. No general
+  refactor; only the two decision-affecting text dependencies identified in
+  F3 were touched (the `unlock` regex inside `evaluatePurchaseCandidate`
+  scoring, and the UI/diagnostics-only save-window/coordinator-reason
+  regexes, were explicitly left alone).
+- Commands and exit codes: `npm run build` -> `0`;
+  `node scripts/check-book00-f3-structured-stall-breaker.js` -> `0`;
+  `node scripts/check-book00-m8-false-wait.js` -> `0`, identical result
+  before and after (`blocker cycles=5, eta-grounded-by-cycle3=3,
+  stall-breaker-cycle=3`), confirming behavior preservation on the one
+  existing scenario that actually exercises this gate; `npm run verify` ->
+  `0` (full chain, including the live purchase acceptance check from the
+  prior handoff entry, unaffected).
+- Files changed: `dev-src/runtime-sections/runtime-main.js` (+ canonical
+  rebuild `src/SwarmSim-Strategy-Autobuyer.user.js`),
+  `scripts/check-book00-f3-structured-stall-breaker.js` (new), `package.json`
+  (new script, appended to `verify`), this handoff entry.
+- Milestone checklist items completed: closes audit finding F3 (stall-breaker
+  portion; save-window UI/diagnostics regexes were confirmed non-decision and
+  intentionally left as-is).
+- Remaining blocker: none. The `unlock`-regex component of
+  `evaluatePurchaseCandidate`'s scoring (F2/F9, a separate concern) remains
+  untouched, as scoped.
+- Exact next action: none selected; awaiting next task.
+
 ### 2026-07-14 - Live purchase acceptance check implemented and wired into verify
 
 - Agent: Claude (Sonnet 5)
