@@ -285,13 +285,30 @@ example Parent Step cycle 1 -> Parent Refill cycle 2):
 
 ## Version markers and guardrail compatibility
 
-When bumping patch versions, update all version surfaces together:
+When bumping versions, update these surfaces together:
 
-- package version in `package.json`
-- userscript metadata version in `src/SwarmSim-Strategy-Autobuyer.user.js`
-- runtime constants (`SCRIPT_VERSION`, `SCENARIO_REPORT_VERSION`)
+- package version in `package.json` and `package-lock.json` (root + `packages[""]`)
+- userscript metadata version (`// @version`) in `src/SwarmSim-Strategy-Autobuyer.user.js`
+- runtime constants (`AUTOBUYER_VERSION`, which `SCRIPT_VERSION` and
+  `SCENARIO_REPORT_VERSION` derive from) in both `dev-src/runtime-sections/runtime-main.js`
+  and the built `src/SwarmSim-Strategy-Autobuyer.user.js`
 - browser badge/version text derived from runtime constants
 - scenario report templates/definitions for the new version
+
+`npm run verify` checks these mechanically with `scripts/check-version-surfaces.js`
+(`npm run check:version:surfaces`), which reads the version from `package.json`
+instead of hardcoding it. **Do not create a new per-version
+`check-X.Y.Z-version-surfaces.js` file or npm script for a version bump** —
+that per-version-file pattern was retired because it made every bump require
+touching ~8 files including a brand-new script just to keep `verify` green.
+The old numbered scripts under `scripts/` are kept only as historical
+artifacts; they are not run by `verify` and should not be extended.
+
+Updating README.md, `docs/process/HISTORY.md`,
+`docs/strategy/BOOK00_CURRENT_STATUS.md`'s "Current runtime version" line, and
+adding a `docs/release-notes/` file are good practice for a real release, but
+none of them are required for `npm run verify` to pass. Skip them for small
+bumps; do them for anything worth explaining to a future reader.
 
 Guardrail compatibility rule:
 
