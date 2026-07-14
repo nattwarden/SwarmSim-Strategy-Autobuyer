@@ -235,8 +235,14 @@ already scoped protection to the specific resource being spent, so no new
 runtime code was needed. Added a focused acceptance check
 (`check:book00:m9:resource-locks`) proving Territory stays HOLD under an
 active Expansion save window while Meat/Engine/Upgrade remain BUY-eligible.
-`npm run verify` is green with the new check included. The next open work
-package has not been selected yet.
+`npm run verify` is green with the new check included.
+
+A full read-only repository audit was performed on 2026-07-14 against
+`2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (see the audit handoff entry and
+[REPOSITORY_AUDIT_REVIEW_2026-07-14.md](REPOSITORY_AUDIT_REVIEW_2026-07-14.md)).
+The selected next open work package is the verify-integrated acceptance check
+for real autobuy purchases:
+[BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md](BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md).
 
 Product capability (M9, not started):
 
@@ -263,19 +269,27 @@ protected resource identity becomes ambiguous in replay evidence.
 
 ## Immediate next actions
 
-M8 is closed. Execute these in order for Milestone 9:
+M8 and M9 are closed. The audited baseline is
+`2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (9.1.0). Execute these in order:
 
-1. Read `docs/strategy/BOOK00_M9_RESOURCE_SCOPED_SAVE_LOCKS_FOUNDATION.md` in
-  full before writing any runtime code.
-2. Record the current accepted baseline SHA
-  (`c014158cea82696cbdb18506045e60126c676116`) before implementation starts.
-3. Implement resource-scoped lock semantics in the coordinator/main-action flow
-  per the M9 contract, keeping other lanes executable when safe.
-4. Add focused acceptance for Expansion save-window + non-Territory
-  continuation, then run focused Strategy Audit plus full verification
-  (`npm run verify`).
-5. Record implementation/evidence SHAs and prepare separate commits per
-  `docs/process/GIT_VERIFICATION_PROTOCOL.md`.
+1. Read
+   [BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md](BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md)
+   in full and implement the verify-integrated acceptance check for real
+   autobuy purchases (test-harness-only change; no runtime edits).
+2. Run the SA1 comparison described in
+   [REPOSITORY_AUDIT_REVIEW_2026-07-14.md](REPOSITORY_AUDIT_REVIEW_2026-07-14.md)
+   section 10 item 5 before any scoring/comparability change (audit finding
+   F2).
+3. Record implementation/evidence SHAs and prepare separate commits per
+   `docs/process/GIT_VERIFICATION_PROTOCOL.md`.
+
+Hard constraints from the 2026-07-14 audit:
+
+- Do not change scoring/comparability (`evaluatePurchaseCandidate`,
+  `projectedMilestoneProgressDelta`, `sixDomainComparableValue`) before the
+  SA1 evidence run above has been executed and documented.
+- Do not give M6 main-cycle ownership (`m6DecisionOwnsMainCycle`) again before
+  the live purchase acceptance check exists and passes.
 
 ## Known current blockers and cautions
 
@@ -369,6 +383,47 @@ Exact next action:
 ```
 
 ## Handoff log
+
+### 2026-07-14 - Read-only repository audit recorded; live purchase acceptance selected as next work package
+
+- Agent: Claude (Fable 5)
+- Worktree/branch: primary workspace, `main`
+- Scope: full read-only architecture/strategy/harness/AI-governance audit of
+  the repository at `2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (9.1.0). No
+  runtime, test, scoring, or safety-default changes were made during the
+  audit or in this documentation package.
+- Commands and exit codes during the audit:
+  `node scripts/build-canonical-userscript.js --check` -> `0`;
+  `npm run verify` -> `0` (full chain, including the live-Chrome
+  `check:book00:m8:false-wait` and `check:book00:m9:resource-locks`).
+- Full audit report (timestamped evidence for the audited commit, not
+  permanent normative truth):
+  [REPOSITORY_AUDIT_REVIEW_2026-07-14.md](REPOSITORY_AUDIT_REVIEW_2026-07-14.md).
+- Key verified findings (details and file/line evidence in the report):
+  three coexisting ranking systems with the fixed legacy lane order as the
+  practical arbiter (F1); the 9.1.0 `projectedMilestoneProgressDelta` fix
+  also shifted the executing evaluator's economicScore/confidence and
+  triple-counts completion for Engine, live-unverified (F2); decision gates
+  regex-parse free-text reasons (F3); no check in `verify` proves a real
+  purchase happens through `runOnce()` in autobuy mode — the gap that let the
+  6.0.0-8.1.0 "bot buys nothing" regression pass formal verification (F4);
+  the in-runtime deterministic harness does not run the production cycle
+  (F5); game-model documentation drift (F6).
+- Product capability changed: none (documentation only).
+- Safety: no hard-default or authority-boundary change; nothing in the audit
+  package touches runtime files.
+- Next open work package (selected):
+  [BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md](BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md)
+  — a verify-integrated acceptance check proving real autobuy purchases via
+  count deltas, with mutation control against the historical
+  `m6DecisionOwnsMainCycle` bug.
+- Hard constraints recorded: no scoring/comparability change before the SA1
+  9.0.0-vs-9.1.0 evidence run (audit report section 10 item 5); no M6
+  main-cycle ownership before the purchase acceptance check exists and
+  passes.
+- Remaining blocker: none for this package.
+- Exact next action: implement
+  `BOOK00_LIVE_PURCHASE_ACCEPTANCE_FOUNDATION.md`.
 
 ### 2026-07-14 - M6 comparability gap closed for Engine/Meat/Energy purchase domains
 

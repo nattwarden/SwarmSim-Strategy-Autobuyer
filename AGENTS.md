@@ -58,6 +58,11 @@ Release history is tracked through Git commits, tags, `docs/process/HISTORY.md`,
 
 Empirical evidence belongs under `docs/live-logs/` and versioned `docs/test-data/` paths.
 
+The active status board and the currently selected work order are linked from
+`docs/strategy/BOOK00_CURRENT_STATUS.md`. Audit review notes in
+`docs/strategy/` are timestamped evidence about one audited commit and are not
+automatically current runtime truth.
+
 ## Required reading order
 
 Before changing code, read:
