@@ -19818,6 +19818,8 @@ function getDisplayName(item) {
     const selectedFingerprint = decision?.selectedFingerprint || "none";
     const executedFingerprint = result?.executedFingerprint || "none";
     const matched = executed && selectedFingerprint !== "none" && executedFingerprint === selectedFingerprint;
+    // 9.4.0 STOP GATE 2 (A2): surface the four-value amount contract on the decision for observability.
+    const amountContract = result?.amountContract || null;
     return {
       ...(decision || createWholeEconomyExecutionDecisionBase(0)),
       executed,
@@ -19826,6 +19828,11 @@ function getDisplayName(item) {
       matchedExecution: matched ? "yes" : "no",
       selectedFingerprint,
       executedFingerprint,
+      amountContract,
+      authorizedRequestedAmount: amountContract?.authorizedRequestedAmount ?? decision?.selectedAmount ?? "0",
+      commandRequestedAmount: amountContract?.commandRequestedAmount ?? "0",
+      confirmedPurchasedAmount: amountContract?.confirmedPurchasedAmount ?? "0",
+      observedTotalCountDelta: amountContract?.observedTotalCountDelta ?? "0",
     };
   }
 
@@ -19847,6 +19854,150 @@ function getDisplayName(item) {
       : null;
   }
 
+  // 9.4.0 STOP GATE 2 (A2): the four-value amount contract. All four values are exact Decimal strings.
+  //   authorizedRequestedAmount  - the amount the coordinator authorized (from the bounded proposal).
+  //   commandRequestedAmount     - the amount actually handed to the game buy command.
+  //   confirmedPurchasedAmount   - the strongest PROVABLE purchased amount (see A3 note below).
+  //   observedTotalCountDelta    - the raw unit.count() after-before delta; SUPPORTING EVIDENCE ONLY.
+  // Before a command, authorizedRequestedAmount MUST equal commandRequestedAmount, unless a clamp was
+  // applied through a NAMED revalidation policy (never silently inside an execution helper).
+  function buildExecutionAmountContract({ authorizedRequestedAmount, commandRequestedAmount, clampPolicy = null }) {
+    const authorized = normalizeBoundedAmountToken(authorizedRequestedAmount);
+    const command = normalizeBoundedAmountToken(commandRequestedAmount);
+    let clampApplied = false;
+    let clampReason = null;
+    let amountBeforeClamp = null;
+    let amountAfterClamp = null;
+    if (command !== authorized && clampPolicy && typeof clampPolicy.policyName === "string" && clampPolicy.policyName.trim()) {
+      clampApplied = true;
+      clampReason = String(clampPolicy.reason || clampPolicy.policyName).trim();
+      amountBeforeClamp = authorized;
+      amountAfterClamp = command;
+    }
+    const contractSatisfied = command === authorized || clampApplied;
+    return {
+      schemaVersion: "execution-amount-contract.v1",
+      authorizedRequestedAmount: authorized,
+      commandRequestedAmount: command,
+      clampApplied,
+      clampPolicyName: clampApplied ? String(clampPolicy.policyName).trim() : null,
+      clampReason,
+      amountBeforeClamp,
+      amountAfterClamp,
+      contractSatisfied,
+      violation: contractSatisfied ? null : "AMOUNT_CONTRACT_VIOLATION: commandRequestedAmount != authorizedRequestedAmount without a named clamp policy",
+      // filled by finalizeExecutionAmountContract after the command:
+      commandSucceeded: false,
+      confirmedPurchasedAmount: "0",
+      confirmationBasis: "not-executed",
+      observedTotalCountDelta: "0",
+      costResourceConsumed: {},
+      verifiedResourceConsumption: false,
+    };
+  }
+
+  function readBindingCostCounts(item) {
+    const out = {};
+    const costs = safe("amount-contract cost list", () => getCostList(item)) || [];
+    for (const c of costs) {
+      if (!c?.unit) continue;
+      const name = String(c.unit.name || "");
+      if (!name) continue;
+      out[name] = decimalFrom(safe(`amount-contract cost count ${name}`, () => c.unit.count?.()) || 0, 0);
+    }
+    return out;
+  }
+
+  function summarizeCostConsumption(before, after) {
+    let anyStrictDecrease = false;
+    const consumed = {};
+    const b = before || {};
+    const a = after || {};
+    for (const name of Object.keys(b)) {
+      const bv = decimalFrom(b[name], 0);
+      const av = decimalFrom(a[name] !== undefined ? a[name] : b[name], 0);
+      const spent = bv.minus(av); // positive when the cost resource was drawn down (i.e. spent)
+      consumed[name] = normalizeBoundedAmountToken(spent);
+      if (spent.greaterThan(0)) anyStrictDecrease = true;
+    }
+    return { anyStrictDecrease, consumed };
+  }
+
+  // 9.4.0 A3 (honest confirmed-purchase source): the game's buyUnit/buyUpgrade commands do NOT return a
+  // purchased amount. For non-self-producing UPGRADES the discrete count delta IS the confirmed amount.
+  // For UNITS the count delta is polluted by passive production between the two count() reads, so it is
+  // SUPPORTING EVIDENCE ONLY; the strongest provable purchased amount is the affordability-bounded
+  // commandRequestedAmount corroborated by command success + verified cost-resource consumption. We never
+  // fabricate a precision the game API does not expose.
+  function finalizeExecutionAmountContract(contract, { commandSucceeded, observedTotalCountDelta, costBefore, costAfter, kind }) {
+    const observed = normalizeBoundedAmountToken(observedTotalCountDelta);
+    const { anyStrictDecrease, consumed } = summarizeCostConsumption(costBefore, costAfter);
+    const succeeded = !!commandSucceeded;
+    let confirmedPurchasedAmount = "0";
+    let confirmationBasis = "command-failed";
+    if (succeeded && contract.contractSatisfied) {
+      if (kind === "upgrade") {
+        confirmedPurchasedAmount = observed; // discrete, not passively produced
+        confirmationBasis = "discrete-upgrade-count-delta";
+      } else if (anyStrictDecrease) {
+        confirmedPurchasedAmount = contract.commandRequestedAmount;
+        confirmationBasis = "authorized-command-amount+command-success+verified-cost-consumption";
+      } else {
+        confirmedPurchasedAmount = "0";
+        confirmationBasis = "unconfirmed-no-cost-consumption";
+      }
+    }
+    return {
+      ...contract,
+      commandSucceeded: succeeded,
+      observedTotalCountDelta: observed,
+      costResourceConsumed: consumed,
+      verifiedResourceConsumption: anyStrictDecrease,
+      confirmedPurchasedAmount,
+      confirmationBasis,
+    };
+  }
+
+  // Shared bounded-buy path used by every exact-candidate executor: enforces the amount contract before
+  // the command and records the four-value ledger after it. Runtime never silently clamps, so
+  // commandRequestedAmount == authorizedRequestedAmount; a contract violation refuses to execute.
+  function executeBoundedBuyWithAmountContract({ commands, item, kind, authorizedAmount, label, clampPolicy = null }) {
+    const contract = buildExecutionAmountContract({
+      authorizedRequestedAmount: authorizedAmount,
+      commandRequestedAmount: authorizedAmount,
+      clampPolicy,
+    });
+    if (!contract.contractSatisfied) {
+      return { bought: false, executedAmount: "0", observedTotalCountDelta: "0", confirmedPurchasedAmount: "0", amountContract: contract };
+    }
+    const commandAmount = parseBoundedAmountToken(contract.commandRequestedAmount);
+    if (!commandAmount) {
+      return { bought: false, executedAmount: "0", observedTotalCountDelta: "0", confirmedPurchasedAmount: "0", amountContract: finalizeExecutionAmountContract(contract, { commandSucceeded: false, observedTotalCountDelta: "0", costBefore: {}, costAfter: {}, kind }) };
+    }
+    const countBefore = decimalFrom(item.count?.() || 0, 0);
+    const costBefore = readBindingCostCounts(item);
+    const bought = kind === "upgrade"
+      ? safe(`Amount-contract buy ${label}`, () => buyUpgradeAmount(commands, item, commandAmount, label))
+      : safe(`Amount-contract buy ${label}`, () => buyUnitAmount(commands, item, commandAmount, label));
+    const countAfter = decimalFrom(item.count?.() || 0, 0);
+    const costAfter = readBindingCostCounts(item);
+    const observed = countAfter.minus(countBefore);
+    const finalized = finalizeExecutionAmountContract(contract, {
+      commandSucceeded: !!bought,
+      observedTotalCountDelta: observed,
+      costBefore,
+      costAfter,
+      kind,
+    });
+    return {
+      bought: !!bought,
+      executedAmount: bought ? normalizeBoundedAmountToken(observed) : "0",
+      observedTotalCountDelta: normalizeBoundedAmountToken(observed),
+      confirmedPurchasedAmount: finalized.confirmedPurchasedAmount,
+      amountContract: finalized,
+    };
+  }
+
   function executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
     const amount = parseBoundedAmountToken(expectedAmount);
     const unit = expectedExecutionKind === "unit"
@@ -19865,19 +20016,19 @@ function getDisplayName(item) {
       };
     }
 
-    const before = decimalFrom(unit.count?.() || 0, 0);
-    const bought = safe(`Unified Meat ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Target path action"));
-    const after = decimalFrom(unit.count?.() || 0, 0);
-    const delta = after.minus(before);
+    const exec = executeBoundedBuyWithAmountContract({ commands, item: unit, kind: "unit", authorizedAmount: expectedAmount, label: "Target path action" });
     return {
-      actionTaken: bought,
-      bought: bought ? 1 : 0,
+      actionTaken: exec.bought,
+      bought: exec.bought ? 1 : 0,
       executedCandidate: getDisplayName(unit),
       executedExecutionId: unit.name,
       executedExecutionKind: "unit",
       executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
-      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-      summary: bought ? `Bought ${getDisplayName(unit)}` : `Meat exact buy failed for ${getDisplayName(unit)}`,
+      executedAmount: exec.executedAmount,
+      confirmedPurchasedAmount: exec.confirmedPurchasedAmount,
+      observedTotalCountDelta: exec.observedTotalCountDelta,
+      amountContract: exec.amountContract,
+      summary: exec.bought ? `Bought ${getDisplayName(unit)}` : `Meat exact buy failed for ${getDisplayName(unit)}`,
     };
   }
 
@@ -19902,19 +20053,19 @@ function getDisplayName(item) {
       };
     }
 
-    const before = decimalFrom(upgrade.count?.() || 0, 0);
-    const bought = safe(`Unified Engine ${getDisplayName(upgrade)}`, () => buyUpgradeAmount(commands, upgrade, amount, "Larva Engine"));
-    const after = decimalFrom(upgrade.count?.() || 0, 0);
-    const delta = after.minus(before);
+    const exec = executeBoundedBuyWithAmountContract({ commands, item: upgrade, kind: "upgrade", authorizedAmount: expectedAmount, label: "Larva Engine" });
     return {
-      actionTaken: bought,
-      bought: bought ? 1 : 0,
+      actionTaken: exec.bought,
+      bought: exec.bought ? 1 : 0,
       executedCandidate: getDisplayName(upgrade),
       executedExecutionId: upgrade.name,
       executedExecutionKind: "upgrade",
       executedExecutionVariant: expectedExecutionVariant || "base",
-      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-      summary: bought ? `Bought ${getDisplayName(upgrade)}` : `Engine exact buy failed for ${getDisplayName(upgrade)}`,
+      executedAmount: exec.executedAmount,
+      confirmedPurchasedAmount: exec.confirmedPurchasedAmount,
+      observedTotalCountDelta: exec.observedTotalCountDelta,
+      amountContract: exec.amountContract,
+      summary: exec.bought ? `Bought ${getDisplayName(upgrade)}` : `Engine exact buy failed for ${getDisplayName(upgrade)}`,
     };
   }
 
@@ -19936,19 +20087,19 @@ function getDisplayName(item) {
       };
     }
 
-    const before = decimalFrom(unit.count?.() || 0, 0);
-    const bought = safe(`Unified Territory ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Territory Prep"));
-    const after = decimalFrom(unit.count?.() || 0, 0);
-    const delta = after.minus(before);
+    const exec = executeBoundedBuyWithAmountContract({ commands, item: unit, kind: "unit", authorizedAmount: expectedAmount, label: "Territory Prep" });
     return {
-      actionTaken: bought,
-      bought: bought ? 1 : 0,
+      actionTaken: exec.bought,
+      bought: exec.bought ? 1 : 0,
       executedCandidate: getDisplayName(unit),
       executedExecutionId: unit.name,
       executedExecutionKind: "unit",
       executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
-      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-      summary: bought ? `Bought ${getDisplayName(unit)}` : `Territory exact buy failed for ${getDisplayName(unit)}`,
+      executedAmount: exec.executedAmount,
+      confirmedPurchasedAmount: exec.confirmedPurchasedAmount,
+      observedTotalCountDelta: exec.observedTotalCountDelta,
+      amountContract: exec.amountContract,
+      summary: exec.bought ? `Bought ${getDisplayName(unit)}` : `Territory exact buy failed for ${getDisplayName(unit)}`,
     };
   }
 
@@ -19997,18 +20148,19 @@ function getDisplayName(item) {
         };
       }
 
-      const before = decimalFrom(upgrade.count?.() || 0, 0);
-      const bought = safe(`Unified Energy ${getDisplayName(upgrade)}`, () => buyUpgradeAmount(commands, upgrade, amount, "Energy Upgrade"));
-      const delta = decimalFrom(upgrade.count?.() || 0, 0).minus(before);
+      const exec = executeBoundedBuyWithAmountContract({ commands, item: upgrade, kind: "upgrade", authorizedAmount: expectedAmount, label: "Energy Upgrade" });
       return {
-        actionTaken: bought,
-        bought: bought ? 1 : 0,
+        actionTaken: exec.bought,
+        bought: exec.bought ? 1 : 0,
         executedCandidate: getDisplayName(upgrade),
         executedExecutionId: upgrade.name,
         executedExecutionKind: "upgrade",
         executedExecutionVariant: "base",
-        executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-        summary: bought ? `Bought ${getDisplayName(upgrade)}` : `Energy Nexus exact buy failed for ${getDisplayName(upgrade)}`,
+        executedAmount: exec.executedAmount,
+        confirmedPurchasedAmount: exec.confirmedPurchasedAmount,
+        observedTotalCountDelta: exec.observedTotalCountDelta,
+        amountContract: exec.amountContract,
+        summary: exec.bought ? `Bought ${getDisplayName(upgrade)}` : `Energy Nexus exact buy failed for ${getDisplayName(upgrade)}`,
       };
     }
 
@@ -20026,18 +20178,19 @@ function getDisplayName(item) {
       };
     }
 
-    const before = decimalFrom(unit.count?.() || 0, 0);
-    const bought = safe(`Unified Energy ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Energy Unit"));
-    const delta = decimalFrom(unit.count?.() || 0, 0).minus(before);
+    const exec = executeBoundedBuyWithAmountContract({ commands, item: unit, kind: "unit", authorizedAmount: expectedAmount, label: "Energy Unit" });
     return {
-      actionTaken: bought,
-      bought: bought ? 1 : 0,
+      actionTaken: exec.bought,
+      bought: exec.bought ? 1 : 0,
       executedCandidate: getDisplayName(unit),
       executedExecutionId: unit.name,
       executedExecutionKind: "unit",
       executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
-      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-      summary: bought ? `Bought ${getDisplayName(unit)}` : `Energy Lepidoptera exact buy failed for ${getDisplayName(unit)}`,
+      executedAmount: exec.executedAmount,
+      confirmedPurchasedAmount: exec.confirmedPurchasedAmount,
+      observedTotalCountDelta: exec.observedTotalCountDelta,
+      amountContract: exec.amountContract,
+      summary: exec.bought ? `Bought ${getDisplayName(unit)}` : `Energy Lepidoptera exact buy failed for ${getDisplayName(unit)}`,
     };
   }
 
@@ -23753,6 +23906,20 @@ function getDisplayName(item) {
             decision = applyWholeEconomyExecutionRevalidationV1({ decision, revalidationState, actionBudget });
           }
           return laboratoryCloneJson(decision);
+        },
+      },
+
+      // 9.4.0 STOP GATE 2 (A2): narrow, additive test hook that drives the pure four-value amount
+      // contract directly, so mutation controls (equal amounts pass; a divergent command amount without a
+      // named policy is a violation; a named clamp policy records clampApplied/reason/before/after; the
+      // confirmed-purchase source is the honest strongest contract) can be proven without a live buy.
+      executionAmountContract: {
+        schemaVersion: "execution-amount-contract.v1",
+        build(input = {}) {
+          return laboratoryCloneJson(buildExecutionAmountContract(input || {}));
+        },
+        finalize(contract = {}, evidence = {}) {
+          return laboratoryCloneJson(finalizeExecutionAmountContract(contract || {}, evidence || {}));
         },
       },
 
