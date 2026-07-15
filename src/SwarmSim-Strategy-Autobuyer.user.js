@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      9.3.3
+// @version      9.3.4
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -30,7 +30,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "9.3.3";
+  const AUTOBUYER_VERSION = "9.3.4";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -3131,7 +3131,7 @@ function getDisplayName(item) {
       actionUnitRefillReserveRatio: inspector.actionUnitRefillReserveRatio,
       actionUnitRefillPayback: inspector.actionUnitRefillPayback,
       actionUnitRefillPaybackBypassed: inspector.actionUnitRefillPaybackBypassed,
-      actionBudgetRemainingAfterParentStep: inspector.actionBudgetRemainingAfterParentStep,
+      parentStepChainBudgetRemaining: inspector.parentStepChainBudgetRemaining,
       followUpActionSelected: inspector.followUpActionSelected,
       whyNoFollowUpAction: inspector.whyNoFollowUpAction,
       antiPingpongGuardActive: inspector.antiPingpongGuardActive,
@@ -3392,6 +3392,14 @@ function getDisplayName(item) {
       actions: `${mainActions || 0} main, ${sideActions || 0} side-tasks`,
       mainActions: Number(mainActions || 0),
       maxMainActions: Number(maxActions || 0),
+      // 9.3.4 observability: the global main-action budget for the whole
+      // runOnce() cycle, always derived from maxMainActions - mainActions.
+      // Distinct from actionUnitRefillState's own local
+      // parent-step-chain-scoped budget field below (renamed to avoid the
+      // two being conflated - see globalMainActionBudgetRemaining vs
+      // parentStepChainBudgetRemaining).
+      globalMainActionBudgetUsed: Number(mainActions || 0),
+      globalMainActionBudgetRemaining: Math.max(0, Number(maxActions || 0) - Number(mainActions || 0)),
       // 9.3.3 action-budget contract: complete, ordered list of every real
       // main-lane purchase this runOnce() cycle, across every sub-planner.
       // One entry per real buy - see recordMainAction(). This is
@@ -3625,7 +3633,7 @@ function getDisplayName(item) {
       actionUnitRefillReserveRatio: refillState?.reserveRatioText || "n/a",
       actionUnitRefillPayback: refillState?.paybackText || "n/a",
       actionUnitRefillPaybackBypassed: refillState?.paybackBypassed ? "yes" : "no",
-      actionBudgetRemainingAfterParentStep: String(refillState?.actionBudgetRemainingAfterParentStep ?? 0),
+      parentStepChainBudgetRemaining: String(refillState?.parentStepChainBudgetRemaining ?? 0),
       followUpActionSelected: refillState?.followUpActionSelected ? "yes" : "no",
       whyNoFollowUpAction: refillState?.whyNoFollowUpAction || "none",
       antiPingpongGuardActive: refillState?.antiPingpongGuardActive ? "yes" : "no",
@@ -3871,7 +3879,9 @@ function getDisplayName(item) {
       ["Clone support", `${strategyInspector.energySupportCloneDecision || "HOLD"} ${strategyInspector.energySupportCloneCandidate || "none"}`],
       ["Mirror support", `${strategyInspector.energySupportMirrorDecision || "HOLD"} ${strategyInspector.energySupportMirrorCandidate || "none"}`],
       ["Lepidoptera support role", `${strategyInspector.energySupportLepidopteraRole || "wait"} (${strategyInspector.energySupportLepidopteraDecision || "WAIT"})`],
-      ["Momentum primary focus", strategyInspector.momentumPrimaryFocus || "Methodical progression"],
+      ["Long-term strategic focus", strategyInspector.momentumPrimaryFocus || "Methodical progression"],
+      ["Current executed primary lane", strategyInspector.councilWinningLane || "none"],
+      ["Current executed primary action", strategyInspector.councilWinningCandidate || "none"],
       ["Momentum primary advisor", strategyInspector.momentumPrimaryAdvisor || "none"],
       ["Momentum best step", `${strategyInspector.momentumBestStep || "Wait"} (${strategyInspector.momentumBestStepDecision || "WAIT"})`],
       ["Momentum why waiting is best", strategyInspector.momentumWhyWaitingIsBest || "none"],
@@ -3922,7 +3932,9 @@ function getDisplayName(item) {
       ["Refill reserve", strategyInspector.actionUnitRefillReserveRatio || "n/a"],
       ["Refill payback", strategyInspector.actionUnitRefillPayback || "n/a"],
       ["Refill bypass", strategyInspector.actionUnitRefillPaybackBypassed || "no"],
-      ["Budget after parent", strategyInspector.actionBudgetRemainingAfterParentStep || "0"],
+      ["Parent-step chain budget remaining", strategyInspector.parentStepChainBudgetRemaining || "0"],
+      ["Global main-action budget used", String(strategyInspector.globalMainActionBudgetUsed ?? 0)],
+      ["Global main-action budget remaining", String(strategyInspector.globalMainActionBudgetRemaining ?? 0)],
       ["Follow-up selected", strategyInspector.followUpActionSelected || "no"],
       ["Why no follow-up", strategyInspector.whyNoFollowUpAction || "none"],
       ["Anti-pingpong active", strategyInspector.antiPingpongGuardActive || "no"],
@@ -4127,10 +4139,17 @@ function getDisplayName(item) {
     return laneSpeakerMap[String(lane || "")] || "none";
   }
 
+  // 9.3.4: the active speaker must always reflect the lane that actually
+  // won/executed this cycle (councilWinningLane), never the long-term
+  // momentum focus advisor - otherwise e.g. a Territory-focused
+  // momentumPrimaryAdvisor (General Mandible) could keep speaking even
+  // when Meat is the lane that actually executed. momentumPrimaryAdvisor
+  // remains visible separately (see the "Momentum primary advisor" row).
   function resolveCouncilPrimarySpeaker(primaryAdvisor, winningLane) {
+    const laneSpeaker = getCouncilSpeakerByLane(winningLane);
+    if (laneSpeaker && laneSpeaker !== "none") return laneSpeaker;
     const advisor = String(primaryAdvisor || "").trim();
-    if (advisor && advisor !== "none") return advisor;
-    return getCouncilSpeakerByLane(winningLane);
+    return advisor && advisor !== "none" ? advisor : "none";
   }
 
   function unitCountByArmyPrepLabel(game, label) {
@@ -5995,6 +6014,12 @@ function getDisplayName(item) {
   }
 
   function captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction) {
+    // 9.3.4: read the module-level Clone Ramp state directly rather than
+    // threading it through every call site, so all callers of this
+    // function (the main strategy-inspector snapshot, the energy support
+    // broker's own snapshot, and the M6 pre-execution snapshot) see the
+    // same Clone Ramp awareness.
+    const cloneRampInfo = cloneRampState || null;
     const warnings = [];
     const formulaStatuses = [];
     const army = buildLaboratoryArmySnapshot(game, warnings, formulaStatuses);
@@ -6048,10 +6073,26 @@ function getDisplayName(item) {
       && mirrorGain.greaterThan(0)
       ? expansionEtaBeforeSeconds * decimalToNumber(mirrorBefore.dividedBy(mirrorAfter), 0)
       : null;
+    // 9.3.4: Clone Larvae is the one ability the bot actually auto-casts,
+    // through the separate, bounded Clone Ramp policy (runCloneRampPlanner),
+    // not through this advisor. When Clone Ramp has already completed and
+    // released its final cast this cycle (POST_CLONE_RELEASE, blocked by
+    // "already released at cap"), this manual-cast advisor must not present
+    // an unqualified CAST_NOW that contradicts the active policy - so its
+    // own availability is held here, with an explicit reason. This does not
+    // change ability execution authority, auto-cast defaults, or Clone
+    // Ramp's own decision logic; it only makes this advisor aware of it.
+    const cloneRampAlreadyReleased = !!cloneRampInfo
+      && String(cloneRampInfo.cloneRampPhase || "") === "POST_CLONE_RELEASE"
+      && String(cloneRampInfo.cloneRampBlockedBy || "") === "already released at cap";
     const abilities = [
       {
-        actionId: "CLONE_LARVAE", label: "Clone Larvae", targetResource: "larvae", available: clone.available,
-        unavailableReason: clone.unavailableReason, energyCost: clone.energyCost, projectedGain: cloneGain,
+        actionId: "CLONE_LARVAE", label: "Clone Larvae", targetResource: "larvae",
+        available: cloneRampAlreadyReleased ? false : clone.available,
+        unavailableReason: cloneRampAlreadyReleased
+          ? "HOLD — Clone Ramp has already completed and released its final cast; this manual-cast advisor is a counterfactual that does not apply to the active Clone Ramp policy."
+          : clone.unavailableReason,
+        energyCost: clone.energyCost, projectedGain: cloneGain,
         gainRatio: ratioAgainstHorizon(cloneGain, "larvae"), formulaStatus: "source-verified",
       },
       {
@@ -6951,7 +6992,8 @@ function getDisplayName(item) {
 
     const items = [];
 
-    items.push(`Primary focus: ${strategyInspector.momentumPrimaryFocus || "Methodical progression"}.`);
+    items.push(`Long-term strategic focus: ${strategyInspector.momentumPrimaryFocus || "Methodical progression"}.`);
+    items.push(`Currently executing: ${strategyInspector.councilWinningLane || "none"}: ${strategyInspector.councilWinningCandidate || "none"}.`);
     items.push(`Best step: ${strategyInspector.momentumBestStep || "Wait"} (${strategyInspector.momentumBestStepDecision || "WAIT"}).`);
     if (usefulCouncilText(strategyInspector.wholeEconomyBestOpportunity)) {
       items.push(`Whole economy winner: ${strategyInspector.wholeEconomyBestOpportunity || "none"} via ${strategyInspector.wholeEconomyBestAction || "none"}.`);
@@ -7750,7 +7792,9 @@ function getDisplayName(item) {
       actionUnitRefillReserveRatio: strategyInspector?.actionUnitRefillReserveRatio || actionUnitRefillState?.reserveRatioText || "n/a",
       actionUnitRefillPayback: strategyInspector?.actionUnitRefillPayback || actionUnitRefillState?.paybackText || "n/a",
       actionUnitRefillPaybackBypassed: strategyInspector?.actionUnitRefillPaybackBypassed || (actionUnitRefillState?.paybackBypassed ? "yes" : "no"),
-      actionBudgetRemainingAfterParentStep: strategyInspector?.actionBudgetRemainingAfterParentStep || String(actionUnitRefillState?.actionBudgetRemainingAfterParentStep ?? 0),
+      parentStepChainBudgetRemaining: strategyInspector?.parentStepChainBudgetRemaining || String(actionUnitRefillState?.parentStepChainBudgetRemaining ?? 0),
+      globalMainActionBudgetUsed: strategyInspector?.globalMainActionBudgetUsed ?? 0,
+      globalMainActionBudgetRemaining: strategyInspector?.globalMainActionBudgetRemaining ?? 0,
       followUpActionSelected: strategyInspector?.followUpActionSelected || (actionUnitRefillState?.followUpActionSelected ? "yes" : "no"),
       whyNoFollowUpAction: strategyInspector?.whyNoFollowUpAction || actionUnitRefillState?.whyNoFollowUpAction || "none",
       antiPingpongGuardActive: strategyInspector?.antiPingpongGuardActive || (actionUnitRefillState?.antiPingpongGuardActive ? "yes" : "no"),
@@ -8262,6 +8306,26 @@ function getDisplayName(item) {
           abilityPrepPlannerState = null;
           postNexusEnergyPlannerState = null;
           territoryPrepPlannerState = null;
+          // 9.3.4: unlike smartRunOnce, this harness previously never reset
+          // laneCoordinatorState between cycles/scenarios. In advisor-only
+          // harness mode no real buy ever repopulates it, so without this
+          // reset a stale selectedLaneActions[0] from an earlier real
+          // runOnce() (e.g. the page's own auto-start cycle before the
+          // harness took over) could leak into every later scenario's
+          // councilWinningLane / activeCouncilSpeaker, producing an
+          // internally-inconsistent (untruthful) report. This only resets
+          // harness-local observability state, not any purchase decision.
+          laneCoordinatorState = recordLaneCoordinatorState({
+            coordinatorDecision: "HOLD",
+            selectedLaneActions: [],
+            selectedLaneLabels: [],
+            selectedLaneSummary: "none",
+            primaryActionReason: "",
+            coordinatorRemainingBudgetReason: "none",
+            territoryActionAge: getLaneActionAge("Territory"),
+            territoryStarvationCount: getTerritoryStarvationCount(),
+            territoryDidNotBuyReason: "no territory proposal this run",
+          });
 
           let engine = analyzeLarvaEngine(game);
           const engineOverrides = scenarioHarnessContext.overrides?.engine || {};
@@ -8565,7 +8629,9 @@ function getDisplayName(item) {
       `- Ascension inactive mutagen: ${payload.ascensionAdvisorInactiveMutagen || "0"}`,
       `- Ascension active after ascend: ${payload.ascensionAdvisorActiveAfterAscend || "0"}`,
       `- Ascension larvae/sec after ascend: ${payload.ascensionAdvisorNewLarvaPerSecond || "0"}`,
-      `- Momentum primary focus: ${payload.momentumPrimaryFocus || "Methodical progression"}`,
+      `- Long-term strategic focus: ${payload.momentumPrimaryFocus || "Methodical progression"}`,
+      `- Current executed primary lane: ${payload.councilWinningLane || "none"}`,
+      `- Current executed primary action: ${payload.councilWinningCandidate || "none"}`,
       `- Momentum advisor: ${payload.momentumPrimaryAdvisor || "none"}`,
       `- Momentum best step: ${payload.momentumBestStep || "Wait"} (${payload.momentumBestStepDecision || "WAIT"})`,
       `- Momentum best-step reason: ${payload.momentumBestStepReason || "none"}`,
@@ -8625,7 +8691,9 @@ function getDisplayName(item) {
       `- Action-unit refill reserve ratio: ${payload.actionUnitRefillReserveRatio || "n/a"}`,
       `- Action-unit refill payback: ${payload.actionUnitRefillPayback || "n/a"}`,
       `- Action-unit refill payback bypassed: ${payload.actionUnitRefillPaybackBypassed || "no"}`,
-      `- Action budget remaining after parent-step: ${payload.actionBudgetRemainingAfterParentStep || "0"}`,
+      `- Parent-step chain budget remaining: ${payload.parentStepChainBudgetRemaining || "0"}`,
+      `- Global main-action budget used: ${payload.globalMainActionBudgetUsed ?? 0}`,
+      `- Global main-action budget remaining: ${payload.globalMainActionBudgetRemaining ?? 0}`,
       `- Follow-up action selected: ${payload.followUpActionSelected || "no"}`,
       `- Why no follow-up action: ${payload.whyNoFollowUpAction || "none"}`,
       `- Anti-pingpong guard active: ${payload.antiPingpongGuardActive || "no"}`,
@@ -8758,6 +8826,13 @@ function getDisplayName(item) {
       `## Lane candidates`,
       ``,
       ...payload.laneCandidates.map((candidate) => `- ${candidate.lane}: ${candidate.decision} ${candidate.candidate}${candidate.wouldBuyAmount ? ` × ${candidate.wouldBuyAmount}` : ""} · score ${trimNumber(candidate.score)} · ${candidate.reason}${candidate.blockers?.length ? ` · blockers: ${candidate.blockers.join(", ")}` : ""}${candidate.observations?.length ? ` · observations: ${candidate.observations.join(", ")}` : ""}${candidate.raw ? ` · raw: ${JSON.stringify(candidate.raw)}` : ""}`),
+      ``,
+      `## Executed main actions`,
+      ``,
+      ...(payload.strategyInspector?.executedMainActions?.length
+        ? payload.strategyInspector.executedMainActions.map((action, index) =>
+          `${index + 1}. ${action.lane}: ${action.candidate}${action.amount ? ` × ${action.amount}` : ""} — ${action.reason || "no reason recorded"}`)
+        : ["none"]),
       ``,
       `## Run history summary`,
       ``,
@@ -16156,7 +16231,7 @@ function getDisplayName(item) {
   function recordActionUnitRefillState(fields = {}) {
     const reserveRatio = Number(fields.reserveRatio);
     const paybackSeconds = Number(fields.paybackSeconds);
-    const budgetRemaining = Number(fields.actionBudgetRemainingAfterParentStep);
+    const budgetRemaining = Number(fields.parentStepChainBudgetRemaining);
 
     actionUnitRefillState = {
       candidate: fields.candidate || actionUnitRefillState?.candidate || "none",
@@ -16170,7 +16245,7 @@ function getDisplayName(item) {
       paybackBypassed: !!fields.paybackBypassed,
       parentStepConsumedActionUnit: !!fields.parentStepConsumedActionUnit,
       parentStepConsumedUnit: fields.parentStepConsumedUnit || actionUnitRefillState?.parentStepConsumedUnit || "none",
-      actionBudgetRemainingAfterParentStep: Number.isFinite(budgetRemaining) ? Math.max(0, budgetRemaining) : (actionUnitRefillState?.actionBudgetRemainingAfterParentStep ?? 0),
+      parentStepChainBudgetRemaining: Number.isFinite(budgetRemaining) ? Math.max(0, budgetRemaining) : (actionUnitRefillState?.parentStepChainBudgetRemaining ?? 0),
       followUpActionSelected: !!fields.followUpActionSelected,
       whyNoFollowUpAction: fields.whyNoFollowUpAction || actionUnitRefillState?.whyNoFollowUpAction || "none",
       antiPingpongGuardActive: !!fields.antiPingpongGuardActive,
@@ -17409,7 +17484,7 @@ function getDisplayName(item) {
       paybackBypassed: false,
       parentStepConsumedActionUnit: consumedActionUnit,
       parentStepConsumedUnit: consumedUnit,
-      actionBudgetRemainingAfterParentStep: budgetRemaining,
+      parentStepChainBudgetRemaining: budgetRemaining,
       followUpActionSelected: false,
       whyNoFollowUpAction: "none",
       antiPingpongGuardActive,
@@ -17440,7 +17515,7 @@ function getDisplayName(item) {
         paybackBypassed: false,
         parentStepConsumedActionUnit: consumedActionUnit,
         parentStepConsumedUnit: consumedUnit,
-        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        parentStepChainBudgetRemaining: budgetRemaining,
         followUpActionSelected: false,
         whyNoFollowUpAction: reason,
         antiPingpongGuardActive,
@@ -17473,7 +17548,7 @@ function getDisplayName(item) {
         paybackBypassed: false,
         parentStepConsumedActionUnit: consumedActionUnit,
         parentStepConsumedUnit: consumedUnit,
-        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        parentStepChainBudgetRemaining: budgetRemaining,
         followUpActionSelected: false,
         whyNoFollowUpAction: reason,
         antiPingpongGuardActive,
@@ -17507,7 +17582,7 @@ function getDisplayName(item) {
         paybackBypassed: false,
         parentStepConsumedActionUnit: true,
         parentStepConsumedUnit: consumedUnit,
-        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        parentStepChainBudgetRemaining: budgetRemaining,
         followUpActionSelected: false,
         whyNoFollowUpAction: blockedBy,
         antiPingpongGuardActive,
@@ -17542,7 +17617,7 @@ function getDisplayName(item) {
         paybackBypassed: false,
         parentStepConsumedActionUnit: true,
         parentStepConsumedUnit: consumedUnit,
-        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        parentStepChainBudgetRemaining: budgetRemaining,
         followUpActionSelected: false,
         whyNoFollowUpAction: blockedBy,
         antiPingpongGuardActive,
@@ -17578,7 +17653,7 @@ function getDisplayName(item) {
         paybackBypassed: false,
         parentStepConsumedActionUnit: true,
         parentStepConsumedUnit: consumedUnit,
-        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        parentStepChainBudgetRemaining: budgetRemaining,
         followUpActionSelected: false,
         whyNoFollowUpAction: blockedBy,
         antiPingpongGuardActive,
@@ -17628,7 +17703,7 @@ function getDisplayName(item) {
         paybackBypassed: false,
         parentStepConsumedActionUnit: true,
         parentStepConsumedUnit: consumedUnit,
-        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        parentStepChainBudgetRemaining: budgetRemaining,
         followUpActionSelected: false,
         whyNoFollowUpAction: blockedBy,
         antiPingpongGuardActive,
@@ -17663,7 +17738,7 @@ function getDisplayName(item) {
         paybackBypassed,
         parentStepConsumedActionUnit: true,
         parentStepConsumedUnit: consumedUnit,
-        actionBudgetRemainingAfterParentStep: budgetRemaining,
+        parentStepChainBudgetRemaining: budgetRemaining,
         followUpActionSelected: true,
         whyNoFollowUpAction: "none",
         antiPingpongGuardActive,
@@ -17690,7 +17765,7 @@ function getDisplayName(item) {
       paybackBypassed,
       parentStepConsumedActionUnit: true,
       parentStepConsumedUnit: consumedUnit,
-      actionBudgetRemainingAfterParentStep: budgetRemaining,
+      parentStepChainBudgetRemaining: budgetRemaining,
       followUpActionSelected: !!didBuy,
       whyNoFollowUpAction: didBuy ? "none" : "blocked by no safe chunk",
       antiPingpongGuardActive,
@@ -19788,7 +19863,7 @@ function getDisplayName(item) {
         { skipMeatFirst: coordinatorExecutedKey === "meat" }
       )) || 0;
       if (units === "paused-ascension") {
-        summaries.push("units paused near ascension");
+        summaries.push("fallback unit purchases paused near ascension");
       } else if (units > 0) {
         mainActions += units;
         summaries.push(`${units} unit buy`);
@@ -19817,7 +19892,7 @@ function getDisplayName(item) {
     refreshUi();
 
     if (units === "paused-ascension") {
-      lastStatus = `Smart: ${mainActions}/${maxActions} main actions, ${sideActions} side-tasks, units pausade nära ascension`;
+      lastStatus = `Smart: ${mainActions}/${maxActions} main actions, ${sideActions} side-tasks, fallback unit purchases paused near ascension`;
     } else if (summaries.length) {
       lastStatus = `Smart: ${mainActions}/${maxActions} main actions, ${sideActions} side-tasks · ${summaries.slice(0, 3).join("; ")}`;
     } else {
@@ -20148,7 +20223,7 @@ function getDisplayName(item) {
     refreshUi();
 
     if (units === "paused-ascension") {
-      lastStatus = `${upgrades} upgrades, units pausade nära ascension`;
+      lastStatus = `${upgrades} upgrades, fallback unit purchases paused near ascension`;
     } else {
       lastStatus = `${upgrades} upgrades, ${units} unit-typer`;
     }

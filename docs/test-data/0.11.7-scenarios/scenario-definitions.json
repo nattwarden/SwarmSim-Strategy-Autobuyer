@@ -251,7 +251,9 @@
       "smartFocus": "meat",
       "evaluationCycles": 1,
       "overrides": {
-        "resourceCounts": { "nexus": 5 }
+        "resourceCounts": { "nexus": 5, "larva": 1000000000, "meat": 1000000000 },
+        "config": { "cloneBufferPlanner": false },
+        "engine": { "meatGoalTarget": "drone" }
       },
       "expected": [
         { "id": "r7-non-empty-step", "field": "momentumBestStep", "notIncludes": "Wait" }
