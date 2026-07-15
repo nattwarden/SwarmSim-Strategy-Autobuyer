@@ -52,6 +52,43 @@ regress to an early/mid state (no un-buy; only a full ascension reset, which is 
 fixture), and no target on the saturated save binds on Engine/Territory-affected resources
 (meat/larva/territory are all abundant). So Engine/Territory fixtures cannot be manufactured.
 
+### 2b. Second real fixture (user-provided, 2026-07-16)
+
+A second importable save was supplied: blob `d6e7efb`, `date.saved` 2026-07-15T23:21Z — an **even deeper
+late-game Meat state** (meat≈8.1e166; pantheon2≈1.3e20; **pantheon3 / lesser hive mind is buyable =
+completable**; expansion=304, hatchery=165 both maxed). Still Meat-phase; meat/larva/territory all
+abundant, so **not** Engine- or Territory-binding. Cross-fixture results:
+- **GATE 1 determinism generalizes**: 10 frozen runs byte-identical for both WAIT and the 2-step plan;
+  unfrozen = 10 distinct. Evidence `gate1-determinism-user-save-2.json`.
+- **GATE 2 generalizes**: the runtime-safe bounded 4-action plan again gives positive pantheon2 progress
+  with every amount contract satisfied. Evidence `gate2-bounded-user-save-2.json`.
+- **Ranker tracks real progressability, not lane, across both saves**: on this deeper save pantheon3 is
+  completable and pantheon4 is *progressable* (buying pantheon3 raises pantheon4's binding resource), so
+  the ranker correctly makes **Meat** win at pantheon4 too — whereas on the shallower save pantheon4 was
+  unprogressable and **WAIT** won. WAIT only emerges at a genuinely unprogressable target (here
+  pantheon5 / arch-mind). This is strong evidence the ranker is progress-driven and unbiased.
+
+Both user saves are late-game Meat. An Engine-binding or Territory-binding milestone exists only in
+**early game**, and neither save is such a state.
+
+### 2c. Why fresh-game self-derivation is blocked (attempted 2026-07-16)
+
+A fresh swarmsim game (empty localStorage) is a legal early state (meat=35, larva=17, drone buyable).
+Two concrete blockers prevent deriving Engine/Territory fixtures from it within the lab's constraints:
+1. **The 9.4.0 coordinator abstains on early states.** Driving the fresh game with the real bot
+   (`kbcSwarmBot.runOnce()` in auto-buy mode) for 120 cycles bought **nothing** — the DEL 3 honest-WAIT
+   ownership refuses to execute when the milestone metric cannot rank the early action. That is the
+   intended lane-dominance fix, but it means the bot will not auto-advance a fresh game.
+2. **The active target is exposed only as display text** (`"Meat-chain target: drone; current action:
+   drone."`), not an internal id + binding resource. Honestly asserting "this is THE active milestone and
+   Engine/Territory objectively wins" needs the runtime's `getActiveMilestoneTargetItem`, which is not on
+   the lab's public API; exposing it is a runtime change (out of scope for this piece).
+
+Deriving the two early fixtures is therefore possible only via a **manual command-by-command early-game
+progression driver** (real `commands.buyUnit`/`buyUpgrade` + explicit `game.tick`, choosing the early
+build order by hand until territory / larva-production binds, then real export) — a sizable separate
+build, not a derivation from the available saves.
+
 ## 3. buyMax vs runtime-safe bounded Meat (GATE 2)
 
 Target pantheon3 (lesser hive mind), binding resource pantheon2 (hive network, velocity 0), horizon
@@ -136,6 +173,15 @@ format), each captured with the per-unit mechanic export already in `lab-9.4.0-p
 
 With these two saves the Engine-wins and Territory-wins rows can be filled by the existing GATE 5/6
 harness (no new code), completing the matrix and enabling a `PLAN_MODEL_PROVEN` re-evaluation.
+
+**Update (2026-07-16):** two importable saves have now been supplied and both are late-game Meat states
+(§2b) — neither is Engine- or Territory-binding, and such states cannot be derived from them (§0). A
+fresh-game self-derivation is blocked by the coordinator's early-state abstention and the text-only
+active-target exposure (§2c). So the remaining need is specifically **an early/mid-game save** where the
+active milestone binds on **territory** (a Territory army-seed buy shortens the target ETA) and one where
+it binds on **larva/meat production** (a Hatchery/Expansion buy shortens it). The alternative path is to
+**authorise a manual early-game progression driver** (real commands + ticks) to construct both fixtures
+in-lab; that is a separate build, not covered here.
 
 ## 9. Recommended minimal runtime port (only after PROVEN)
 

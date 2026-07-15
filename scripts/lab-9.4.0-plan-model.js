@@ -50,8 +50,10 @@ function pageBranch({ saveString, fixedTime, plan, horizon, freeze }) {
     game.importSave(saveString);
     const dec = (n) => (game.Decimal ? game.Decimal(n) : n);
     for (const a of (plan || [])) {
-      if (a.op === "buyMax") commands.buyMaxUnit({ unit: game.unit(a.unit), ui: "lab" });
-      else if (a.op === "buy") commands.buyUnit({ unit: game.unit(a.unit), num: dec(a.num), ui: "lab" });
+      try {
+        if (a.op === "buyMax") commands.buyMaxUnit({ unit: game.unit(a.unit), ui: "lab" });
+        else if (a.op === "buy") commands.buyUnit({ unit: game.unit(a.unit), num: dec(a.num), ui: "lab" });
+      } catch (e) { /* game refused the buy (insufficient resources edge) — deterministic given frozen state */ }
     }
     const base = freeze ? FIXED : game.now.getTime();
     game.tick(new RealDate(base + horizon * 1000));
@@ -101,7 +103,7 @@ function pageBoundedPlan({ saveString, fixedTime, actions, horizon, mode, policy
       const commandAmount = amountTamper && i === 0 ? authorized.times(amountTamper).floor() : authorized;
       const contractSatisfied = commandAmount.eq(authorized);
       const before = u.count();
-      commands.buyUnit({ unit: u, num: commandAmount, ui: "lab" });
+      try { commands.buyUnit({ unit: u, num: commandAmount, ui: "lab" }); } catch (e) { /* game-refused edge */ }
       const after = u.count();
       ledger.push({ step: i, unit: unitId, authorizedRequestedAmount: D(authorized), commandRequestedAmount: D(commandAmount), contractSatisfied, observedTotalCountDelta: D(after.minus(before)), reserveRatio, executed: after.minus(before).gt(0) });
       // 5. fresh snapshot is implicit (next iteration re-reads); 6. replan continues
@@ -148,7 +150,7 @@ function pageMeasurePlan({ saveString, fixedTime, targetId, actions, horizon, po
       const command = (amountTamper && i === 0) ? authorized.times(amountTamper).floor() : authorized;
       const contractSatisfied = command.eq(authorized);
       const cb = u.count();
-      if (command.gt(0)) commands.buyUnit({ unit: u, num: command, ui: "lab" });
+      if (command.gt(0)) { try { commands.buyUnit({ unit: u, num: command, ui: "lab" }); } catch (e) { /* game-refused edge */ } }
       const ca = u.count();
       ledger.push({ step: i, lane: a.lane, unit: a.id, mode: a.mode || "bounded", authorizedRequestedAmount: D(authorized), commandRequestedAmount: D(command), contractSatisfied, observedTotalCountDelta: D(ca.minus(cb)), executed: ca.minus(cb).gt(0) });
     }
