@@ -1,7 +1,7 @@
 {
   "name": "swarmsim-strategy-autobuyer",
   "private": true,
-  "version": "9.3.1",
+  "version": "9.3.2",
   "description": "SwarmSim Strategy Autobuyer tooling",
   "license": "UNLICENSED",
   "scripts": {
@@ -90,10 +90,11 @@
     "check:0.11.4": "node scripts/check-0.11.4-invariants.js",
     "check:book00:territory-saturation": "node scripts/check-book00-territory-saturation.js",
     "check:book00:clone-ramp": "node scripts/check-book00-clone-ramp-acceptance.js",
+    "check:book00:twin-prep-meaningful-gate": "node scripts/check-twin-prep-meaningful-gate.js",
     "sync:from-canonical": "node scripts/extract-runtime-source.js",
     "hotfix:canonical": "npm run sync:from-canonical && npm run build && npm run verify",
     "validate:guardrails": "node scripts/validate-repo-guardrails.js",
-    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && npm run check:version:surfaces && npm run check:ui-shell && npm run check:ui2:fixtures && npm run check:ui3:assets && npm run check:laboratory:phase2a && npm run check:purchase-evaluator && npm run check:book00:m2:coordinator && npm run check:book00:m3:energy && npm run check:book00:m3:energy:execution && npm run check:book00:m4:ability-timing && npm run check:book00:m5:ascension-mutagen && npm run check:book00:m6:six-domain && npm run check:book00:m7:calibrated-outcomes && npm run check:book00:m8:false-wait && npm run check:book00:m9:resource-locks && npm run check:live-purchase-acceptance && npm run check:book00:f3:structured-stall-breaker && npm run check:book00:territory-saturation && npm run check:book00:clone-ramp && node scripts/validate-repo-guardrails.js"
+    "verify": "node scripts/build-canonical-userscript.js --check && npm run check:0.12.3:laboratory && npm run check:version:surfaces && npm run check:ui-shell && npm run check:ui2:fixtures && npm run check:ui3:assets && npm run check:laboratory:phase2a && npm run check:purchase-evaluator && npm run check:book00:m2:coordinator && npm run check:book00:m3:energy && npm run check:book00:m3:energy:execution && npm run check:book00:m4:ability-timing && npm run check:book00:m5:ascension-mutagen && npm run check:book00:m6:six-domain && npm run check:book00:m7:calibrated-outcomes && npm run check:book00:m8:false-wait && npm run check:book00:m9:resource-locks && npm run check:live-purchase-acceptance && npm run check:book00:f3:structured-stall-breaker && npm run check:book00:territory-saturation && npm run check:book00:clone-ramp && npm run check:book00:twin-prep-meaningful-gate && node scripts/validate-repo-guardrails.js"
   },
   "dependencies": {
     "playwright": "^1.61.1"

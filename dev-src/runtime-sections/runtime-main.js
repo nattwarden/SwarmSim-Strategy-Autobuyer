@@ -3,7 +3,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "9.3.1";
+  const AUTOBUYER_VERSION = "9.3.2";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -714,6 +714,24 @@
     }
 
     return text.replace(/\.00$/, "").replace(/\.0$/, "");
+  }
+
+  // Twin Prep progress-gain percentages are frequently well below 1% (a
+  // multi-thousand-unit chunk against a multi-billion-unit threshold). trimNumber's
+  // fixed 2-decimal display rounds anything under 0.005% down to a misleading "0",
+  // which is why a genuinely evaluated 0.0406% chunk read as "0%" in exports. This
+  // adds decimal places for small magnitudes only; it never changes the underlying
+  // Decimal math, only how small-but-real values are displayed.
+  function formatTwinPrepPercent(num) {
+    if (!Number.isFinite(num)) return String(num);
+    if (num === 0) return "0";
+
+    const abs = Math.abs(num);
+    if (abs >= 10) return trimNumber(num);
+
+    const decimals = abs >= 1 ? 2 : Math.min(6, Math.max(2, 2 - Math.floor(Math.log10(abs))));
+    const text = num.toFixed(decimals);
+    return text.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   }
 
   function loadConfig() {
@@ -3576,6 +3594,10 @@ function getDisplayName(item) {
       twinUnlockLostProductionBankRatioLimit: twinUnlockState?.lostProductionBankRatioLimitText || "n/a",
       twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe: twinUnlockState?.upgradeBuyAllowedDespiteRebuildUnsafe ? "yes" : "no",
       twinUnlockPrepMeaningful: twinUnlockState?.prepMeaningful ? "yes" : "no",
+      twinUnlockPrepNearThreshold: twinUnlockState?.prepNearThreshold ? "yes" : "no",
+      twinUnlockPrepReachesThreshold: twinUnlockState?.prepReachesThreshold ? "yes" : "no",
+      twinUnlockPrepGainMeaningful: twinUnlockState?.prepGainMeaningful ? "yes" : "no",
+      twinUnlockPrepMeaningfulReason: twinUnlockState?.prepMeaningfulReason || "none",
       twinUnlockPrepProgressGainPercent: twinUnlockState?.prepProgressGainPercentText || "n/a",
       twinUnlockPrepProgressGainRequiredPercent: twinUnlockState?.prepProgressGainRequiredPercentText || "n/a",
       twinUnlockPrepDeferredReason: twinUnlockState?.prepDeferredReason || "none",
@@ -3870,6 +3892,10 @@ function getDisplayName(item) {
       ["Twin prep meaningful", strategyInspector.twinUnlockPrepMeaningful || "no"],
       ["Twin prep gain", strategyInspector.twinUnlockPrepProgressGainPercent || "n/a"],
       ["Twin prep meaningful gate", strategyInspector.twinUnlockPrepProgressGainRequiredPercent || "n/a"],
+      ["Twin prep near threshold", strategyInspector.twinUnlockPrepNearThreshold || "no"],
+      ["Twin prep reaches threshold", strategyInspector.twinUnlockPrepReachesThreshold || "no"],
+      ["Twin prep gain meaningful", strategyInspector.twinUnlockPrepGainMeaningful || "no"],
+      ["Twin prep meaningful reason", strategyInspector.twinUnlockPrepMeaningfulReason || "none"],
       ["Twin prep deferred reason", strategyInspector.twinUnlockPrepDeferredReason || "none"],
       ["Twin deferred by parent", strategyInspector.twinUnlockDeferredByParentStep || "no"],
       ["Parent preferred over twin", strategyInspector.twinUnlockParentStepPreferred || "no"],
@@ -7704,6 +7730,10 @@ function getDisplayName(item) {
       twinUnlockLostProductionBankRatioLimit: strategyInspector?.twinUnlockLostProductionBankRatioLimit || twinUnlockPlannerState?.lostProductionBankRatioLimitText || "n/a",
       twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe: strategyInspector?.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || (twinUnlockPlannerState?.upgradeBuyAllowedDespiteRebuildUnsafe ? "yes" : "no"),
       twinUnlockPrepMeaningful: strategyInspector?.twinUnlockPrepMeaningful || (twinUnlockPlannerState?.prepMeaningful ? "yes" : "no"),
+      twinUnlockPrepNearThreshold: strategyInspector?.twinUnlockPrepNearThreshold || (twinUnlockPlannerState?.prepNearThreshold ? "yes" : "no"),
+      twinUnlockPrepReachesThreshold: strategyInspector?.twinUnlockPrepReachesThreshold || (twinUnlockPlannerState?.prepReachesThreshold ? "yes" : "no"),
+      twinUnlockPrepGainMeaningful: strategyInspector?.twinUnlockPrepGainMeaningful || (twinUnlockPlannerState?.prepGainMeaningful ? "yes" : "no"),
+      twinUnlockPrepMeaningfulReason: strategyInspector?.twinUnlockPrepMeaningfulReason || twinUnlockPlannerState?.prepMeaningfulReason || "none",
       twinUnlockPrepProgressGainPercent: strategyInspector?.twinUnlockPrepProgressGainPercent || twinUnlockPlannerState?.prepProgressGainPercentText || "n/a",
       twinUnlockPrepProgressGainRequiredPercent: strategyInspector?.twinUnlockPrepProgressGainRequiredPercent || twinUnlockPlannerState?.prepProgressGainRequiredPercentText || "n/a",
       twinUnlockPrepDeferredReason: strategyInspector?.twinUnlockPrepDeferredReason || twinUnlockPlannerState?.prepDeferredReason || "none",
@@ -8563,8 +8593,12 @@ function getDisplayName(item) {
       `- Twin unlock lost production bank ratio limit: ${payload.twinUnlockLostProductionBankRatioLimit || "n/a"}`,
       `- Twin unlock BUY despite rebuild unsafe: ${payload.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || "no"}`,
       `- Twin prep meaningful: ${payload.twinUnlockPrepMeaningful || "no"}`,
+      `- Twin prep near threshold: ${payload.twinUnlockPrepNearThreshold || "no"}`,
+      `- Twin prep reaches threshold: ${payload.twinUnlockPrepReachesThreshold || "no"}`,
+      `- Twin prep gain meaningful: ${payload.twinUnlockPrepGainMeaningful || "no"}`,
       `- Twin prep progress gain: ${payload.twinUnlockPrepProgressGainPercent || "n/a"}`,
       `- Twin prep meaningful gate: ${payload.twinUnlockPrepProgressGainRequiredPercent || "n/a"}`,
+      `- Twin prep meaningful reason: ${payload.twinUnlockPrepMeaningfulReason || "none"}`,
       `- Twin prep deferred reason: ${payload.twinUnlockPrepDeferredReason || "none"}`,
       `- Twin deferred by parent step: ${payload.twinUnlockDeferredByParentStep || "no"}`,
       `- Parent step preferred over twin prep: ${payload.twinUnlockParentStepPreferred || "no"}`,
@@ -13789,8 +13823,25 @@ function getDisplayName(item) {
         : false;
       const prepGainMeaningful = prepGainPercent >= TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT;
       const parentStepPreferred = !!(parentChoice && parentSupportsActionUnit && parentChoice.decision === "BUY");
-      const twinPrepMeaningful = twinNearEnough || prepReachesThreshold || prepGainMeaningful;
-      const twinPrepTooFarReason = `Twin prep HOLD: threshold too far (${thresholdRatioText} < ${nearThresholdRatioText}); chunk +${prepChunkText} ${twinCostUnitName} advances only ${trimNumber(prepGainPercent)}% of required threshold and is not meaningful yet`;
+      const prepGainPercentText = `${formatTwinPrepPercent(prepGainPercent)}%`;
+      // Fixed in 9.3.2: being merely near the threshold must not, by itself,
+      // short-circuit the 5% meaningful-progress requirement - that let a
+      // negligible chunk (well under 1% real progress) read as "meaningful"
+      // any time the resource already sat at/above the near-threshold ratio,
+      // which is exactly the observed live pattern (0.01-0.04% chunks getting
+      // BUY every cycle). Reaching the full threshold outright remains an
+      // independent, always-valid override regardless of the gate.
+      const twinPrepMeaningful = prepReachesThreshold || (twinNearEnough && prepGainMeaningful);
+      const twinPrepMeaningfulReason = prepReachesThreshold
+        ? `chunk +${prepChunkText} ${twinCostUnitName} reaches the full threshold on its own`
+        : !twinNearEnough
+          ? `not near threshold yet (${thresholdRatioText} < required ${nearThresholdRatioText})`
+          : prepGainMeaningful
+            ? `near threshold (${thresholdRatioText} >= required ${nearThresholdRatioText}) and chunk progress ${prepGainPercentText} meets the ${trimNumber(TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT)}% meaningful gate`
+            : `near threshold (${thresholdRatioText} >= required ${nearThresholdRatioText}) but chunk progress ${prepGainPercentText} is below the ${trimNumber(TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT)}% meaningful threshold`;
+      const twinPrepTooFarReason = !twinNearEnough
+        ? `Twin prep HOLD: threshold too far (${thresholdRatioText} < ${nearThresholdRatioText}); chunk +${prepChunkText} ${twinCostUnitName} advances only ${prepGainPercentText} of required threshold and is not meaningful yet`
+        : `Twin prep HOLD: chunk progress ${prepGainPercentText} is below the ${trimNumber(TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT)}% meaningful threshold (near-threshold ratio ${thresholdRatioText} already met, but chunk +${prepChunkText} ${twinCostUnitName} is itself negligible)`;
       const twinPrepDeferredReason = parentStepPreferred
         ? `${twinPrepTooFarReason}; parent-step target path is available: ${parentChoice.reason}`
         : `${twinPrepTooFarReason}; parent-step/refill not currently available, so budget stays unused until a meaningful target-path action appears`;
@@ -13815,7 +13866,11 @@ function getDisplayName(item) {
           paybackBypassed: false,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
-          prepMeaningful: false,
+          prepMeaningful: twinPrepMeaningful,
+          prepNearThreshold: twinNearEnough,
+          prepReachesThreshold,
+          prepGainMeaningful,
+          prepMeaningfulReason: twinPrepMeaningfulReason,
           prepProgressGainPercent: prepGainPercent,
           prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
           prepDeferredReason: "protected resource",
@@ -13844,7 +13899,11 @@ function getDisplayName(item) {
           paybackBypassed: false,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
-          prepMeaningful: false,
+          prepMeaningful: twinPrepMeaningful,
+          prepNearThreshold: twinNearEnough,
+          prepReachesThreshold,
+          prepGainMeaningful,
+          prepMeaningfulReason: twinPrepMeaningfulReason,
           prepProgressGainPercent: prepGainPercent,
           prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
           prepDeferredReason: "threshold prep has no safe chunk this run",
@@ -13874,7 +13933,11 @@ function getDisplayName(item) {
           paybackBypassed: false,
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
-          prepMeaningful: false,
+          prepMeaningful: twinPrepMeaningful,
+          prepNearThreshold: twinNearEnough,
+          prepReachesThreshold,
+          prepGainMeaningful,
+          prepMeaningfulReason: twinPrepMeaningfulReason,
           prepProgressGainPercent: prepGainPercent,
           prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
           prepDeferredReason: reason,
@@ -13892,7 +13955,7 @@ function getDisplayName(item) {
           blockers: parentStepPreferred ? ["parent-step preferred", "twin prep too small"] : ["threshold too far", "twin prep too small"],
           observations: [
             `ratio ${thresholdRatioText} vs near-threshold ${nearThresholdRatioText}`,
-            `prep gain ${trimNumber(prepGainPercent)}% of required`,
+            `prep gain ${prepGainPercentText} of required`,
             `prep chunk +${prepChunkText} ${twinCostUnitName}`,
             parentStepPreferred ? `parent step ready: ${parentUnitName}` : `parent step unavailable: ${parentStepPlannerState?.reason || "none"}`,
           ],
@@ -13948,6 +14011,10 @@ function getDisplayName(item) {
           postUpgradeRebuildRatio: NaN,
           rebuildSafe: false,
           prepMeaningful: twinPrepMeaningful,
+          prepNearThreshold: twinNearEnough,
+          prepReachesThreshold,
+          prepGainMeaningful,
+          prepMeaningfulReason: twinPrepMeaningfulReason,
           prepProgressGainPercent: prepGainPercent,
           prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
           prepDeferredReason: decision === "HOLD" ? reason : "none",
@@ -13998,6 +14065,10 @@ function getDisplayName(item) {
               postUpgradeRebuildRatio: NaN,
               rebuildSafe: false,
               prepMeaningful: twinPrepMeaningful,
+              prepNearThreshold: twinNearEnough,
+              prepReachesThreshold,
+              prepGainMeaningful,
+              prepMeaningfulReason: twinPrepMeaningfulReason,
               prepProgressGainPercent: prepGainPercent,
               prepProgressGainRequiredPercent: TWIN_UNLOCK_MEANINGFUL_PROGRESS_GAIN_PERCENT,
               prepDeferredReason: "none",
@@ -15833,8 +15904,12 @@ function getDisplayName(item) {
       lostProductionBankRatioLimitText: Number.isFinite(lostProductionBankRatioLimit) ? `${trimNumber(lostProductionBankRatioLimit * 100)}%/h` : "n/a",
       upgradeBuyAllowedDespiteRebuildUnsafe: !!fields.upgradeBuyAllowedDespiteRebuildUnsafe,
       prepMeaningful: !!fields.prepMeaningful,
+      prepNearThreshold: !!fields.prepNearThreshold,
+      prepReachesThreshold: !!fields.prepReachesThreshold,
+      prepGainMeaningful: !!fields.prepGainMeaningful,
+      prepMeaningfulReason: fields.prepMeaningfulReason || twinUnlockPlannerState?.prepMeaningfulReason || "none",
       prepProgressGainPercent: Number.isFinite(prepProgressGainPercent) ? prepProgressGainPercent : null,
-      prepProgressGainPercentText: Number.isFinite(prepProgressGainPercent) ? `${trimNumber(prepProgressGainPercent)}%` : "n/a",
+      prepProgressGainPercentText: Number.isFinite(prepProgressGainPercent) ? `${formatTwinPrepPercent(prepProgressGainPercent)}%` : "n/a",
       prepProgressGainRequiredPercent: Number.isFinite(prepProgressGainRequiredPercent) ? prepProgressGainRequiredPercent : null,
       prepProgressGainRequiredPercentText: Number.isFinite(prepProgressGainRequiredPercent) ? `${trimNumber(prepProgressGainRequiredPercent)}%` : "n/a",
       prepDeferredReason: fields.prepDeferredReason || twinUnlockPlannerState?.prepDeferredReason || "none",
