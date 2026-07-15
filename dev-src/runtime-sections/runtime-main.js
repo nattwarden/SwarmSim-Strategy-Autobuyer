@@ -2650,6 +2650,35 @@ function getDisplayName(item) {
     return "Observe and make only safe incremental Smart decisions.";
   }
 
+  // 9.4.0 DEL 1 — shared decision identity: the current *executable milestone* target.
+  // This mirrors getCurrentStrategyGoal()'s branch order exactly so that activeMilestone and
+  // activeTarget can never disagree (the 9.3.5 TARGET_IDENTITY_MISMATCH, where activeTarget fell
+  // back to smartFocus="territory" while the milestone was the meat-chain). It is intentionally
+  // distinct from smartFocus (long-term strategic direction) and config.focusTab (UI focus):
+  // neither of those may overwrite the target used for the shared economic comparison.
+  function getCurrentStrategyTarget(game, engine, protectedResources, smartFocus) {
+    if (engine?.expansionBuyable) return "Expansion";
+    if (engine?.hatcheryBuyable) return "Hatchery";
+
+    const nexusCount = Math.floor(decimalToNumber(getNexusCount(game), 0));
+    const nextNexus = getNextNexusUpgrade(game);
+    if (config.energyStrategy && nexusCount < config.nexusTarget && nextNexus) {
+      return getDisplayName(nextNexus);
+    }
+
+    if (protectedResources?.has("territory")) return "Expansion";
+    if (protectedResources?.has("meat")) return "Hatchery";
+
+    const plan = safe("Inspector meat goal target", () => buildMeatGoalPlan(game));
+    if (plan?.target) return getDisplayName(plan.target);
+
+    if (smartFocus === "territory") return "Expansion";
+    if (smartFocus === "meat") return "meat-chain production";
+    if (smartFocus === "save-territory") return "Expansion";
+    if (smartFocus === "save-meat") return "Hatchery";
+    return "current strategic target";
+  }
+
   function getWaitSignals(game, engine, protectedResources) {
     const waits = [];
     const nexusCount = Math.floor(decimalToNumber(getNexusCount(game), 0));
@@ -19767,7 +19796,11 @@ function getDisplayName(item) {
       selectedMainAction: preExecutionMainAction,
       goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
       activeMilestone: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
-      activeTarget: preExecutionMainAction?.target || smartFocus || "current strategic target",
+      // 9.4.0 DEL 1: anchor activeTarget to the current executable milestone, never to the
+      // UI/long-term smartFocus. preExecutionMainAction?.target was null whenever the M2 winner
+      // was "none" (the pathological save), which is exactly when the fallback to smartFocus
+      // produced the territory/lesser-hive-mind split.
+      activeTarget: getCurrentStrategyTarget(game, engine, protectedResources, smartFocus),
       purchaseProposalState: unifiedPurchaseProposalState,
       abilitySnapshot: m6AbilityAdvisor,
       ascensionSnapshot: m6AscensionAdvisor,
