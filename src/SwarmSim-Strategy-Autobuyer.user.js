@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      9.3.2
+// @version      9.3.3
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -30,7 +30,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "9.3.2";
+  const AUTOBUYER_VERSION = "9.3.3";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -578,6 +578,13 @@
   let lastStatus = "Laddar...";
   let purchaseLog = [];
   let advisorLog = [];
+  // 9.3.3 action-budget contract: every real main-lane purchase this
+  // runOnce() cycle is recorded here exactly once, in execution order,
+  // regardless of which sub-planner made it. This is the authoritative
+  // source for "all executed main actions" observability (see
+  // recordMainAction/clearMainActionLedger); it is separate from and does
+  // not replace laneCoordinatorState.selectedLaneActions.
+  let mainActionLedger = [];
   let strategyInspector = null;
   let laneCandidates = [];
   let unifiedPurchaseProposalState = null;
@@ -1349,6 +1356,27 @@ function getDisplayName(item) {
 
   function clearAdvisorLog() {
     advisorLog = [];
+  }
+
+  // Records one real, already-executed main-lane purchase. Called at the
+  // exact site of every successful main-lane buy across every sub-planner
+  // (Engine, critical production upgrades, Energy, Clone Ramp, Clone
+  // Buffer, Unlock/Parent Step, target-aware upgrades, generic upgrades,
+  // generic units). Never called for side-tasks (Clone Prep cocoons) or
+  // advisor-only "would buy" decisions - only for a real, confirmed delta.
+  function recordMainAction(lane, candidate, reason, amount = "") {
+    mainActionLedger.push({
+      index: mainActionLedger.length + 1,
+      time: new Date().toLocaleTimeString(),
+      lane: lane || "unknown",
+      candidate: candidate || "unknown",
+      reason: reason || "",
+      amount: amount || "",
+    });
+  }
+
+  function clearMainActionLedger() {
+    mainActionLedger = [];
   }
 
   function clearLaneCandidates() {
@@ -3363,6 +3391,13 @@ function getDisplayName(item) {
       lepidoptera: `${formatSwarmNumber(mothCount)} (+${trimNumber(mothBoost)}%)`,
       actions: `${mainActions || 0} main, ${sideActions || 0} side-tasks`,
       mainActions: Number(mainActions || 0),
+      maxMainActions: Number(maxActions || 0),
+      // 9.3.3 action-budget contract: complete, ordered list of every real
+      // main-lane purchase this runOnce() cycle, across every sub-planner.
+      // One entry per real buy - see recordMainAction(). This is
+      // authoritative for "how many/which main actions actually executed";
+      // laneCoordinatorSelectedActions remains the legacy Council summary.
+      executedMainActions: mainActionLedger.slice(),
       sideActions: Number(sideActions || 0),
       activeCouncilSpeaker,
       councilWinningLane,
@@ -12122,6 +12157,7 @@ function getDisplayName(item) {
       }
 
       const bought = safe(`Smart köp ${item.key}`, () => buyUpgradeAmount(commands, upgrade, newDecimal(1), "Engine"));
+      if (bought) recordMainAction("Engine", item.key, item.reason);
       return { actionTaken: true, bought: bought ? 1 : 0, summary: `Bought ${item.key}` };
     }
 
@@ -12226,14 +12262,23 @@ function getDisplayName(item) {
       .map((entry) => entry.upgrade);
   }
 
-  function handleCriticalProductionUpgrades(game, commands, protectedResources) {
+  function handleCriticalProductionUpgrades(game, commands, protectedResources, remainingMainActions = Infinity) {
     const upgrades = getCriticalProductionCandidates(game, protectedResources);
 
     if (!upgrades.length) return { actionTaken: false, bought: 0 };
 
+    // 9.3.3 action-budget contract: this loop can buy more than one upgrade
+    // per call (config.criticalProductionMaxPerRun, default 3); it must
+    // never buy more real upgrades than the budget the caller has left,
+    // regardless of how many candidates were ranked. Ranking/scoring/order
+    // of `upgrades` is unchanged - only how many of them get bought here.
+    const budget = Number.isFinite(remainingMainActions) ? Math.max(0, remainingMainActions) : Infinity;
+
     let bought = 0;
 
     for (const upgrade of upgrades) {
+      if (bought >= budget) break;
+
       recordAdvisor(
         "BUY",
         getDisplayName(upgrade),
@@ -12261,7 +12306,10 @@ function getDisplayName(item) {
         buyUpgradeAmount(commands, upgrade, newDecimal(1), "Critical Upgrade")
       );
 
-      if (didBuy) bought++;
+      if (didBuy) {
+        bought++;
+        recordMainAction("Upgrade", getDisplayName(upgrade), "critical production upgrade available now");
+      }
     }
 
     return {
@@ -12992,7 +13040,14 @@ function getDisplayName(item) {
 
     const didBuy = safe("Clone buffer recovery", () => buyUnitAmount(commands, cocoon, buyNum, "Clone Buffer"));
     cloneBufferPreviousMode = mode;
-    return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed" };
+    // recordMainAction() intentionally happens at the smartRunOnce call
+    // site (only on the budget-gated branch), not here: this hard-lock
+    // recovery purchase runs unconditionally even when the main-action
+    // budget is exhausted (see the ungated `else` branch in smartRunOnce),
+    // exactly mirroring the pre-existing addMainResult()-only-when-gated
+    // behavior. Recording it here unconditionally would count budget-exempt
+    // purchases against the budget ledger.
+    return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed", reason, buyNum: formatSwarmNumber(buyNum), boughtCandidate: getDisplayName(cocoon) };
   }
 
   function recordCloneRampState(fields = {}) {
@@ -13224,6 +13279,7 @@ function getDisplayName(item) {
         : "cast once more, then bank the result, until bank reaches cap",
     });
 
+    recordMainAction("Clone Ramp", "Clone Larvae", reason);
     return { actionTaken: true, bought: 1, summary: readyForFinalCast ? "Clone Ramp full-cap cast" : "Clone Ramp growth cast" };
   }
 
@@ -13677,6 +13733,7 @@ function getDisplayName(item) {
           }
 
           const didTwinBuy = safe(`Twin unlock threshold ${twinUpgradeName}`, () => buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Twin Unlock"));
+          if (didTwinBuy) recordMainAction("Twin", twinUpgradeName, reason);
           if (didTwinBuy) {
             recordTwinUnlockPlannerState({
               candidate: twinUpgradeName,
@@ -14071,6 +14128,7 @@ function getDisplayName(item) {
           }
 
           const didPrepBuy = safe(`Twin unlock prep ${twinCostUnitName}`, () => buyUnitAmount(commands, twinCostUnit, prepNum, "Twin Unlock Prep"));
+          if (didPrepBuy) recordMainAction("Meat", twinCostUnitName, reason, formatSwarmNumber(prepNum));
           if (didPrepBuy) {
             recordTwinUnlockPlannerState({
               candidate: twinUpgradeName,
@@ -14255,6 +14313,7 @@ function getDisplayName(item) {
     }
 
     const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, num, parentChoice ? "Parent Step" : "Unlock Step"));
+    if (didBuy) recordMainAction("Meat", candidateName, reason, formatSwarmNumber(num));
     if (didBuy && parentChoice) {
       const consumedActionUnit = !!parentSupportsActionUnit && String(bottleneckResource || "") === String(actionUnitName || "");
       recordParentStepPlannerState({
@@ -14507,6 +14566,7 @@ function getDisplayName(item) {
       }
 
       const didBuy = safe("Energy Nexus priority", () => buyUpgradeAmount(commands, nextNexus, newDecimal(1), "Energy Upgrade"));
+      if (didBuy) recordMainAction("Energy", getDisplayName(nextNexus), `Nexus priority: ${Math.floor(nexusCount)} / ${config.nexusTarget}`);
       return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought Nexus" : "Nexus buy failed" };
     }
 
@@ -14600,6 +14660,7 @@ function getDisplayName(item) {
               }
 
               const didBuy = safe("Energy ROI lepidoptera", () => buyUnitAmount(commands, moth, mothNum, "Energy Unit"));
+              if (didBuy) recordMainAction("Energy", "Lepidoptera", roi.reason, formatSwarmNumber(mothNum));
               return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought Lepidoptera ROI" : "Lepidoptera buy failed" };
             }
 
@@ -14673,6 +14734,7 @@ function getDisplayName(item) {
           }
 
           const didBuy = safe("Post-Nexus Energy Planner lepidoptera", () => buyUnitAmount(commands, moth, plan.num, "Energy Unit"));
+          if (didBuy) recordMainAction("Energy", "Lepidoptera", plan.reason, formatSwarmNumber(plan.num));
           return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought post-Nexus Lepidoptera" : "Post-Nexus Lepidoptera buy failed" };
         } else {
           recordAdvisor("HOLD", "Lepidoptera", plan.reason);
@@ -16728,6 +16790,14 @@ function getDisplayName(item) {
       buyUpgradeAmount(commands, top.upgrade, newDecimal(1), "Target Upgrade")
     );
 
+    if (didBuy) {
+      recordMainAction(
+        top.support.type === "twin" ? "Twin" : "Upgrade",
+        getDisplayName(top.upgrade),
+        top.reason
+      );
+    }
+
     return { bought: didBuy ? 1 : 0, evaluatedNames };
   }
 
@@ -16857,7 +16927,7 @@ function getDisplayName(item) {
     return analysis?.ok && analysis.reason ? analysis.reason : "";
   }
 
-  function buySmartUpgrades(game, commands, protectedResources) {
+  function buySmartUpgrades(game, commands, protectedResources, remainingMainActions = Infinity) {
     const targetAwareResult = handleTargetAwareUpgradePlanner(game, commands, protectedResources);
     const targetAwareEvaluatedNames = targetAwareResult?.evaluatedNames || new Set();
 
@@ -16922,9 +16992,17 @@ function getDisplayName(item) {
 
     if (!upgrades.length) return 0;
 
+    // 9.3.3 action-budget contract: this loop can buy up to
+    // config.maxUpgradesPerRun (default 10) real upgrades per call; it must
+    // never buy more than the caller's remaining budget. Ranking/scoring/
+    // order of `upgrades` is unchanged - only how many of them get bought.
+    const budget = Number.isFinite(remainingMainActions) ? Math.max(0, remainingMainActions) : Infinity;
+
     let bought = 0;
 
     for (const upgrade of upgrades) {
+      if (bought >= budget) break;
+
       recordAdvisor("BUY", getDisplayName(upgrade), "safe upgrade after larva-engine checks");
       addLaneCandidate({
         lane: "Upgrade",
@@ -16956,6 +17034,7 @@ function getDisplayName(item) {
 
         if (delta.greaterThan(0)) {
           recordPurchase("Upgrade", upgrade, delta);
+          recordMainAction("Upgrade", getDisplayName(upgrade), "safe upgrade after larva-engine checks");
           bought++;
         }
       });
@@ -17212,6 +17291,7 @@ function getDisplayName(item) {
       buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Goal Upgrade")
     );
 
+    if (didTwin) recordMainAction("Twin", getDisplayName(twinUpgrade), `goal-planner twin-prep before ${getDisplayName(unit)} for ${targetLabel}`);
     return didTwin ? 1 : 0;
   }
 
@@ -17293,6 +17373,7 @@ function getDisplayName(item) {
       buyUnitAmount(commands, unit, num, label || "Goal Step")
     );
 
+    if (didBuy) recordMainAction("Meat", getDisplayName(unit), reason, formatSwarmNumber(num));
     return didBuy ? 1 : 0;
   }
 
@@ -17597,6 +17678,8 @@ function getDisplayName(item) {
       buyUnitAmount(commands, actionUnit, refillNum, "Parent Refill")
     );
 
+    if (didBuy) recordMainAction("Meat", actionLabel, reason, formatSwarmNumber(refillNum));
+
     recordActionUnitRefillState({
       candidate: actionLabel,
       decision: didBuy ? "BUY" : "HOLD",
@@ -17726,19 +17809,30 @@ function getDisplayName(item) {
     }
 
     let bought = 0;
+    // 9.3.3 action-budget contract: this function can attempt up to three
+    // real buys per call (twin-prep, action-unit, follow-up parent-step);
+    // it must never buy more than the caller's remaining budget. Which
+    // candidate is attempted, its guards, its reserve/payback evaluation
+    // and its reason text are unchanged - only whether there is still
+    // budget room to attempt the next one in the sequence.
+    const budget = Number.isFinite(remainingActions) ? Math.max(0, remainingActions) : Infinity;
 
-    bought += buyPlannerTwinIfUseful(game, commands, plan.actionUnit, protectedResources, targetLabel);
+    if (bought < budget) {
+      bought += buyPlannerTwinIfUseful(game, commands, plan.actionUnit, protectedResources, targetLabel);
+    }
 
-    bought += buyPlannerUnit(
-      commands,
-      plan.actionUnit,
-      "Goal Step",
-      `goal planner for ${targetLabel}: build bottleneck resource (${bottleneckLabel})`,
-      plan,
-      protectedResources
-    );
+    if (bought < budget) {
+      bought += buyPlannerUnit(
+        commands,
+        plan.actionUnit,
+        "Goal Step",
+        `goal planner for ${targetLabel}: build bottleneck resource (${bottleneckLabel})`,
+        plan,
+        protectedResources
+      );
+    }
 
-    if (!config.advisorOnly && config.autoBuySafeDecisions && plan.parentUnit?.isVisible?.() && plan.parentUnit?.isBuyable?.()) {
+    if (bought < budget && !config.advisorOnly && config.autoBuySafeDecisions && plan.parentUnit?.isVisible?.() && plan.parentUnit?.isBuyable?.()) {
       const refreshedParentNum = getPlannerUnitBuyNum(plan.parentUnit);
 
       if (isPositive(refreshedParentNum)) {
@@ -17777,7 +17871,10 @@ function getDisplayName(item) {
             buyUnitAmount(commands, plan.parentUnit, refreshedParentNum, "Goal Follow-up")
           );
 
-          if (didParent) bought++;
+          if (didParent) {
+            bought++;
+            recordMainAction("Meat", getDisplayName(plan.parentUnit), `goal planner follow-up after ${actionLabel}: convert bank toward ${targetLabel}`, formatSwarmNumber(refreshedParentNum));
+          }
         }
       }
     } else if (plan.parentUnit) {
@@ -17852,13 +17949,19 @@ function getDisplayName(item) {
     };
   }
 
-  function performMeatChainPrep(game, commands, targetUnit, protectedResources) {
+  function performMeatChainPrep(game, commands, targetUnit, protectedResources, remainingMainActions = Infinity) {
     const prep = getMeatChainPrep(game, targetUnit, protectedResources);
     if (!prep) return { bought: 0, didPrep: false };
 
+    // 9.3.3 action-budget contract: this can attempt up to two real buys
+    // per call (twin-prep, then feeder); it must never buy more than the
+    // caller's remaining budget. Which candidate is attempted and its
+    // guards/reason are unchanged - only whether there is still budget
+    // room to attempt the next one.
+    const budget = Number.isFinite(remainingMainActions) ? Math.max(0, remainingMainActions) : Infinity;
     let bought = 0;
 
-    if (prep.twinUpgrade && !shouldHoldTwinForRecovery(prep.twinUpgrade, "chain twin-prep")) {
+    if (bought < budget && prep.twinUpgrade && !shouldHoldTwinForRecovery(prep.twinUpgrade, "chain twin-prep")) {
       recordAdvisor(
         "BUY",
         getDisplayName(prep.twinUpgrade),
@@ -17871,8 +17974,15 @@ function getDisplayName(item) {
         const didTwin = safe(`Meat-chain twin-prep ${getDisplayName(prep.twinUpgrade)}`, () =>
           buyUpgradeAmount(commands, prep.twinUpgrade, newDecimal(1), "Chain Upgrade")
         );
-        if (didTwin) bought++;
+        if (didTwin) {
+          bought++;
+          recordMainAction("Twin", getDisplayName(prep.twinUpgrade), `twin-prep before buying ${getDisplayName(prep.feeder)}`);
+        }
       }
+    }
+
+    if (bought >= budget) {
+      return { bought, didPrep: true };
     }
 
     if (shouldHoldMeatChainPurchase(prep.feeder, prep.feederNum, "chain prep payback/reserve")) {
@@ -17891,7 +18001,10 @@ function getDisplayName(item) {
       buyUnitAmount(commands, prep.feeder, prep.feederNum, "Chain Prep")
     );
 
-    if (didFeeder) bought++;
+    if (didFeeder) {
+      bought++;
+      recordMainAction("Meat", getDisplayName(prep.feeder), prep.reason, formatSwarmNumber(prep.feederNum));
+    }
 
     return { bought, didPrep: true };
   }
@@ -17970,6 +18083,7 @@ function getDisplayName(item) {
   
     if (bought) {
       markSelectedLane("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num));
+      recordMainAction("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num));
       recordTerritoryPrepPlannerState({
         ...territoryPrepPlannerState,
         territoryPrepDecision: "BUY",
@@ -17997,8 +18111,17 @@ function getDisplayName(item) {
       return "paused-ascension";
     }
 
-    const maxUnitActions = Math.max(1, Number(remainingActions || 1));
+    // 9.3.3 action-budget contract: remainingActions is the caller's real
+    // remaining budget for this runOnce() cycle and may legitimately be 0
+    // (all main-action slots already used by earlier sub-planners this
+    // cycle). Flooring this to 1 previously guaranteed an overshoot every
+    // time it happened; treat 0 as 0 and buy nothing further.
+    const maxUnitActions = Math.max(0, Number(remainingActions || 0));
     let boughtCount = 0;
+
+    if (maxUnitActions <= 0) {
+      return 0;
+    }
     const selectedLaneActions = (laneCoordinatorState?.selectedLaneActions || []).slice();
 
     function markSelectedLane(lane, candidate, reason, amount = "") {
@@ -18206,7 +18329,7 @@ function getDisplayName(item) {
 
       if (isMeat && !isFallbackMeat) {
         // Normal top candidate behavior keeps the existing methodical chain prep.
-        prep = performMeatChainPrep(game, commands, unit, protectedResources);
+        prep = performMeatChainPrep(game, commands, unit, protectedResources, Math.max(0, maxUnitActions - boughtCount));
         boughtCount += prep.bought || 0;
         if (boughtCount > 0) return boughtCount;
       }
@@ -18325,6 +18448,7 @@ function getDisplayName(item) {
 
       if (bought) {
         markSelectedLane(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num));
+        recordMainAction(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num));
         boughtCount++;
 
         if (tab !== "territory" && boughtCount < maxUnitActions) {
@@ -19300,6 +19424,7 @@ function getDisplayName(item) {
 
     clearAdvisorLog();
     clearLaneCandidates();
+    clearMainActionLedger();
     meatFallbackState = null;
     meatActionUnitPaybackBypassState = null;
     actionUnitRefillState = null;
@@ -19353,16 +19478,38 @@ function getDisplayName(item) {
     }
 
     function addMainResult(label, result) {
-      const count = resultActionCount(result);
+      const rawCount = resultActionCount(result);
+      if (!rawCount) return false;
+
+      // 9.3.3 action-budget contract: never let a single sub-planner result
+      // push mainActions past maxActions, even if the sub-planner itself
+      // already made more real purchases than remained (the sub-planners
+      // that can buy more than once per call are themselves now clamped to
+      // the remaining budget before they run - see handleCriticalProductionUpgrades/
+      // buySmartUpgrades/handleMeatGoalPlanner - this is a defense-in-depth
+      // clamp on the reported count only, it never un-does a real purchase).
+      const budgetRemaining = Math.max(0, maxActions - mainActions);
+      const count = Math.min(rawCount, budgetRemaining);
+      if (rawCount > budgetRemaining) {
+        warn(`action-budget contract: ${label} reported ${rawCount} action(s) with only ${budgetRemaining} remaining; clamping to ${count}`);
+      }
       if (!count) return false;
 
       mainActions += count;
       summaries.push(result.summary || label);
 
+      // recordMainAction() for each real buy is called directly at the
+      // buy site inside the sub-planner itself (single canonical
+      // call-site per real purchase - see e.g. handleCriticalProductionUpgrades,
+      // handleEnergyStrategy, runCloneRampPlanner, runCloneBufferPlanner,
+      // runUnlockPlanner). addMainResult() only does mainActions/summary/
+      // selectedLaneActions bookkeeping here; it does not duplicate the
+      // ledger entry.
+      const lane = laneFromMainLabel(label);
       const row = latestAdvisorRow(["BUY", "SIDE", "PLAN", "NEXT", "HOLD"]);
       const selectedLaneActions = (laneCoordinatorState?.selectedLaneActions || []).slice();
       selectedLaneActions.push({
-        lane: laneFromMainLabel(label),
+        lane,
         candidate: row?.title || result.summary || label,
         reason: formatAdvisorReason(row),
         amount: "",
@@ -19496,6 +19643,14 @@ function getDisplayName(item) {
         matchedExecution: wholeEconomyExecutionDecisionState.matchedExecution,
         executedFingerprint: wholeEconomyExecutionDecisionState.executedFingerprint,
       });
+      if (Number(unifiedAction.result?.bought || 0) > 0) {
+        recordMainAction(
+          laneFromMainLabel(unifiedAction.label),
+          unifiedAction.result?.executedCandidate || unifiedAction.label,
+          wholeEconomyExecutionDecisionState.selectedReason || "six-domain coordinator exact-winner execution",
+          unifiedAction.result?.executedAmount || ""
+        );
+      }
       addMainResult(unifiedAction.label, unifiedAction.result);
       if (Number(unifiedAction.result?.bought || 0) > 0 && wholeEconomyExecutionDecisionState.matchedExecution === "yes") {
         coordinatorExecutedKey = wholeEconomyExecutionDecisionState.selectedExecutionKey;
@@ -19537,7 +19692,7 @@ function getDisplayName(item) {
     }
 
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
-      const criticalUpgradeAction = handleCriticalProductionUpgrades(game, commands, protectedResources);
+      const criticalUpgradeAction = handleCriticalProductionUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions));
       addMainResult("Critical upgrades", criticalUpgradeAction);
     }
 
@@ -19553,8 +19708,14 @@ function getDisplayName(item) {
 
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const cloneBufferAction = executeCloneGuardAction({ game, commands });
+      if (Number(cloneBufferAction?.bought || 0) > 0) {
+        recordMainAction("Clone Prep", cloneBufferAction.boughtCandidate, cloneBufferAction.reason, cloneBufferAction.buyNum);
+      }
       addMainResult("Clone buffer", cloneBufferAction);
     } else if (!m6DecisionOwnsMainCycle) {
+      // Hard-lock clone-buffer recovery runs even with zero remaining
+      // budget (unchanged pre-existing behavior); it is intentionally not
+      // counted toward mainActions or the action ledger in that case.
       executeCloneGuardAction({ game, commands });
     }
 
@@ -19610,7 +19771,7 @@ function getDisplayName(item) {
     recordAdvisor("INFO", "Smart focus", smartFocus);
 
     if (!m6DecisionOwnsMainCycle && config.buyUpgrades && canDoMoreMainActions()) {
-      upgrades = safe("Smart upgrades", () => buySmartUpgrades(game, commands, protectedResources)) || 0;
+      upgrades = safe("Smart upgrades", () => buySmartUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions))) || 0;
       if (upgrades > 0) {
         mainActions += upgrades;
         summaries.push(`${upgrades} upgrade(s)`);
@@ -19623,7 +19784,7 @@ function getDisplayName(item) {
         commands,
         engine,
         protectedResources,
-        Math.max(1, maxActions - mainActions),
+        Math.max(0, maxActions - mainActions),
         { skipMeatFirst: coordinatorExecutedKey === "meat" }
       )) || 0;
       if (units === "paused-ascension") {
@@ -19640,6 +19801,15 @@ function getDisplayName(item) {
     addSideResult("Clone prep", clonePrep);
 
     runAbilityPrepPlanner(game);
+
+    // 9.3.3 action-budget contract: mainActions must never exceed maxActions.
+    // Every sub-planner that can buy more than once per call is now clamped
+    // to the remaining budget before it runs (see handleCriticalProductionUpgrades/
+    // buySmartUpgrades/handleMeatGoalPlanner/performMeatChainPrep), so this
+    // should never fire; it stays as a defense-in-depth regression signal.
+    if (mainActions > maxActions) {
+      warn(`action-budget contract violated: mainActions=${mainActions} exceeds maxActions=${maxActions}`, mainActionLedger);
+    }
 
     strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, summaries, mainActions, sideActions, maxActions);
     recordRunHistoryEntry(strategyInspector);
