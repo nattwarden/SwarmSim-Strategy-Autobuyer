@@ -5791,15 +5791,14 @@ function getDisplayName(item) {
       const leftHasValue = Number.isFinite(leftComparable.value);
       const rightHasValue = Number.isFinite(rightComparable.value);
       if (leftHasValue !== rightHasValue) return Number(rightHasValue) - Number(leftHasValue);
-      if (Number.isFinite(leftComparable.value) && Number.isFinite(rightComparable.value) && leftComparable.value !== rightComparable.value) return rightComparable.value - leftComparable.value;
-      // 9.4.0 DEL 3: when the shared comparable metric ties (e.g. multiple discrete completion-event
-      // candidates all at progressDelta 100), break the tie by the evaluator's economic score so the
-      // coordinator's winner matches the whole-economy execution decision's winner (higher score
-      // first). This keeps the two rankers consistent and prevents the identity-mismatch that
-      // otherwise refuses execution.
-      const leftScore = Number.isFinite(left.rankingEconomicScore) ? left.rankingEconomicScore : null;
-      const rightScore = Number.isFinite(right.rankingEconomicScore) ? right.rankingEconomicScore : null;
-      if (leftScore !== null && rightScore !== null && leftScore !== rightScore) return rightScore - leftScore;
+      // STOP GATE 1: candidates are ranked ONLY by the shared comparable metric (same target, same
+      // horizon, same unit). Comparing values across different metric bases is not allowed, so only
+      // compare when both sides share a basis.
+      if (leftComparable.basis && rightComparable.basis && leftComparable.basis === rightComparable.basis
+        && Number.isFinite(leftComparable.value) && Number.isFinite(rightComparable.value)
+        && leftComparable.value !== rightComparable.value) return rightComparable.value - leftComparable.value;
+      // Ties on the shared metric break ONLY on verified confidence, then deterministic canonical
+      // identity (never local economicScore, lane priority or planner order - 9.4.0 STOP GATE 1).
       const confidenceRank = (value) => ({ high: 3, medium: 2, low: 1 }[String(value || "low")] || 1);
       const confidenceDelta = confidenceRank(right.evidence?.confidence) - confidenceRank(left.evidence?.confidence);
       if (confidenceDelta !== 0) return confidenceDelta;
@@ -5921,6 +5920,12 @@ function getDisplayName(item) {
       proposalState,
       actionBudget: 1,
       executionEnabled: true,
+      // Execute exactly the coordinator's authorized winner, not the economicScore-ordered
+      // evaluation winner (9.4.0 STOP GATE 1 - authorized == executed).
+      forcedWinner: {
+        lane: boundedCandidate.domainLabel.replace("Meat chain", "Meat").replace("Larva/Engine", "Engine").replace("Army/Territory", "Territory").replace("Energy production", "Energy"),
+        candidate: boundedCandidate.action?.label,
+      },
     });
     const identityMatches = purchaseDecision?.selectedLane === boundedCandidate.domainLabel.replace("Meat chain", "Meat").replace("Larva/Engine", "Engine").replace("Army/Territory", "Territory").replace("Energy production", "Energy")
       && purchaseDecision?.selectedCandidate === boundedCandidate.action?.label
@@ -15055,6 +15060,55 @@ function getDisplayName(item) {
     return prod[resourceName] || newDecimal(0);
   }
 
+  // 9.4.0 STOP GATE 1 — a real, shared-basis (seconds), discriminating comparable metric.
+  //
+  // Every executable candidate is scored by how many seconds it removes from the ETA of the SINGLE
+  // active milestone, using the game's own production model (unit.eachProduction / velocity / cost) -
+  // never a flat placeholder and never a candidate-local completion percentage. The binding
+  // bottleneck of the milestone target is the cost resource it is currently furthest from affording;
+  // a purchase helps only insofar as it (a) raises that resource's production rate and/or (b) does not
+  // spend so much of it that the net ETA rises. Candidates that do not touch the binding bottleneck
+  // yield 0 and are effectively unranked toward this milestone. Same target + same horizon + same unit
+  // (seconds) => genuinely comparable across lanes; no local economicScore is ever used as value.
+  function estimateMilestoneBottleneck(targetUnit) {
+    if (!targetUnit) return null;
+    const costs = getCostList(targetUnit).filter((c) => c?.unit && isPositive(c.val));
+    if (!costs.length) return null;
+    let worst = null;
+    for (const c of costs) {
+      const need = decimalFrom(c.val);
+      const have = decimalFrom(safe(`count ${c.unit.name}`, () => c.unit.count?.()) || 0);
+      const deficit = need.minus(have);
+      if (deficit.lessThanOrEqualTo(0)) continue; // this cost is already affordable
+      const rate = decimalFrom(safe(`vel ${c.unit.name}`, () => c.unit.velocity?.()) || 0);
+      const etaSeconds = isPositive(rate) ? decimalToNumber(deficit.dividedBy(rate), Infinity) : Infinity;
+      if (!worst || etaSeconds > worst.etaSeconds) worst = { resourceUnit: c.unit, need, have, deficit, rate, etaSeconds };
+    }
+    return worst; // null => target is fully affordable now (a discrete completion event)
+  }
+
+  function estimateMilestoneEtaImprovementSeconds(milestoneTargetUnit, boughtUnit, num) {
+    if (!milestoneTargetUnit || !boughtUnit || !isPositive(num)) return null;
+    const bn = estimateMilestoneBottleneck(milestoneTargetUnit);
+    if (!bn) return null; // milestone affordable now: handled as a completion event, not an ETA delta
+    if (!Number.isFinite(bn.etaSeconds)) {
+      // Unreachable at current production. A purchase still helps if it adds production of the
+      // bottleneck resource; report the seconds it would save once reachable is undefined, so treat
+      // as a small positive only when it genuinely adds rate (keeps it comparable but modest).
+      const addsRate = productionPerUnit(boughtUnit, bn.resourceUnit.name).times(num);
+      return isPositive(addsRate) ? decimalToNumber(bn.deficit.dividedBy(addsRate), Infinity) * -0 + 1 : 0;
+    }
+    const rateBoost = productionPerUnit(boughtUnit, bn.resourceUnit.name).times(num);
+    const costRow = getCostList(boughtUnit).find((c) => c?.unit && isSameGameItem(c.unit, bn.resourceUnit));
+    const spent = costRow ? decimalFrom(costRow.val).times(num) : newDecimal(0);
+    const deficitAfter = bn.deficit.plus(spent); // spending the bottleneck resource raises the deficit
+    const rateAfter = bn.rate.plus(rateBoost);
+    if (!isPositive(rateAfter)) return 0;
+    const etaAfter = decimalToNumber(deficitAfter.dividedBy(rateAfter), Infinity);
+    const improvement = bn.etaSeconds - etaAfter;
+    return Number.isFinite(improvement) ? improvement : 0;
+  }
+
   function getSmartUnitBuyNum(unit) {
     const max = safe(`Smart max ${unit.name}`, () => unit.maxCostMet?.(config.unitBuyPercent)) || newDecimal(0);
 
@@ -19113,6 +19167,9 @@ function getDisplayName(item) {
           const bypassAllowed = buyable && !!guard && !guard.ok && guard.type === "payback"
             && (step.kind === "parent-step" ? !!config.meatParentStepPaybackBypass : !!config.meatActionUnitPaybackBypass);
           const safe = buyable && (!guard || guard.ok || bypassAllowed);
+          // STOP GATE 1 (in progress): real seconds saved toward the active milestone target, from the
+          // game's production model. Replaces the flat progressDelta=100 placeholder.
+          const meatEtaImpr = safe ? estimateMilestoneEtaImprovementSeconds(plan.target, unit, num) : null;
           add({
             lane: "Meat",
             decision: safe ? "BUY" : "HOLD",
@@ -19130,7 +19187,9 @@ function getDisplayName(item) {
             executionVariant: normalizeLabelKey(unit?.suffix || "") || "base",
             boundedAmount: normalizeBoundedAmountToken(num),
             wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
-            raw: safe ? { ...(guard?.raw || {}), projectedMilestoneProgressDelta: 100 } : (guard?.raw || null),
+            raw: safe
+              ? { ...(guard?.raw || {}), ...(Number.isFinite(meatEtaImpr) ? { etaImprovementSeconds: meatEtaImpr } : { projectedMilestoneProgressDelta: 100 }) }
+              : (guard?.raw || null),
           }, "meat");
         }
       }
@@ -19262,20 +19321,32 @@ function getDisplayName(item) {
     };
   }
 
-  function buildWholeEconomyExecutionDecisionV1({ proposalState, actionBudget, executionEnabled = true }) {
+  function buildWholeEconomyExecutionDecisionV1({ proposalState, actionBudget, executionEnabled = true, forcedWinner = null }) {
     const base = createWholeEconomyExecutionDecisionBase(actionBudget);
     const proposals = proposalState?.proposals || [];
     const evaluation = proposalState?.evaluation || null;
-    const winner = evaluation?.winner || null;
+    // 9.4.0 STOP GATE 1: the SINGLE source of truth for the acted candidate is the six-domain
+    // coordinator's winner (ranked on the shared comparable metric). When the coordinator passes its
+    // authorized candidate in as forcedWinner, execute exactly that - never re-derive a different
+    // winner from the local economicScore-ordered evaluation. This keeps authorized == executed and
+    // removes the need for any economicScore cross-domain tie-break.
+    let winner = evaluation?.winner || null;
+    if (forcedWinner) {
+      const evaluated = Array.isArray(evaluation?.evaluated) ? evaluation.evaluated : [];
+      winner = evaluated.find((row) => row.lane === forcedWinner.lane
+          && normalizeLabelKey(row.candidate) === normalizeLabelKey(forcedWinner.candidate))
+        || evaluated.find((row) => row.lane === forcedWinner.lane)
+        || null;
+    }
     if (!winner) {
       return {
         ...base,
-        fallbackReason: "no safe winner from unified evaluation",
+        fallbackReason: forcedWinner ? "authorized coordinator winner not found among proposals" : "no safe winner from unified evaluation",
         scoreMargin: evaluation?.scoreMargin ?? null,
       };
     }
 
-    const proposal = proposals.find((row) => row.lane === winner.lane && row.candidate === winner.candidate)
+    const proposal = proposals.find((row) => row.lane === winner.lane && normalizeLabelKey(row.candidate) === normalizeLabelKey(winner.candidate))
       || proposals.find((row) => row.lane === winner.lane)
       || null;
     const domain = wholeEconomyDomainForLane(winner.lane);
