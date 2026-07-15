@@ -114,6 +114,58 @@ function pageBoundedPlan({ saveString, fixedTime, actions, horizon, mode, policy
   } finally { window.Date = RealDate; }
 }
 
+// GATE 5/6 — general real-engine plan measurement against ONE chosen target, deterministic (frozen).
+// Each action is a bounded (or buyMax) unit buy; measures the target's binding-resource progress.
+function pageMeasurePlan({ saveString, fixedTime, targetId, actions, horizon, policy, amountTamper, dropStep }) {
+  const injector = window.angular?.element(document.body)?.injector?.();
+  const game = injector?.get?.("game");
+  const commands = injector?.get?.("commands");
+  const D = (v) => { try { return v == null ? null : String(v.toString()); } catch { return String(v); } };
+  const NUM = (v) => { try { return Number(v.toString()); } catch { return NaN; } };
+  const RealDate = window.__RealDate || window.Date; window.__RealDate = RealDate;
+  const FIXED = Number(fixedTime);
+  function FrozenDate(...a) { return a.length === 0 ? new RealDate(FIXED) : new RealDate(...a); }
+  FrozenDate.now = () => FIXED; FrozenDate.UTC = RealDate.UTC; FrozenDate.parse = RealDate.parse; FrozenDate.prototype = RealDate.prototype;
+  window.Date = FrozenDate;
+  try { if (game.session && game.session.heartbeatId != null) { clearInterval(game.session.heartbeatId); game.session.heartbeatId = null; } } catch {}
+  try {
+    game.importSave(saveString);
+    const bindingLeg = () => {
+      const t = game.unit(targetId);
+      const legs = t.eachCost().map((c) => ({ r: c.unit.name, need: D(c.val), have: D(c.unit.count()), ratio: NUM(c.unit.count()) / NUM(c.val) }));
+      return legs.sort((a, b) => a.ratio - b.ratio)[0];
+    };
+    const before = bindingLeg();
+    const bindingUnit = game.unit(before.r);
+    const bindingCountBefore = bindingUnit.count();
+    const ledger = [];
+    for (let i = 0; i < actions.length; i++) {
+      if (dropStep != null && i === dropStep) { ledger.push({ step: i, unit: actions[i].id, skipped: true }); continue; }
+      const a = actions[i];
+      const u = game.unit(a.id);
+      if (!u) { ledger.push({ step: i, unit: a.id, executed: false, reason: "missing" }); continue; }
+      const authorized = a.mode === "buymax" ? u.maxCostMet(1).floor() : u.maxCostMet(policy.unitBuyPercent).times(policy.meatChunkPercent).dividedBy(100).floor();
+      const command = (amountTamper && i === 0) ? authorized.times(amountTamper).floor() : authorized;
+      const contractSatisfied = command.eq(authorized);
+      const cb = u.count();
+      if (command.gt(0)) commands.buyUnit({ unit: u, num: command, ui: "lab" });
+      const ca = u.count();
+      ledger.push({ step: i, lane: a.lane, unit: a.id, mode: a.mode || "bounded", authorizedRequestedAmount: D(authorized), commandRequestedAmount: D(command), contractSatisfied, observedTotalCountDelta: D(ca.minus(cb)), executed: ca.minus(cb).gt(0) });
+    }
+    game.tick(new RealDate(FIXED + horizon * 1000));
+    const after = bindingLeg();
+    const bindingProgress = D(bindingUnit.count().minus(bindingCountBefore));
+    const t = game.unit(targetId);
+    return {
+      targetId, bindingResource: before.r,
+      bindingHaveBefore: before.have, bindingHaveAfter: after.have,
+      bindingProgress,
+      affordRatioBefore: before.ratio, affordRatioAfter: after.ratio,
+      targetCompletable: t.isBuyable(), ledger,
+    };
+  } finally { window.Date = RealDate; }
+}
+
 function readSavedEpoch({ saveString }) {
   const game = window.angular.element(document.body).injector().get("game");
   game.importSave(saveString);
@@ -200,6 +252,127 @@ async function runGate1(page, save, fixedTime) {
   console.log("[GATE 1] PASSED");
 }
 
+// GATE 6 — versioned ranker `bounded-strategic-plan-outcome.v1`. Pure function. Within one identical
+// {target,horizon,schema} group: completion > makes-reachable > largest verified ETA improvement >
+// largest verified target-progress at horizon > WAIT. Confidence breaks a full economic tie only.
+// Incompatible group => UNRANKED. NO economicScore, NO lane bonus, NO planner order, NO fairness rule.
+const CONF = { high: 3, medium: 2, low: 1 };
+function rankPlans(plans, groupKey, useEconomicScore = false, byPlannerOrder = false) {
+  const compatible = plans.filter((p) => p.groupKey === groupKey);
+  const unranked = plans.filter((p) => p.groupKey !== groupKey).map((p) => p.lane);
+  if (byPlannerOrder) { // MUTATION: lane chosen by planner order (first listed), ignoring outcome
+    return { winner: compatible[0]?.lane || "WAIT", ordered: compatible.map((p) => p.lane), unranked, mutated: "planner-order" };
+  }
+  if (useEconomicScore) { // MUTATION: rank by forbidden local economicScore (the 9.3.5 lane-dominance bug)
+    const ordered = compatible.slice().sort((a, b) => (Number(b.economicScore) || 0) - (Number(a.economicScore) || 0));
+    return { winner: ordered[0]?.lane || "WAIT", ordered: ordered.map((p) => p.lane), unranked, mutated: "economicScore" };
+  }
+  const score = (p) => [
+    p.targetCompletable ? 1 : 0,
+    p.makesReachable ? 1 : 0,
+    Number.isFinite(p.etaImprovementSeconds) ? p.etaImprovementSeconds : 0,
+    Number(p.bindingProgress) || 0,
+  ];
+  const ordered = compatible.slice().sort((a, b) => {
+    const sa = score(a), sb = score(b);
+    for (let i = 0; i < sa.length; i++) { if (sb[i] !== sa[i]) return sb[i] - sa[i]; }
+    return (CONF[b.confidence] || 0) - (CONF[a.confidence] || 0); // full economic tie -> confidence only
+  });
+  const best = ordered[0];
+  const meaningful = best && (best.targetCompletable || best.makesReachable || (Number(best.bindingProgress) || 0) > 0 || (Number(best.etaImprovementSeconds) || 0) > 0);
+  const winner = meaningful ? best.lane : "WAIT";
+  return { winner, ordered: ordered.map((p) => `${p.lane}(${p.bindingProgress})`), unranked, mutated: useEconomicScore ? "economicScore" : null };
+}
+
+async function measure(page, save, fixedTime, targetId, lane, actions, horizon, opts = {}) {
+  const r = await page.evaluate(pageMeasurePlan, { saveString: save, fixedTime, targetId, actions, horizon, policy: RUNTIME_POLICY, amountTamper: opts.amountTamper || null, dropStep: opts.dropStep == null ? null : opts.dropStep });
+  return {
+    planId: `${lane}:${targetId}:${actions.map((a) => a.id + (a.mode === "buymax" ? "!" : "")).join(">") || "wait"}`,
+    lane, groupKey: `${targetId}|${horizon}|bounded-strategic-plan-outcome.v1`,
+    bindingProgress: r.bindingProgress, targetCompletable: r.targetCompletable,
+    makesReachable: false, etaImprovementSeconds: null, confidence: "medium",
+    economicScore: lane === "Territory" ? 999999 : 0, // adversarial: a forbidden score that favours Territory
+    ledger: r.ledger, affordRatioAfter: r.affordRatioAfter,
+  };
+}
+
+async function runGate56(page, save, fixedTime) {
+  const horizon = 3600;
+  const meatSeq = [{ lane: "Meat", id: "pantheon" }, { lane: "Meat", id: "pantheon2" }, { lane: "Meat", id: "pantheon" }, { lane: "Meat", id: "pantheon2" }];
+  const gk = (t) => `${t}|${horizon}|bounded-strategic-plan-outcome.v1`;
+
+  // ---- Scenario MEAT: target pantheon3 (lesser hive mind). Meat objectively progresses; others cannot.
+  const MEAT = "pantheon3";
+  const meatPlans = [
+    await measure(page, save, fixedTime, MEAT, "WAIT", [], horizon),
+    await measure(page, save, fixedTime, MEAT, "Meat", meatSeq, horizon),
+    await measure(page, save, fixedTime, MEAT, "Territory", [{ lane: "Territory", id: "stinger" }], horizon),
+    await measure(page, save, fixedTime, MEAT, "Energy", [{ lane: "Energy", id: "moth" }], horizon),
+  ];
+  const meatRank = rankPlans(meatPlans, gk(MEAT));
+  const meatShuffled = rankPlans([meatPlans[3], meatPlans[1], meatPlans[0], meatPlans[2]], gk(MEAT)); // order-invariance
+
+  // ---- Scenario WAIT: target pantheon4 (hive mind). Binding = pantheon3 (0, unbuyable) => nothing helps.
+  const WAITT = "pantheon4";
+  const waitPlans = [
+    await measure(page, save, fixedTime, WAITT, "WAIT", [], horizon),
+    await measure(page, save, fixedTime, WAITT, "Meat", [{ lane: "Meat", id: "pantheon3" }, { lane: "Meat", id: "pantheon2" }], horizon),
+    await measure(page, save, fixedTime, WAITT, "Territory", [{ lane: "Territory", id: "stinger" }], horizon),
+  ];
+  const waitRank = rankPlans(waitPlans, gk(WAITT));
+
+  // ---- Mutation controls (each must be caught) ----
+  const mut = {};
+  // 1. reintroduce local economicScore (favours Territory) -> winner flips away from the honest Meat winner
+  mut.economicScore = { honestWinner: meatRank.winner, mutatedWinner: rankPlans(meatPlans, gk(MEAT), true).winner };
+  mut.economicScoreCaught = mut.economicScore.mutatedWinner !== mut.economicScore.honestWinner;
+  // 2. pick lane by planner order -> winner is the first-listed lane, not the progress winner
+  mut.plannerOrder = { honestWinner: meatRank.winner, mutatedWinner: rankPlans(meatPlans, gk(MEAT), false, true).winner };
+  mut.plannerOrderCaught = mut.plannerOrder.mutatedWinner !== mut.plannerOrder.honestWinner;
+  // 3. buyMax instead of bounded -> amounts differ from the runtime bounded policy (not runtime-safe)
+  const meatBuymax = await measure(page, save, fixedTime, MEAT, "Meat", meatSeq.map((a) => ({ ...a, mode: "buymax" })), horizon);
+  const boundedFirst = meatPlans[1].ledger.find((l) => l.executed).authorizedRequestedAmount;
+  const buymaxFirst = meatBuymax.ledger.find((l) => l.executed).authorizedRequestedAmount;
+  mut.buyMaxCaught = boundedFirst !== buymaxFirst;
+  // 4. change amount after authorization -> amount contract violated (command != authorized)
+  const tampered = await measure(page, save, fixedTime, MEAT, "Meat", meatSeq, horizon, { amountTamper: 2 });
+  mut.amountTamperCaught = tampered.ledger.some((l) => l.executed && l.contractSatisfied === false);
+  // 5. drop an intermediate Meat step -> less verified progress than the full plan
+  const dropped = await measure(page, save, fixedTime, MEAT, "Meat", meatSeq, horizon, { dropStep: 2 });
+  mut.dropStepCaught = Number(dropped.bindingProgress) < Number(meatPlans[1].bindingProgress);
+  // 6. stale plan reuse + 7. heartbeat leakage are proven elsewhere (Track A STALE_AUTHORIZATION; GATE 1)
+  mut.stalePlanCaughtBy = "Track A STALE_AUTHORIZATION (check-9.4.0-authorization-amount-contract)";
+  mut.heartbeatCaughtBy = "GATE 1 unfrozen mutation control (this harness)";
+
+  const evidence = {
+    schemaVersion: "gate56-lane-sensitivity.v1", capturedAt: new Date().toISOString(),
+    save: { name: SAVE_NAME, fixedTimeIso: new Date(fixedTime).toISOString() }, horizon, rankerSchema: "bounded-strategic-plan-outcome.v1",
+    scenarios: {
+      meatWins: { target: MEAT, winner: meatRank.winner, ordered: meatRank.ordered, orderInvariantWinner: meatShuffled.winner, plans: meatPlans.map((p) => ({ lane: p.lane, bindingProgress: p.bindingProgress, targetCompletable: p.targetCompletable })) },
+      waitWins: { target: WAITT, winner: waitRank.winner, ordered: waitRank.ordered, plans: waitPlans.map((p) => ({ lane: p.lane, bindingProgress: p.bindingProgress })) },
+      engineWins: { status: "MISSING_DATA", reason: "no importable save exists where an Engine action binds the active milestone; the one repo save is a saturated late-game Meat state (GATE 3), and Engine-binding states cannot be legally derived from it (GATE 4)", needed: "a real early/mid-game save whose active milestone's binding resource is improved by a larva-engine upgrade (Expansion/Hatchery), captured with per-unit mechanics" },
+      territoryWins: { status: "MISSING_DATA", reason: "same as Engine: no save where a Territory/army action binds the active milestone", needed: "a real save whose active milestone binds on territory (e.g. an Expansion target inside its save window with a slow territory rate)" },
+    },
+    mutationControls: mut,
+  };
+  fs.writeFileSync(path.join(OUT_DIR, `gate56-lane-sensitivity-${SAVE_NAME}.json`), JSON.stringify(evidence, null, 1));
+
+  console.log(`  Scenario MEAT (target ${MEAT}): winner=${meatRank.winner}  ordered=[${meatRank.ordered.join(", ")}]`);
+  console.log(`    order-invariance: shuffled winner=${meatShuffled.winner} (${meatShuffled.winner === meatRank.winner ? "invariant ✓" : "CHANGED ✗"})`);
+  console.log(`  Scenario WAIT (target ${WAITT}): winner=${waitRank.winner}  ordered=[${waitRank.ordered.join(", ")}]`);
+  console.log(`  Engine-wins scenario: MISSING_DATA (needs a real Engine-binding save)`);
+  console.log(`  Territory-wins scenario: MISSING_DATA (needs a real Territory-binding save)`);
+  console.log(`  mutation controls: economicScore-caught=${mut.economicScoreCaught} plannerOrder-caught=${mut.plannerOrderCaught} buyMax-caught=${mut.buyMaxCaught} amountTamper-caught=${mut.amountTamperCaught} dropStep-caught=${mut.dropStepCaught}`);
+
+  const meatOk = meatRank.winner === "Meat" && meatShuffled.winner === "Meat";
+  const waitOk = waitRank.winner === "WAIT";
+  const mutOk = mut.economicScoreCaught && mut.plannerOrderCaught && mut.buyMaxCaught && mut.amountTamperCaught && mut.dropStepCaught;
+  console.log(`\n[GATE 5] available real scenarios: Meat-wins=${meatOk ? "✓" : "✗"} WAIT-wins=${waitOk ? "✓" : "✗"} | Engine-wins & Territory-wins = MISSING_DATA`);
+  console.log(`[GATE 6] ranker mutation controls all caught: ${mutOk ? "✓" : "✗"}`);
+  console.log(`[GATE 5/6] ${meatOk && waitOk && mutOk ? "PASS on available data (lane matrix INCOMPLETE: Engine/Territory fixtures missing)" : "FAILED"}`);
+  if (!(meatOk && waitOk && mutOk)) process.exit(1);
+}
+
 async function main() {
   const save = fs.readFileSync(SAVE_PATH, "utf8").trim();
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -211,11 +384,12 @@ async function main() {
     const fixedTime = await page.evaluate(readSavedEpoch, { saveString: save });
     if (!Number.isFinite(fixedTime)) throw new Error("could not derive date.saved epoch from save");
 
-    const gates = GATE === "all" ? ["1", "2"] : [GATE];
+    const gates = GATE === "all" ? ["1", "2", "56"] : [GATE];
     for (const g of gates) {
       console.log(`\n===== GATE ${g} (save=${SAVE_NAME}) =====`);
       if (g === "1") await runGate1(page, save, fixedTime);
       else if (g === "2") await runGate2(page, save, fixedTime);
+      else if (g === "56") await runGate56(page, save, fixedTime);
       else throw new Error(`unknown gate: ${g}`);
     }
   } finally { await browser.close(); }

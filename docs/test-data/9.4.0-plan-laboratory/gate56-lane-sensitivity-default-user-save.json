@@ -1,0 +1,95 @@
+{
+ "schemaVersion": "gate56-lane-sensitivity.v1",
+ "capturedAt": "2026-07-15T22:41:32.973Z",
+ "save": {
+  "name": "default-user-save",
+  "fixedTimeIso": "2026-07-14T00:02:09.201Z"
+ },
+ "horizon": 3600,
+ "rankerSchema": "bounded-strategic-plan-outcome.v1",
+ "scenarios": {
+  "meatWins": {
+   "target": "pantheon3",
+   "winner": "Meat",
+   "ordered": [
+    "Meat(244432646)",
+    "WAIT(0)",
+    "Territory(0)",
+    "Energy(0)"
+   ],
+   "orderInvariantWinner": "Meat",
+   "plans": [
+    {
+     "lane": "WAIT",
+     "bindingProgress": "0",
+     "targetCompletable": false
+    },
+    {
+     "lane": "Meat",
+     "bindingProgress": "244432646",
+     "targetCompletable": false
+    },
+    {
+     "lane": "Territory",
+     "bindingProgress": "0",
+     "targetCompletable": false
+    },
+    {
+     "lane": "Energy",
+     "bindingProgress": "0",
+     "targetCompletable": false
+    }
+   ]
+  },
+  "waitWins": {
+   "target": "pantheon4",
+   "winner": "WAIT",
+   "ordered": [
+    "WAIT(0)",
+    "Meat(0)",
+    "Territory(0)"
+   ],
+   "plans": [
+    {
+     "lane": "WAIT",
+     "bindingProgress": "0"
+    },
+    {
+     "lane": "Meat",
+     "bindingProgress": "0"
+    },
+    {
+     "lane": "Territory",
+     "bindingProgress": "0"
+    }
+   ]
+  },
+  "engineWins": {
+   "status": "MISSING_DATA",
+   "reason": "no importable save exists where an Engine action binds the active milestone; the one repo save is a saturated late-game Meat state (GATE 3), and Engine-binding states cannot be legally derived from it (GATE 4)",
+   "needed": "a real early/mid-game save whose active milestone's binding resource is improved by a larva-engine upgrade (Expansion/Hatchery), captured with per-unit mechanics"
+  },
+  "territoryWins": {
+   "status": "MISSING_DATA",
+   "reason": "same as Engine: no save where a Territory/army action binds the active milestone",
+   "needed": "a real save whose active milestone binds on territory (e.g. an Expansion target inside its save window with a slow territory rate)"
+  }
+ },
+ "mutationControls": {
+  "economicScore": {
+   "honestWinner": "Meat",
+   "mutatedWinner": "Territory"
+  },
+  "economicScoreCaught": true,
+  "plannerOrder": {
+   "honestWinner": "Meat",
+   "mutatedWinner": "WAIT"
+  },
+  "plannerOrderCaught": true,
+  "buyMaxCaught": true,
+  "amountTamperCaught": true,
+  "dropStepCaught": true,
+  "stalePlanCaughtBy": "Track A STALE_AUTHORIZATION (check-9.4.0-authorization-amount-contract)",
+  "heartbeatCaughtBy": "GATE 1 unfrozen mutation control (this harness)"
+ }
+}
