@@ -2234,6 +2234,9 @@ function getDisplayName(item) {
         ? roundWholeEconomy(milestoneProgressDelta)
         : null,
       nexusProtectionGate: String(raw?.nexusProtectionGate || (candidate?.lane === "Energy" ? "unknown" : "not-applicable")),
+      // 9.4.0 STOP GATE 1: the versioned milestone outcome carried from the proposal, the SINGLE
+      // source of cross-domain comparability (binding-resource-eta.v1). Not derived from raw numbers.
+      milestoneOutcome: raw?.milestoneOutcome || null,
     };
     return {
       lane: candidate?.lane || "Other",
@@ -2677,6 +2680,27 @@ function getDisplayName(item) {
     if (smartFocus === "save-territory") return "Expansion";
     if (smartFocus === "save-meat") return "Hatchery";
     return "current strategic target";
+  }
+
+  // 9.4.0 STOP GATE 1: the SINGLE active-milestone target as a game item (unit/upgrade) whose
+  // affordability the milestone-outcome model measures. Mirrors getCurrentStrategyTarget()'s branch
+  // order so the shared comparison target is identical to the displayed target/milestone.
+  function getActiveMilestoneTargetItem(game, engine, protectedResources, smartFocus) {
+    if (engine?.expansionBuyable && engine?.expansion) return engine.expansion;
+    if (engine?.hatcheryBuyable && engine?.hatchery) return engine.hatchery;
+
+    const nexusCount = Math.floor(decimalToNumber(getNexusCount(game), 0));
+    const nextNexus = getNextNexusUpgrade(game);
+    if (config.energyStrategy && nexusCount < config.nexusTarget && nextNexus) return nextNexus;
+
+    if (protectedResources?.has("territory") && engine?.expansion) return engine.expansion;
+    if (protectedResources?.has("meat") && engine?.hatchery) return engine.hatchery;
+
+    const plan = safe("Active milestone meat target", () => buildMeatGoalPlan(game));
+    if (plan?.target) return plan.target;
+
+    if (engine?.expansion) return engine.expansion;
+    return null;
   }
 
   function getWaitSignals(game, engine, protectedResources) {
@@ -5515,8 +5539,12 @@ function getDisplayName(item) {
     const domain = sixDomainInfo(domainId);
     const row = purchaseRow ? laboratoryCloneJson(purchaseRow) : null;
     const safetyStatus = row ? (row.safeEligible ? "ALLOWED" : (row.blockers && row.blockers.length ? "BLOCKED" : "BLOCKED")) : "UNSUPPORTED";
+    // 9.4.0 STOP GATE 1: cross-domain comparability now comes ONLY from the versioned milestone
+    // outcome (binding-resource-eta.v1). The legacy sixDomainComparableValue is kept for the
+    // effect-ledger fields below but never decides ranking.
+    const milestoneOutcome = row?.sharedOutcome?.milestoneOutcome || null;
     const comparability = row ? sixDomainComparableValue({ outcome: row.sharedOutcome || {}, comparability: row.comparability || {}, sharedComparableValue: row.sharedComparableValue }) : { basis: null, value: null, unit: null };
-    const comparable = Number.isFinite(comparability.value);
+    const comparable = milestoneOutcome ? milestoneOutcome.comparabilityStatus === "COMPARABLE" : Number.isFinite(comparability.value);
     const milestoneEtaImprovementSeconds = comparable && comparability.basis === "milestone-eta-seconds" ? comparability.value : null;
     const projectedMilestoneProgressDelta = comparable && comparability.basis === "same-unit-milestone-progress-delta" ? comparability.value : null;
     const commonValue = comparable && comparability.basis === "versioned-source-or-runtime-derived-common-value" ? comparability.value : null;
@@ -5582,13 +5610,24 @@ function getDisplayName(item) {
         hardBlockers: row?.blockers ? row.blockers.slice() : [],
         protectedResourcesTouched: row?.costResources ? row.costResources.slice() : [],
       },
-      comparability: {
+      comparability: milestoneOutcome ? {
+        status: milestoneOutcome.comparabilityStatus,
+        metricSchema: milestoneOutcome.metricSchema,
+        basis: milestoneOutcome.metricBasis,
+        metricTargetId: milestoneOutcome.metricTargetId,
+        metricHorizonId: milestoneOutcome.metricHorizonId,
+        metricUnit: milestoneOutcome.metricUnit,
+        state: milestoneOutcome.state,
+        commonValue: null,
+        missingConversions: milestoneOutcome.missingConversions || [],
+      } : {
         status: comparable ? "COMPARABLE" : "UNRANKED",
         basis: comparable ? comparability.basis : null,
         metricUnit: comparable ? comparability.unit : null,
         commonValue: comparable ? commonValue : null,
         missingConversions,
       },
+      milestoneOutcome,
       outcome: {
         milestoneEtaBeforeSeconds: row?.sharedOutcome?.etaSeconds ?? null,
         milestoneEtaAfterSeconds: row?.sharedOutcome?.etaSeconds !== null && row?.sharedOutcome?.etaSeconds !== undefined && comparable && milestoneEtaImprovementSeconds !== null ? Math.max(0, Number(row.sharedOutcome.etaSeconds) - Number(milestoneEtaImprovementSeconds)) : null,
@@ -5784,28 +5823,43 @@ function getDisplayName(item) {
       adaptAscensionDomainOutcome(snapshot.ascensionSnapshot || snapshot.ascensionAdvisor || snapshot.ascensionMutagenAdvisor || {}, sharedContext),
     ].map((outcome) => ({ ...outcome, effectAudit: auditStrategicEffects(outcome) }));
 
+    // 9.4.0 STOP GATE 1 / HARD GATE A+B — ranking uses ONLY the versioned milestone outcome.
+    // Two outcomes rank economically against each other only when their milestone comparability
+    // identity is identical; incompatible outcomes are never ranked by numeric value. A full tie on
+    // the shared metric breaks on verified confidence, then deterministic canonical identity. No local
+    // economicScore, lane priority or planner order ever participates.
+    const confidenceRank = (value) => ({ high: 3, medium: 2, low: 1 }[String(value || "low")] || 1);
+    const milestoneOutcomeAdvances = (o) => !!o && o.comparabilityStatus === "COMPARABLE"
+      && (o.state === "COMPLETION_NOW" || o.state === "MAKES_REACHABLE"
+        || (o.state === "REACHABLE" && Number.isFinite(o.etaImprovementSeconds) && o.etaImprovementSeconds > 0));
     const ranked = domainOutcomes.slice().sort((left, right) => {
-      const leftComparable = sixDomainComparableValue(left);
-      const rightComparable = sixDomainComparableValue(right);
       if (left.effectAudit.status !== right.effectAudit.status) return left.effectAudit.status === "PASS" ? 1 : -1;
-      const leftHasValue = Number.isFinite(leftComparable.value);
-      const rightHasValue = Number.isFinite(rightComparable.value);
-      if (leftHasValue !== rightHasValue) return Number(rightHasValue) - Number(leftHasValue);
-      // STOP GATE 1: candidates are ranked ONLY by the shared comparable metric (same target, same
-      // horizon, same unit). Comparing values across different metric bases is not allowed, so only
-      // compare when both sides share a basis.
-      if (leftComparable.basis && rightComparable.basis && leftComparable.basis === rightComparable.basis
-        && Number.isFinite(leftComparable.value) && Number.isFinite(rightComparable.value)
-        && leftComparable.value !== rightComparable.value) return rightComparable.value - leftComparable.value;
-      // Ties on the shared metric break ONLY on verified confidence, then deterministic canonical
-      // identity (never local economicScore, lane priority or planner order - 9.4.0 STOP GATE 1).
-      const confidenceRank = (value) => ({ high: 3, medium: 2, low: 1 }[String(value || "low")] || 1);
-      const confidenceDelta = confidenceRank(right.evidence?.confidence) - confidenceRank(left.evidence?.confidence);
-      if (confidenceDelta !== 0) return confidenceDelta;
+      const lo = left.milestoneOutcome;
+      const ro = right.milestoneOutcome;
+      if (milestoneOutcomesComparable(lo, ro)) {
+        const cmp = compareMilestoneOutcomes(lo, ro);
+        if (cmp !== 0) return cmp;
+        const confidenceDelta = confidenceRank(right.evidence?.confidence) - confidenceRank(left.evidence?.confidence);
+        if (confidenceDelta !== 0) return confidenceDelta;
+        return String(left.domainId).localeCompare(String(right.domainId));
+      }
+      // Incomparable outcomes are never economically ranked against each other: a comparable outcome
+      // that genuinely advances the active milestone outranks one that does not; otherwise the order
+      // is stabilised only by canonical identity.
+      const lAdv = milestoneOutcomeAdvances(lo) ? 1 : 0;
+      const rAdv = milestoneOutcomeAdvances(ro) ? 1 : 0;
+      if (lAdv !== rAdv) return rAdv - lAdv;
       return String(left.domainId).localeCompare(String(right.domainId));
     });
 
-    const eligibleRanked = ranked.filter((outcome) => (outcome.safety.status === "ALLOWED" || outcome.safety.status === "ADVISOR_ONLY") && outcome.comparability.status === "COMPARABLE" && outcome.effectAudit.status === "PASS");
+    // A domain may WIN (and thus authorize execution) only when it is safe, its effect ledger passes,
+    // and its milestone outcome genuinely advances the active milestone (COMPLETION_NOW /
+    // MAKES_REACHABLE / positive verified ETA improvement). NO_EFFECT / negative / UNREACHABLE /
+    // UNRANKED never win - the honest result there is WAIT.
+    const eligibleRanked = ranked.filter((outcome) =>
+      (outcome.safety.status === "ALLOWED" || outcome.safety.status === "ADVISOR_ONLY")
+      && outcome.effectAudit.status === "PASS"
+      && milestoneOutcomeAdvances(outcome.milestoneOutcome));
     const winner = eligibleRanked[0] || null;
     const importantAlternatives = ranked.filter((outcome) => !winner || outcome.domainId !== winner.domainId).slice(0, 3);
     const executionAuthority = !!winner && winner.authorityClass === "BOUNDED_REVERSIBLE";
@@ -15060,19 +15114,25 @@ function getDisplayName(item) {
     return prod[resourceName] || newDecimal(0);
   }
 
-  // 9.4.0 STOP GATE 1 — a real, shared-basis (seconds), discriminating comparable metric.
+  // 9.4.0 STOP GATE 1 / HARD GATE B+D — versioned milestone-outcome model `binding-resource-eta.v1`.
   //
-  // Every executable candidate is scored by how many seconds it removes from the ETA of the SINGLE
-  // active milestone, using the game's own production model (unit.eachProduction / velocity / cost) -
-  // never a flat placeholder and never a candidate-local completion percentage. The binding
-  // bottleneck of the milestone target is the cost resource it is currently furthest from affording;
-  // a purchase helps only insofar as it (a) raises that resource's production rate and/or (b) does not
-  // spend so much of it that the net ETA rises. Candidates that do not touch the binding bottleneck
-  // yield 0 and are effectively unranked toward this milestone. Same target + same horizon + same unit
-  // (seconds) => genuinely comparable across lanes; no local economicScore is ever used as value.
-  function estimateMilestoneBottleneck(targetUnit) {
-    if (!targetUnit) return null;
-    const costs = getCostList(targetUnit).filter((c) => c?.unit && isPositive(c.val));
+  // WHAT THIS MEASURES (be precise; do not overclaim):
+  //   the binding-resource affordability ETA of the SINGLE active milestone target - i.e. the seconds
+  //   until the cost resource the target is currently *furthest* from affording is accumulated, and
+  //   how one bounded purchase changes that single binding resource's affordability, from the game's
+  //   own production model (unit.eachProduction / velocity / cost), net of the binding resource it
+  //   spends. It emits an explicit discrete STATE, never a fabricated second value.
+  // WHAT THIS DOES NOT MEASURE (must be upgraded, and proven, before it may claim full milestone ETA):
+  //   the whole downstream meat/engine chain, several sequential purchases, future threshold
+  //   multipliers, downstream planner actions, or unknown nonlinearities.
+  // Two outcomes may be ranked economically ONLY when metricSchema + metricBasis + metricTargetId +
+  // metricHorizonId + metricUnit are identical (HARD GATE A). No local economicScore is ever a value.
+  const MILESTONE_OUTCOME_SCHEMA = "binding-resource-eta.v1";
+  const MILESTONE_OUTCOME_BASIS = "binding-resource-affordability-eta-seconds";
+
+  function estimateMilestoneBottleneck(targetItem) {
+    if (!targetItem) return null;
+    const costs = getCostList(targetItem).filter((c) => c?.unit && isPositive(c.val));
     if (!costs.length) return null;
     let worst = null;
     for (const c of costs) {
@@ -15084,29 +15144,118 @@ function getDisplayName(item) {
       const etaSeconds = isPositive(rate) ? decimalToNumber(deficit.dividedBy(rate), Infinity) : Infinity;
       if (!worst || etaSeconds > worst.etaSeconds) worst = { resourceUnit: c.unit, need, have, deficit, rate, etaSeconds };
     }
-    return worst; // null => target is fully affordable now (a discrete completion event)
+    return worst; // null => every cost affordable now (target is a discrete completion event)
   }
 
-  function estimateMilestoneEtaImprovementSeconds(milestoneTargetUnit, boughtUnit, num) {
-    if (!milestoneTargetUnit || !boughtUnit || !isPositive(num)) return null;
-    const bn = estimateMilestoneBottleneck(milestoneTargetUnit);
-    if (!bn) return null; // milestone affordable now: handled as a completion event, not an ETA delta
-    if (!Number.isFinite(bn.etaSeconds)) {
-      // Unreachable at current production. A purchase still helps if it adds production of the
-      // bottleneck resource; report the seconds it would save once reachable is undefined, so treat
-      // as a small positive only when it genuinely adds rate (keeps it comparable but modest).
-      const addsRate = productionPerUnit(boughtUnit, bn.resourceUnit.name).times(num);
-      return isPositive(addsRate) ? decimalToNumber(bn.deficit.dividedBy(addsRate), Infinity) * -0 + 1 : 0;
+  function milestoneOutcomeIdentity(targetItem, horizonId) {
+    return {
+      metricSchema: MILESTONE_OUTCOME_SCHEMA,
+      metricBasis: MILESTONE_OUTCOME_BASIS,
+      metricTargetId: targetItem?.name ? String(targetItem.name) : null,
+      metricHorizonId: String(horizonId || "medium"),
+      metricUnit: "seconds",
+    };
+  }
+
+  // Build the discrete, versioned outcome of buying `num` of `boughtItem` toward `activeTargetItem`.
+  function buildMilestoneOutcome(activeTargetItem, boughtItem, num, horizonId) {
+    const identity = milestoneOutcomeIdentity(activeTargetItem, horizonId);
+    const unranked = (missing) => ({
+      ...identity, comparabilityStatus: "UNRANKED", state: "UNRANKED",
+      reachabilityBefore: null, reachabilityAfter: null,
+      etaBeforeSeconds: null, etaAfterSeconds: null, etaImprovementSeconds: null,
+      metricValue: null, missingConversions: missing,
+    });
+    if (!activeTargetItem || !identity.metricTargetId || !boughtItem || !isPositive(num)) {
+      return unranked(["active milestone target or bounded candidate unavailable"]);
     }
-    const rateBoost = productionPerUnit(boughtUnit, bn.resourceUnit.name).times(num);
-    const costRow = getCostList(boughtUnit).find((c) => c?.unit && isSameGameItem(c.unit, bn.resourceUnit));
+    const comparable = (state, fields) => ({
+      ...identity, comparabilityStatus: "COMPARABLE", state,
+      reachabilityBefore: null, reachabilityAfter: null,
+      etaBeforeSeconds: null, etaAfterSeconds: null, etaImprovementSeconds: null,
+      metricValue: null, missingConversions: [], ...fields,
+    });
+    const buysTarget = isSameGameItem(boughtItem, activeTargetItem);
+    const bn = estimateMilestoneBottleneck(activeTargetItem);
+    if (!bn) {
+      // Target is affordable now: a purchase of the target itself is a discrete completion event.
+      return buysTarget
+        ? comparable("COMPLETION_NOW", { reachabilityBefore: "REACHABLE", reachabilityAfter: "COMPLETE" })
+        : comparable("NO_EFFECT", { reachabilityBefore: "REACHABLE", reachabilityAfter: "REACHABLE", etaBeforeSeconds: 0, etaAfterSeconds: 0, etaImprovementSeconds: 0, metricValue: 0 });
+    }
+    const reachableBefore = Number.isFinite(bn.etaSeconds);
+    const rateBoost = productionPerUnit(boughtItem, bn.resourceUnit.name).times(num);
+    const costRow = getCostList(boughtItem).find((c) => c?.unit && isSameGameItem(c.unit, bn.resourceUnit));
     const spent = costRow ? decimalFrom(costRow.val).times(num) : newDecimal(0);
-    const deficitAfter = bn.deficit.plus(spent); // spending the bottleneck resource raises the deficit
+    const touchesBinding = isPositive(rateBoost) || isPositive(spent);
+    if (!touchesBinding) {
+      return comparable("NO_EFFECT", {
+        reachabilityBefore: reachableBefore ? "REACHABLE" : "UNREACHABLE",
+        reachabilityAfter: reachableBefore ? "REACHABLE" : "UNREACHABLE",
+        etaBeforeSeconds: reachableBefore ? bn.etaSeconds : null,
+        etaAfterSeconds: reachableBefore ? bn.etaSeconds : null,
+        etaImprovementSeconds: reachableBefore ? 0 : null,
+        metricValue: reachableBefore ? 0 : null,
+      });
+    }
     const rateAfter = bn.rate.plus(rateBoost);
-    if (!isPositive(rateAfter)) return 0;
+    const deficitAfter = bn.deficit.plus(spent);
+    const reachableAfter = isPositive(rateAfter);
+    if (!reachableBefore && reachableAfter) {
+      // Was unreachable (no production of the binding resource); this purchase creates production.
+      // A discrete state change - do NOT fabricate a seconds value for it.
+      return comparable("MAKES_REACHABLE", {
+        reachabilityBefore: "UNREACHABLE", reachabilityAfter: "REACHABLE",
+        etaAfterSeconds: decimalToNumber(deficitAfter.dividedBy(rateAfter), Infinity),
+      });
+    }
+    if (!reachableAfter) {
+      return comparable("UNREACHABLE", { reachabilityBefore: reachableBefore ? "REACHABLE" : "UNREACHABLE", reachabilityAfter: "UNREACHABLE" });
+    }
     const etaAfter = decimalToNumber(deficitAfter.dividedBy(rateAfter), Infinity);
     const improvement = bn.etaSeconds - etaAfter;
-    return Number.isFinite(improvement) ? improvement : 0;
+    return comparable("REACHABLE", {
+      reachabilityBefore: "REACHABLE", reachabilityAfter: "REACHABLE",
+      etaBeforeSeconds: bn.etaSeconds, etaAfterSeconds: etaAfter,
+      etaImprovementSeconds: Number.isFinite(improvement) ? improvement : null,
+      metricValue: Number.isFinite(improvement) ? improvement : null,
+    });
+  }
+
+  // HARD GATE A: two outcomes are economically comparable ONLY when every identity field matches.
+  function milestoneOutcomesComparable(a, b) {
+    if (!a || !b) return false;
+    if (a.comparabilityStatus !== "COMPARABLE" || b.comparabilityStatus !== "COMPARABLE") return false;
+    return a.metricSchema === b.metricSchema
+      && a.metricBasis === b.metricBasis
+      && a.metricTargetId === b.metricTargetId
+      && a.metricHorizonId === b.metricHorizonId
+      && a.metricUnit === b.metricUnit
+      && a.metricTargetId !== null;
+  }
+
+  // HARD GATE B ranking order within one comparable group (higher tuple = better):
+  //   COMPLETION_NOW > MAKES_REACHABLE > positive ETA improvement (larger better) > NO_EFFECT >
+  //   negative ETA improvement (worse the more negative) > UNREACHABLE > UNRANKED.
+  function milestoneOutcomeRankTuple(o) {
+    const eta = Number.isFinite(o?.etaImprovementSeconds) ? o.etaImprovementSeconds : null;
+    switch (o?.state) {
+      case "COMPLETION_NOW": return [6, 0];
+      case "MAKES_REACHABLE": return [5, 0];
+      case "REACHABLE": return eta !== null && eta > 0 ? [4, eta] : (eta !== null && eta < 0 ? [2, eta] : [3.5, 0]);
+      case "NO_EFFECT": return [3, 0];
+      case "UNREACHABLE": return [1, 0];
+      default: return [0, 0];
+    }
+  }
+
+  // Compare two outcomes assumed comparable (same identity). Returns >0 if b is better, <0 if a is.
+  function compareMilestoneOutcomes(a, b) {
+    const ta = milestoneOutcomeRankTuple(a);
+    const tb = milestoneOutcomeRankTuple(b);
+    if (tb[0] !== ta[0]) return tb[0] - ta[0];
+    if (tb[1] !== ta[1]) return tb[1] - ta[1];
+    return 0;
   }
 
   function getSmartUnitBuyNum(unit) {
@@ -18931,9 +19080,8 @@ function getDisplayName(item) {
           costAmount: cost,
           currentAmount: currentEnergy,
           velocity: energyVelocity,
-          // Nexus levels are discrete, one-time unlocks: buying now completes the
-          // milestone this cycle (0% -> 100% owned); waiting leaves it undone.
-          projectedMilestoneProgressDelta: 100,
+          // Nexus levels are discrete one-time unlocks; their milestone outcome (COMPLETION_NOW when
+          // Nexus is the active milestone) is attached centrally by the milestone-outcome model.
           ...buildEnergyProductionOpportunityMetrics(game, cost, "pass-protected-target"),
         },
       };
@@ -19082,10 +19230,9 @@ function getDisplayName(item) {
           raw: {
             etaSeconds: buyable ? 0 : eta,
             progressPercent: (progress || 0) * 100,
-            // Hatchery/Expansion are discrete, one-time unlocks: buying now completes
-            // the milestone this cycle (0% -> 100% owned); waiting leaves it undone.
-            // This is a real completion event, not a fabricated score.
-            ...(buyable ? { projectedMilestoneProgressDelta: 100 } : {}),
+            // Hatchery/Expansion are discrete one-time unlocks; their milestone outcome
+            // (COMPLETION_NOW when they are the active milestone) is attached centrally by the
+            // milestone-outcome model - no fabricated progressDelta here.
           },
         }, "engine");
       }
@@ -19119,9 +19266,10 @@ function getDisplayName(item) {
           executionVariant: "base",
           boundedAmount: "1",
           wouldBuyAmount: "1",
-          // Discrete production upgrade: buying now completes this upgrade step this cycle
-          // (0% -> 100%), the same completion-event basis the Engine milestones use.
-          raw: { projectedMilestoneProgressDelta: 100 },
+          // Production upgrades are multipliers, not producers. binding-resource-eta.v1 does not yet
+          // model multiplier effects on the binding resource, so their milestone outcome is honestly
+          // NO_EFFECT (attached centrally) until that model is proven - never a fabricated 100.
+          raw: {},
         }, "engine");
       }
     }
@@ -19167,9 +19315,6 @@ function getDisplayName(item) {
           const bypassAllowed = buyable && !!guard && !guard.ok && guard.type === "payback"
             && (step.kind === "parent-step" ? !!config.meatParentStepPaybackBypass : !!config.meatActionUnitPaybackBypass);
           const safe = buyable && (!guard || guard.ok || bypassAllowed);
-          // STOP GATE 1 (in progress): real seconds saved toward the active milestone target, from the
-          // game's production model. Replaces the flat progressDelta=100 placeholder.
-          const meatEtaImpr = safe ? estimateMilestoneEtaImprovementSeconds(plan.target, unit, num) : null;
           add({
             lane: "Meat",
             decision: safe ? "BUY" : "HOLD",
@@ -19187,9 +19332,9 @@ function getDisplayName(item) {
             executionVariant: normalizeLabelKey(unit?.suffix || "") || "base",
             boundedAmount: normalizeBoundedAmountToken(num),
             wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
-            raw: safe
-              ? { ...(guard?.raw || {}), ...(Number.isFinite(meatEtaImpr) ? { etaImprovementSeconds: meatEtaImpr } : { projectedMilestoneProgressDelta: 100 }) }
-              : (guard?.raw || null),
+            // Cross-domain comparability comes from the milestoneOutcome attached centrally below;
+            // guard.raw keeps the reserve/payback evidence for the (display-only) economic score.
+            raw: guard?.raw || (safe ? {} : null),
           }, "meat");
         }
       }
@@ -19222,10 +19367,28 @@ function getDisplayName(item) {
       }, "territory");
     }
 
+    // 9.4.0 STOP GATE 1 / HARD GATE A+B: attach the versioned milestone outcome of EVERY proposal
+    // toward the SINGLE active milestone target, from the game's production model. This replaces the
+    // per-proposal flat progressDelta=100 placeholder as the cross-domain comparison basis; a lane
+    // that does not advance the active milestone's binding resource is NO_EFFECT (not a fake 100).
+    const activeMilestoneTargetItem = safe("Active milestone target item", () => getActiveMilestoneTargetItem(game, engine, protectedResources, decideSmartFocus(engine)));
+    for (const proposal of proposals) {
+      const executionKind = String(proposal?.executionKind || "");
+      const boughtItem = executionKind === "upgrade"
+        ? getGameUpgrade(game, proposal?.executionId || "")
+        : (executionKind === "unit" ? getGameUnit(game, proposal?.executionId || "") : null);
+      const num = parseBoundedAmountToken(proposal?.boundedAmount) || parseBoundedAmountToken(proposal?.wouldBuyAmount) || newDecimal(1);
+      proposal.raw = {
+        ...(proposal.raw || {}),
+        milestoneOutcome: buildMilestoneOutcome(activeMilestoneTargetItem, boughtItem, num, "medium"),
+      };
+    }
+
     const evaluation = buildUnifiedPurchaseEvaluator(proposals, null);
     return {
       capturedAt: new Date().toISOString(),
       snapshotPhase: getCurrentStrategyPhase(game, engine),
+      activeMilestoneTargetId: activeMilestoneTargetItem?.name ? String(activeMilestoneTargetItem.name) : null,
       proposals,
       evaluation: { ...evaluation, comparisonBasis: "single-pre-execution-snapshot" },
       selectedExecutionKey: null,
