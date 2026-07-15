@@ -5970,6 +5970,23 @@ function getDisplayName(item) {
     const winner = result?.winner || null;
     const boundedCandidate = winner && winner.authorityClass === "BOUNDED_REVERSIBLE" ? winner : null;
     const proposalState = purchaseProposalState || { proposals: [], evaluation: null };
+    // 9.4.0 A1: separate the canonical (action-type) identity from the authorization identity.
+    // canonicalProposalId names the ACTION TYPE (executionKey::executionId::executionKind::variant);
+    // it deliberately excludes the mutable amount. The authorizationId additionally binds the decision
+    // cycle, snapshot, active target, metric schema and authorized amount, so an execution plan minted
+    // for one snapshot/cycle can never be replayed against a fresh proposal just because the same unit
+    // recurs.
+    const authorizedCanonicalProposalId = boundedCandidate
+      ? (boundedCandidate.action?.proposalId || buildCanonicalProposalId(boundedCandidate.action || {}))
+      : null;
+    const authorizedMetricSchema = boundedCandidate
+      ? (boundedCandidate.milestoneOutcome?.metricSchema || boundedCandidate.comparability?.metricSchema || null)
+      : null;
+    const authorizedMetricTargetId = boundedCandidate
+      ? (boundedCandidate.milestoneOutcome?.metricTargetId || boundedCandidate.comparability?.metricTargetId || null)
+      : null;
+    const authorizedActiveTargetId = String(result?.activeTarget || "unknown");
+    const authorizedRequestedAmount = normalizeBoundedAmountToken(boundedCandidate?.action?.amount || "0");
     const base = {
       schemaVersion: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
       decisionCycleId: result?.decisionCycleId || "unknown",
@@ -5986,10 +6003,14 @@ function getDisplayName(item) {
       boundedCandidate: boundedCandidate ? {
         // 9.4.0 HARD GATE C: structured immutable authorization identity (no display labels).
         proposalId: boundedCandidate.action?.proposalId || null,
+        canonicalProposalId: authorizedCanonicalProposalId,
         domainId: boundedCandidate.domainId,
         laneId: laneForDomainId(boundedCandidate.domainId),
         decisionCycleId: result?.decisionCycleId || "unknown",
         snapshotId: result?.snapshotId || "unknown",
+        activeTargetId: authorizedActiveTargetId,
+        metricSchema: authorizedMetricSchema,
+        metricTargetId: authorizedMetricTargetId,
         actionId: boundedCandidate.action?.actionId || "unknown",
         executionKey: boundedCandidate.action?.executionKey || null,
         executionId: boundedCandidate.action?.executionId || null,
@@ -5998,6 +6019,25 @@ function getDisplayName(item) {
         authorizedRequestedAmount: boundedCandidate.action?.amount || "0",
         amount: boundedCandidate.action?.amount || "0",
         fingerprint: boundedCandidate.action?.fingerprint || "none",
+      } : null,
+      // 9.4.0 A1: the authorization identity is a stronger key than canonicalProposalId. A stale plan
+      // (earlier snapshot/cycle, or after the active target/metric changed) can never authorize a buy.
+      authorization: boundedCandidate ? {
+        authorizationId: [
+          authorizedCanonicalProposalId || "none",
+          result?.decisionCycleId || "unknown",
+          result?.snapshotId || "unknown",
+          authorizedActiveTargetId,
+          authorizedMetricSchema || "none",
+          authorizedRequestedAmount,
+        ].join("@@"),
+        canonicalProposalId: authorizedCanonicalProposalId,
+        decisionCycleId: String(result?.decisionCycleId || "unknown"),
+        snapshotId: String(result?.snapshotId || "unknown"),
+        activeTargetId: authorizedActiveTargetId,
+        metricSchema: authorizedMetricSchema,
+        metricTargetId: authorizedMetricTargetId,
+        authorizedRequestedAmount,
       } : null,
     };
 
@@ -6054,19 +6094,74 @@ function getDisplayName(item) {
         reason: "global winner identity did not match the accepted purchase coordinator",
       });
     }
-    if (freshCycle?.decisionCycleId && String(freshCycle.decisionCycleId) !== String(base.decisionCycleId || "")) {
-      return laboratoryDeepFreeze({
-        ...base,
-        executionAuthority: false,
-        revalidationStatus: "failed",
-        reason: "decision cycle changed before revalidation",
-      });
-    }
+    // 9.4.0 A1: fresh pre-purchase revalidation is a SEPARATE object, built from the fresh proposals and
+    // from the fresh authorization context (cycle/snapshot/target/metric read again right before the buy).
     const revalidatedDecision = applyWholeEconomyExecutionRevalidationV1({
       decision: base.executionDecision || createWholeEconomyExecutionDecisionBase(1),
       revalidationState: freshProposalState || { proposals: [], evaluation: null },
       actionBudget: 1,
     });
+    const authorization = base.authorization || {};
+    const freshDecisionCycleId = String(freshCycle?.decisionCycleId ?? authorization.decisionCycleId ?? base.decisionCycleId ?? "");
+    const freshSnapshotId = String(freshCycle?.snapshotId ?? authorization.snapshotId ?? base.snapshotId ?? "");
+    const freshActiveTargetId = String(freshCycle?.activeTargetId ?? authorization.activeTargetId ?? "");
+    const freshMetricSchema = String(freshCycle?.metricSchema ?? authorization.metricSchema ?? "");
+    const revalidatedCanonicalProposalId = revalidatedDecision?.selectedProposalId
+      || (revalidatedDecision ? buildCanonicalProposalId({
+        executionKey: revalidatedDecision.selectedExecutionKey,
+        executionId: revalidatedDecision.selectedExecutionId,
+        executionKind: revalidatedDecision.selectedExecutionKind,
+        executionVariant: revalidatedDecision.selectedExecutionVariant,
+      }) : null);
+    // 9.4.0 A1: the revalidation record proves exactly WHAT was re-validated and WHEN, as its own object.
+    const revalidation = {
+      revalidationId: [
+        revalidatedCanonicalProposalId || "none",
+        freshDecisionCycleId || "unknown",
+        freshSnapshotId || "unknown",
+        freshActiveTargetId || "unknown",
+        freshMetricSchema || "none",
+        normalizeBoundedAmountToken(revalidatedDecision?.selectedAmount),
+      ].join("@@"),
+      revalidatedCanonicalProposalId,
+      revalidatedRequestedAmount: normalizeBoundedAmountToken(revalidatedDecision?.selectedAmount),
+      revalidatedAtSnapshotId: freshSnapshotId || "unknown",
+      revalidatedAtDecisionCycleId: freshDecisionCycleId || "unknown",
+      revalidatedActiveTargetId: freshActiveTargetId || "unknown",
+      revalidatedMetricSchema: freshMetricSchema || "none",
+    };
+    // 9.4.0 A1 STALE AUTHORIZATION GATE: the authorized canonical identity must equal the revalidated
+    // canonical identity, AND the plan's cycle/snapshot/target/metric must still be the authorization the
+    // runtime is actually trying to execute. A plan carried over from an earlier snapshot or decision
+    // cycle (even for the same recurring unit), or after the active target/metric changed, must never buy.
+    const staleReasons = [];
+    if (!authorization.canonicalProposalId || revalidatedCanonicalProposalId !== authorization.canonicalProposalId) {
+      staleReasons.push(`canonicalProposalId authorized=${authorization.canonicalProposalId || "none"} revalidated=${revalidatedCanonicalProposalId || "none"}`);
+    }
+    if (freshDecisionCycleId !== String(authorization.decisionCycleId ?? "")) {
+      staleReasons.push(`decisionCycleId authorized=${authorization.decisionCycleId} active=${freshDecisionCycleId}`);
+    }
+    if (freshSnapshotId !== String(authorization.snapshotId ?? "")) {
+      staleReasons.push(`snapshotId authorized=${authorization.snapshotId} active=${freshSnapshotId}`);
+    }
+    if (freshActiveTargetId !== String(authorization.activeTargetId ?? "")) {
+      staleReasons.push(`activeTargetId authorized=${authorization.activeTargetId} active=${freshActiveTargetId}`);
+    }
+    if (freshMetricSchema !== String(authorization.metricSchema ?? "")) {
+      staleReasons.push(`metricSchema authorized=${authorization.metricSchema} active=${freshMetricSchema}`);
+    }
+    if (staleReasons.length > 0) {
+      return laboratoryDeepFreeze({
+        ...base,
+        executionDecision: revalidatedDecision,
+        revalidation,
+        executionAuthority: false,
+        identityStatus: "stale",
+        revalidationStatus: "failed",
+        blocker: "STALE_AUTHORIZATION",
+        reason: `STALE_AUTHORIZATION: ${staleReasons.join("; ")}`,
+      });
+    }
     const identityStillMatches = revalidatedDecision?.selectedExecutionKey === base.boundedCandidate.executionKey
       && revalidatedDecision?.selectedExecutionId === base.boundedCandidate.executionId
       && revalidatedDecision?.selectedExecutionKind === base.boundedCandidate.executionKind
@@ -6076,6 +6171,7 @@ function getDisplayName(item) {
     return laboratoryDeepFreeze({
       ...base,
       executionDecision: revalidatedDecision,
+      revalidation,
       executionAuthority: identityStillMatches && !!revalidatedDecision.executionAuthority,
       identityStatus: identityStillMatches ? "matched" : "drifted",
       revalidationStatus: identityStillMatches ? revalidatedDecision.revalidationStatus : "failed",
@@ -20077,10 +20173,18 @@ function getDisplayName(item) {
 
     if (sixDomainExecutionPlanState.preRevalidationEligible) {
       const revalidationProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
+      // 9.4.0 A1: pass the fresh authorization context (cycle/snapshot/target/metric read again right
+      // before the buy) so the stale-authorization gate can reject a plan whose active target/metric has
+      // moved. In the healthy in-step path these equal the authorized values (same snapshot, same state).
       sixDomainExecutionPlanState = applySixDomainExecutionRevalidation(
         sixDomainExecutionPlanState,
         revalidationProposalState,
-        { decisionCycleId: sixDomainStrategicCoordinatorState.decisionCycleId }
+        {
+          decisionCycleId: sixDomainStrategicCoordinatorState.decisionCycleId,
+          snapshotId: sixDomainExecutionPlanState.snapshotId,
+          activeTargetId: String(getCurrentStrategyTarget(game, engine, protectedResources, smartFocus) || "unknown"),
+          metricSchema: MILESTONE_OUTCOME_SCHEMA,
+        }
       );
       unifiedPurchaseProposalState = revalidationProposalState;
     }
