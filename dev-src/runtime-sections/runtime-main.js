@@ -5556,6 +5556,8 @@ function getDisplayName(item) {
       label: String(row.candidate || domain.domainLabel),
       class: "PURCHASE",
       amount: boundedAmount,
+      // 9.4.0 HARD GATE C: canonical proposal identity carried through the authorization chain.
+      proposalId: row.proposalId || buildCanonicalProposalId(row),
       executionKey: row.executionKey || domain.executionKey,
       executionId: row.executionId || row.candidate || "none",
       executionKind: row.executionKind || (row.candidate && String(row.candidate).includes("Upgrade") ? "upgrade" : "unit"),
@@ -5955,12 +5957,18 @@ function getDisplayName(item) {
       identityStatus: boundedCandidate ? "not-checked" : "not-applicable",
       preRevalidationEligible: false,
       boundedCandidate: boundedCandidate ? {
+        // 9.4.0 HARD GATE C: structured immutable authorization identity (no display labels).
+        proposalId: boundedCandidate.action?.proposalId || null,
         domainId: boundedCandidate.domainId,
+        laneId: laneForDomainId(boundedCandidate.domainId),
+        decisionCycleId: result?.decisionCycleId || "unknown",
+        snapshotId: result?.snapshotId || "unknown",
         actionId: boundedCandidate.action?.actionId || "unknown",
         executionKey: boundedCandidate.action?.executionKey || null,
         executionId: boundedCandidate.action?.executionId || null,
         executionKind: boundedCandidate.action?.executionKind || null,
         executionVariant: boundedCandidate.action?.executionVariant || "base",
+        authorizedRequestedAmount: boundedCandidate.action?.amount || "0",
         amount: boundedCandidate.action?.amount || "0",
         fingerprint: boundedCandidate.action?.fingerprint || "none",
       } : null,
@@ -5970,25 +5978,25 @@ function getDisplayName(item) {
       return laboratoryDeepFreeze(base);
     }
 
+    // 9.4.0 HARD GATE C: authorize by the exact structured proposalId - never by lane fallback.
     const purchaseDecision = buildWholeEconomyExecutionDecisionV1({
       proposalState,
       actionBudget: 1,
       executionEnabled: true,
-      // Execute exactly the coordinator's authorized winner, not the economicScore-ordered
-      // evaluation winner (9.4.0 STOP GATE 1 - authorized == executed).
       forcedWinner: {
-        lane: boundedCandidate.domainLabel.replace("Meat chain", "Meat").replace("Larva/Engine", "Engine").replace("Army/Territory", "Territory").replace("Energy production", "Energy"),
-        candidate: boundedCandidate.action?.label,
+        proposalId: base.boundedCandidate.proposalId,
+        laneId: base.boundedCandidate.laneId,
       },
     });
-    const identityMatches = purchaseDecision?.selectedLane === boundedCandidate.domainLabel.replace("Meat chain", "Meat").replace("Larva/Engine", "Engine").replace("Army/Territory", "Territory").replace("Energy production", "Energy")
-      && purchaseDecision?.selectedCandidate === boundedCandidate.action?.label
-      && purchaseDecision?.selectedExecutionKey === boundedCandidate.action?.executionKey
-      && purchaseDecision?.selectedExecutionId === boundedCandidate.action?.executionId
-      && purchaseDecision?.selectedExecutionKind === boundedCandidate.action?.executionKind
-      && String(purchaseDecision?.selectedExecutionVariant || "base") === String(boundedCandidate.action?.executionVariant || "base")
-      && normalizeBoundedAmountToken(purchaseDecision?.selectedAmount) === normalizeBoundedAmountToken(boundedCandidate.action?.amount)
-      && purchaseDecision?.selectedFingerprint === boundedCandidate.action?.fingerprint;
+    // Identity match is on the canonical proposalId + structured execution identity. No display
+    // labels. The amount is validated separately by the amount contract (STOP GATE 2), not here, so a
+    // high-production count delta cannot spoof a mismatch.
+    const identityMatches = !!base.boundedCandidate.proposalId
+      && purchaseDecision?.selectedProposalId === base.boundedCandidate.proposalId
+      && purchaseDecision?.selectedExecutionKey === base.boundedCandidate.executionKey
+      && purchaseDecision?.selectedExecutionId === base.boundedCandidate.executionId
+      && purchaseDecision?.selectedExecutionKind === base.boundedCandidate.executionKind
+      && String(purchaseDecision?.selectedExecutionVariant || "base") === String(base.boundedCandidate.executionVariant || "base");
     const preRevalidationEligible = identityMatches && purchaseDecision?.preRevalidationEligible === true && result?.executionAuthority === true;
     return laboratoryDeepFreeze({
       ...base,
@@ -5997,7 +6005,8 @@ function getDisplayName(item) {
       identityStatus: identityMatches ? "matched" : "mismatch",
       preRevalidationEligible,
       revalidationStatus: preRevalidationEligible ? "required" : "skipped-identity-mismatch",
-      reason: identityMatches ? (result?.reason || base.reason) : "global winner does not exactly match accepted purchase coordinator identity",
+      blocker: identityMatches ? null : "AUTHORIZATION_IDENTITY_MISMATCH",
+      reason: identityMatches ? (result?.reason || base.reason) : "AUTHORIZATION_IDENTITY_MISMATCH: authorized proposalId not found among fresh proposals",
     });
   }
 
@@ -19382,6 +19391,9 @@ function getDisplayName(item) {
         ...(proposal.raw || {}),
         milestoneOutcome: buildMilestoneOutcome(activeMilestoneTargetItem, boughtItem, num, "medium"),
       };
+      // 9.4.0 HARD GATE C: a stable, structured canonical proposal id (never a display label). The
+      // authorization chain proposal -> domain outcome -> execution plan references this id exactly.
+      proposal.proposalId = buildCanonicalProposalId(proposal);
     }
 
     const evaluation = buildUnifiedPurchaseEvaluator(proposals, null);
@@ -19440,6 +19452,28 @@ function getDisplayName(item) {
     return isPositive(amount) ? amount : null;
   }
 
+  // 9.4.0 HARD GATE C — canonical, structured, display-free identity of a proposal. Stable across a
+  // decision cycle (does not include the mutable amount). The authorization chain references this id.
+  function buildCanonicalProposalId(proposal) {
+    return [
+      String(proposal?.executionKey || "none"),
+      String(proposal?.executionId || "none"),
+      String(proposal?.executionKind || "none"),
+      String(proposal?.executionVariant || "base"),
+    ].join("::");
+  }
+
+  // Structured domainId -> execution lane map (never derived from display labels via .replace()).
+  const SIX_DOMAIN_LANE_BY_ID = {
+    MEAT: "Meat",
+    LARVA_ENGINE: "Engine",
+    ARMY_TERRITORY: "Territory",
+    ENERGY_PRODUCTION: "Energy",
+  };
+  function laneForDomainId(domainId) {
+    return SIX_DOMAIN_LANE_BY_ID[String(domainId || "")] || null;
+  }
+
   function buildCoordinatorCandidateFingerprint({ lane, executionKey, candidate, executionId, executionKind, executionVariant, target, boundedAmount }) {
     return [
       String(lane || "none"),
@@ -19458,6 +19492,7 @@ function getDisplayName(item) {
       schemaVersion: "whole-economy-execution-decision.v1",
       executionAuthority: false,
       authoritySource: "whole-economy-coordinator.v2",
+      selectedProposalId: null,
       selectedDomain: "none",
       selectedLane: "none",
       selectedCandidate: "none",
@@ -19493,25 +19528,33 @@ function getDisplayName(item) {
     // authorized candidate in as forcedWinner, execute exactly that - never re-derive a different
     // winner from the local economicScore-ordered evaluation. This keeps authorized == executed and
     // removes the need for any economicScore cross-domain tie-break.
-    let winner = evaluation?.winner || null;
+    let winner = null;
+    let proposal = null;
     if (forcedWinner) {
+      // 9.4.0 HARD GATE C: locate the EXACT authorized proposal by canonical proposalId. There is no
+      // same-lane fallback: a wrong candidate, wrong variant or missing proposal in the same lane must
+      // block, never silently execute a different candidate.
+      proposal = proposals.find((row) => (row.proposalId || buildCanonicalProposalId(row)) === forcedWinner.proposalId) || null;
+      if (!proposal) {
+        return { ...base, blocker: "AUTHORIZATION_IDENTITY_MISMATCH", fallbackReason: "AUTHORIZATION_IDENTITY_MISMATCH: authorized proposalId not found among proposals" };
+      }
       const evaluated = Array.isArray(evaluation?.evaluated) ? evaluation.evaluated : [];
-      winner = evaluated.find((row) => row.lane === forcedWinner.lane
-          && normalizeLabelKey(row.candidate) === normalizeLabelKey(forcedWinner.candidate))
-        || evaluated.find((row) => row.lane === forcedWinner.lane)
-        || null;
+      winner = evaluated.find((row) => row.lane === proposal.lane && normalizeLabelKey(row.candidate) === normalizeLabelKey(proposal.candidate)) || null;
+      if (!winner) {
+        return { ...base, blocker: "AUTHORIZATION_IDENTITY_MISMATCH", fallbackReason: "AUTHORIZATION_IDENTITY_MISMATCH: authorized proposal has no evaluated row" };
+      }
+    } else {
+      winner = evaluation?.winner || null;
+      if (!winner) {
+        return { ...base, fallbackReason: "no safe winner from unified evaluation", scoreMargin: evaluation?.scoreMargin ?? null };
+      }
+      // Exact lane+candidate match only - no same-lane fallback (HARD GATE C).
+      proposal = proposals.find((row) => row.lane === winner.lane && normalizeLabelKey(row.candidate) === normalizeLabelKey(winner.candidate)) || null;
+      if (!proposal) {
+        return { ...base, blocker: "AUTHORIZATION_IDENTITY_MISMATCH", fallbackReason: "AUTHORIZATION_IDENTITY_MISMATCH: winner has no exact proposal" };
+      }
     }
-    if (!winner) {
-      return {
-        ...base,
-        fallbackReason: forcedWinner ? "authorized coordinator winner not found among proposals" : "no safe winner from unified evaluation",
-        scoreMargin: evaluation?.scoreMargin ?? null,
-      };
-    }
-
-    const proposal = proposals.find((row) => row.lane === winner.lane && normalizeLabelKey(row.candidate) === normalizeLabelKey(winner.candidate))
-      || proposals.find((row) => row.lane === winner.lane)
-      || null;
+    const selectedProposalId = proposal.proposalId || buildCanonicalProposalId(proposal);
     const domain = wholeEconomyDomainForLane(winner.lane);
     const selectedKey = proposal?.executionKey || null;
     const selectedExecutionId = String(proposal?.executionId || "");
@@ -19562,6 +19605,7 @@ function getDisplayName(item) {
     });
     return {
       ...base,
+      selectedProposalId,
       selectedDomain: domain?.label || "none",
       selectedLane: winner.lane || "none",
       selectedCandidate: winner.candidate || "none",
