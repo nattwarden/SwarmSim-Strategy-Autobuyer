@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SwarmSim Strategy Autobuyer
 // @namespace    kukperuk-swarmsim
-// @version      9.3.4
+// @version      9.3.5
 // @description  Methodical smart advisor/autobuyer with Energy Support Broker, Quest Council momentum guidance, and bounded multi-lane coordination
 // @author       Sofie + ChatGPT
 // @match        https://www.swarmsim.com/*
@@ -30,7 +30,7 @@
 
   const w = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
   const BOT_NAME = "kbcSwarmBot";
-  const AUTOBUYER_VERSION = "9.3.4";
+  const AUTOBUYER_VERSION = "9.3.5";
   const SCRIPT_VERSION = AUTOBUYER_VERSION;
   const SCENARIO_REPORT_VERSION = AUTOBUYER_VERSION;
   const STORAGE_KEY = "kbcSwarmBotConfig_v11";
@@ -1364,14 +1364,19 @@ function getDisplayName(item) {
   // Buffer, Unlock/Parent Step, target-aware upgrades, generic upgrades,
   // generic units). Never called for side-tasks (Clone Prep cocoons) or
   // advisor-only "would buy" decisions - only for a real, confirmed delta.
-  function recordMainAction(lane, candidate, reason, amount = "") {
+  function recordMainAction(lane, candidate, reason, requestedAmount = "", executedDelta = null) {
+    const requestedText = requestedAmount || "";
+    const executedText = executedDelta != null ? formatSwarmNumber(executedDelta) : requestedText;
     mainActionLedger.push({
       index: mainActionLedger.length + 1,
       time: new Date().toLocaleTimeString(),
       lane: lane || "unknown",
       candidate: candidate || "unknown",
       reason: reason || "",
-      amount: amount || "",
+      amount: executedText,
+      requestedAmount: requestedText,
+      executedAmount: executedText,
+      amountSource: executedDelta != null ? "observed-count-delta" : "requested-amount-fallback",
     });
   }
 
@@ -3626,6 +3631,33 @@ function getDisplayName(item) {
       parentStepSupportsActionUnit: parentStepState?.supportsActionUnit ? "yes" : "no",
       parentStepConsumedActionUnit: parentStepState?.consumedActionUnit ? "yes" : "no",
       parentStepConsumedUnit: parentStepState?.consumedUnit || "none",
+      // 9.3.5: Parent Step payback observability - surfaces the existing
+      // model-estimate payback numbers already computed by
+      // getMeatChainPurchaseAnalysis() for the most-recently-recorded
+      // Parent Step candidate. Purely additive; does not read into any
+      // decision/gating path.
+      parentStepModelPayback: Number.isFinite(rawMetricNumber(parentStepState?.raw || {}, "paybackSeconds", NaN))
+        ? trimNumber(rawMetricNumber(parentStepState.raw, "paybackSeconds", NaN))
+        : "n/a",
+      parentStepModelPaybackLimit: Number.isFinite(rawMetricNumber(parentStepState?.raw || {}, "paybackLimitSeconds", NaN))
+        ? trimNumber(rawMetricNumber(parentStepState.raw, "paybackLimitSeconds", NaN))
+        : "n/a",
+      parentStepModelPaybackRatio: Number.isFinite(rawMetricNumber(parentStepState?.raw || {}, "paybackRatio", NaN))
+        ? trimNumber(rawMetricNumber(parentStepState.raw, "paybackRatio", NaN))
+        : "n/a",
+      parentStepEstimatedAddedVelocity: parentStepState?.raw?.velocity != null
+        ? formatSwarmNumber(parentStepState.raw.velocity)
+        : "n/a",
+      parentStepCostAmount: parentStepState?.raw?.costAmount != null
+        ? formatSwarmNumber(parentStepState.raw.costAmount)
+        : "n/a",
+      // Note: parentStepCostResource (bottleneck resource name) and
+      // parentStepPaybackBypassed (boolean) already exist above as
+      // established fields consumed elsewhere as their original types -
+      // intentionally not duplicated/shadowed here to avoid changing their
+      // type for existing consumers. parentStepPaybackFormulaSource is the
+      // only remaining new field this task adds beyond the payback numbers.
+      parentStepPaybackFormulaSource: "model estimate from eachProduction()",
       actionUnitRefillCandidate: refillState?.candidate || "none",
       actionUnitRefillDecision: refillState?.decision || "OBSERVE",
       actionUnitRefillReason: refillState?.reason || "none",
@@ -3878,6 +3910,7 @@ function getDisplayName(item) {
       ["Ability timing authority", strategyInspector.abilityTimingExecutionAuthority || "advisor-only"],
       ["Clone support", `${strategyInspector.energySupportCloneDecision || "HOLD"} ${strategyInspector.energySupportCloneCandidate || "none"}`],
       ["Mirror support", `${strategyInspector.energySupportMirrorDecision || "HOLD"} ${strategyInspector.energySupportMirrorCandidate || "none"}`],
+      ["Parent Step payback", `${strategyInspector.parentStepModelPayback}s model estimate (limit ${strategyInspector.parentStepModelPaybackLimit}s, ratio ${strategyInspector.parentStepModelPaybackRatio}); bypassed: ${strategyInspector.parentStepPaybackBypassed}`],
       ["Lepidoptera support role", `${strategyInspector.energySupportLepidopteraRole || "wait"} (${strategyInspector.energySupportLepidopteraDecision || "WAIT"})`],
       ["Long-term strategic focus", strategyInspector.momentumPrimaryFocus || "Methodical progression"],
       ["Current executed primary lane", strategyInspector.councilWinningLane || "none"],
@@ -4207,6 +4240,108 @@ function getDisplayName(item) {
       missing,
       territoryArmyTotal,
       territoryArmyExists: isPositive(territoryArmyTotal),
+    };
+  }
+
+  // 9.3.5: single shared "is House of Mirrors ready to cast" gate chain.
+  // Previously buildEnergySupportBrokerSnapshot computed this inline while
+  // captureEnergyAbilityTimingSnapshot (the M4 Ability Timing advisor) only
+  // checked ability.available - so M4 could report CAST_NOW House of Mirrors
+  // while the Energy Support Broker reported HOLD for army/payoff reasons.
+  // Both callers now read from this one function so they can never disagree
+  // about readiness. This is a pure extraction - the gate chain, gate order,
+  // and every computed field are unchanged from what buildEnergySupportBrokerSnapshot
+  // used to compute inline.
+  function assessHouseOfMirrorsReadiness(game, engine, smartFocus, selectedMainAction) {
+    const minMeaningfulBenefit = Number(config.energySupportMinMeaningfulBenefit || 0);
+    const energy = decimalFrom(getCurrentResource(game, "energy"));
+    const mirrorAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+
+    const mirrorVisible = isItemVisibleWithScenarioOverride(mirrorAbility);
+    const mirrorCost = mirrorVisible ? decimalFrom(getCostForResource(mirrorAbility, "energy")) : newDecimal(0);
+    const mirrorCandidate = mirrorVisible ? "House of Mirrors" : "none";
+    const mirrorArmyState = getHouseOfMirrorsArmyState(game);
+    const mirrorArmyValueRaw = mirrorArmyState.armyValue;
+    const missingMirrorUnits = mirrorArmyState.missing.slice();
+    const mirrorTerritoryArmyExists = mirrorArmyState.territoryArmyExists;
+    const mirrorRelevantArmyExists = isPositive(mirrorArmyValueRaw);
+    const mirrorReadyEnergy = mirrorVisible ? decimalAtLeast(energy, mirrorCost) : false;
+    const mirrorPreferredQuality = Math.max(0, (HOUSE_OF_MIRRORS_ARMY_TIERS.length - missingMirrorUnits.length) / HOUSE_OF_MIRRORS_ARMY_TIERS.length);
+    const mirrorArmyScale = Math.max(0, Math.min(0.35, decimalLog10(mirrorArmyValueRaw.plus(1)) * 0.05));
+    const mirrorBoostRatio = mirrorTerritoryArmyExists ? mirrorPreferredQuality * mirrorArmyScale : 0;
+    const mirrorTpsBeforeRaw = decimalFrom(getVelocity(game, "territory"));
+    const mirrorTpsAfterRaw = mirrorTpsBeforeRaw.times(1 + mirrorBoostRatio);
+    const mirrorTpsBefore = decimalToNumber(mirrorTpsBeforeRaw, 0);
+    const mirrorTpsAfter = decimalToNumber(mirrorTpsAfterRaw, 0);
+    const mirrorEtaBeforeSeconds = Number.isFinite(engine?.expansionEta) ? Math.max(0, Number(engine.expansionEta)) : Infinity;
+    const mirrorEtaAfterSeconds = Number.isFinite(mirrorEtaBeforeSeconds) && mirrorBoostRatio > 0 ? Math.max(0, mirrorEtaBeforeSeconds / (1 + mirrorBoostRatio)) : mirrorEtaBeforeSeconds;
+    const mirrorEtaGainSeconds = Number.isFinite(mirrorEtaBeforeSeconds) && Number.isFinite(mirrorEtaAfterSeconds)
+      ? Math.max(0, mirrorEtaBeforeSeconds - mirrorEtaAfterSeconds)
+      : 0;
+    const mirrorHelpsTarget = /territory|save-territory/i.test(String(smartFocus || "")) || /Territory|Engine/i.test(String(selectedMainAction?.lane || ""));
+    const mirrorProjectionCalculable = (Number.isFinite(mirrorTpsBefore) && mirrorTpsBefore > 0 && Number.isFinite(mirrorTpsAfter) && mirrorTpsAfter >= 0)
+      || (Number.isFinite(mirrorEtaBeforeSeconds) && mirrorEtaBeforeSeconds > 0 && Number.isFinite(mirrorEtaAfterSeconds));
+    const mirrorTerritoryRateGainRatio = Number.isFinite(mirrorTpsBefore) && mirrorTpsBefore > 0
+      ? Math.max(0, (mirrorTpsAfter - mirrorTpsBefore) / mirrorTpsBefore)
+      : 0;
+    const mirrorEtaGainRatio = Number.isFinite(mirrorEtaBeforeSeconds) && mirrorEtaBeforeSeconds > 0 && Number.isFinite(mirrorEtaGainSeconds)
+      ? Math.max(0, mirrorEtaGainSeconds / mirrorEtaBeforeSeconds)
+      : 0;
+    const mirrorMeaningful = Math.max(mirrorTerritoryRateGainRatio, mirrorEtaGainRatio) >= minMeaningfulBenefit;
+    const mirrorRelevantContextExists = mirrorRelevantArmyExists || (mirrorHelpsTarget && mirrorBoostRatio > 0);
+    const mirrorGateOrder = [
+      { key: "ability", pass: mirrorCandidate !== "none", reason: "mirror ritual locked/unavailable" },
+      { key: "energy", pass: mirrorReadyEnergy, reason: "not enough energy" },
+      { key: "relevant-army", pass: mirrorRelevantContextExists, reason: "no relevant territory army exists" },
+      { key: "preferred-units", pass: !missingMirrorUnits.length, reason: `mirror-preferred units missing: ${missingMirrorUnits.join(", ")}` },
+      { key: "projection", pass: mirrorProjectionCalculable, reason: "projection unavailable (invalid territory velocity/ETA)" },
+      { key: "payoff", pass: mirrorMeaningful, reason: "no clear territory/Expansion payoff yet" },
+      { key: "decision", pass: mirrorHelpsTarget, reason: "does not help current target" },
+    ];
+    const firstMirrorFailedGate = mirrorGateOrder.find((gate) => !gate.pass);
+    const mirrorGateKey = firstMirrorFailedGate ? firstMirrorFailedGate.key : "decision";
+    const ready = !!mirrorCandidate && !firstMirrorFailedGate;
+    const mirrorBlocked = [];
+    if (!mirrorCandidate) mirrorBlocked.push("mirror ritual locked/unavailable");
+    if (mirrorCandidate && !mirrorReadyEnergy) mirrorBlocked.push("not enough energy");
+    if (mirrorCandidate && !mirrorRelevantContextExists) mirrorBlocked.push("no relevant territory army exists");
+    if (mirrorCandidate && missingMirrorUnits.length) mirrorBlocked.push(`mirror-preferred units missing: ${missingMirrorUnits.join(", ")}`);
+    if (mirrorCandidate && !mirrorHelpsTarget) mirrorBlocked.push("does not help current target");
+    if (mirrorCandidate && !mirrorProjectionCalculable) mirrorBlocked.push("projection unavailable (invalid territory velocity/ETA)");
+    if (mirrorCandidate && !mirrorMeaningful) mirrorBlocked.push("no clear territory/Expansion payoff yet");
+
+    return {
+      mirrorVisible,
+      mirrorCost,
+      mirrorCandidate,
+      mirrorArmyState,
+      mirrorArmyValueRaw,
+      missingMirrorUnits,
+      mirrorTerritoryArmyExists,
+      mirrorRelevantArmyExists,
+      mirrorReadyEnergy,
+      mirrorPreferredQuality,
+      mirrorArmyScale,
+      mirrorBoostRatio,
+      mirrorTpsBeforeRaw,
+      mirrorTpsAfterRaw,
+      mirrorTpsBefore,
+      mirrorTpsAfter,
+      mirrorEtaBeforeSeconds,
+      mirrorEtaAfterSeconds,
+      mirrorEtaGainSeconds,
+      mirrorHelpsTarget,
+      mirrorProjectionCalculable,
+      mirrorTerritoryRateGainRatio,
+      mirrorEtaGainRatio,
+      mirrorMeaningful,
+      mirrorRelevantContextExists,
+      mirrorGateOrder,
+      firstMirrorFailedGate,
+      mirrorGateKey,
+      ready,
+      mirrorBlocked,
+      blockedReason: firstMirrorFailedGate ? firstMirrorFailedGate.reason : "none",
     };
   }
 
@@ -6026,6 +6161,7 @@ function getDisplayName(item) {
     const clone = buildLaboratoryCloneLarvaeSnapshot(game, warnings, formulaStatuses);
     const mirror = buildLaboratoryHouseOfMirrorsSnapshot(game, army, warnings, formulaStatuses);
     const engine = analyzeLarvaEngine(game);
+    const mirrorReadiness = assessHouseOfMirrorsReadiness(game, engine, smartFocus, selectedMainAction);
     const rushDefinitions = [
       { actionId: "LARVA_RUSH", gameAbilityId: "larvarush", label: "Larva Rush", resourceId: "larva", resourceKey: "larvae", velocitySeconds: 2400, flatAddition: 100000 },
       { actionId: "MEAT_RUSH", gameAbilityId: "meatrush", label: "Meat Rush", resourceId: "meat", resourceKey: "meat", velocitySeconds: 7200, flatAddition: 100000000000 },
@@ -6096,8 +6232,10 @@ function getDisplayName(item) {
         gainRatio: ratioAgainstHorizon(cloneGain, "larvae"), formulaStatus: "source-verified",
       },
       {
-        actionId: "HOUSE_OF_MIRRORS", label: "House of Mirrors", targetResource: "territory rate", available: mirror.available,
-        unavailableReason: mirror.unavailableReason, energyCost: mirror.energyCost, projectedGain: laboratoryDecimalString(mirrorGain),
+        actionId: "HOUSE_OF_MIRRORS", label: "House of Mirrors", targetResource: "territory rate",
+        available: mirror.available && mirrorReadiness.ready,
+        unavailableReason: mirrorReadiness.ready ? mirror.unavailableReason : `Blocked by: ${mirrorReadiness.blockedReason}`,
+        energyCost: mirror.energyCost, projectedGain: laboratoryDecimalString(mirrorGain),
         gainRatio: decimalToNumber(mirrorGain.dividedBy(mirrorBaseline), 0), formulaStatus: "source-verified",
         ...(expansionEtaAfterSeconds !== null ? {
           milestoneEtaSeconds: expansionEtaAfterSeconds,
@@ -6236,58 +6374,29 @@ function getDisplayName(item) {
       ? "Clone Larvae is the best energy support: it can feed the meat chain now, but auto-cast stays off by default."
       : (cloneBlocked[0] || "Clone Larvae is not meaningful right now.");
 
-    const mirrorVisible = isItemVisibleWithScenarioOverride(mirrorAbility);
-    const mirrorCost = mirrorVisible ? decimalFrom(getCostForResource(mirrorAbility, "energy")) : newDecimal(0);
-    const mirrorCandidate = mirrorVisible ? "House of Mirrors" : "none";
-    const mirrorArmyState = getHouseOfMirrorsArmyState(game);
-    const mirrorArmyValueRaw = mirrorArmyState.armyValue;
-    const missingMirrorUnits = mirrorArmyState.missing.slice();
-    const mirrorTerritoryArmyExists = mirrorArmyState.territoryArmyExists;
-    const mirrorRelevantArmyExists = isPositive(mirrorArmyValueRaw);
-    const mirrorReadyEnergy = mirrorVisible ? decimalAtLeast(energy, mirrorCost) : false;
-    const mirrorPreferredQuality = Math.max(0, (HOUSE_OF_MIRRORS_ARMY_TIERS.length - missingMirrorUnits.length) / HOUSE_OF_MIRRORS_ARMY_TIERS.length);
-    const mirrorArmyScale = Math.max(0, Math.min(0.35, decimalLog10(mirrorArmyValueRaw.plus(1)) * 0.05));
-    const mirrorBoostRatio = mirrorTerritoryArmyExists ? mirrorPreferredQuality * mirrorArmyScale : 0;
-    const mirrorTpsBeforeRaw = decimalFrom(getVelocity(game, "territory"));
-    const mirrorTpsAfterRaw = mirrorTpsBeforeRaw.times(1 + mirrorBoostRatio);
-    const mirrorTpsBefore = decimalToNumber(mirrorTpsBeforeRaw, 0);
-    const mirrorTpsAfter = decimalToNumber(mirrorTpsAfterRaw, 0);
-    const mirrorEtaBeforeSeconds = Number.isFinite(engine?.expansionEta) ? Math.max(0, Number(engine.expansionEta)) : Infinity;
-    const mirrorEtaAfterSeconds = Number.isFinite(mirrorEtaBeforeSeconds) && mirrorBoostRatio > 0 ? Math.max(0, mirrorEtaBeforeSeconds / (1 + mirrorBoostRatio)) : mirrorEtaBeforeSeconds;
-    const mirrorEtaGainSeconds = Number.isFinite(mirrorEtaBeforeSeconds) && Number.isFinite(mirrorEtaAfterSeconds)
-      ? Math.max(0, mirrorEtaBeforeSeconds - mirrorEtaAfterSeconds)
-      : 0;
-    const mirrorHelpsTarget = /territory|save-territory/i.test(String(smartFocus || "")) || /Territory|Engine/i.test(String(selectedMainAction?.lane || ""));
-    const mirrorProjectionCalculable = (Number.isFinite(mirrorTpsBefore) && mirrorTpsBefore > 0 && Number.isFinite(mirrorTpsAfter) && mirrorTpsAfter >= 0)
-      || (Number.isFinite(mirrorEtaBeforeSeconds) && mirrorEtaBeforeSeconds > 0 && Number.isFinite(mirrorEtaAfterSeconds));
-    const mirrorTerritoryRateGainRatio = Number.isFinite(mirrorTpsBefore) && mirrorTpsBefore > 0
-      ? Math.max(0, (mirrorTpsAfter - mirrorTpsBefore) / mirrorTpsBefore)
-      : 0;
-    const mirrorEtaGainRatio = Number.isFinite(mirrorEtaBeforeSeconds) && mirrorEtaBeforeSeconds > 0 && Number.isFinite(mirrorEtaGainSeconds)
-      ? Math.max(0, mirrorEtaGainSeconds / mirrorEtaBeforeSeconds)
-      : 0;
-    const mirrorMeaningful = Math.max(mirrorTerritoryRateGainRatio, mirrorEtaGainRatio) >= minMeaningfulBenefit;
-    const mirrorRelevantContextExists = mirrorRelevantArmyExists || (mirrorHelpsTarget && mirrorBoostRatio > 0);
-    const mirrorGateOrder = [
-      { key: "ability", pass: mirrorCandidate !== "none", reason: "mirror ritual locked/unavailable" },
-      { key: "energy", pass: mirrorReadyEnergy, reason: "not enough energy" },
-      { key: "relevant-army", pass: mirrorRelevantContextExists, reason: "no relevant territory army exists" },
-      { key: "preferred-units", pass: !missingMirrorUnits.length, reason: `mirror-preferred units missing: ${missingMirrorUnits.join(", ")}` },
-      { key: "projection", pass: mirrorProjectionCalculable, reason: "projection unavailable (invalid territory velocity/ETA)" },
-      { key: "payoff", pass: mirrorMeaningful, reason: "no clear territory/Expansion payoff yet" },
-      { key: "decision", pass: mirrorHelpsTarget, reason: "does not help current target" },
-    ];
-    const firstMirrorFailedGate = mirrorGateOrder.find((gate) => !gate.pass);
-    const mirrorGateKey = firstMirrorFailedGate ? firstMirrorFailedGate.key : "decision";
-    const mirrorReady = !!mirrorCandidate && !firstMirrorFailedGate;
-    const mirrorBlocked = [];
-    if (!mirrorCandidate) mirrorBlocked.push("mirror ritual locked/unavailable");
-    if (mirrorCandidate && !mirrorReadyEnergy) mirrorBlocked.push("not enough energy");
-    if (mirrorCandidate && !mirrorRelevantContextExists) mirrorBlocked.push("no relevant territory army exists");
-    if (mirrorCandidate && missingMirrorUnits.length) mirrorBlocked.push(`mirror-preferred units missing: ${missingMirrorUnits.join(", ")}`);
-    if (mirrorCandidate && !mirrorHelpsTarget) mirrorBlocked.push("does not help current target");
-    if (mirrorCandidate && !mirrorProjectionCalculable) mirrorBlocked.push("projection unavailable (invalid territory velocity/ETA)");
-    if (mirrorCandidate && !mirrorMeaningful) mirrorBlocked.push("no clear territory/Expansion payoff yet");
+    const mirrorReadiness = assessHouseOfMirrorsReadiness(game, engine, smartFocus, selectedMainAction);
+    const {
+      mirrorCandidate,
+      mirrorArmyValueRaw,
+      missingMirrorUnits,
+      mirrorTerritoryArmyExists,
+      mirrorRelevantArmyExists,
+      mirrorReadyEnergy,
+      mirrorTpsBeforeRaw,
+      mirrorTpsAfterRaw,
+      mirrorEtaBeforeSeconds,
+      mirrorEtaAfterSeconds,
+      mirrorEtaGainSeconds,
+      mirrorHelpsTarget,
+      mirrorProjectionCalculable,
+      mirrorTerritoryRateGainRatio,
+      mirrorEtaGainRatio,
+      mirrorMeaningful,
+      mirrorGateKey,
+      firstMirrorFailedGate,
+      mirrorBlocked,
+    } = mirrorReadiness;
+    const mirrorReady = mirrorReadiness.ready;
     const mirrorDecision = mirrorReady
       ? (config.energySupportBrokerAdvisorOnly || !config.energySupportBrokerAllowAutoCast ? "ADVISE" : "READY")
       : "HOLD";
@@ -8830,8 +8939,10 @@ function getDisplayName(item) {
       `## Executed main actions`,
       ``,
       ...(payload.strategyInspector?.executedMainActions?.length
-        ? payload.strategyInspector.executedMainActions.map((action, index) =>
-          `${index + 1}. ${action.lane}: ${action.candidate}${action.amount ? ` × ${action.amount}` : ""} — ${action.reason || "no reason recorded"}`)
+        ? payload.strategyInspector.executedMainActions.map((action, index) => {
+          const executedText = action.executedAmount || action.amount || "";
+          return `${index + 1}. ${action.lane}: ${action.candidate}${executedText ? ` × ${executedText}` : ""} — ${action.reason || "no reason recorded"}`;
+        })
         : ["none"]),
       ``,
       `## Run history summary`,
@@ -12130,7 +12241,7 @@ function getDisplayName(item) {
     return isAbility(item) || isNamedAbility(item);
   }
 
-  function buyUpgradeAmount(commands, upgrade, num, label) {
+  function buyUpgradeAmount(commands, upgrade, num, label, deltaOut) {
     const before = upgrade.count();
 
     commands.buyUpgrade({
@@ -12142,6 +12253,8 @@ function getDisplayName(item) {
     const after = upgrade.count();
     const delta = after.minus(before);
 
+    if (deltaOut) deltaOut.value = delta;
+
     if (delta.greaterThan(0)) {
       recordPurchase(label || "Upgrade", upgrade, delta);
       return true;
@@ -12150,7 +12263,7 @@ function getDisplayName(item) {
     return false;
   }
 
-  function buyUnitAmount(commands, unit, num, label) {
+  function buyUnitAmount(commands, unit, num, label, deltaOut) {
     const before = unit.count();
 
     commands.buyUnit({
@@ -12161,6 +12274,8 @@ function getDisplayName(item) {
 
     const after = unit.count();
     const delta = after.minus(before);
+
+    if (deltaOut) deltaOut.value = delta;
 
     if (delta.greaterThan(0)) {
       recordPurchase(label || "Unit", unit, delta);
@@ -12231,8 +12346,9 @@ function getDisplayName(item) {
         return { actionTaken: true, bought: 0, summary: `Would buy ${item.key}` };
       }
 
-      const bought = safe(`Smart köp ${item.key}`, () => buyUpgradeAmount(commands, upgrade, newDecimal(1), "Engine"));
-      if (bought) recordMainAction("Engine", item.key, item.reason);
+      const engineDelta = {};
+      const bought = safe(`Smart köp ${item.key}`, () => buyUpgradeAmount(commands, upgrade, newDecimal(1), "Engine", engineDelta));
+      if (bought) recordMainAction("Engine", item.key, item.reason, "1", engineDelta.value);
       return { actionTaken: true, bought: bought ? 1 : 0, summary: `Bought ${item.key}` };
     }
 
@@ -12377,13 +12493,14 @@ function getDisplayName(item) {
         continue;
       }
 
+      const criticalUpgradeDelta = {};
       const didBuy = safe(`Critical production upgrade ${getDisplayName(upgrade)}`, () =>
-        buyUpgradeAmount(commands, upgrade, newDecimal(1), "Critical Upgrade")
+        buyUpgradeAmount(commands, upgrade, newDecimal(1), "Critical Upgrade", criticalUpgradeDelta)
       );
 
       if (didBuy) {
         bought++;
-        recordMainAction("Upgrade", getDisplayName(upgrade), "critical production upgrade available now");
+        recordMainAction("Upgrade", getDisplayName(upgrade), "critical production upgrade available now", "1", criticalUpgradeDelta.value);
       }
     }
 
@@ -13113,7 +13230,8 @@ function getDisplayName(item) {
       return { actionTaken: true, bought: 0, summary: "Would recover clone buffer" };
     }
 
-    const didBuy = safe("Clone buffer recovery", () => buyUnitAmount(commands, cocoon, buyNum, "Clone Buffer"));
+    const cloneBufferDelta = {};
+    const didBuy = safe("Clone buffer recovery", () => buyUnitAmount(commands, cocoon, buyNum, "Clone Buffer", cloneBufferDelta));
     cloneBufferPreviousMode = mode;
     // recordMainAction() intentionally happens at the smartRunOnce call
     // site (only on the budget-gated branch), not here: this hard-lock
@@ -13122,7 +13240,7 @@ function getDisplayName(item) {
     // exactly mirroring the pre-existing addMainResult()-only-when-gated
     // behavior. Recording it here unconditionally would count budget-exempt
     // purchases against the budget ledger.
-    return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed", reason, buyNum: formatSwarmNumber(buyNum), boughtCandidate: getDisplayName(cocoon) };
+    return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed", reason, buyNum: formatSwarmNumber(buyNum), boughtCandidate: getDisplayName(cocoon), executedDelta: didBuy ? cloneBufferDelta.value : null };
   }
 
   function recordCloneRampState(fields = {}) {
@@ -13300,7 +13418,8 @@ function getDisplayName(item) {
     const larvaUnit = getGameUnit(game, "larva");
     const larvaBeforeCast = decimalFrom(larvaUnit?.count?.() || 0);
 
-    const didCast = safe("Clone Ramp cast", () => buyUpgradeAmount(commands, cloneAbility, newDecimal(1), "Clone Ramp"));
+    const castDeltaOut = {};
+    const didCast = safe("Clone Ramp cast", () => buyUpgradeAmount(commands, cloneAbility, newDecimal(1), "Clone Ramp", castDeltaOut));
 
     if (!didCast) {
       recordCloneRampState({ ...baseFields, cloneRampPhase: "PREPARE_BANK", cloneRampReason: "Clone Larvae cast attempt did not register", cloneRampBlockedBy: "cast failed" });
@@ -13354,7 +13473,7 @@ function getDisplayName(item) {
         : "cast once more, then bank the result, until bank reaches cap",
     });
 
-    recordMainAction("Clone Ramp", "Clone Larvae", reason);
+    recordMainAction("Clone Ramp", "Clone Larvae", reason, "1", castDeltaOut.value);
     return { actionTaken: true, bought: 1, summary: readyForFinalCast ? "Clone Ramp full-cap cast" : "Clone Ramp growth cast" };
   }
 
@@ -13807,8 +13926,9 @@ function getDisplayName(item) {
             return { actionTaken: true, bought: 0, summary: "Would buy twin unlock upgrade" };
           }
 
-          const didTwinBuy = safe(`Twin unlock threshold ${twinUpgradeName}`, () => buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Twin Unlock"));
-          if (didTwinBuy) recordMainAction("Twin", twinUpgradeName, reason);
+          const twinBuyDelta = {};
+          const didTwinBuy = safe(`Twin unlock threshold ${twinUpgradeName}`, () => buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Twin Unlock", twinBuyDelta));
+          if (didTwinBuy) recordMainAction("Twin", twinUpgradeName, reason, "1", twinBuyDelta.value);
           if (didTwinBuy) {
             recordTwinUnlockPlannerState({
               candidate: twinUpgradeName,
@@ -14202,8 +14322,9 @@ function getDisplayName(item) {
             return { actionTaken: true, bought: 0, summary: "Would buy twin threshold prep" };
           }
 
-          const didPrepBuy = safe(`Twin unlock prep ${twinCostUnitName}`, () => buyUnitAmount(commands, twinCostUnit, prepNum, "Twin Unlock Prep"));
-          if (didPrepBuy) recordMainAction("Meat", twinCostUnitName, reason, formatSwarmNumber(prepNum));
+          const twinPrepDelta = {};
+          const didPrepBuy = safe(`Twin unlock prep ${twinCostUnitName}`, () => buyUnitAmount(commands, twinCostUnit, prepNum, "Twin Unlock Prep", twinPrepDelta));
+          if (didPrepBuy) recordMainAction("Meat", twinCostUnitName, reason, formatSwarmNumber(prepNum), twinPrepDelta.value);
           if (didPrepBuy) {
             recordTwinUnlockPlannerState({
               candidate: twinUpgradeName,
@@ -14387,8 +14508,9 @@ function getDisplayName(item) {
       return { actionTaken: true, bought: 0, summary: "Would buy unlock step" };
     }
 
-    const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, num, parentChoice ? "Parent Step" : "Unlock Step"));
-    if (didBuy) recordMainAction("Meat", candidateName, reason, formatSwarmNumber(num));
+    const unlockPlannerDelta = {};
+    const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, num, parentChoice ? "Parent Step" : "Unlock Step", unlockPlannerDelta));
+    if (didBuy) recordMainAction("Meat", candidateName, reason, formatSwarmNumber(num), unlockPlannerDelta.value);
     if (didBuy && parentChoice) {
       const consumedActionUnit = !!parentSupportsActionUnit && String(bottleneckResource || "") === String(actionUnitName || "");
       recordParentStepPlannerState({
@@ -14404,6 +14526,7 @@ function getDisplayName(item) {
         consumedActionUnit,
         consumedUnit: consumedActionUnit ? actionUnitName : "none",
         executed: true,
+        raw: parentChoice?.raw || guard?.raw || null,
       });
     }
     return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? `Unlock planner ${candidateName}` : "Unlock planner buy failed" };
@@ -14640,8 +14763,9 @@ function getDisplayName(item) {
         return { actionTaken: true, bought: 0, summary: "Would buy Nexus" };
       }
 
-      const didBuy = safe("Energy Nexus priority", () => buyUpgradeAmount(commands, nextNexus, newDecimal(1), "Energy Upgrade"));
-      if (didBuy) recordMainAction("Energy", getDisplayName(nextNexus), `Nexus priority: ${Math.floor(nexusCount)} / ${config.nexusTarget}`);
+      const nexusDelta = {};
+      const didBuy = safe("Energy Nexus priority", () => buyUpgradeAmount(commands, nextNexus, newDecimal(1), "Energy Upgrade", nexusDelta));
+      if (didBuy) recordMainAction("Energy", getDisplayName(nextNexus), `Nexus priority: ${Math.floor(nexusCount)} / ${config.nexusTarget}`, "1", nexusDelta.value);
       return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought Nexus" : "Nexus buy failed" };
     }
 
@@ -14734,8 +14858,9 @@ function getDisplayName(item) {
                 return { actionTaken: true, bought: 0, summary: "Would buy Lepidoptera" };
               }
 
-              const didBuy = safe("Energy ROI lepidoptera", () => buyUnitAmount(commands, moth, mothNum, "Energy Unit"));
-              if (didBuy) recordMainAction("Energy", "Lepidoptera", roi.reason, formatSwarmNumber(mothNum));
+              const mothRoiDelta = {};
+              const didBuy = safe("Energy ROI lepidoptera", () => buyUnitAmount(commands, moth, mothNum, "Energy Unit", mothRoiDelta));
+              if (didBuy) recordMainAction("Energy", "Lepidoptera", roi.reason, formatSwarmNumber(mothNum), mothRoiDelta.value);
               return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought Lepidoptera ROI" : "Lepidoptera buy failed" };
             }
 
@@ -14808,8 +14933,9 @@ function getDisplayName(item) {
             return { actionTaken: true, bought: 0, summary: "Would buy post-Nexus Lepidoptera" };
           }
 
-          const didBuy = safe("Post-Nexus Energy Planner lepidoptera", () => buyUnitAmount(commands, moth, plan.num, "Energy Unit"));
-          if (didBuy) recordMainAction("Energy", "Lepidoptera", plan.reason, formatSwarmNumber(plan.num));
+          const postNexusMothDelta = {};
+          const didBuy = safe("Post-Nexus Energy Planner lepidoptera", () => buyUnitAmount(commands, moth, plan.num, "Energy Unit", postNexusMothDelta));
+          if (didBuy) recordMainAction("Energy", "Lepidoptera", plan.reason, formatSwarmNumber(plan.num), postNexusMothDelta.value);
           return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought post-Nexus Lepidoptera" : "Post-Nexus Lepidoptera buy failed" };
         } else {
           recordAdvisor("HOLD", "Lepidoptera", plan.reason);
@@ -16020,6 +16146,11 @@ function getDisplayName(item) {
       consumedActionUnit: !!fields.consumedActionUnit,
       consumedUnit: fields.consumedUnit || (fields.consumedActionUnit ? (fields.actionUnit || "none") : "none"),
       executed: !!fields.executed,
+      // 9.3.5: additive observability only - the raw payback/reserve data
+      // already computed by getMeatChainPurchaseAnalysis() for this Parent
+      // Step candidate, kept around so the strategy-inspector snapshot can
+      // surface the model's payback numbers without recomputing them.
+      raw: fields.raw || parentStepPlannerState?.raw || null,
     };
 
     return parentStepPlannerState;
@@ -16861,15 +16992,18 @@ function getDisplayName(item) {
       return { bought: 0, evaluatedNames };
     }
 
+    const targetAwareDelta = {};
     const didBuy = safe(`Target-aware ${top.support.type} ${getDisplayName(top.upgrade)}`, () =>
-      buyUpgradeAmount(commands, top.upgrade, newDecimal(1), "Target Upgrade")
+      buyUpgradeAmount(commands, top.upgrade, newDecimal(1), "Target Upgrade", targetAwareDelta)
     );
 
     if (didBuy) {
       recordMainAction(
         top.support.type === "twin" ? "Twin" : "Upgrade",
         getDisplayName(top.upgrade),
-        top.reason
+        top.reason,
+        "1",
+        targetAwareDelta.value
       );
     }
 
@@ -16920,6 +17054,10 @@ function getDisplayName(item) {
         costAmount: totalCost,
         currentAmount: current,
         velocity: addedVelocity,
+        // 9.3.5: additive observability field only - the display name of the
+        // resource this cost row is denominated in. Does not affect the
+        // reserve/payback guard decision above in any way.
+        costResource: getDisplayName(costUnit),
       };
 
       const base = `${getDisplayName(unit)} costs ${formatSwarmNumber(totalCost)} ${getDisplayName(costUnit)}; after buy ${formatSwarmNumber(after)}`;
@@ -17109,7 +17247,7 @@ function getDisplayName(item) {
 
         if (delta.greaterThan(0)) {
           recordPurchase("Upgrade", upgrade, delta);
-          recordMainAction("Upgrade", getDisplayName(upgrade), "safe upgrade after larva-engine checks");
+          recordMainAction("Upgrade", getDisplayName(upgrade), "safe upgrade after larva-engine checks", "", delta);
           bought++;
         }
       });
@@ -17362,11 +17500,12 @@ function getDisplayName(item) {
       return 0;
     }
 
+    const plannerTwinDelta = {};
     const didTwin = safe(`Goal-planner twin ${getDisplayName(twinUpgrade)}`, () =>
-      buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Goal Upgrade")
+      buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Goal Upgrade", plannerTwinDelta)
     );
 
-    if (didTwin) recordMainAction("Twin", getDisplayName(twinUpgrade), `goal-planner twin-prep before ${getDisplayName(unit)} for ${targetLabel}`);
+    if (didTwin) recordMainAction("Twin", getDisplayName(twinUpgrade), `goal-planner twin-prep before ${getDisplayName(unit)} for ${targetLabel}`, "1", plannerTwinDelta.value);
     return didTwin ? 1 : 0;
   }
 
@@ -17444,11 +17583,12 @@ function getDisplayName(item) {
       return 0;
     }
 
+    const goalPlannerDelta = {};
     const didBuy = safe(`Goal-planner unit ${getDisplayName(unit)}`, () =>
-      buyUnitAmount(commands, unit, num, label || "Goal Step")
+      buyUnitAmount(commands, unit, num, label || "Goal Step", goalPlannerDelta)
     );
 
-    if (didBuy) recordMainAction("Meat", getDisplayName(unit), reason, formatSwarmNumber(num));
+    if (didBuy) recordMainAction("Meat", getDisplayName(unit), reason, formatSwarmNumber(num), goalPlannerDelta.value);
     return didBuy ? 1 : 0;
   }
 
@@ -17749,11 +17889,12 @@ function getDisplayName(item) {
       return { actionTaken: true, bought: 0, stopFurtherUnitBuys: true, summary: `Would refill ${actionLabel} after parent-step` };
     }
 
+    const parentRefillDelta = {};
     const didBuy = safe(`Parent-step refill ${actionLabel}`, () =>
-      buyUnitAmount(commands, actionUnit, refillNum, "Parent Refill")
+      buyUnitAmount(commands, actionUnit, refillNum, "Parent Refill", parentRefillDelta)
     );
 
-    if (didBuy) recordMainAction("Meat", actionLabel, reason, formatSwarmNumber(refillNum));
+    if (didBuy) recordMainAction("Meat", actionLabel, reason, formatSwarmNumber(refillNum), parentRefillDelta.value);
 
     recordActionUnitRefillState({
       candidate: actionLabel,
@@ -17942,13 +18083,14 @@ function getDisplayName(item) {
             target: targetLabel,
           });
 
+          const goalFollowUpDelta = {};
           const didParent = safe(`Goal-planner parent ${getDisplayName(plan.parentUnit)}`, () =>
-            buyUnitAmount(commands, plan.parentUnit, refreshedParentNum, "Goal Follow-up")
+            buyUnitAmount(commands, plan.parentUnit, refreshedParentNum, "Goal Follow-up", goalFollowUpDelta)
           );
 
           if (didParent) {
             bought++;
-            recordMainAction("Meat", getDisplayName(plan.parentUnit), `goal planner follow-up after ${actionLabel}: convert bank toward ${targetLabel}`, formatSwarmNumber(refreshedParentNum));
+            recordMainAction("Meat", getDisplayName(plan.parentUnit), `goal planner follow-up after ${actionLabel}: convert bank toward ${targetLabel}`, formatSwarmNumber(refreshedParentNum), goalFollowUpDelta.value);
           }
         }
       }
@@ -18046,12 +18188,13 @@ function getDisplayName(item) {
       if (config.advisorOnly || !config.autoBuySafeDecisions) {
         recordMessage(`Advisor: WOULD BUY ${getDisplayName(prep.twinUpgrade)} — twin-prep`);
       } else {
+        const chainTwinDelta = {};
         const didTwin = safe(`Meat-chain twin-prep ${getDisplayName(prep.twinUpgrade)}`, () =>
-          buyUpgradeAmount(commands, prep.twinUpgrade, newDecimal(1), "Chain Upgrade")
+          buyUpgradeAmount(commands, prep.twinUpgrade, newDecimal(1), "Chain Upgrade", chainTwinDelta)
         );
         if (didTwin) {
           bought++;
-          recordMainAction("Twin", getDisplayName(prep.twinUpgrade), `twin-prep before buying ${getDisplayName(prep.feeder)}`);
+          recordMainAction("Twin", getDisplayName(prep.twinUpgrade), `twin-prep before buying ${getDisplayName(prep.feeder)}`, "1", chainTwinDelta.value);
         }
       }
     }
@@ -18072,13 +18215,14 @@ function getDisplayName(item) {
       return { bought, didPrep: true };
     }
 
+    const chainFeederDelta = {};
     const didFeeder = safe(`Meat-chain feeder ${getDisplayName(prep.feeder)}`, () =>
-      buyUnitAmount(commands, prep.feeder, prep.feederNum, "Chain Prep")
+      buyUnitAmount(commands, prep.feeder, prep.feederNum, "Chain Prep", chainFeederDelta)
     );
 
     if (didFeeder) {
       bought++;
-      recordMainAction("Meat", getDisplayName(prep.feeder), prep.reason, formatSwarmNumber(prep.feederNum));
+      recordMainAction("Meat", getDisplayName(prep.feeder), prep.reason, formatSwarmNumber(prep.feederNum), chainFeederDelta.value);
     }
 
     return { bought, didPrep: true };
@@ -18152,13 +18296,14 @@ function getDisplayName(item) {
       return { executed: true, bought: 1 };
     }
   
+    const territoryPrepDelta = {};
     const bought = safe(`Territory prep ${getDisplayName(proposal.unit)}`, () =>
-      buyUnitAmount(commands, proposal.unit, proposal.num, proposal.armySeed ? "Army Seed" : "Territory Prep")
+      buyUnitAmount(commands, proposal.unit, proposal.num, proposal.armySeed ? "Army Seed" : "Territory Prep", territoryPrepDelta)
     );
-  
+
     if (bought) {
       markSelectedLane("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num));
-      recordMainAction("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num));
+      recordMainAction("Territory", getDisplayName(proposal.unit), proposal.reason, formatSwarmNumber(proposal.num), territoryPrepDelta.value);
       recordTerritoryPrepPlannerState({
         ...territoryPrepPlannerState,
         territoryPrepDecision: "BUY",
@@ -18517,13 +18662,14 @@ function getDisplayName(item) {
       }
 
       const label = isFallbackMeat ? "Meat Fallback" : "Smart Unit";
+      const fallbackDelta = {};
       const bought = safe(`${label} ${getDisplayName(unit)}`, () =>
-        buyUnitAmount(commands, unit, num, label)
+        buyUnitAmount(commands, unit, num, label, fallbackDelta)
       );
 
       if (bought) {
         markSelectedLane(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num));
-        recordMainAction(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num));
+        recordMainAction(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num), fallbackDelta.value);
         boughtCount++;
 
         if (tab !== "territory" && boughtCount < maxUnitActions) {
@@ -19723,7 +19869,8 @@ function getDisplayName(item) {
           laneFromMainLabel(unifiedAction.label),
           unifiedAction.result?.executedCandidate || unifiedAction.label,
           wholeEconomyExecutionDecisionState.selectedReason || "six-domain coordinator exact-winner execution",
-          unifiedAction.result?.executedAmount || ""
+          unifiedAction.result?.executedAmount || "",
+          decimalFrom(unifiedAction.result?.executedAmount || "0", 0)
         );
       }
       addMainResult(unifiedAction.label, unifiedAction.result);
@@ -19784,7 +19931,7 @@ function getDisplayName(item) {
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const cloneBufferAction = executeCloneGuardAction({ game, commands });
       if (Number(cloneBufferAction?.bought || 0) > 0) {
-        recordMainAction("Clone Prep", cloneBufferAction.boughtCandidate, cloneBufferAction.reason, cloneBufferAction.buyNum);
+        recordMainAction("Clone Prep", cloneBufferAction.boughtCandidate, cloneBufferAction.reason, cloneBufferAction.buyNum, cloneBufferAction.executedDelta);
       }
       addMainResult("Clone buffer", cloneBufferAction);
     } else if (!m6DecisionOwnsMainCycle) {
