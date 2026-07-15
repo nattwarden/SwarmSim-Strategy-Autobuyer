@@ -103,12 +103,24 @@ async function runCycles() {
         const game = injector.get("game");
         const bot = window.kbcSwarmBot;
 
+        // Ability ids checked to prove no other ability ever casts, and that
+        // Clone Larvae itself casts at most once per runOnce(). "clonearmy" is
+        // the real internal id for House of Mirrors in this game build;
+        // "houseofmirrors" is kept as a fallback alias for older builds.
+        const ABILITY_IDS = ["clonelarvae", "houseofmirrors", "clonearmy", "swarmwarp", "larvarush", "meatrush", "territoryrush"];
+
         function snapshot() {
+          const abilities = {};
+          for (const id of ABILITY_IDS) {
+            const upgrade = game.upgrade(id);
+            abilities[id] = upgrade ? String(upgrade.count?.() || "0") : null;
+          }
           return {
             energy: String(game.unit("energy")?.count?.() || "0"),
             larva: String(game.unit("larva")?.count?.() || "0"),
             cocoon: String(game.unit("cocoon")?.count?.() || "0"),
             houseOfMirrorsCount: String(game.upgrade("houseofmirrors")?.count?.() || game.upgrade("clonearmy")?.count?.() || "0"),
+            abilities,
           };
         }
 
@@ -129,8 +141,25 @@ async function runCycles() {
           cloneRampBankedAmount: inspector?.cloneRampBankedAmount || null,
           cloneRampCastOutputAmount: inspector?.cloneRampCastOutputAmount || null,
           cloneRampBlockedBy: inspector?.cloneRampBlockedBy || null,
+          cloneRampNextAction: inspector?.cloneRampNextAction || null,
           laneCoordinatorSelectedActions: inspector?.laneCoordinatorSelectedActions || [],
           mainActions: inspector?.mainActions ?? null,
+          // Council/Momentum surfaces (what the player actually sees) - must
+          // match the real selected/executed lane every cycle, not just the
+          // internal lane-coordinator bookkeeping already captured above.
+          councilWinningLane: inspector?.councilWinningLane || null,
+          councilWinningCandidate: inspector?.councilWinningCandidate || null,
+          momentumBestStep: inspector?.momentumBestStep || null,
+          momentumBestStepDecision: inspector?.momentumBestStepDecision || null,
+          overseerMainSelected: inspector?.overseerMainSelected || null,
+          overseerDecision: inspector?.overseerDecision || null,
+          // M6 six-domain coordinator's own separate execution-claim fields -
+          // must never claim a real purchase happened when Clone Ramp (or
+          // normal Meat progression) is the actual mechanism doing the buying.
+          coordinatorExecuted: inspector?.coordinatorExecuted || null,
+          coordinatorExecutionResult: inspector?.coordinatorExecutionResult || null,
+          coordinatorSelectedLane: inspector?.coordinatorSelectedLane || null,
+          coordinatorSelectedCandidate: inspector?.coordinatorSelectedCandidate || null,
           autoCastAbilities: !!bot.config.autoCastAbilities,
           energySupportBrokerAllowAutoCast: !!bot.config.energySupportBrokerAllowAutoCast,
           autoAscend: !!bot.config.autoAscend,
@@ -200,6 +229,47 @@ function main() {
         larvaAfter <= larvaBefore * 1.05,
         `cycle ${cycle.cycleNumber}: larva grew far beyond the pre-existing amount (${larvaBefore} -> ${larvaAfter}); banking should have shielded the cast output into cocoons instead of leaving it as loose larva`
       );
+
+      // --- Council coordination proof (cast cycles): every surface the
+      // player actually reads must say Clone Ramp/Clone Larvae performed the
+      // real action this cycle, and the internal M6 six-domain coordinator
+      // (which stays advisor-only for abilities) must not separately claim
+      // a conflicting purchase happened.
+      assert(
+        Array.isArray(cycle.laneCoordinatorSelectedActions) && cycle.laneCoordinatorSelectedActions.length === 1,
+        `cycle ${cycle.cycleNumber}: expected exactly one selected lane action during a real cast, got ${JSON.stringify(cycle.laneCoordinatorSelectedActions)}`
+      );
+      assert(
+        cycle.laneCoordinatorSelectedActions[0].lane === "Clone Ramp" && cycle.laneCoordinatorSelectedActions[0].candidate === "Clone Larvae",
+        `cycle ${cycle.cycleNumber}: expected the selected lane/candidate to be Clone Ramp/Clone Larvae, got ${JSON.stringify(cycle.laneCoordinatorSelectedActions[0])}`
+      );
+      assert(
+        cycle.councilWinningLane === "Clone Ramp" && cycle.councilWinningCandidate === "Clone Larvae",
+        `cycle ${cycle.cycleNumber}: Council must show Clone Ramp/Clone Larvae as the winning lane/candidate, got ${cycle.councilWinningLane}/${cycle.councilWinningCandidate}`
+      );
+      assert(
+        cycle.momentumBestStep === "Clone Ramp: Clone Larvae" && cycle.momentumBestStepDecision === "BUY",
+        `cycle ${cycle.cycleNumber}: Momentum must show "Clone Ramp: Clone Larvae" as a BUY, got "${cycle.momentumBestStep}" (${cycle.momentumBestStepDecision})`
+      );
+      assert(
+        /Clone Ramp/.test(cycle.overseerMainSelected || "") && /Clone Larvae/.test(cycle.overseerMainSelected || ""),
+        `cycle ${cycle.cycleNumber}: overseer main-selected text must reference Clone Ramp/Clone Larvae, got "${cycle.overseerMainSelected}"`
+      );
+      assert(
+        cycle.coordinatorExecuted === "no",
+        `cycle ${cycle.cycleNumber}: M6 six-domain coordinator must not separately claim a real execution while Clone Ramp is the actual acting mechanism, got coordinatorExecuted=${cycle.coordinatorExecuted} (${cycle.coordinatorExecutionResult})`
+      );
+
+      // --- Banking cycle proof: Council-visible next-action text must say
+      // the cast output is being banked before the next cast (growth phase
+      // only; the final-cap cast instead hands off to Meat progression,
+      // asserted separately below).
+      if (cycle.cloneRampPhase === "CAST_TO_GROW_BANK") {
+        assert(
+          /bank/i.test(cycle.cloneRampNextAction || ""),
+          `cycle ${cycle.cycleNumber}: expected Clone Ramp's next-action text to mention banking before the next cast, got "${cycle.cloneRampNextAction}"`
+        );
+      }
     }
 
     // --- 5. Bank percent of cap strictly increases across consecutive growth cycles ---
@@ -217,6 +287,15 @@ function main() {
     const finalCastCycles = cycles.filter((c) => c.cloneRampPhase === "FINAL_CAST" && c.cloneRampCastExecuted === "yes");
     assert(finalCastCycles.length === 1, `expected exactly one FINAL_CAST cycle across ${CYCLES} cycles, got ${finalCastCycles.length} (${JSON.stringify(cycles.map((c) => c.cloneRampPhase))})`);
 
+    // --- Full-cap cast cycle: Council-visible next-action text must say
+    // execution is handing back to normal Meat progression.
+    for (const cycle of finalCastCycles) {
+      assert(
+        /Meat progression/i.test(cycle.cloneRampNextAction || ""),
+        `cycle ${cycle.cycleNumber}: expected the full-cap cast's next-action text to say execution hands back to Meat progression, got "${cycle.cloneRampNextAction}"`
+      );
+    }
+
     // --- 9. After the full-cap cast, execution authority returns; the ramp
     // releases the action slot and does not re-cast every subsequent cycle.
     const finalCastIndex = cycles.findIndex((c) => c.cloneRampPhase === "FINAL_CAST" && c.cloneRampCastExecuted === "yes");
@@ -224,13 +303,69 @@ function main() {
     assert(afterFinalCast.length > 0, "expected at least one cycle after the full-cap cast to observe release behavior");
     for (const cycle of afterFinalCast) {
       assert(cycle.cloneRampCastExecuted === "no", `cycle ${cycle.cycleNumber}: expected Clone Ramp to hold after its full-cap cast, but it cast again (phase=${cycle.cloneRampPhase})`);
+      assert(cycle.cloneRampPhase === "POST_CLONE_RELEASE", `cycle ${cycle.cycleNumber}: expected phase POST_CLONE_RELEASE after the full-cap cast, got ${cycle.cloneRampPhase}`);
+      assert(cycle.cloneRampBlockedBy === "already released at cap", `cycle ${cycle.cycleNumber}: expected cloneRampBlockedBy to explain the release, got "${cycle.cloneRampBlockedBy}"`);
+
       const laneNames = (cycle.laneCoordinatorSelectedActions || []).map((a) => a.lane);
       assert(!laneNames.includes("Clone Ramp"), `cycle ${cycle.cycleNumber}: Clone Ramp should not be the selected lane after releasing at cap`);
+
+      // --- Release cycle Council coordination proof: normal Meat progression
+      // must actually retake the action budget (a real main action happened,
+      // it was not Clone Ramp/Clone Larvae), and every Council/Momentum
+      // surface must reflect that real action rather than still describing
+      // Clone Ramp.
+      assert(cycle.mainActions === 1, `cycle ${cycle.cycleNumber}: expected normal Meat progression to still use the main-action slot after release, got mainActions=${cycle.mainActions}`);
+      assert(cycle.councilWinningLane !== "Clone Ramp", `cycle ${cycle.cycleNumber}: Council must not still show Clone Ramp as the winning lane after release, got ${cycle.councilWinningLane}`);
+      assert(
+        !/Clone Ramp|Clone Larvae/.test(cycle.momentumBestStep || ""),
+        `cycle ${cycle.cycleNumber}: Momentum must not still describe Clone Ramp/Clone Larvae as the best step after release, got "${cycle.momentumBestStep}"`
+      );
+      assert(
+        cycle.councilWinningLane === (cycle.laneCoordinatorSelectedActions[0]?.lane || null)
+          && cycle.councilWinningCandidate === (cycle.laneCoordinatorSelectedActions[0]?.candidate || null),
+        `cycle ${cycle.cycleNumber}: Council winning lane/candidate must match the actually selected lane action, got Council=${cycle.councilWinningLane}/${cycle.councilWinningCandidate} vs selected=${JSON.stringify(cycle.laneCoordinatorSelectedActions[0])}`
+      );
+      assert(
+        cycle.coordinatorExecuted === "no",
+        `cycle ${cycle.cycleNumber}: M6 six-domain coordinator must not separately claim a real execution during release, got coordinatorExecuted=${cycle.coordinatorExecuted} (${cycle.coordinatorExecutionResult})`
+      );
     }
 
     // --- 10. No other ability ever casts; hard safety defaults are untouched. ---
     const houseOfMirrorsCounts = new Set(cycles.map((c) => c.before.houseOfMirrorsCount).concat(cycles.map((c) => c.after.houseOfMirrorsCount)));
     assert(houseOfMirrorsCounts.size === 1, `expected House of Mirrors count to stay constant across all cycles (no auto-cast), saw ${JSON.stringify(Array.from(houseOfMirrorsCounts))}`);
+
+    // Explicit real-count proof for every other castable ability: House of
+    // Mirrors (clonearmy/houseofmirrors alias), Swarmwarp, and every rush
+    // ability must never move across the whole run, and Clone Larvae itself
+    // must increment by exactly 0 or 1 per cycle (never more than one cast
+    // per runOnce()).
+    const NEVER_CAST_ABILITY_IDS = ["houseofmirrors", "clonearmy", "swarmwarp", "larvarush", "meatrush", "territoryrush"];
+    for (const abilityId of NEVER_CAST_ABILITY_IDS) {
+      const values = new Set(
+        cycles
+          .flatMap((c) => [c.before.abilities?.[abilityId], c.after.abilities?.[abilityId]])
+          .filter((value) => value !== null && value !== undefined)
+      );
+      assert(
+        values.size <= 1,
+        `expected ${abilityId} count to stay constant across all cycles (never auto-cast), saw ${JSON.stringify(Array.from(values))}`
+      );
+    }
+    for (const cycle of cycles) {
+      const cloneLarvaeBefore = toNumber(cycle.before.abilities?.clonelarvae);
+      const cloneLarvaeAfter = toNumber(cycle.after.abilities?.clonelarvae);
+      const cloneLarvaeDelta = cloneLarvaeAfter - cloneLarvaeBefore;
+      assert(
+        cloneLarvaeDelta === 0 || cloneLarvaeDelta === 1,
+        `cycle ${cycle.cycleNumber}: expected Clone Larvae's own cast count to change by 0 or 1 (never more than one cast per runOnce()), got delta=${cloneLarvaeDelta} (${cloneLarvaeBefore} -> ${cloneLarvaeAfter})`
+      );
+      assert(
+        (cloneLarvaeDelta === 1) === (cycle.cloneRampCastExecuted === "yes"),
+        `cycle ${cycle.cycleNumber}: Clone Larvae cast-count delta (${cloneLarvaeDelta}) does not match cloneRampCastExecuted=${cycle.cloneRampCastExecuted}`
+      );
+    }
+
     for (const cycle of cycles) {
       assert(cycle.autoCastAbilities === false, `cycle ${cycle.cycleNumber}: autoCastAbilities must remain false`);
       assert(cycle.energySupportBrokerAllowAutoCast === false, `cycle ${cycle.cycleNumber}: energySupportBrokerAllowAutoCast must remain false`);
@@ -246,6 +381,10 @@ function main() {
       firstRealAbilityEnergyCost: firstEnergyCost,
       bankPercentSequence: cycles.map((c) => c.cloneRampBankPercentOfCap),
       phaseSequence: cycles.map((c) => c.cloneRampPhase),
+      councilWinningLaneSequence: cycles.map((c) => c.councilWinningLane),
+      momentumBestStepSequence: cycles.map((c) => c.momentumBestStep),
+      cloneLarvaeCastCountSequence: cycles.map((c) => c.after.abilities?.clonelarvae),
+      coordinatorExecutedSequence: cycles.map((c) => c.coordinatorExecuted),
     }, null, 2));
   });
 }
