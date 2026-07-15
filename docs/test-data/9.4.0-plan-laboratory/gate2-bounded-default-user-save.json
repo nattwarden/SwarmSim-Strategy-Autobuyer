@@ -1,0 +1,139 @@
+{
+ "schemaVersion": "gate2-bounded-runtime-policy.v1",
+ "capturedAt": "2026-07-15T22:35:26.739Z",
+ "save": {
+  "name": "default-user-save",
+  "fixedTimeIso": "2026-07-14T00:02:09.201Z"
+ },
+ "horizon": 3600,
+ "target": {
+  "internalId": "pantheon3",
+  "displayName": "lesser hive mind",
+  "bindingResource": "pantheon2 (hive network)"
+ },
+ "runtimePolicy": {
+  "unitBuyPercent": 0.85,
+  "meatChunkPercent": 25,
+  "smartMaxActionsPerRun": 4,
+  "meatMinReserveRatio": 5
+ },
+ "waitBaselinePantheon2": "927575665",
+ "boundedRuntimeSafe": {
+  "ledger": [
+   {
+    "step": 0,
+    "unit": "pantheon",
+    "authorizedRequestedAmount": "153302598820186415",
+    "commandRequestedAmount": "153302598820186415",
+    "contractSatisfied": true,
+    "observedTotalCountDelta": "313963722383741777920",
+    "reserveRatio": 4.705882352941177,
+    "executed": true
+   },
+   {
+    "step": 1,
+    "unit": "pantheon2",
+    "authorizedRequestedAmount": "107352604",
+    "commandRequestedAmount": "107352604",
+    "contractSatisfied": true,
+    "observedTotalCountDelta": "107352604",
+    "reserveRatio": 4.705882364996008,
+    "executed": true
+   },
+   {
+    "step": 2,
+    "unit": "pantheon",
+    "authorizedRequestedAmount": "120725796570896802",
+    "commandRequestedAmount": "120725796570896802",
+    "contractSatisfied": true,
+    "observedTotalCountDelta": "247246431377196650500",
+    "reserveRatio": 4.705882352941177,
+    "executed": true
+   },
+   {
+    "step": 3,
+    "unit": "pantheon2",
+    "authorizedRequestedAmount": "137080042",
+    "commandRequestedAmount": "137080042",
+    "contractSatisfied": true,
+    "observedTotalCountDelta": "137080042",
+    "reserveRatio": 4.705882377830028,
+    "executed": true
+   }
+  ],
+  "pantheon2After": "1172008311",
+  "progress": "244432646"
+ },
+ "boundedSingleHiveNetwork": {
+  "ledger": [
+   {
+    "step": 0,
+    "unit": "pantheon2",
+    "authorizedRequestedAmount": "40635313",
+    "commandRequestedAmount": "40635313",
+    "contractSatisfied": true,
+    "observedTotalCountDelta": "40635313",
+    "reserveRatio": 4.705882393473873,
+    "executed": true
+   }
+  ],
+  "progress": "40635313"
+ },
+ "boundedSingleNeuralCluster": {
+  "ledger": [
+   {
+    "step": 0,
+    "unit": "pantheon",
+    "authorizedRequestedAmount": "153302598820186415",
+    "commandRequestedAmount": "153302598820186415",
+    "contractSatisfied": true,
+    "observedTotalCountDelta": "313963722383741777920",
+    "reserveRatio": 4.705882352941177,
+    "executed": true
+   }
+  ],
+  "progress": "0"
+ },
+ "buyMaxUpperBound": {
+  "ledger": [
+   {
+    "step": 0,
+    "unit": "pantheon",
+    "authorizedRequestedAmount": "721423994447936074",
+    "commandRequestedAmount": "721423994447936074",
+    "contractSatisfied": true,
+    "observedTotalCountDelta": "1.4774763406293730796e+21",
+    "reserveRatio": 1,
+    "executed": true
+   },
+   {
+    "step": 1,
+    "unit": "pantheon2",
+    "authorizedRequestedAmount": "1668701345",
+    "commandRequestedAmount": "1668701345",
+    "contractSatisfied": true,
+    "observedTotalCountDelta": "1668701345",
+    "reserveRatio": 1,
+    "executed": true
+   },
+   {
+    "step": 2,
+    "unit": "pantheon",
+    "authorizedRequestedAmount": "0",
+    "executed": false,
+    "reserveRatio": null,
+    "reason": "zero bounded amount"
+   },
+   {
+    "step": 3,
+    "unit": "pantheon2",
+    "authorizedRequestedAmount": "0",
+    "executed": false,
+    "reserveRatio": null,
+    "reason": "zero bounded amount"
+   }
+  ],
+  "pantheon2After": "2596277010",
+  "progress": "1668701345"
+ }
+}
