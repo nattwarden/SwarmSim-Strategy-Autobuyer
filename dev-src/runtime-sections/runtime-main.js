@@ -5742,11 +5742,22 @@ function getDisplayName(item) {
         && String(proposal?.target || proposal?.candidate || "none") === String(evaluatedRow?.target || evaluatedRow?.candidate || "none"));
       return proposalRow ? { ...proposalRow, ...evaluatedRow } : evaluatedRow;
     });
+    // 9.4.0 DEL 2: a domain may now emit more than one rankable candidate (e.g. Meat's
+    // action-unit and parent-step). Pick the domain's *ranked-best* row — safeEligible first,
+    // then highest economicScore — not merely the first proposal, so the coordinator ranks the
+    // candidate the domain would actually execute rather than an arbitrary earlier one.
+    const bestRowForLane = (lane) => {
+      const rows = purchaseRows.filter((row) => row.lane === lane);
+      if (!rows.length) return null;
+      return rows.slice().sort((a, b) =>
+        (Number(!!b.safeEligible) - Number(!!a.safeEligible))
+        || ((Number(b.economicScore) || -Infinity) - (Number(a.economicScore) || -Infinity)))[0];
+    };
     const purchaseRowByDomain = {
-      MEAT: purchaseRows.find((row) => row.lane === "Meat") || null,
-      LARVA_ENGINE: purchaseRows.find((row) => row.lane === "Engine") || null,
-      ARMY_TERRITORY: purchaseRows.find((row) => row.lane === "Territory") || null,
-      ENERGY_PRODUCTION: purchaseRows.find((row) => row.lane === "Energy") || null,
+      MEAT: bestRowForLane("Meat"),
+      LARVA_ENGINE: bestRowForLane("Engine"),
+      ARMY_TERRITORY: bestRowForLane("Territory"),
+      ENERGY_PRODUCTION: bestRowForLane("Energy"),
     };
     const sharedContext = {
       snapshotId: snapshot.snapshotId || "unknown",
@@ -19017,29 +19028,57 @@ function getDisplayName(item) {
     if (config.meatGoalPlanner) {
       const plan = buildMeatGoalPlan(game);
       if (plan?.actionUnit) {
-        const num = getPlannerUnitBuyNum(plan.actionUnit);
-        const protectedCost = shouldAvoidProtectedCost(plan.actionUnit, protectedResources);
-        const guard = isPositive(num) ? getMeatChainPurchaseAnalysis(plan.actionUnit, num) : null;
-        const safe = canPlannerBuyUnit(plan.actionUnit) && isPositive(num) && !protectedCost && (!guard || guard.ok);
-        add({
-          lane: "Meat",
-          decision: safe ? "BUY" : "HOLD",
-          candidate: getDisplayName(plan.actionUnit),
-          reason: safe ? `target-path action for ${getDisplayName(plan.target)}` : (protectedCost ? protectedResourceHoldReason(protectedCost) : guard?.reason || "no safe target-path chunk"),
-          blockers: safe ? [] : [protectedCost ? protectedResourceBlocker(protectedCost) : guard?.type || "no safe chunk"],
-          score: unitCostScore(plan.actionUnit),
-          target: getDisplayName(plan.target),
-          resource: plan.bottleneck?.unit ? getDisplayName(plan.bottleneck.unit) : "meat chain",
-          costResources: getCostList(plan.actionUnit).map((cost) => cost?.unit?.name).filter(Boolean),
-          executionId: plan.actionUnit?.name || "",
-          executionKind: "unit",
-          executionVariant: normalizeLabelKey(plan.actionUnit?.suffix || "") || "base",
-          boundedAmount: normalizeBoundedAmountToken(num),
-          wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
-          // A safe target-path action-unit buy completes that purchase step this
-          // cycle (0% -> 100% done); this mirrors the Engine completion-event basis.
-          raw: safe ? { ...(guard?.raw || {}), projectedMilestoneProgressDelta: 100 } : (guard?.raw || null),
-        }, "meat");
+        // 9.4.0 DEL 2 — Meat as a real rankable M6 domain. Emit the actual executable
+        // meat-chain steps (the action-unit AND the direct parent-step the Parent Step
+        // planner would buy) as rankable candidates, deduplicated by canonical execution
+        // identity, each carrying the same completion-event metric basis the Engine
+        // milestones use (projectedMilestoneProgressDelta). This makes the meat action that
+        // legacy used to execute by advisor-fallthrough visible to the whole-economy
+        // evaluator / M6 so it can be ranked and authorized on a shared metric instead of
+        // slipping through unranked. A payback bypass only makes a step *eligible to be
+        // ranked* despite the conservative payback model (DEL 6) — it never grants execution
+        // rights; the payback numbers still flow into the economic score, so a poor-payback
+        // bypassed step ranks below a clean one. When no chunk can be bought safely we emit
+        // no completion metric, so the domain stays UNRANKED (never a fabricated winner).
+        const targetName = getDisplayName(plan.target);
+        const meatSteps = [{ unit: plan.actionUnit, kind: "action" }];
+        const directParent = getDirectTargetPathParentUnit(plan);
+        if (directParent && isMeatChainUnit(directParent) && !isSameGameItem(directParent, plan.actionUnit)) {
+          meatSteps.push({ unit: directParent, kind: "parent-step" });
+        }
+        const seenMeatExecutionIds = new Set();
+        for (const step of meatSteps) {
+          const unit = step.unit;
+          const executionId = unit?.name || "";
+          if (!executionId || seenMeatExecutionIds.has(executionId)) continue;
+          seenMeatExecutionIds.add(executionId);
+          const num = getPlannerUnitBuyNum(unit);
+          const protectedCost = shouldAvoidProtectedCost(unit, protectedResources);
+          const guard = isPositive(num) ? getMeatChainPurchaseAnalysis(unit, num) : null;
+          const buyable = canPlannerBuyUnit(unit) && isPositive(num) && !protectedCost;
+          const bypassAllowed = buyable && !!guard && !guard.ok
+            && (step.kind === "parent-step" ? !!config.meatParentStepPaybackBypass : !!config.meatActionUnitPaybackBypass);
+          const safe = buyable && (!guard || guard.ok || bypassAllowed);
+          add({
+            lane: "Meat",
+            decision: safe ? "BUY" : "HOLD",
+            candidate: getDisplayName(unit),
+            reason: safe
+              ? `target-path ${step.kind} for ${targetName}${bypassAllowed ? " (payback-bypass eligible; ranked on progress, not auto-win)" : ""}`
+              : (protectedCost ? protectedResourceHoldReason(protectedCost) : guard?.reason || "no safe target-path chunk"),
+            blockers: safe ? [] : [protectedCost ? protectedResourceBlocker(protectedCost) : guard?.type || "no safe chunk"],
+            score: unitCostScore(unit),
+            target: targetName,
+            resource: plan.bottleneck?.unit ? getDisplayName(plan.bottleneck.unit) : "meat chain",
+            costResources: getCostList(unit).map((cost) => cost?.unit?.name).filter(Boolean),
+            executionId,
+            executionKind: "unit",
+            executionVariant: normalizeLabelKey(unit?.suffix || "") || "base",
+            boundedAmount: normalizeBoundedAmountToken(num),
+            wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
+            raw: safe ? { ...(guard?.raw || {}), projectedMilestoneProgressDelta: 100 } : (guard?.raw || null),
+          }, "meat");
+        }
       }
     }
 
