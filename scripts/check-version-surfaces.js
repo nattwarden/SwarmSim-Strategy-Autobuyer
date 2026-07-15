@@ -50,13 +50,22 @@ function main() {
     `dev-src runtime version constant must be ${version}`
   );
 
-  // Permanent regression guard (not version-specific): hardcoding this to
-  // true previously disabled every proven legacy purchase path and shipped
-  // a bot that could observe/advise but never buy anything (fixed in
-  // 9.0.0). It must never regress, at any version.
+  // 9.4.0 Global Execution Ownership. Before 9.4.0 the acting purchaser was the legacy per-lane
+  // walk and a hardcoded `m6DecisionOwnsMainCycle = false` kept the six-domain coordinator advisory
+  // only (because only Territory populated a comparable metric, so flipping it left nothing to buy).
+  // 9.4.0 made every lane comparable and the acting purchaser is now the authorized global winner of
+  // a freshly re-evaluated six-domain coordinator (runGlobalOwnedMainActionStep), looped up to
+  // smartMaxActionsPerRun with an honest WAIT when nothing is comparable. Permanent regression guard:
+  // the ownership step and its authority gate must exist so the bot both (a) buys via authorized
+  // winners and (b) never falls through to an unauthorized legacy purchase.
   assert(
-    runtime.includes("const m6DecisionOwnsMainCycle = false;"),
-    "runtime must keep legacy per-lane execution as the acting purchaser (m6DecisionOwnsMainCycle must stay false)"
+    runtime.includes("function runGlobalOwnedMainActionStep(")
+      && runtime.includes("wholeEconomyExecutionDecisionState.executionAuthority === true"),
+    "runtime must keep 9.4.0 global execution ownership (runGlobalOwnedMainActionStep must authorize execution)"
+  );
+  assert(
+    !runtime.includes("const m6DecisionOwnsMainCycle = false;"),
+    "9.4.0 retired the legacy advisor-fallthrough gate; m6DecisionOwnsMainCycle=false must not return"
   );
 
   console.log(`VERSION SURFACES CHECK PASSED (${version})`);

@@ -5606,6 +5606,13 @@ function getDisplayName(item) {
         supportingFields: row ? Object.keys(row).slice(0, 12) : [],
         warnings: row ? [] : ["missing adapter emitted unsupported outcome"],
       },
+      // 9.4.0 DEL 3: carry the evaluator's economic score so the coordinator can break
+      // comparable-metric ties the same way the whole-economy execution decision does. Without
+      // this, discrete completion-event candidates all tie on progressDelta and the coordinator's
+      // winner diverges from the execution decision's winner -> identity mismatch -> execution
+      // refused. Ranking still leads with the shared comparable metric; economicScore is only a
+      // tie-breaker, never a cross-lane economic value on its own.
+      rankingEconomicScore: Number.isFinite(row?.economicScore) ? Number(row.economicScore) : null,
       reason: row?.reason || (row ? `${domain.domainLabel} captured from live state.` : `No adapter available for ${domain.domainLabel}.`),
       reconsiderCondition: row?.reconsiderCondition || (comparable ? "Reconsider if the shared comparison basis changes." : `Reconsider when ${missingConversions[0] || "a shared conversion"} becomes available.`),
     });
@@ -5785,6 +5792,14 @@ function getDisplayName(item) {
       const rightHasValue = Number.isFinite(rightComparable.value);
       if (leftHasValue !== rightHasValue) return Number(rightHasValue) - Number(leftHasValue);
       if (Number.isFinite(leftComparable.value) && Number.isFinite(rightComparable.value) && leftComparable.value !== rightComparable.value) return rightComparable.value - leftComparable.value;
+      // 9.4.0 DEL 3: when the shared comparable metric ties (e.g. multiple discrete completion-event
+      // candidates all at progressDelta 100), break the tie by the evaluator's economic score so the
+      // coordinator's winner matches the whole-economy execution decision's winner (higher score
+      // first). This keeps the two rankers consistent and prevents the identity-mismatch that
+      // otherwise refuses execution.
+      const leftScore = Number.isFinite(left.rankingEconomicScore) ? left.rankingEconomicScore : null;
+      const rightScore = Number.isFinite(right.rankingEconomicScore) ? right.rankingEconomicScore : null;
+      if (leftScore !== null && rightScore !== null && leftScore !== rightScore) return rightScore - leftScore;
       const confidenceRank = (value) => ({ high: 3, medium: 2, low: 1 }[String(value || "low")] || 1);
       const confidenceDelta = confidenceRank(right.evidence?.confidence) - confidenceRank(left.evidence?.confidence);
       if (confidenceDelta !== 0) return confidenceDelta;
@@ -19022,6 +19037,41 @@ function getDisplayName(item) {
       }
     }
 
+    // 9.4.0 DEL 3: surface critical production upgrades as rankable Larva/Engine candidates so
+    // that, once global execution ownership retires the legacy upgrade lane, the coordinator can
+    // still authorize the same production upgrades the healthy control save relied on (executed
+    // via the existing engine execution key, which buys any upgrade by id). Each is a discrete
+    // "buy now" upgrade, so it carries the same completion-event metric basis as the Engine
+    // milestones. Ranking is on that shared metric plus the economic score - never lane priority.
+    if (config.prioritizeProductionUpgrades) {
+      const criticalUpgrades = safe("Unified critical production candidates", () => getCriticalProductionCandidates(game, protectedResources)) || [];
+      const seenUpgradeIds = new Set();
+      for (const upgrade of criticalUpgrades) {
+        const executionId = upgrade?.name || "";
+        if (!executionId || seenUpgradeIds.has(executionId)) continue;
+        seenUpgradeIds.add(executionId);
+        add({
+          lane: "Engine",
+          decision: "BUY",
+          candidate: getDisplayName(upgrade),
+          reason: "critical production upgrade available now",
+          blockers: [],
+          score: 60000 + unitCostScore(upgrade),
+          target: "production upgrade",
+          resource: "engine upgrade",
+          costResources: getCostList(upgrade).map((cost) => cost?.unit?.name).filter(Boolean),
+          executionId,
+          executionKind: "upgrade",
+          executionVariant: "base",
+          boundedAmount: "1",
+          wouldBuyAmount: "1",
+          // Discrete production upgrade: buying now completes this upgrade step this cycle
+          // (0% -> 100%), the same completion-event basis the Engine milestones use.
+          raw: { projectedMilestoneProgressDelta: 100 },
+        }, "engine");
+      }
+    }
+
     const energyProductionProposal = buildEnergyProductionProposal(game);
     if (energyProductionProposal) add(energyProductionProposal, "energy");
 
@@ -19056,7 +19106,11 @@ function getDisplayName(item) {
           const protectedCost = shouldAvoidProtectedCost(unit, protectedResources);
           const guard = isPositive(num) ? getMeatChainPurchaseAnalysis(unit, num) : null;
           const buyable = canPlannerBuyUnit(unit) && isPositive(num) && !protectedCost;
-          const bypassAllowed = buyable && !!guard && !guard.ok
+          // A payback bypass may only waive the conservative PAYBACK guard (an ROI concern) - never
+          // the RESERVE guard, which is a hard safety constraint. Bypassing reserve would let a step
+          // spend below the required buffer (9.4.0 DEL 6: the bypass makes a step eligible to be
+          // ranked, it never overrides safety).
+          const bypassAllowed = buyable && !!guard && !guard.ok && guard.type === "payback"
             && (step.kind === "parent-step" ? !!config.meatParentStepPaybackBypass : !!config.meatActionUnitPaybackBypass);
           const safe = buyable && (!guard || guard.ok || bypassAllowed);
           add({
@@ -19677,6 +19731,165 @@ function getDisplayName(item) {
   }
   // <build:section:adapter-smart-execution:end>
 
+  // 9.4.0 DEL 3/DEL 4 — one globally-owned main action. Rebuilds the proposal set and the
+  // six-domain coordinator from fresh live state (a fresh decisionCycleId), then executes ONLY the
+  // authorized global winner via the exact-candidate executor. When the coordinator abstains
+  // (UNRANKED / UNCERTAIN / advisor-only winner / no bounded-reversible action) it executes nothing
+  // and returns an honest wait reason instead of falling through to a legacy planner. This makes
+  // actualExecutedCandidate == authorizedGlobalCandidate for every main action.
+  function runGlobalOwnedMainActionStep({ game, commands, engine, protectedResources, smartFocus, remainingActions, cycleSeq }) {
+    unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
+    const preExecutionWinner = unifiedPurchaseProposalState?.evaluation?.winner || null;
+    const preExecutionMainAction = preExecutionWinner ? {
+      lane: preExecutionWinner.lane,
+      candidate: preExecutionWinner.candidate,
+      target: preExecutionWinner.target,
+      reason: preExecutionWinner.reason,
+    } : null;
+    const goal = getCurrentStrategyGoal(game, engine, protectedResources, smartFocus);
+    const m6AbilityAdvisor = evaluateEnergyAbilityTimingSnapshot(captureEnergyAbilityTimingSnapshot(game, smartFocus, preExecutionMainAction));
+    const m6AscensionAdvisor = evaluateAscensionMutagenSnapshot(captureAscensionMutagenSnapshot(game, {
+      smartFocus,
+      selectedMainAction: preExecutionMainAction,
+      goal,
+    }));
+    const m6Snapshot = captureSixDomainDecisionSnapshot(game, {
+      smartFocus,
+      selectedMainAction: preExecutionMainAction,
+      goal,
+      activeMilestone: goal,
+      // 9.4.0 DEL 1: activeTarget follows the current executable milestone, never smartFocus.
+      activeTarget: getCurrentStrategyTarget(game, engine, protectedResources, smartFocus),
+      purchaseProposalState: unifiedPurchaseProposalState,
+      abilitySnapshot: m6AbilityAdvisor,
+      ascensionSnapshot: m6AscensionAdvisor,
+      selectedHorizonId: "medium",
+      snapshotId: `M6-LIVE-STEP-${cycleSeq}`,
+      decisionCycleId: `cycle-step-${cycleSeq}`,
+    });
+    sixDomainStrategicCoordinatorState = evaluateSixDomainStrategicCoordinator(m6Snapshot);
+    sixDomainExecutionPlanState = buildSixDomainExecutionPlan(sixDomainStrategicCoordinatorState, unifiedPurchaseProposalState);
+
+    if (sixDomainExecutionPlanState.preRevalidationEligible) {
+      const revalidationProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
+      sixDomainExecutionPlanState = applySixDomainExecutionRevalidation(
+        sixDomainExecutionPlanState,
+        revalidationProposalState,
+        { decisionCycleId: sixDomainStrategicCoordinatorState.decisionCycleId }
+      );
+      unifiedPurchaseProposalState = revalidationProposalState;
+    }
+
+    const effectiveM6ExecutionAuthority = !config.advisorOnly
+      && !!config.autoBuySafeDecisions
+      && sixDomainExecutionPlanState.executionAuthority === true;
+    sixDomainStrategicCoordinatorState = laboratoryDeepFreeze({
+      ...laboratoryCloneJson(sixDomainStrategicCoordinatorState),
+      executionAuthority: effectiveM6ExecutionAuthority,
+      authorityState: {
+        ...laboratoryCloneJson(sixDomainStrategicCoordinatorState.authorityState || {}),
+        executionAuthority: effectiveM6ExecutionAuthority,
+        authorityReason: effectiveM6ExecutionAuthority
+          ? "exact bounded reversible winner passed same-cycle revalidation"
+          : (config.advisorOnly || !config.autoBuySafeDecisions
+            ? "Advisor mode or safe autobuy is disabled"
+            : sixDomainExecutionPlanState.reason || "M6 execution plan did not pass"),
+      },
+      executionPlan: laboratoryCloneJson(sixDomainExecutionPlanState),
+    });
+    wholeEconomyExecutionDecisionState = {
+      ...(sixDomainExecutionPlanState.executionDecision || createWholeEconomyExecutionDecisionBase(Math.max(0, remainingActions))),
+      executionAuthority: effectiveM6ExecutionAuthority,
+      authoritySource: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
+      fallbackReason: sixDomainExecutionPlanState.reason || "M6 did not authorize a bounded reversible action",
+    };
+
+    const recommendation = sixDomainStrategicCoordinatorState.recommendation || "UNCERTAIN";
+
+    if (!(remainingActions >= 1 && wholeEconomyExecutionDecisionState.executionAuthority === true)) {
+      // Honest WAIT: the coordinator has no authorized bounded-reversible winner. Execute nothing
+      // and report why — never fall through to a legacy ROI-bypassed meat buy (9.3.5 pathology).
+      wholeEconomyExecutionDecisionState = {
+        ...wholeEconomyExecutionDecisionState,
+        executed: false,
+        executionResult: "execution refused; no authorized bounded-reversible global winner",
+        executionLabel: "Six-domain coordinator",
+        matchedExecution: "no",
+      };
+      sixDomainExecutionPlanState = laboratoryDeepFreeze({
+        ...laboratoryCloneJson(sixDomainExecutionPlanState),
+        executionDecision: laboratoryCloneJson(wholeEconomyExecutionDecisionState),
+        executed: false,
+        matchedExecution: "no",
+      });
+      const waitReason = recommendation === "UNCERTAIN"
+        ? `WAIT: coordinator UNCERTAIN — no comparable action (${wholeEconomyExecutionDecisionState.fallbackReason})`
+        : recommendation === "WAIT"
+          ? `WAIT: best domain is advisor-only (${wholeEconomyExecutionDecisionState.fallbackReason})`
+          : `WAIT: ${wholeEconomyExecutionDecisionState.fallbackReason}`;
+      return { authorized: false, waitReason, recommendation };
+    }
+
+    const unifiedAction = executeUnifiedPurchaseWinner({
+      executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey,
+      game,
+      commands,
+      remainingActions: Math.max(0, remainingActions),
+      selectedLane: wholeEconomyExecutionDecisionState.selectedLane,
+      selectedCandidate: wholeEconomyExecutionDecisionState.selectedCandidate,
+      selectedExecutionId: wholeEconomyExecutionDecisionState.selectedExecutionId,
+      selectedExecutionKind: wholeEconomyExecutionDecisionState.selectedExecutionKind,
+      selectedExecutionVariant: wholeEconomyExecutionDecisionState.selectedExecutionVariant,
+      selectedAmount: wholeEconomyExecutionDecisionState.selectedAmount,
+      selectedTarget: wholeEconomyExecutionDecisionState.selectedTarget,
+      selectedFingerprint: wholeEconomyExecutionDecisionState.selectedFingerprint,
+    });
+    wholeEconomyExecutionDecisionState = finalizeWholeEconomyExecutionDecisionResult(
+      wholeEconomyExecutionDecisionState,
+      { ...unifiedAction, executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey }
+    );
+    sixDomainExecutionPlanState = laboratoryDeepFreeze({
+      ...laboratoryCloneJson(sixDomainExecutionPlanState),
+      executionDecision: laboratoryCloneJson(wholeEconomyExecutionDecisionState),
+      executed: wholeEconomyExecutionDecisionState.executed === true,
+      matchedExecution: wholeEconomyExecutionDecisionState.matchedExecution,
+      executedFingerprint: wholeEconomyExecutionDecisionState.executedFingerprint,
+    });
+    const bought = Number(unifiedAction.result?.bought || 0) > 0;
+    // 9.4.0 DEL 3: "actual == authorized" is an *identity* match (same lane/key/executionId/candidate),
+    // not an exact count-delta match. High-production meat units grow between the before/after count
+    // reads, so the executed delta legitimately exceeds the bounded purchase amount; the amount in the
+    // fingerprint is therefore not a reliable success signal (it only ever matched for low/zero-self-
+    // production Engine upgrades). The bounded purchase itself is still bounded inside buyUnitAmount.
+    const executedId = String(unifiedAction.result?.executedExecutionId || "");
+    const matched = bought
+      && executedId === String(wholeEconomyExecutionDecisionState.selectedExecutionId || "")
+      && normalizeLabelKey(unifiedAction.result?.executedCandidate || "") === normalizeLabelKey(wholeEconomyExecutionDecisionState.selectedCandidate || "");
+    // Keep the recorded decision consistent with the identity match so observability reports the
+    // authorized == executed truth (finalize's amount-sensitive fingerprint would otherwise show a
+    // false mismatch for high-production meat units).
+    wholeEconomyExecutionDecisionState = {
+      ...wholeEconomyExecutionDecisionState,
+      executed: matched,
+      matchedExecution: matched ? "yes" : "no",
+      ...(matched ? {} : {
+        fallbackReason: wholeEconomyExecutionDecisionState.fallbackReason === "none"
+          ? "coordinator execution identity mismatch or zero buy"
+          : wholeEconomyExecutionDecisionState.fallbackReason,
+      }),
+    };
+    return {
+      authorized: true,
+      recommendation,
+      bought,
+      matched,
+      key: wholeEconomyExecutionDecisionState.selectedExecutionKey,
+      label: unifiedAction.label,
+      result: unifiedAction.result,
+      reason: wholeEconomyExecutionDecisionState.selectedReason || "six-domain coordinator exact-winner execution",
+    };
+  }
+
   function smartRunOnce() {
     if (!config.enabled) {
       lastStatus = "Pausad";
@@ -19808,188 +20021,69 @@ function getDisplayName(item) {
     let engine = analyzeLarvaEngine(game);
     let protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
     const smartFocus = decideSmartFocus(engine);
-    unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
     let coordinatorExecutedKey = null;
-    // M6's execution-authority gate requires a comparable milestone-eta metric,
-    // which only the Territory proposal populates today (Engine/Meat/Energy
-    // stay UNRANKED and can never win). Leaving this true disables every
-    // proven legacy purchase path and the bot buys nothing. Keep it false so
-    // legacy lane execution remains the acting purchaser while M6 still runs
-    // for Council display and claims any lane it can actually win.
-    const m6DecisionOwnsMainCycle = false;
-    const preExecutionWinner = unifiedPurchaseProposalState?.evaluation?.winner || null;
-    const preExecutionMainAction = preExecutionWinner ? {
-      lane: preExecutionWinner.lane,
-      candidate: preExecutionWinner.candidate,
-      target: preExecutionWinner.target,
-      reason: preExecutionWinner.reason,
-    } : null;
-    const m6AbilityAdvisor = evaluateEnergyAbilityTimingSnapshot(captureEnergyAbilityTimingSnapshot(game, smartFocus, preExecutionMainAction));
-    const m6AscensionAdvisor = evaluateAscensionMutagenSnapshot(captureAscensionMutagenSnapshot(game, {
-      smartFocus,
-      selectedMainAction: preExecutionMainAction,
-      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
-    }));
-    const m6Snapshot = captureSixDomainDecisionSnapshot(game, {
-      smartFocus,
-      selectedMainAction: preExecutionMainAction,
-      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
-      activeMilestone: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
-      // 9.4.0 DEL 1: anchor activeTarget to the current executable milestone, never to the
-      // UI/long-term smartFocus. preExecutionMainAction?.target was null whenever the M2 winner
-      // was "none" (the pathological save), which is exactly when the fallback to smartFocus
-      // produced the territory/lesser-hive-mind split.
-      activeTarget: getCurrentStrategyTarget(game, engine, protectedResources, smartFocus),
-      purchaseProposalState: unifiedPurchaseProposalState,
-      abilitySnapshot: m6AbilityAdvisor,
-      ascensionSnapshot: m6AscensionAdvisor,
-      selectedHorizonId: "medium",
-    });
-    sixDomainStrategicCoordinatorState = evaluateSixDomainStrategicCoordinator(m6Snapshot);
-    sixDomainExecutionPlanState = buildSixDomainExecutionPlan(sixDomainStrategicCoordinatorState, unifiedPurchaseProposalState);
-
-    if (sixDomainExecutionPlanState.preRevalidationEligible) {
-      const revalidationProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
-      sixDomainExecutionPlanState = applySixDomainExecutionRevalidation(
-        sixDomainExecutionPlanState,
-        revalidationProposalState,
-        { decisionCycleId: sixDomainStrategicCoordinatorState.decisionCycleId }
-      );
-      unifiedPurchaseProposalState = revalidationProposalState;
-    }
-
-    const effectiveM6ExecutionAuthority = !config.advisorOnly
-      && !!config.autoBuySafeDecisions
-      && sixDomainExecutionPlanState.executionAuthority === true;
-    sixDomainStrategicCoordinatorState = laboratoryDeepFreeze({
-      ...laboratoryCloneJson(sixDomainStrategicCoordinatorState),
-      executionAuthority: effectiveM6ExecutionAuthority,
-      authorityState: {
-        ...laboratoryCloneJson(sixDomainStrategicCoordinatorState.authorityState || {}),
-        executionAuthority: effectiveM6ExecutionAuthority,
-        authorityReason: effectiveM6ExecutionAuthority
-          ? "exact bounded reversible winner passed same-cycle revalidation"
-          : (config.advisorOnly || !config.autoBuySafeDecisions
-            ? "Advisor mode or safe autobuy is disabled"
-            : sixDomainExecutionPlanState.reason || "M6 execution plan did not pass"),
-      },
-      executionPlan: laboratoryCloneJson(sixDomainExecutionPlanState),
-    });
-
-    wholeEconomyExecutionDecisionState = {
-      ...(sixDomainExecutionPlanState.executionDecision || createWholeEconomyExecutionDecisionBase(Math.max(0, maxActions - mainActions))),
-      executionAuthority: effectiveM6ExecutionAuthority,
-      authoritySource: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
-      fallbackReason: sixDomainExecutionPlanState.reason || "M6 did not authorize a bounded reversible action",
-    };
-
-    if (canDoMoreMainActions() && wholeEconomyExecutionDecisionState.executionAuthority === true) {
-      const unifiedAction = executeUnifiedPurchaseWinner({
-        executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey,
+    let cycleStopReason = "budget exhausted";
+    let postActionReevaluations = 0;
+    let lastGlobalRecommendation = "UNCERTAIN";
+    // 9.4.0 DEL 3/DEL 4 — global execution ownership + post-action re-evaluation. Every main action
+    // is the authorized global winner of a freshly-rebuilt six-domain evaluation; after each executed
+    // buy the whole economy is re-evaluated from new live state (a new decisionCycleId). The legacy
+    // per-lane purchase walk (engine guard, critical upgrades, energy guard, unlock/parent-step,
+    // smart upgrades, smart units) is retired — those lanes now compete only as proposals. When the
+    // coordinator cannot authorize a comparable bounded-reversible action the loop stops with an
+    // honest WAIT reason instead of falling through to an ROI-bypassed meat buy (the 9.3.5 pathology).
+    for (let step = 0; step < maxActions; step++) {
+      if (step > 0) {
+        engine = analyzeLarvaEngine(game);
+        protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
+        postActionReevaluations++;
+      }
+      const stepResult = runGlobalOwnedMainActionStep({
         game,
         commands,
+        engine,
+        protectedResources,
+        smartFocus,
         remainingActions: Math.max(0, maxActions - mainActions),
-        selectedLane: wholeEconomyExecutionDecisionState.selectedLane,
-        selectedCandidate: wholeEconomyExecutionDecisionState.selectedCandidate,
-        selectedExecutionId: wholeEconomyExecutionDecisionState.selectedExecutionId,
-        selectedExecutionKind: wholeEconomyExecutionDecisionState.selectedExecutionKind,
-        selectedExecutionVariant: wholeEconomyExecutionDecisionState.selectedExecutionVariant,
-        selectedAmount: wholeEconomyExecutionDecisionState.selectedAmount,
-        selectedTarget: wholeEconomyExecutionDecisionState.selectedTarget,
-        selectedFingerprint: wholeEconomyExecutionDecisionState.selectedFingerprint,
+        cycleSeq: step + 1,
       });
-      wholeEconomyExecutionDecisionState = finalizeWholeEconomyExecutionDecisionResult(
-        wholeEconomyExecutionDecisionState,
-        { ...unifiedAction, executionKey: wholeEconomyExecutionDecisionState.selectedExecutionKey }
+      lastGlobalRecommendation = stepResult.recommendation || lastGlobalRecommendation;
+      if (!stepResult.authorized) {
+        cycleStopReason = stepResult.waitReason || "no authorized comparable candidate (WAIT)";
+        break;
+      }
+      if (!stepResult.bought || !stepResult.matched) {
+        cycleStopReason = "authorized global winner failed same-cycle revalidation/execution";
+        break;
+      }
+      recordMainAction(
+        laneFromMainLabel(stepResult.label),
+        stepResult.result?.executedCandidate || stepResult.label,
+        stepResult.reason,
+        stepResult.result?.executedAmount || "",
+        decimalFrom(stepResult.result?.executedAmount || "0", 0)
       );
-      sixDomainExecutionPlanState = laboratoryDeepFreeze({
-        ...laboratoryCloneJson(sixDomainExecutionPlanState),
-        executionDecision: laboratoryCloneJson(wholeEconomyExecutionDecisionState),
-        executed: wholeEconomyExecutionDecisionState.executed === true,
-        matchedExecution: wholeEconomyExecutionDecisionState.matchedExecution,
-        executedFingerprint: wholeEconomyExecutionDecisionState.executedFingerprint,
-      });
-      if (Number(unifiedAction.result?.bought || 0) > 0) {
-        recordMainAction(
-          laneFromMainLabel(unifiedAction.label),
-          unifiedAction.result?.executedCandidate || unifiedAction.label,
-          wholeEconomyExecutionDecisionState.selectedReason || "six-domain coordinator exact-winner execution",
-          unifiedAction.result?.executedAmount || "",
-          decimalFrom(unifiedAction.result?.executedAmount || "0", 0)
-        );
-      }
-      addMainResult(unifiedAction.label, unifiedAction.result);
-      if (Number(unifiedAction.result?.bought || 0) > 0 && wholeEconomyExecutionDecisionState.matchedExecution === "yes") {
-        coordinatorExecutedKey = wholeEconomyExecutionDecisionState.selectedExecutionKey;
-        engine = analyzeLarvaEngine(game);
-        protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
-        if (coordinatorExecutedKey !== "territory") territoryPrepPlannerState = null;
-      } else {
-        wholeEconomyExecutionDecisionState = {
-          ...wholeEconomyExecutionDecisionState,
-          fallbackReason: wholeEconomyExecutionDecisionState.fallbackReason === "none"
-            ? "coordinator execution mismatch or zero buy"
-            : wholeEconomyExecutionDecisionState.fallbackReason,
-        };
-      }
-    } else if (!wholeEconomyExecutionDecisionState.executionAuthority) {
-      wholeEconomyExecutionDecisionState = {
-        ...wholeEconomyExecutionDecisionState,
-        executed: false,
-        executionResult: "execution refused; M6 holds this decision cycle",
-        executionLabel: "Six-domain coordinator",
-        matchedExecution: "no",
-      };
-      sixDomainExecutionPlanState = laboratoryDeepFreeze({
-        ...laboratoryCloneJson(sixDomainExecutionPlanState),
-        executionDecision: laboratoryCloneJson(wholeEconomyExecutionDecisionState),
-        executed: false,
-        matchedExecution: "no",
-      });
+      addMainResult(stepResult.label, stepResult.result);
+      coordinatorExecutedKey = stepResult.key;
+      if (stepResult.key !== "territory") territoryPrepPlannerState = null;
+      engine = analyzeLarvaEngine(game);
+      protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
     }
 
-    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "engine") {
-      const engineAction = executeEngineGuardAction({ game, commands, engine });
-      addMainResult("Larva engine", engineAction);
+    // 9.4.0 DEL 3: the legacy economic main lanes (engine guard, critical production upgrades,
+    // energy guard, unlock/parent-step, smart upgrades, smart units) are retired — they now compete
+    // only as proposals inside the globally-owned main-action loop above, so the acted purchase is
+    // always the authorized global winner.
+    //
+    // DEL 7: clone economy maintenance (Clone Ramp cast + Clone buffer cocooning) stays a bounded
+    // SIDE task, unchanged in policy and out of the six-domain economic arbitration (the laboratory
+    // falsified clone throughput as a root cause). Its own bank-readiness checks bound it; it never
+    // counts as a main action and never blocks the authorized economic winner.
+    const cloneRampSide = executeCloneRampGuardAction({ game, commands, protectedResources });
+    addSideResult("Clone Ramp", cloneRampSide);
 
-      if (engineAction.actionTaken) {
-        engine = analyzeLarvaEngine(game);
-        protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
-      }
-    }
-
-    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
-      const criticalUpgradeAction = handleCriticalProductionUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions));
-      addMainResult("Critical upgrades", criticalUpgradeAction);
-    }
-
-    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "energy") {
-      const energyAction = executeEnergyGuardAction({ game, commands, protectedResources });
-      addMainResult("Energy", energyAction);
-    }
-
-    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
-      const cloneRampAction = executeCloneRampGuardAction({ game, commands, protectedResources });
-      addMainResult("Clone Ramp", cloneRampAction);
-    }
-
-    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
-      const cloneBufferAction = executeCloneGuardAction({ game, commands });
-      if (Number(cloneBufferAction?.bought || 0) > 0) {
-        recordMainAction("Clone Prep", cloneBufferAction.boughtCandidate, cloneBufferAction.reason, cloneBufferAction.buyNum, cloneBufferAction.executedDelta);
-      }
-      addMainResult("Clone buffer", cloneBufferAction);
-    } else if (!m6DecisionOwnsMainCycle) {
-      // Hard-lock clone-buffer recovery runs even with zero remaining
-      // budget (unchanged pre-existing behavior); it is intentionally not
-      // counted toward mainActions or the action ledger in that case.
-      executeCloneGuardAction({ game, commands });
-    }
-
-    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "meat") {
-      const unlockAction = runUnlockPlanner(game, commands, protectedResources);
-      addMainResult("Unlock planner", unlockAction);
-    }
+    const cloneBufferSide = executeCloneGuardAction({ game, commands });
+    addSideResult("Clone buffer", cloneBufferSide);
 
     if (protectedResources.has("territory")) {
       recordAdvisor("HOLD", "Territory spending", "saving territory for Expansion");
@@ -20037,37 +20131,20 @@ function getDisplayName(item) {
 
     recordAdvisor("INFO", "Smart focus", smartFocus);
 
-    if (!m6DecisionOwnsMainCycle && config.buyUpgrades && canDoMoreMainActions()) {
-      upgrades = safe("Smart upgrades", () => buySmartUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions))) || 0;
-      if (upgrades > 0) {
-        mainActions += upgrades;
-        summaries.push(`${upgrades} upgrade(s)`);
-      }
-    }
+    // 9.4.0 DEL 3: smart upgrades and the smart-units fallback are retired as independent legacy
+    // main lanes — production upgrades now enter the ranked proposal set (Larva/Engine) and unit
+    // purchases go through the Meat / Army-Territory / Energy proposals. There is no ungoverned
+    // fallback purchase; if the coordinator abstains the loop already recorded an honest WAIT.
 
-    if (!m6DecisionOwnsMainCycle && config.buyUnits && canDoMoreMainActions()) {
-      units = safe("Smart units", () => buySmartUnits(
-        game,
-        commands,
-        engine,
-        protectedResources,
-        Math.max(0, maxActions - mainActions),
-        { skipMeatFirst: coordinatorExecutedKey === "meat" }
-      )) || 0;
-      if (units === "paused-ascension") {
-        summaries.push("fallback unit purchases paused near ascension");
-      } else if (units > 0) {
-        mainActions += units;
-        summaries.push(`${units} unit buy`);
-      }
-    }
-
-    // Clone prep runs last as a side task. It may cocoon a small chunk, but it must
-    // not prevent upgrades, Nexus, lepidoptera or normal unit decisions in the same run.
-    const clonePrep = m6DecisionOwnsMainCycle ? null : manageCloneCocoons(game, commands);
+    // Clone prep runs as a side task (unchanged, DEL 7): it may cocoon a small bounded chunk but
+    // must not block the authorized economic winner.
+    const clonePrep = manageCloneCocoons(game, commands);
     addSideResult("Clone prep", clonePrep);
 
     runAbilityPrepPlanner(game);
+    if (cycleStopReason && !summaries.length) {
+      summaries.push(cycleStopReason);
+    }
 
     // 9.3.3 action-budget contract: mainActions must never exceed maxActions.
     // Every sub-planner that can buy more than once per call is now clamped
