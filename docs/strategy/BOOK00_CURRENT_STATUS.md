@@ -397,6 +397,78 @@ Exact next action:
 
 ## Handoff log
 
+### 2026-07-15 - DEL B research findings recorded (pre-9.3.5, read-only)
+
+- Agent: Claude (Sonnet 5)
+- Worktree/branch: primary workspace, `main`
+- Baseline: `14d18fe` (9.3.4), clean working tree at start (excluding
+  untracked `docs/test-data/` scenario evidence directories).
+- Scope: this is a documentation-only record of a prior read-only research
+  pass ("DEL B") into Parent Step payback and live purchase-log accuracy,
+  written down here so it is not lost in chat history. No runtime code
+  changed as part of this entry; the runtime fixes it motivates are tracked
+  separately as 9.3.5 in this same handoff log.
+- Current Parent Step / meat-chain payback formula, verified against
+  `dev-src/runtime-sections/runtime-main.js` (`getMeatChainPurchaseAnalysis`,
+  ~line 16852): for each meat-chain cost resource of the candidate,
+  `totalCost = cost.val * num`, `addedVelocity = productionPerUnit(unit,
+  costUnit.name) * num` where `productionPerUnit` reads
+  `unit.eachProduction()[resourceName]` directly from the live runtime unit,
+  and `paybackSeconds = totalCost / addedVelocity` (`Infinity` when
+  `addedVelocity` is not positive). The worst (max) `paybackSeconds` across
+  all meat-chain cost rows drives the guard; `paybackRatio =
+  paybackSeconds / config.meatChainMaxPaybackSeconds`. This is an
+  **estimate from the live `eachProduction()` snapshot at decision time**,
+  not a measured/observed recovery — see the 9.3.5 entry below for why this
+  matters and how it is now surfaced honestly in the Inspector.
+- No cost-resource mismatch was found in the meat-chain guard: every cost
+  row's `costUnit` used for `totalCost` is the same unit instance used to
+  look up `addedVelocity` via `productionPerUnit(unit, costUnit.name)`, so
+  cost and produced-resource are never crossed for different resources.
+- Observed Parent Step production benefit: Parent Step candidates (meat-chain
+  units bought specifically to unlock/feed further meat progression via
+  `runUnlockPlanner`'s `parentChoice` path) measurably raise the relevant
+  meat-chain resource's velocity once bought, consistent with the
+  `eachProduction()`-derived `addedVelocity` estimate above; this was
+  observed qualitatively across live cycles, not captured as an automated
+  regression yet.
+- The previously-quoted "1086 seconds" payback figure for a specific live
+  Parent Step buy is a **60-second-local approximation** taken by sampling
+  the resource velocity shortly after the buy and dividing remaining cost
+  recovery by that local rate; it is **not** a verified immediate/instant
+  payback measurement, and no replacement formula for
+  `getMeatChainPurchaseAnalysis`'s `paybackSeconds` has been proven correct
+  or superior. The formula above remains the only source of truth for
+  payback gating; 9.3.5 only adds visibility into its raw output, it does
+  not change or replace it.
+- WAIT-harness integrity: the deterministic scenario harnesses under
+  `scripts/check-*` and `scripts/run-*-deterministic-scenarios.js` were
+  re-checked read-only and continue to exercise synthetic candidate rows
+  rather than a full live `runOnce()` cycle for WAIT/HOLD reasoning; this is
+  the same testing-gap pattern already recorded in the 2026-07-14 repository
+  audit (`docs/strategy/REPOSITORY_AUDIT_REVIEW_2026-07-14.md`). No harness
+  code was changed in this entry.
+- `storageState` bit-identical snapshot method: Playwright live-acceptance
+  runs capture browser `storageState` (cookies + localStorage, including the
+  save-game blob) immediately after a known-good game load, then every
+  subsequent live run restores that exact `storageState` file before
+  navigating, giving byte-identical starting game state across repeated live
+  runs so purchase-log/ledger deltas are directly comparable run-to-run
+  (see `docs/test-data/strategy-audit-1/**/live/` for captured evidence
+  directories using this method).
+- Twin dual-path architecture confirmed read-only: Twin-unit upgrades are
+  bought through two independent call sites in `runtime-main.js` — the
+  goal-planner "twin-prep" path (`buyPlannerTwinIfUseful`, prepares a Twin
+  upgrade ahead of a planned unit purchase) and the direct "Twin Unlock
+  threshold" path inside `runUnlockPlanner`/target-aware upgrade flow. Both
+  ultimately call the same `buyUpgradeAmount(commands, twinUpgrade,
+  newDecimal(1), ...)` primitive, so both are covered by the 9.3.5
+  executed-amount fix without any Twin-specific special-casing.
+- Decision recorded: strategy ranking, gating, reserve limits, and payback
+  bypass logic are **not** changed by this research pass. The only actions
+  taken are (a) this documentation entry, and (b) the follow-up 9.3.5
+  observability/consistency fixes recorded separately below.
+
 ### 2026-07-15 - Clone Ramp: narrow, bounded Clone Larvae auto-cast (9.3.0)
 
 - Agent: Claude (Sonnet 5)
