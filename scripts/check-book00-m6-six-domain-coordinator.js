@@ -389,8 +389,13 @@ async function main() {
       const executionState = { proposals: executionRows, evaluation: bot.purchaseEvaluator.evaluate(executionRows) };
       const executionResult = api.evaluate(buildSnapshot({ snapshotId: "M6-EXECUTION", purchaseRows: executionRows }));
       const executionPlan = api.buildExecutionPlan(executionResult, executionState);
-      const revalidatedExecutionPlan = api.revalidateExecutionPlan(executionPlan, executionState, { decisionCycleId: executionResult.decisionCycleId });
-      const cycleDriftPlan = api.revalidateExecutionPlan(executionPlan, executionState, { decisionCycleId: "different-cycle" });
+      const executionContext = {
+        decisionCycleId: executionResult.decisionCycleId,
+        snapshotId: executionResult.snapshotId,
+        activeTarget: executionResult.activeTarget,
+      };
+      const revalidatedExecutionPlan = api.revalidateExecutionPlan(executionPlan, executionState, executionContext);
+      const cycleDriftPlan = api.revalidateExecutionPlan(executionPlan, executionState, { ...executionContext, decisionCycleId: "different-cycle" });
       const evaluatedIdentityResult = api.evaluate(buildSnapshot({
         snapshotId: "M6-EVALUATED-IDENTITY",
         purchaseRows: [],
@@ -403,7 +408,7 @@ async function main() {
       driftRows[0].wouldBuyAmount = "2";
       driftRows[0].amount = "2";
       const driftState = { proposals: driftRows, evaluation: bot.purchaseEvaluator.evaluate(driftRows) };
-      const fingerprintDriftPlan = api.revalidateExecutionPlan(executionPlan, driftState, { decisionCycleId: executionResult.decisionCycleId });
+      const fingerprintDriftPlan = api.revalidateExecutionPlan(executionPlan, driftState, executionContext);
 
       const mismatchRows = [
         buildPurchaseRow("Engine", "Hatchery", 400, {

@@ -5896,7 +5896,7 @@ function getDisplayName(item) {
       decisionCycleId: String(result?.decisionCycleId || "unknown"),
       snapshotId: String(result?.snapshotId || "unknown"),
       activeTarget: String(result?.activeTarget || "unknown"),
-      enforcement: "observability-only",
+      enforcement: "pre-purchase-stale-gate",
     } : null;
     const base = {
       schemaVersion: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
@@ -5974,19 +5974,59 @@ function getDisplayName(item) {
         reason: "global winner identity did not match the accepted purchase coordinator",
       });
     }
-    if (freshCycle?.decisionCycleId && String(freshCycle.decisionCycleId) !== String(base.decisionCycleId || "")) {
-      return laboratoryDeepFreeze({
-        ...base,
-        executionAuthority: false,
-        revalidationStatus: "failed",
-        reason: "decision cycle changed before revalidation",
-      });
-    }
     const revalidatedDecision = applyWholeEconomyExecutionRevalidationV1({
       decision: base.executionDecision || createWholeEconomyExecutionDecisionBase(1),
       revalidationState: freshProposalState || { proposals: [], evaluation: null },
       actionBudget: 1,
     });
+    const freshWinner = freshProposalState?.evaluation?.winner || null;
+    const freshWinnerProposal = freshWinner
+      ? (freshProposalState?.proposals || []).find((proposal) => proposal?.lane === freshWinner.lane
+        && proposal?.candidate === freshWinner.candidate
+        && normalizeBoundedAmountToken(proposal?.wouldBuyAmount || proposal?.boundedAmount || proposal?.amount) === normalizeBoundedAmountToken(freshWinner.amount))
+      : null;
+    const revalidatedCanonicalProposalId = freshWinnerProposal
+      ? (freshWinnerProposal.canonicalProposalId || buildCanonicalProposalId(freshWinnerProposal))
+      : null;
+    const freshDecisionCycleId = String(freshCycle?.decisionCycleId || "");
+    const freshSnapshotId = String(freshCycle?.snapshotId || "");
+    const freshActiveTarget = String(freshCycle?.activeTarget || "");
+    const revalidationAuthorization = {
+      schemaVersion: "decision-authorization.v1",
+      authorizationId: buildDecisionAuthorizationId({
+        canonicalProposalId: revalidatedCanonicalProposalId,
+        decisionCycleId: freshDecisionCycleId,
+        snapshotId: freshSnapshotId,
+        activeTarget: freshActiveTarget,
+      }),
+      canonicalProposalId: revalidatedCanonicalProposalId,
+      decisionCycleId: freshDecisionCycleId,
+      snapshotId: freshSnapshotId,
+      activeTarget: freshActiveTarget,
+      enforcement: "pre-purchase-stale-gate",
+    };
+    const staleAuthorizationReasons = [];
+    if (!base.authorization?.authorizationId) staleAuthorizationReasons.push("original authorization is missing");
+    if (!freshDecisionCycleId) staleAuthorizationReasons.push("fresh decision cycle is missing");
+    if (!freshSnapshotId) staleAuthorizationReasons.push("fresh snapshot is missing");
+    if (!freshActiveTarget) staleAuthorizationReasons.push("fresh active target is missing");
+    if (revalidatedCanonicalProposalId !== base.authorization?.canonicalProposalId) staleAuthorizationReasons.push("canonical proposal changed");
+    if (freshDecisionCycleId !== String(base.authorization?.decisionCycleId || "")) staleAuthorizationReasons.push("decision cycle changed");
+    if (freshSnapshotId !== String(base.authorization?.snapshotId || "")) staleAuthorizationReasons.push("snapshot changed");
+    if (freshActiveTarget !== String(base.authorization?.activeTarget || "")) staleAuthorizationReasons.push("active target changed");
+    if (revalidationAuthorization.authorizationId !== base.authorization?.authorizationId) staleAuthorizationReasons.push("authorization identity changed");
+    if (staleAuthorizationReasons.length > 0) {
+      return laboratoryDeepFreeze({
+        ...base,
+        executionDecision: revalidatedDecision,
+        revalidationAuthorization,
+        executionAuthority: false,
+        identityStatus: "stale",
+        revalidationStatus: "failed",
+        blocker: "STALE_AUTHORIZATION",
+        reason: `STALE_AUTHORIZATION: ${staleAuthorizationReasons.join("; ")}`,
+      });
+    }
     const identityStillMatches = revalidatedDecision?.selectedExecutionKey === base.boundedCandidate.executionKey
       && revalidatedDecision?.selectedExecutionId === base.boundedCandidate.executionId
       && revalidatedDecision?.selectedExecutionKind === base.boundedCandidate.executionKind
@@ -5996,6 +6036,7 @@ function getDisplayName(item) {
     return laboratoryDeepFreeze({
       ...base,
       executionDecision: revalidatedDecision,
+      revalidationAuthorization,
       executionAuthority: identityStillMatches && !!revalidatedDecision.executionAuthority,
       identityStatus: identityStillMatches ? "matched" : "drifted",
       revalidationStatus: identityStillMatches ? revalidatedDecision.revalidationStatus : "failed",
@@ -19889,7 +19930,11 @@ function getDisplayName(item) {
       sixDomainExecutionPlanState = applySixDomainExecutionRevalidation(
         sixDomainExecutionPlanState,
         revalidationProposalState,
-        { decisionCycleId: sixDomainStrategicCoordinatorState.decisionCycleId }
+        {
+          decisionCycleId: sixDomainStrategicCoordinatorState.decisionCycleId,
+          snapshotId: sixDomainStrategicCoordinatorState.snapshotId,
+          activeTarget: strategyIdentity.activeTarget,
+        }
       );
       unifiedPurchaseProposalState = revalidationProposalState;
     }

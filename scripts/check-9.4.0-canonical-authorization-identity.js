@@ -151,7 +151,7 @@ async function main() {
     assert(report.planCanonicalProposalId === report.canonical, "M6 bounded candidate did not preserve canonical proposal identity");
     assert(report.planAuthorizationId === report.authorization, "M6 plan did not mint the expected authorization identity");
     assert(report.planDecisionAuthorizationId === report.authorization, "execution-decision observability did not carry authorization identity");
-    assert(report.planAuthorizationEnforcement === "observability-only", "authorization identity gained enforcement before the stale-authorization slice");
+    assert(report.planAuthorizationEnforcement === "pre-purchase-stale-gate", "authorization identity is not enforced by the stale-authorization gate");
     assert(report.planIdentityStatus === "matched" && report.planPreRevalidationEligible, "additive identity fields changed the healthy existing plan path");
 
     console.log(JSON.stringify({ status: "PASS", ...report }, null, 2));
