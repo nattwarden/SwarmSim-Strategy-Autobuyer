@@ -10,7 +10,12 @@ Slice 1 implementation: `21aa76ab03f5b75b2da32ecdc2db7aa7ee4d6b6a`
 
 Slice 1 evidence: `b91fbf939c54de93be0c203c7ea3ca981babe815`
 
-Status: read-only architecture audit with verified slice-1 closure. This
+Slice 2 implementation: `e9926c57c0bc7b21bb4fb9be6a20c33ed4c9d6e5`
+
+Slice 2 evidence: `02d0db9b0d71d3e7a6d0fb84d964c638a285e2da`
+
+Status: read-only architecture audit with verified slice-1 and slice-2
+closures. This
 document records why global execution ownership is not ready and selects the
 next evidence-gathering direction. It does not authorize an ownership change.
 
@@ -122,7 +127,7 @@ Until all reversible domains and required normal purchase classes share the
 same milestone/horizon contract, M6 WAIT is advice—not authority over the
 whole action cycle.
 
-## Finding R4: metric target is not bound to the active target
+## Finding R4: metric target was not bound to the active target - closed in slice 2
 
 The purchase adapter copies the decision's `activeTarget` into every domain
 outcome but never proves that the row's metric describes that target. The
@@ -159,6 +164,21 @@ diagnostic, but it also exposed three existing acceptance shortcuts:
 The prototype was discarded before commit. No test was retuned and the clean
 branch retained all accepted M2/M3/M6/M7/live-purchase behavior.
 
+Slice 2 implemented the approved one-active-target model without widening
+ownership. Every supported purchase proposal now supplies an explicit
+`metricTarget`; M6 records proposal, metric and active targets and ranks a
+numeric outcome only when metric target and active target match exactly.
+Missing or mismatched identities remain `UNRANKED`.
+
+The formerly misleading acceptance states were corrected at their ownership
+boundary instead of being forced green: the old M2 cross-target state is now
+a negative no-authority regression; post-Nexus Lepidoptera remains a verified
+bounded legacy Energy action; M6/M7 synthetic inputs explicitly declare their
+shared target; and live Scenario B reaches a real Territory/Expansion focus
+through production selectors rather than an active-target override. Exact-SHA
+verification and a mutation that removes the gate are recorded in
+`docs/test-data/9.4.0-clean-room/verification-e9926c5.md`.
+
 ## Finding R5: progress-delta bases are not globally commensurable
 
 Commit `be16d243bc5829a53c747693a94e3918386694d6` (9.1.0) introduced the
@@ -182,7 +202,7 @@ model has been proven.
 | Gate | Status | Reason |
 | --- | --- | --- |
 | Missing metrics remain unranked | PASS | Slice 1 verifies `null`, `undefined` and empty ETA as unranked while preserving explicit numeric zero. |
-| Metric target matches the active target | FAIL | No explicit metric-target identity or alignment gate exists. |
+| Metric target matches the active target | PASS | Slice 2 requires explicit identity and fails closed on missing or mismatched targets; mutation removal is detected. |
 | Comparable candidates use one metric id, unit and basis | FAIL | ETA seconds, local completion `100`, and Energy boost gain are sorted together. |
 | Four reversible domains share the active milestone metric | FAIL | Territory is the only established real ETA source; other live outcomes frequently lack it. |
 | Advisor-only winner cannot suppress reversible fallback | PASS today | Legacy ownership remains active; this would fail if sole ownership were toggled on. |
@@ -212,36 +232,45 @@ Acceptance must prove:
 Player-visible delta: Council and Inspector stop presenting missing evidence
 as a real zero-value comparison or an arbitrary strategic winner.
 
-## Work after slice 1
+## Completed slice 2
+
+Phase 3 slice 2 implements the selected migration model:
+
+> One active target per cycle; only outcomes explicitly measured against that
+> target may be ranked by M6. Unaligned safe actions remain legacy-owned.
+
+Acceptance proves off-target high values cannot beat an aligned outcome or
+receive authority, aligned bounded execution remains available, post-Nexus
+Energy continues safely through legacy execution, and live M6 authority is
+grounded in a real production-selected target.
+
+## Work after slice 2
 
 After the false-zero correction, add one honest shared-outcome product slice
 at a time, starting from the active player milestone rather than toggling
 ownership:
 
-1. measure which safe Meat/Engine/Energy proposals lack the active-target ETA;
-2. select one real competing action pair for the same target and horizon;
-3. add a validated outcome conversion with player-visible explanation;
+1. prevent outcomes with different metric id/unit/basis from being ranked
+   against each other even when their target identity matches;
+2. remove or isolate M2's Engine/Nexus completion double counting across ETA
+   proximity, unlock bonus and progress delta;
+3. select one real competing action pair for the same target, horizon and
+   validated unit;
 4. retain legacy execution until coverage and WAIT gates are complete;
 5. repeat exact-SHA verification after each product slice.
 
 The old plan generator remains out of scope.
 
-## Decision required before slice 2 implementation
+## Selected slice-2 decision
 
-The next code change now depends on a real product choice, not another
-technical patch. Choose one target architecture:
+The user selected the incremental architecture:
 
-1. one active target per cycle, with only exactly aligned metrics rankable and
-   all unaligned safe actions left to legacy execution until their conversion
-   exists;
-2. a new versioned multi-objective common-value model that converts every
-   domain to one validated unit;
-3. retain M6 as advisor/partial bounded executor and keep post-Nexus Energy
-   and other unaligned classes explicitly legacy-owned.
+1. one active target per cycle;
+2. only exactly aligned metrics rankable;
+3. M6 remains a partial bounded executor;
+4. post-Nexus Energy and other unaligned classes remain explicitly
+   legacy-owned until a later target priority is defined.
 
-The safest incremental direction is option 1 combined with option 3 during
-migration. It still requires an explicit product priority decision for when
-`Post-Nexus energy growth` should become the cycle's active target relative to
-the Meat goal. No target-alignment implementation should land before that
-priority is selected and M3/live-purchase acceptance is redesigned around a
-genuinely aligned state.
+Slice 2 implements that decision. It intentionally does not decide when
+`Post-Nexus energy growth` should outrank the Meat goal. The next blocker is
+R5's metric-basis integrity, not target identity.

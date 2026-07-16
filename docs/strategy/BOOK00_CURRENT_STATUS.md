@@ -148,28 +148,43 @@ Phase 3 slice 1 - reject false-zero shared metrics - is complete:
   action budgets, safety defaults and legacy execution ownership were
   intentionally unchanged.
 
-Current work package: Phase 3 slice 2 - active-target metric alignment - is
-blocked on a product priority decision. Read-only measurement found no real
-competing pair in the pinned save: without artificial buyability overrides the
-active target is `Expansion` and only Engine is aligned. The adapter currently
-does not bind a metric target to that active target, while 9.1.0 also compares
-Engine/Nexus completion `100`, Meat action-step completion `100`, post-Nexus
-Energy boost gain and Territory ETA seconds as if they shared one unit.
+Phase 3 slice 2 - active-target metric alignment - is complete:
 
-An uncommitted explicit-`metricTarget` prototype correctly rejected a
-mismatched high-value Meat row, but also failed the existing M3 execution,
-M6, M7 and live-purchase Scenario B checks because those fixtures and the
-post-Nexus Energy path depend on unaligned targets. The prototype and its
-generated test output were discarded; no runtime, verifier or fixture change
-was committed. See
-`docs/strategy/GLOBAL_EXECUTION_OWNERSHIP_READINESS_9.4.0.md` findings R4/R5.
+- implementation SHA: `e9926c57c0bc7b21bb4fb9be6a20c33ed4c9d6e5`;
+- implementation tree: `31007bc08859bd9f708c71904095077a5897b24f`;
+- evidence SHA: `02d0db9b0d71d3e7a6d0fb84d964c638a285e2da`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-e9926c5.md`;
+- each supported purchase metric now declares its own `metricTarget`, and M6
+  ranks it only when that identity exactly matches the cycle's active target;
+- missing/mismatched identities are observable and fail closed as `UNRANKED`;
+- a larger off-target Meat ETA can no longer beat aligned Engine/Expansion or
+  receive authority, and the mutation restoring the old gate-free comparison
+  fails the focused verifier;
+- the former cross-target M2 fixture is now an honest negative regression,
+  while the aligned `sa1-02` exact-Expansion control remains green;
+- M3 verifies post-Nexus Lepidoptera as bounded legacy Energy execution
+  (`moth 0 -> 5`) with no M6 authority, reset verified and no state leakage;
+- live M6 acceptance now reaches a real Territory/Expansion focus through
+  production selectors and executes a real `swarmling x3` with matching
+  selected amount, count delta and fingerprint;
+- the detached exact-SHA worktree passed canonical build, guardrails, the full
+  configured suite, mutation control and `git diff --check`, ending with
+  status count `0`;
+- ranking weights, bounded amounts, authorization, stale gates, action budget,
+  hard safety defaults and legacy execution ownership were unchanged.
 
-`NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Before implementation,
-decide when `Post-Nexus energy growth` may become the active cycle target
-relative to the Meat goal, or explicitly keep that class legacy-owned during
-migration. Do not retune a fixture merely to regain green status, add a generic
-score, toggle ownership or change safety defaults. The rejected feature branch
-remains research material only and must not be used as a base.
+Current work package: Phase 3 slice 3 - metric-basis integrity - is selected
+but not implemented. R5 remains open: aligned outcomes may still express ETA
+seconds, local completion delta `100`, or post-Nexus Energy production-gain
+percentages, and M2 can count Engine/Nexus completion through multiple score
+components. The next slice must fail closed across different metric bases and
+separately audit double counting before any new common-value conversion.
+
+`NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
+unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
+`false`. The rejected feature branch remains research material only and must
+not be used as a base.
 
 ## Current status snapshot (2026-07-15)
 
