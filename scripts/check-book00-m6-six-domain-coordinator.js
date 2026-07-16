@@ -45,6 +45,9 @@ async function main() {
 
       function buildPurchaseRow(lane, candidate, etaImprovementSeconds, options = {}) {
         const metricTarget = options.metricTarget || "next strategic milestone";
+        const metricId = options.metricId || "next-strategic-milestone-eta";
+        const metricUnit = options.metricUnit || "seconds";
+        const metricBasis = options.metricBasis || "milestone-eta-seconds";
         const sharedOutcome = options.sharedOutcome || (etaImprovementSeconds === null ? {} : { etaImprovementSeconds });
         const raw = options.raw || (etaImprovementSeconds === null ? {} : { etaImprovementSeconds });
         return {
@@ -68,9 +71,21 @@ async function main() {
           executionVariant: options.executionVariant || "base",
           fingerprint: options.fingerprint || `${lane}:${candidate}`,
           costResources: options.costResources ? options.costResources.slice() : ["meat"],
-          sharedOutcome: { ...sharedOutcome, metricTarget: sharedOutcome.metricTarget || metricTarget },
+          sharedOutcome: {
+            ...sharedOutcome,
+            metricTarget: sharedOutcome.metricTarget || metricTarget,
+            metricId: sharedOutcome.metricId || metricId,
+            metricUnit: sharedOutcome.metricUnit || metricUnit,
+            metricBasis: sharedOutcome.metricBasis || metricBasis,
+          },
           confidence: options.confidence || "high",
-          raw: { ...raw, metricTarget: raw.metricTarget || metricTarget },
+          raw: {
+            ...raw,
+            metricTarget: raw.metricTarget || metricTarget,
+            metricId: raw.metricId || metricId,
+            metricUnit: raw.metricUnit || metricUnit,
+            metricBasis: raw.metricBasis || metricBasis,
+          },
           effects: options.effects ? clone(options.effects) : undefined,
         };
       }
@@ -173,6 +188,8 @@ async function main() {
           ascensionSnapshot: options.ascensionSnapshot || buildAscensionSnapshot({ recommendedActionId: "CONTINUE_RUN", recommendation: "CONTINUE_RUN", breakEvenSeconds: null, projectedMilestoneProgressDelta: null }),
           selectedMainAction: options.selectedMainAction || null,
           selectedComparisonBasis: options.selectedComparisonBasis || "milestone-eta-seconds",
+          selectedComparisonMetricId: options.selectedComparisonMetricId || "next-strategic-milestone-eta",
+          selectedComparisonMetricUnit: options.selectedComparisonMetricUnit || "seconds",
           manifest,
         };
       }
@@ -223,6 +240,8 @@ async function main() {
 
       const abilityWin = api.evaluate(buildSnapshot({
         snapshotId: "M6-ABILITY",
+        activeTarget: "Expansion",
+        selectedComparisonMetricId: "expansion-eta",
         purchaseRows: [
           buildPurchaseRow("Meat", "Drone", 20),
           buildPurchaseRow("Engine", "Hatchery", 30),
@@ -243,6 +262,10 @@ async function main() {
 
       const ascensionWin = api.evaluate(buildSnapshot({
         snapshotId: "M6-ASCENSION",
+        activeTarget: "next run horizon",
+        selectedComparisonBasis: "same-unit-milestone-progress-delta",
+        selectedComparisonMetricId: "projectedMilestoneProgressDelta",
+        selectedComparisonMetricUnit: "value",
         purchaseRows: [
           buildPurchaseRow("Meat", "Drone", 20),
           buildPurchaseRow("Engine", "Hatchery", 30),

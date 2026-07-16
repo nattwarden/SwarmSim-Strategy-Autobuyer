@@ -1379,6 +1379,14 @@ function getDisplayName(item) {
     return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   }
 
+  function strategicMetricTargetSlug(value) {
+    return normalizeLabelKey(value).replace(/\s+/g, "-") || "unknown-target";
+  }
+
+  function strategicEtaMetricId(metricTarget) {
+    return `${strategicMetricTargetSlug(metricTarget)}-eta`;
+  }
+
   function getScenarioSuffixAliases(rawSuffix) {
     const normalized = normalizeLabelKey(rawSuffix);
     if (!normalized) return [];
@@ -1923,6 +1931,10 @@ function getDisplayName(item) {
       "houseOfMirrorsDelaySeconds",
       "energyProductionGainPercent",
       "nexusProtectionGate",
+      "metricTarget",
+      "metricId",
+      "metricUnit",
+      "metricBasis",
     ];
 
     const out = {};
@@ -2179,15 +2191,17 @@ function getDisplayName(item) {
     const reserveRatio = rawMetricNumber(raw, "reserveRatio", NaN);
     const progressPercent = normalizeProgressPercentForRank(raw);
     const milestoneProgressDelta = rawMetricNumber(raw, "projectedMilestoneProgressDelta", NaN);
+    const exclusiveMilestoneProgressMetric = Number.isFinite(milestoneProgressDelta)
+      && String(raw?.metricBasis || "") === "same-unit-milestone-progress-delta";
     const reasonText = `${candidate?.reason || ""} ${candidate?.target || ""}`.toLowerCase();
     const components = {
       etaImprovement: Number.isFinite(etaImprovement) && etaImprovement > 0 ? Math.log10(etaImprovement + 1) * 120 : 0,
-      etaProximity: Number.isFinite(eta) ? Math.max(0, 100 - Math.log10(Math.max(1, eta) + 1) * 20) : 0,
+      etaProximity: !exclusiveMilestoneProgressMetric && Number.isFinite(eta) ? Math.max(0, 100 - Math.log10(Math.max(1, eta) + 1) * 20) : 0,
       payback: Number.isFinite(paybackSeconds) ? Math.max(-200, 120 - (paybackSeconds / Math.max(60, Number.isFinite(paybackLimit) ? paybackLimit : 1800)) * 120) : 0,
       reserve: Number.isFinite(reserveRatio) ? Math.min(120, Math.max(-200, (reserveRatio - 1) * 30)) : 0,
-      progress: Number.isFinite(progressPercent) ? progressPercent : 0,
+      progress: !exclusiveMilestoneProgressMetric && Number.isFinite(progressPercent) ? progressPercent : 0,
       milestoneProgressDelta: Number.isFinite(milestoneProgressDelta) ? Math.min(120, Math.max(0, milestoneProgressDelta)) : 0,
-      unlock: /unlock|target|milestone|action unit|parent-step|nexus|hatchery|expansion/.test(reasonText) ? 100 : 0,
+      unlock: !exclusiveMilestoneProgressMetric && /unlock|target|milestone|action unit|parent-step|nexus|hatchery|expansion/.test(reasonText) ? 100 : 0,
       plannerEvidence: normalizeCandidateScore(candidate?.score, 0) * 0.0001,
       fallbackPenalty: candidate?.meatFallback ? -80 : 0,
       blockerPenalty: hardBlocked ? -1000000 : 0,
@@ -2201,6 +2215,9 @@ function getDisplayName(item) {
     const sharedOutcome = {
       schemaVersion: "whole-economy-outcome.v2",
       metricTarget: String(raw?.metricTarget || "").trim() || null,
+      metricId: String(raw?.metricId || "").trim() || null,
+      metricUnit: String(raw?.metricUnit || "").trim() || null,
+      metricBasis: String(raw?.metricBasis || "").trim() || null,
       etaSeconds: Number.isFinite(eta) ? roundWholeEconomy(eta) : null,
       etaImprovementSeconds: Number.isFinite(etaImprovement) ? roundWholeEconomy(etaImprovement) : null,
       paybackSeconds: Number.isFinite(paybackSeconds) ? roundWholeEconomy(paybackSeconds) : null,
@@ -2249,6 +2266,7 @@ function getDisplayName(item) {
       costResources: normalizeWholeEconomyCostResources(candidate),
       amount: candidate?.wouldBuyAmount || "",
       components,
+      metricExclusivityApplied: exclusiveMilestoneProgressMetric,
       sharedOutcome,
       blockers,
       reason: candidate?.reason || "",
@@ -4970,16 +4988,20 @@ function getDisplayName(item) {
   }
 
   function sixDomainComparableValue(outcome) {
+    if (outcome?.comparability?.status && outcome.comparability.status !== "COMPARABLE") {
+      return { basis: null, value: null, unit: null };
+    }
+    const declaredUnit = String(outcome?.comparability?.metricUnit || outcome?.outcome?.metricUnit || "").trim() || null;
     const etaImprovement = sixDomainHasFiniteMetric(outcome?.outcome?.milestoneEtaImprovementSeconds)
       ? Number(outcome?.outcome?.milestoneEtaImprovementSeconds)
       : sixDomainHasFiniteMetric(outcome?.outcome?.etaImprovementSeconds)
         ? Number(outcome.outcome.etaImprovementSeconds)
         : NaN;
-    if (Number.isFinite(etaImprovement)) return { basis: "milestone-eta-seconds", value: etaImprovement, unit: "seconds" };
+    if (Number.isFinite(etaImprovement)) return { basis: "milestone-eta-seconds", value: etaImprovement, unit: declaredUnit || "seconds" };
     const progressDelta = sixDomainHasFiniteMetric(outcome?.outcome?.projectedMilestoneProgressDelta)
       ? Number(outcome?.outcome?.projectedMilestoneProgressDelta)
       : NaN;
-    if (Number.isFinite(progressDelta)) return { basis: "same-unit-milestone-progress-delta", value: progressDelta, unit: "progress-delta" };
+    if (Number.isFinite(progressDelta)) return { basis: "same-unit-milestone-progress-delta", value: progressDelta, unit: declaredUnit || "progress-delta" };
     const sharedValue = sixDomainHasFiniteMetric(outcome?.comparability?.commonValue)
       ? Number(outcome?.comparability?.commonValue)
       : NaN;
@@ -5077,6 +5099,9 @@ function getDisplayName(item) {
     const decisionCycleId = String(strategyContext.decisionCycleId || `cycle-${evaluationRevision + 1}`);
     const activeMilestone = String(strategyContext.activeMilestone || strategyContext.goal || strategyContext.smartFocus || "current strategic milestone");
     const activeTarget = String(strategyContext.activeTarget || strategyContext.selectedMainAction?.target || strategyContext.smartFocus || "current strategic target");
+    const selectedComparisonBasis = String(strategyContext.selectedComparisonBasis || "milestone-eta-seconds");
+    const selectedComparisonMetricId = String(strategyContext.selectedComparisonMetricId || strategicEtaMetricId(activeTarget));
+    const selectedComparisonMetricUnit = String(strategyContext.selectedComparisonMetricUnit || "seconds");
 
     return laboratoryDeepFreeze(laboratoryCloneJson({
       schemaVersion: "six-domain-decision-snapshot.v1",
@@ -5096,7 +5121,9 @@ function getDisplayName(item) {
       abilitySnapshot,
       ascensionSnapshot,
       selectedMainAction: laboratoryCloneJson(strategyContext.selectedMainAction || null),
-      selectedComparisonBasis: strategyContext.selectedComparisonBasis || "milestone-eta-seconds",
+      selectedComparisonBasis,
+      selectedComparisonMetricId,
+      selectedComparisonMetricUnit,
       sharedContext: laboratoryCloneJson(strategyContext.sharedContext || {}),
       manifest: SIX_DOMAIN_MANIFEST,
     }));
@@ -5430,6 +5457,7 @@ function getDisplayName(item) {
       },
       comparability: {
         status: unsupported ? "UNSUPPORTED" : (rankComparable ? "COMPARABLE" : "UNRANKED"),
+        metricId: rankComparable ? String(calibration?.metricId || "unknown") : null,
         basis: rankComparable ? (String(calibration?.direction || "").toUpperCase() === "LOWER_IS_BETTER" ? "milestone-eta-seconds" : "same-unit-milestone-progress-delta") : null,
         metricUnit: rankComparable ? String(calibration?.metricUnit || "value") : null,
         commonValue: rankComparable ? strategicCalibrationToNumber(calibration?.delta, null) : null,
@@ -5505,6 +5533,7 @@ function getDisplayName(item) {
       },
       comparability: {
         status: String(calibration?.comparabilityStatus || "UNRANKED"),
+        metricId: comparable ? String(calibration?.metricId || "unknown") : null,
         basis: comparable ? "same-unit-milestone-progress-delta" : null,
         metricUnit: comparable ? String(calibration?.metricUnit || "value") : null,
         commonValue: comparable ? strategicCalibrationToNumber(calibration?.delta, null) : null,
@@ -5539,12 +5568,22 @@ function getDisplayName(item) {
     const comparability = row ? sixDomainComparableValue({ outcome: row.sharedOutcome || {}, comparability: row.comparability || {}, sharedComparableValue: row.sharedComparableValue }) : { basis: null, value: null, unit: null };
     const proposalTarget = String(row?.target || row?.candidate || "").trim() || null;
     const metricTarget = String(row?.sharedOutcome?.metricTarget || row?.raw?.metricTarget || "").trim() || null;
+    const metricId = String(row?.sharedOutcome?.metricId || row?.raw?.metricId || "").trim() || null;
+    const metricUnit = String(row?.sharedOutcome?.metricUnit || row?.raw?.metricUnit || "").trim() || null;
+    const metricBasis = String(row?.sharedOutcome?.metricBasis || row?.raw?.metricBasis || "").trim() || null;
     const activeTarget = String(sharedContext.activeTarget || "").trim() || null;
     const targetAligned = !!metricTarget && !!activeTarget && normalizeLabelKey(metricTarget) === normalizeLabelKey(activeTarget);
     const targetAlignmentStatus = !row
       ? "UNSUPPORTED"
       : (!metricTarget || !activeTarget ? "MISSING" : (targetAligned ? "MATCHED" : "MISMATCH"));
-    const comparable = targetAligned && Number.isFinite(comparability.value);
+    const metricContractComplete = !!metricId && !!metricUnit && !!metricBasis;
+    const metricShapeAligned = metricContractComplete
+      && metricBasis === comparability.basis
+      && metricUnit === comparability.unit;
+    const metricContractStatus = !row
+      ? "UNSUPPORTED"
+      : (!metricContractComplete ? "MISSING" : (metricShapeAligned ? "MATCHED" : "MISMATCH"));
+    const comparable = targetAligned && metricShapeAligned && Number.isFinite(comparability.value);
     const milestoneEtaImprovementSeconds = comparable && comparability.basis === "milestone-eta-seconds" ? comparability.value : null;
     const projectedMilestoneProgressDelta = comparable && comparability.basis === "same-unit-milestone-progress-delta" ? comparability.value : null;
     const commonValue = comparable && comparability.basis === "versioned-source-or-runtime-derived-common-value" ? comparability.value : null;
@@ -5552,7 +5591,9 @@ function getDisplayName(item) {
       ? []
       : (!targetAligned && row
         ? [`metric target ${metricTarget || "missing"} does not match active target ${activeTarget || "missing"}`]
-        : [domain.domainLabel === "Energy abilities" ? "validated milestone-eta conversion for an ability branch" : domain.domainLabel === "Ascension/Mutagen" ? "validated recovery-to-horizon conversion for Ascension" : `shared outcome conversion for ${domain.domainLabel}`]);
+        : (metricContractStatus !== "MATCHED" && row
+          ? [`metric contract ${metricId || "missing"}/${metricUnit || "missing"}/${metricBasis || "missing"} does not match the observed value shape`]
+          : [domain.domainLabel === "Energy abilities" ? "validated milestone-eta conversion for an ability branch" : domain.domainLabel === "Ascension/Mutagen" ? "validated recovery-to-horizon conversion for Ascension" : `shared outcome conversion for ${domain.domainLabel}`]));
     const actionId = row?.candidate || row?.actionId || domain.domainLabel;
     const boundedAmount = normalizeBoundedAmountToken(row?.boundedAmount || row?.amount || row?.wouldBuyAmount || "1");
     const action = row ? {
@@ -5614,6 +5655,9 @@ function getDisplayName(item) {
         activeTarget: sharedContext.activeTarget || "unknown",
         proposalTarget,
         metricTarget,
+        metricId,
+        metricUnit,
+        metricBasis,
         horizonId: sharedContext.horizonId || "medium",
         horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
       },
@@ -5626,6 +5670,8 @@ function getDisplayName(item) {
       comparability: {
         status: comparable ? "COMPARABLE" : "UNRANKED",
         targetAlignmentStatus,
+        metricContractStatus,
+        metricId,
         basis: comparable ? comparability.basis : null,
         metricUnit: comparable ? comparability.unit : null,
         commonValue: comparable ? commonValue : null,
@@ -5769,6 +5815,84 @@ function getDisplayName(item) {
     });
   }
 
+  function enforceSixDomainSelectedComparisonContract(domainOutcome, selectedContract = {}) {
+    const outcome = laboratoryCloneJson(domainOutcome || {});
+    const selected = {
+      metricId: String(selectedContract.metricId || "").trim() || null,
+      metricUnit: String(selectedContract.metricUnit || "").trim() || null,
+      basis: String(selectedContract.basis || "").trim() || null,
+    };
+    const observed = {
+      metricId: String(outcome?.comparability?.metricId || "").trim() || null,
+      metricUnit: String(outcome?.comparability?.metricUnit || "").trim() || null,
+      basis: String(outcome?.comparability?.basis || "").trim() || null,
+    };
+    const sourceComparable = outcome?.comparability?.status === "COMPARABLE"
+      && Number.isFinite(sixDomainComparableValue(outcome).value);
+    const selectedComplete = !!selected.metricId && !!selected.metricUnit && !!selected.basis;
+    const observedComplete = !!observed.metricId && !!observed.metricUnit && !!observed.basis;
+    const exactMatch = sourceComparable
+      && selectedComplete
+      && observedComplete
+      && observed.metricId === selected.metricId
+      && observed.metricUnit === selected.metricUnit
+      && observed.basis === selected.basis;
+    const selectionStatus = !sourceComparable
+      ? "NOT_COMPARABLE"
+      : (!selectedComplete || !observedComplete ? "MISSING" : (exactMatch ? "MATCHED" : "MISMATCH"));
+    const selectionReason = exactMatch
+      ? "metric id, unit and basis match the cycle comparison contract"
+      : `observed ${observed.metricId || "missing"}/${observed.metricUnit || "missing"}/${observed.basis || "missing"}; selected ${selected.metricId || "missing"}/${selected.metricUnit || "missing"}/${selected.basis || "missing"}`;
+
+    const baseComparability = {
+      ...(outcome.comparability || {}),
+      selectionStatus,
+      selectedMetricId: selected.metricId,
+      selectedMetricUnit: selected.metricUnit,
+      selectedBasis: selected.basis,
+      observedMetricId: observed.metricId,
+      observedMetricUnit: observed.metricUnit,
+      observedBasis: observed.basis,
+    };
+    if (!sourceComparable || exactMatch) {
+      return laboratoryDeepFreeze({
+        ...outcome,
+        comparability: baseComparability,
+      });
+    }
+
+    const effects = Array.isArray(outcome?.outcome?.effects)
+      ? outcome.outcome.effects.map((effect) => ({ ...effect, includedInRanking: false }))
+      : [];
+    return laboratoryDeepFreeze({
+      ...outcome,
+      comparability: {
+        ...baseComparability,
+        status: "UNRANKED",
+        metricId: null,
+        basis: null,
+        metricUnit: null,
+        commonValue: null,
+        missingConversions: [
+          ...((outcome?.comparability?.missingConversions || []).map((entry) => String(entry))),
+          `selected comparison contract mismatch: ${selectionReason}`,
+        ],
+      },
+      outcome: {
+        ...(outcome.outcome || {}),
+        effects,
+      },
+      evidence: {
+        ...(outcome.evidence || {}),
+        warnings: [
+          ...((outcome?.evidence?.warnings || []).map((entry) => String(entry))),
+          `comparison contract ${selectionStatus.toLowerCase()}: ${selectionReason}`,
+        ],
+      },
+      reconsiderCondition: `Reconsider when the outcome uses ${selected.metricId || "the selected metric"} in ${selected.metricUnit || "the selected unit"} on ${selected.basis || "the selected basis"}.`,
+    });
+  }
+
   function evaluateSixDomainStrategicCoordinator(inputSnapshot = {}) {
     const snapshot = laboratoryDeepFreeze(laboratoryCloneJson(inputSnapshot || {}));
     const manifest = snapshot.manifest || SIX_DOMAIN_MANIFEST;
@@ -5801,6 +5925,11 @@ function getDisplayName(item) {
       horizonId: snapshot.horizonId || "medium",
       horizonSeconds: Number(snapshot.horizonSeconds || 1800),
     };
+    const selectedComparisonContract = {
+      metricId: String(snapshot.selectedComparisonMetricId || "").trim() || null,
+      metricUnit: String(snapshot.selectedComparisonMetricUnit || "").trim() || null,
+      basis: String(snapshot.selectedComparisonBasis || "").trim() || null,
+    };
     const domainOutcomes = [
       adaptPurchaseDomainOutcome("MEAT", purchaseRowByDomain.MEAT, sharedContext),
       adaptPurchaseDomainOutcome("LARVA_ENGINE", purchaseRowByDomain.LARVA_ENGINE, sharedContext),
@@ -5808,7 +5937,9 @@ function getDisplayName(item) {
       adaptPurchaseDomainOutcome("ENERGY_PRODUCTION", purchaseRowByDomain.ENERGY_PRODUCTION, sharedContext),
       adaptAbilityDomainOutcome(snapshot.abilitySnapshot || snapshot.abilityAdvisor || snapshot.energyAbilityAdvisor || {}, sharedContext),
       adaptAscensionDomainOutcome(snapshot.ascensionSnapshot || snapshot.ascensionAdvisor || snapshot.ascensionMutagenAdvisor || {}, sharedContext),
-    ].map((outcome) => ({ ...outcome, effectAudit: auditStrategicEffects(outcome) }));
+    ]
+      .map((outcome) => enforceSixDomainSelectedComparisonContract(outcome, selectedComparisonContract))
+      .map((outcome) => ({ ...outcome, effectAudit: auditStrategicEffects(outcome) }));
 
     const ranked = domainOutcomes.slice().sort((left, right) => {
       const leftComparable = sixDomainComparableValue(left);
@@ -5848,7 +5979,6 @@ function getDisplayName(item) {
       ? winner.reconsiderCondition
       : "Reconsider when a domain provides a comparable shared-outcome conversion and one can rank honestly.";
     const confidence = winner?.evidence?.confidence || (ranked.some((outcome) => outcome.evidence?.confidence === "medium") ? "medium" : "low");
-    const selectedComparisonBasis = winner?.comparability?.basis || null;
     const blockers = importantAlternatives.flatMap((outcome) => outcome.safety?.hardBlockers || []);
     const strategicCalibration = winner?.calibration
       || domainOutcomes.find((outcome) => outcome?.domainId === "ENERGY_ABILITIES")?.calibration
@@ -5872,7 +6002,10 @@ function getDisplayName(item) {
       reason,
       reconsiderCondition,
       confidence,
-      comparisonBasis: selectedComparisonBasis || "unranked",
+      comparisonBasis: selectedComparisonContract.basis || "unranked",
+      comparisonMetricId: selectedComparisonContract.metricId,
+      comparisonMetricUnit: selectedComparisonContract.metricUnit,
+      comparisonContract: selectedComparisonContract,
       winner,
       importantAlternatives,
       blockers,
@@ -18956,6 +19089,9 @@ function getDisplayName(item) {
         wouldBuyAmount: "1",
         raw: {
           metricTarget: getDisplayName(nextNexus),
+          metricId: `${strategicMetricTargetSlug(getDisplayName(nextNexus))}-completion`,
+          metricUnit: "percent",
+          metricBasis: "same-unit-milestone-progress-delta",
           etaSeconds: 0,
           progressPercent: 100,
           costAmount: cost,
@@ -18996,6 +19132,9 @@ function getDisplayName(item) {
         wouldBuyAmount: formatSwarmNumber(mothNum),
         raw: {
           metricTarget: getDisplayName(nextNexus),
+          metricId: strategicEtaMetricId(getDisplayName(nextNexus)),
+          metricUnit: "seconds",
+          metricBasis: "milestone-eta-seconds",
           etaBeforeSeconds: roi?.etaBeforeSeconds,
           etaAfterSeconds: roi?.etaAfterSeconds,
           etaImprovementSeconds: roi?.etaImprovement,
@@ -19027,6 +19166,9 @@ function getDisplayName(item) {
         wouldBuyAmount: plan.num ? formatSwarmNumber(plan.num) : "0",
         raw: {
           metricTarget: "Post-Nexus energy growth",
+          metricId: "post-nexus-energy-production-gain",
+          metricUnit: "percent",
+          metricBasis: "same-unit-milestone-progress-delta",
           costAmount: spentEnergy,
           currentAmount: currentEnergy,
           velocity: energyVelocity,
@@ -19056,6 +19198,9 @@ function getDisplayName(item) {
         wouldBuyAmount: "",
         raw: {
           metricTarget: getDisplayName(nextNexus),
+          metricId: strategicEtaMetricId(getDisplayName(nextNexus)),
+          metricUnit: "seconds",
+          metricBasis: "milestone-eta-seconds",
           etaSeconds: eta,
           progressPercent: cost.greaterThan(0) ? currentEnergy.dividedBy(cost).times(100) : 0,
           costAmount: cost,
@@ -19078,6 +19223,9 @@ function getDisplayName(item) {
       costResources: ["energy"],
       raw: {
         metricTarget: "Energy production",
+        metricId: "energy-production-observation",
+        metricUnit: "none",
+        metricBasis: "unranked",
         ...buildEnergyProductionOpportunityMetrics(game, 0, "unknown"),
       },
     };
@@ -19121,6 +19269,9 @@ function getDisplayName(item) {
           wouldBuyAmount: buyable ? "1" : "",
           raw: {
             metricTarget: row.target,
+            metricId: `${strategicMetricTargetSlug(row.target)}-completion`,
+            metricUnit: "percent",
+            metricBasis: "same-unit-milestone-progress-delta",
             etaSeconds: buyable ? 0 : eta,
             progressPercent: (progress || 0) * 100,
             // Hatchery/Expansion are discrete, one-time unlocks: buying now completes
@@ -19160,8 +19311,21 @@ function getDisplayName(item) {
           // A safe target-path action-unit buy completes that purchase step this
           // cycle (0% -> 100% done); this mirrors the Engine completion-event basis.
           raw: safe
-            ? { ...(guard?.raw || {}), metricTarget: getDisplayName(plan.actionUnit), projectedMilestoneProgressDelta: 100 }
-            : { ...(guard?.raw || {}), metricTarget: getDisplayName(plan.actionUnit) },
+            ? {
+              ...(guard?.raw || {}),
+              metricTarget: getDisplayName(plan.actionUnit),
+              metricId: `${strategicMetricTargetSlug(getDisplayName(plan.actionUnit))}-step-completion`,
+              metricUnit: "percent",
+              metricBasis: "same-unit-milestone-progress-delta",
+              projectedMilestoneProgressDelta: 100,
+            }
+            : {
+              ...(guard?.raw || {}),
+              metricTarget: getDisplayName(plan.actionUnit),
+              metricId: `${strategicMetricTargetSlug(getDisplayName(plan.actionUnit))}-step-completion`,
+              metricUnit: "percent",
+              metricBasis: "same-unit-milestone-progress-delta",
+            },
         }, "meat");
       }
     }
@@ -19187,6 +19351,9 @@ function getDisplayName(item) {
         raw: {
           metricTarget: "Expansion",
           ...(territory.raw || {}),
+          metricId: "expansion-eta",
+          metricUnit: "seconds",
+          metricBasis: "milestone-eta-seconds",
           etaImprovementSeconds: territory.raw?.etaImprovementSeconds ?? territory.etaGainSeconds ?? 0,
           etaBeforeSeconds: territory.raw?.etaBeforeSeconds ?? territory.etaBeforeSeconds,
           etaAfterSeconds: territory.raw?.etaAfterSeconds ?? territory.etaAfterSeconds,

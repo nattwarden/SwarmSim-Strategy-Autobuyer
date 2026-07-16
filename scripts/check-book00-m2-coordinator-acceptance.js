@@ -83,11 +83,13 @@ async function main() {
   const engineRegressionExecution = engineRegressionOutcome?.executions?.[0] || null;
   try {
     const cycle = engineRegressionExecution?.result?.cycles?.[0] || {};
+    const selectedActions = Array.isArray(cycle.laneCoordinatorSelectedActions) ? cycle.laneCoordinatorSelectedActions : [];
+    const legacyExpansion = selectedActions.find((action) => action?.lane === "Engine" && /expansion/i.test(String(action?.candidate || ""))) || null;
     assert(engineRegressionOutcome?.exitCode === 0, `engine resolution regression runner failed with exitCode=${engineRegressionOutcome?.exitCode}`);
-    assert(String(cycle.coordinatorSelectedExecutionId || "none") === "expansion", "engine resolution regression did not select canonical executionId=expansion");
-    assert(String(cycle.coordinatorSelectedExecutionKind || "none") === "upgrade", "engine resolution regression did not select executionKind=upgrade");
-    assert(String(cycle.coordinatorExecuted || "no") === "yes", "engine resolution regression did not execute the selected Expansion");
-    assert(String(cycle.coordinatorMatchedExecution || "no") === "yes", "engine resolution regression did not match the selected Expansion fingerprint");
+    assert(String(cycle.coordinatorExecutionAuthority || "false") === "false", "local completion-only Expansion unexpectedly received M6 authority");
+    assert(String(cycle.coordinatorSelectedExecutionId || "none") === "none", "local completion-only Expansion unexpectedly became the M6 winner");
+    assert(legacyExpansion, `legacy Engine path did not execute Expansion: ${JSON.stringify(selectedActions)}`);
+    assert(Number(cycle.mainActions || 0) >= 1, "legacy Engine path did not record a real main action");
   } finally {
     cleanupExecutionArtifacts(engineRegressionExecution);
   }

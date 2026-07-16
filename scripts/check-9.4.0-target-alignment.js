@@ -12,11 +12,11 @@ function assert(condition, message) {
 async function main() {
   const userscriptPath = path.resolve(__dirname, "..", "src", "SwarmSim-Strategy-Autobuyer.user.js");
   let userscript = fs.readFileSync(userscriptPath, "utf8");
-  const targetGate = "const comparable = targetAligned && Number.isFinite(comparability.value);";
+  const targetGate = "const comparable = targetAligned && metricShapeAligned && Number.isFinite(comparability.value);";
   assert(userscript.includes(targetGate), "missing fail-closed target-alignment gate");
 
   if (process.env.KBC_MUTATE_TARGET_ALIGNMENT === "1" || process.argv.includes("--mutate-target-gate")) {
-    userscript = userscript.replace(targetGate, "const comparable = Number.isFinite(comparability.value);");
+    userscript = userscript.replace(targetGate, "const comparable = metricShapeAligned && Number.isFinite(comparability.value);");
     assert(!userscript.includes(targetGate), "target-alignment mutation did not apply");
   }
 
@@ -29,7 +29,7 @@ async function main() {
 
     const report = await page.evaluate(() => {
       const bot = window.kbcSwarmBot;
-      const proposal = ({ lane, candidate, target, metricTarget, etaImprovementSeconds }) => ({
+      const proposal = ({ lane, candidate, target, metricTarget, metricId, etaImprovementSeconds }) => ({
         lane,
         executionKey: lane.toLowerCase(),
         executionId: candidate.toLowerCase().replace(/[^a-z0-9]+/g, ""),
@@ -46,6 +46,9 @@ async function main() {
         reason: `safe ${candidate} purchase`,
         raw: {
           metricTarget,
+          metricId,
+          metricUnit: "seconds",
+          metricBasis: "milestone-eta-seconds",
           etaImprovementSeconds,
           paybackSeconds: 10,
           reserveRatio: 2,
@@ -57,6 +60,9 @@ async function main() {
         candidate: "Drone",
         target: "Lesser Hive Mind",
         metricTarget: "Lesser Hive Mind",
+        // Deliberately reuse the selected metric id so this verifier isolates
+        // target identity from the separate id/unit/basis gate.
+        metricId: "expansion-eta",
         etaImprovementSeconds: 1000,
       });
       const engine = proposal({
@@ -64,6 +70,7 @@ async function main() {
         candidate: "Expansion",
         target: "Expansion",
         metricTarget: "Expansion",
+        metricId: "expansion-eta",
         etaImprovementSeconds: 10,
       });
 
@@ -77,6 +84,9 @@ async function main() {
           source: { activeMilestone: "Reach Expansion", activeTarget: "Expansion" },
           horizonId: "medium",
           horizonSeconds: 1800,
+          selectedComparisonBasis: "milestone-eta-seconds",
+          selectedComparisonMetricId: "expansion-eta",
+          selectedComparisonMetricUnit: "seconds",
           purchaseProposalState: { proposals, evaluation: purchaseEvaluation },
           abilitySnapshot: { recommendedActionId: "WAIT", recommendation: "SAVE", branches: [] },
           ascensionSnapshot: { recommendedActionId: "CONTINUE_RUN", recommendation: "CONTINUE", branches: [] },

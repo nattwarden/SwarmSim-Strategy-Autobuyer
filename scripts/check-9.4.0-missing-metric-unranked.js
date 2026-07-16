@@ -49,7 +49,7 @@ async function main() {
         blockers: [],
         costResources: [],
         reason: "safe representative purchase",
-        raw: { metricTarget: "shared target", etaSeconds: 600, etaImprovementSeconds, paybackSeconds: 10, reserveRatio: 2, progressPercent: 50 },
+        raw: { metricTarget: "shared target", metricId: "shared-target-eta", metricUnit: "seconds", metricBasis: "milestone-eta-seconds", etaSeconds: 600, etaImprovementSeconds, paybackSeconds: 10, reserveRatio: 2, progressPercent: 50 },
       });
       const evaluate = (proposals, suffix) => {
         const evaluation = bot.purchaseEvaluator.evaluate(proposals);
@@ -62,6 +62,9 @@ async function main() {
             source: { activeMilestone: "shared milestone", activeTarget: "shared target" },
             horizonId: "medium",
             horizonSeconds: 1800,
+            selectedComparisonBasis: "milestone-eta-seconds",
+            selectedComparisonMetricId: "shared-target-eta",
+            selectedComparisonMetricUnit: "seconds",
             purchaseProposalState: { proposals, evaluation },
             abilitySnapshot: { recommendedActionId: "WAIT", recommendation: "SAVE", branches: [] },
             ascensionSnapshot: { recommendedActionId: "CONTINUE_RUN", recommendation: "CONTINUE", branches: [] },

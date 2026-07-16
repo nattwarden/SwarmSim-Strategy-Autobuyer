@@ -974,7 +974,7 @@ SCENARIOS["book00-m2-coordinator"] = {
   syntheticArmyTerritoryPerUnit: 1,
   notes: [
     "Milestone 2 negative acceptance: preserve the former cross-target comparison state and prove it no longer grants coordinator authority merely because Territory has the largest numeric value.",
-    "The separate sa1-02 control in check-book00-m2-coordinator-acceptance still proves bounded exact M6 execution for a genuinely aligned Expansion target.",
+    "The separate sa1-02 control in check-book00-m2-coordinator-acceptance proves that a completion-only Expansion row stays outside M6 authority while the proven legacy Engine path still executes the real upgrade; exact M6 execution is covered by the synthetic same-target, same-metric ETA contract.",
   ],
 };
 

@@ -33,7 +33,10 @@ async function main() {
       const calibrationApi = coordinator.calibration;
 
       function buildPurchaseRow(lane, candidate, etaImprovementSeconds, options = {}) {
-        const metricTarget = options.metricTarget || "next strategic milestone";
+        const metricTarget = options.metricTarget || "Expansion";
+        const metricId = options.metricId || "expansion-eta";
+        const metricUnit = options.metricUnit || "seconds";
+        const metricBasis = options.metricBasis || "milestone-eta-seconds";
         const sharedOutcome = options.sharedOutcome || (etaImprovementSeconds === null ? {} : { etaImprovementSeconds });
         const raw = options.raw || (etaImprovementSeconds === null ? {} : { etaImprovementSeconds });
         return {
@@ -54,9 +57,21 @@ async function main() {
           executionVariant: options.executionVariant || "base",
           fingerprint: options.fingerprint || `${lane}:${candidate}`,
           costResources: options.costResources ? options.costResources.slice() : ["meat"],
-          sharedOutcome: { ...sharedOutcome, metricTarget: sharedOutcome.metricTarget || metricTarget },
+          sharedOutcome: {
+            ...sharedOutcome,
+            metricTarget: sharedOutcome.metricTarget || metricTarget,
+            metricId: sharedOutcome.metricId || metricId,
+            metricUnit: sharedOutcome.metricUnit || metricUnit,
+            metricBasis: sharedOutcome.metricBasis || metricBasis,
+          },
           confidence: options.confidence || "high",
-          raw: { ...raw, metricTarget: raw.metricTarget || metricTarget },
+          raw: {
+            ...raw,
+            metricTarget: raw.metricTarget || metricTarget,
+            metricId: raw.metricId || metricId,
+            metricUnit: raw.metricUnit || metricUnit,
+            metricBasis: raw.metricBasis || metricBasis,
+          },
           effects: options.effects,
         };
       }
@@ -70,7 +85,7 @@ async function main() {
           source: {
             scriptVersion: "7.0.0",
             activeMilestone: options.activeMilestone || "M7 milestone",
-            activeTarget: options.activeTarget || "next strategic milestone",
+            activeTarget: options.activeTarget || "Expansion",
           },
           horizonId: options.horizonId || "medium",
           horizonSeconds: options.horizonSeconds || 1800,
@@ -80,6 +95,9 @@ async function main() {
             { horizonId: "long", horizonSeconds: 7200 },
           ],
           purchaseRows: options.purchaseRows || [],
+          selectedComparisonBasis: options.selectedComparisonBasis || "milestone-eta-seconds",
+          selectedComparisonMetricId: options.selectedComparisonMetricId || "expansion-eta",
+          selectedComparisonMetricUnit: options.selectedComparisonMetricUnit || "seconds",
           abilitySnapshot: options.abilitySnapshot || {
             schemaVersion: "energy-ability-timing-advisor.v1",
             snapshotId: "M7-ABILITY",
@@ -287,6 +305,9 @@ async function main() {
 
       const comparableAscension = coordinator.evaluate(buildSnapshot({
         snapshotId: "M7-ASCENSION-COMPARABLE",
+        selectedComparisonBasis: "same-unit-milestone-progress-delta",
+        selectedComparisonMetricId: "next-run-progress",
+        selectedComparisonMetricUnit: "points",
         purchaseRows: baseRows,
         ascensionSnapshot: {
           schemaVersion: "ascension-mutagen-advisor.v1",
