@@ -175,6 +175,19 @@ async function runScenarioB() {
 
   const selectedAmount = toNumber(cycle.coordinatorSelectedAmount);
   assert(Number.isFinite(selectedAmount) && selectedAmount > 0, `Scenario B: expected a positive coordinatorSelectedAmount but got ${cycle.coordinatorSelectedAmount}`);
+  const authorizedRequestedAmount = toNumber(cycle.coordinatorAuthorizedRequestedAmount);
+  const commandRequestedAmount = toNumber(cycle.coordinatorCommandRequestedAmount);
+  const confirmedPurchasedAmount = toNumber(cycle.coordinatorConfirmedPurchasedAmount);
+  const observedTotalCountDelta = toNumber(cycle.coordinatorObservedTotalCountDelta);
+  assert(cycle.coordinatorAmountContractSatisfied === "yes", "Scenario B: four-value amount contract was not satisfied");
+  assert(authorizedRequestedAmount === selectedAmount, `Scenario B: authorized amount ${authorizedRequestedAmount} differed from selected amount ${selectedAmount}`);
+  assert(commandRequestedAmount === authorizedRequestedAmount, `Scenario B: command amount ${commandRequestedAmount} differed from authorized amount ${authorizedRequestedAmount}`);
+  assert(Number.isFinite(confirmedPurchasedAmount) && confirmedPurchasedAmount >= 0 && confirmedPurchasedAmount <= commandRequestedAmount, `Scenario B: invalid confirmed amount ${confirmedPurchasedAmount} for command amount ${commandRequestedAmount}`);
+  if (confirmedPurchasedAmount > 0) {
+    assert(confirmedPurchasedAmount === commandRequestedAmount, `Scenario B: partial confirmed amount ${confirmedPurchasedAmount} must not be fabricated from the command amount ${commandRequestedAmount}`);
+  }
+  assert(typeof cycle.coordinatorAmountConfirmationBasis === "string" && cycle.coordinatorAmountConfirmationBasis.length > 0, "Scenario B: amount confirmation basis missing");
+  assert(Number.isFinite(observedTotalCountDelta) && observedTotalCountDelta > 0, `Scenario B: missing positive observed count delta (${cycle.coordinatorObservedTotalCountDelta})`);
   assert(
     Math.abs(countDelta - selectedAmount) <= Math.max(1, selectedAmount * 0.01),
     `Scenario B: expected the "${executionId}" count delta (${countDelta}) to match the coordinator's bounded selected amount (${selectedAmount})`
@@ -194,6 +207,10 @@ async function runScenarioB() {
     countAfter,
     countDelta,
     selectedAmount,
+    authorizedRequestedAmount,
+    commandRequestedAmount,
+    confirmedPurchasedAmount,
+    observedTotalCountDelta,
     mainActions,
     coordinatorSelectedFingerprint: cycle.coordinatorSelectedFingerprint,
   };

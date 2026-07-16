@@ -2784,6 +2784,12 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
     row.coordinatorSelectedFingerprint = planner?.inspectorAfter?.coordinatorSelectedFingerprint || null;
     row.coordinatorExecutedFingerprint = planner?.inspectorAfter?.coordinatorExecutedFingerprint || null;
     row.coordinatorSelectedAmount = planner?.inspectorAfter?.coordinatorSelectedAmount || null;
+    row.coordinatorAuthorizedRequestedAmount = planner?.inspectorAfter?.coordinatorAuthorizedRequestedAmount || null;
+    row.coordinatorCommandRequestedAmount = planner?.inspectorAfter?.coordinatorCommandRequestedAmount || null;
+    row.coordinatorConfirmedPurchasedAmount = planner?.inspectorAfter?.coordinatorConfirmedPurchasedAmount || null;
+    row.coordinatorObservedTotalCountDelta = planner?.inspectorAfter?.coordinatorObservedTotalCountDelta || null;
+    row.coordinatorAmountContractSatisfied = planner?.inspectorAfter?.coordinatorAmountContractSatisfied || null;
+    row.coordinatorAmountConfirmationBasis = planner?.inspectorAfter?.coordinatorAmountConfirmationBasis || null;
     row.coordinatorRevalidationStatus = planner?.inspectorAfter?.coordinatorRevalidationStatus || null;
     row.coordinatorGatesPassed = planner?.inspectorAfter?.coordinatorGatesPassed || null;
     row.coordinatorGatesFailed = planner?.inspectorAfter?.coordinatorGatesFailed || null;

@@ -3484,6 +3484,12 @@ function getDisplayName(item) {
       coordinatorSelectedFingerprint: coordinatorExecution.selectedFingerprint || "none",
       coordinatorExecutedFingerprint: coordinatorExecution.executedFingerprint || "none",
       coordinatorSelectedAmount: coordinatorExecution.selectedAmount || "0",
+      coordinatorAuthorizedRequestedAmount: coordinatorExecution.authorizedRequestedAmount || "0",
+      coordinatorCommandRequestedAmount: coordinatorExecution.commandRequestedAmount || "0",
+      coordinatorConfirmedPurchasedAmount: coordinatorExecution.confirmedPurchasedAmount || "0",
+      coordinatorObservedTotalCountDelta: coordinatorExecution.observedTotalCountDelta || "0",
+      coordinatorAmountContractSatisfied: coordinatorExecution.amountContract?.contractSatisfied === true ? "yes" : "no",
+      coordinatorAmountConfirmationBasis: coordinatorExecution.amountContract?.confirmationBasis || "not-executed",
       coordinatorSelectedReason: coordinatorExecution.selectedReason || "none",
       coordinatorExecutionConfidence: coordinatorExecution.confidence || "low",
       coordinatorExecutionScoreMargin: coordinatorExecution.scoreMargin ?? null,
@@ -19263,6 +19269,11 @@ function getDisplayName(item) {
       selectedCanonicalProposalId: null,
       selectedAuthorizationId: null,
       selectedAmount: "0",
+      amountContract: null,
+      authorizedRequestedAmount: "0",
+      commandRequestedAmount: "0",
+      confirmedPurchasedAmount: "0",
+      observedTotalCountDelta: "0",
       selectedTarget: "none",
       selectedFingerprint: "none",
       selectedReason: "none",
@@ -19448,6 +19459,7 @@ function getDisplayName(item) {
       ...base,
       selectedReason: matchedProposal?.reason || base.selectedReason,
       selectedAmount: revalidatedAmountToken,
+      authorizedRequestedAmount: revalidatedAmountToken,
       selectedTarget: revalidatedTarget,
       selectedExecutionId: matchedProposal?.executionId || base.selectedExecutionId,
       selectedExecutionKind: matchedProposal?.executionKind || base.selectedExecutionKind,
@@ -19470,6 +19482,7 @@ function getDisplayName(item) {
     const selectedFingerprint = decision?.selectedFingerprint || "none";
     const executedFingerprint = result?.executedFingerprint || "none";
     const matched = executed && selectedFingerprint !== "none" && executedFingerprint === selectedFingerprint;
+    const amountContract = result?.amountContract || null;
     return {
       ...(decision || createWholeEconomyExecutionDecisionBase(0)),
       executed,
@@ -19478,6 +19491,109 @@ function getDisplayName(item) {
       matchedExecution: matched ? "yes" : "no",
       selectedFingerprint,
       executedFingerprint,
+      amountContract,
+      authorizedRequestedAmount: amountContract?.authorizedRequestedAmount || decision?.authorizedRequestedAmount || "0",
+      commandRequestedAmount: amountContract?.commandRequestedAmount || "0",
+      confirmedPurchasedAmount: amountContract?.confirmedPurchasedAmount || "0",
+      observedTotalCountDelta: amountContract?.observedTotalCountDelta || "0",
+    };
+  }
+
+  function buildExecutionAmountContract({ authorizedRequestedAmount, commandRequestedAmount }) {
+    const authorized = normalizeBoundedAmountToken(authorizedRequestedAmount || "0");
+    const command = normalizeBoundedAmountToken(commandRequestedAmount || "0");
+    const contractSatisfied = command === authorized;
+    return {
+      schemaVersion: "execution-amount-contract.v1",
+      authorizedRequestedAmount: authorized,
+      commandRequestedAmount: command,
+      contractSatisfied,
+      violation: contractSatisfied ? null : "AMOUNT_CONTRACT_VIOLATION",
+      commandSucceeded: false,
+      confirmedPurchasedAmount: "0",
+      confirmationBasis: "not-executed",
+      observedTotalCountDelta: "0",
+      costResourceConsumed: {},
+      verifiedResourceConsumption: false,
+    };
+  }
+
+  function summarizeExecutionAmountCostConsumption(costBefore, costAfter) {
+    const consumed = {};
+    let verifiedResourceConsumption = false;
+    for (const resourceName of Object.keys(costBefore || {})) {
+      const before = decimalFrom(costBefore[resourceName], 0);
+      const after = decimalFrom(costAfter?.[resourceName] ?? costBefore[resourceName], 0);
+      const spent = before.minus(after);
+      consumed[resourceName] = normalizeBoundedAmountToken(spent);
+      if (spent.greaterThan(0)) verifiedResourceConsumption = true;
+    }
+    return { consumed, verifiedResourceConsumption };
+  }
+
+  function finalizeExecutionAmountContract(contractInput, input = {}) {
+    const contract = laboratoryCloneJson(contractInput || buildExecutionAmountContract({}));
+    const observedTotalCountDelta = normalizeBoundedAmountToken(input.observedTotalCountDelta || "0");
+    const { consumed, verifiedResourceConsumption } = summarizeExecutionAmountCostConsumption(input.costBefore, input.costAfter);
+    const commandSucceeded = input.commandSucceeded === true;
+    let confirmedPurchasedAmount = "0";
+    let confirmationBasis = commandSucceeded ? "unconfirmed-no-cost-consumption" : "command-failed";
+    if (commandSucceeded && contract.contractSatisfied && input.executionKind === "upgrade") {
+      confirmedPurchasedAmount = observedTotalCountDelta;
+      confirmationBasis = "discrete-upgrade-count-delta";
+    } else if (commandSucceeded && contract.contractSatisfied && verifiedResourceConsumption) {
+      confirmedPurchasedAmount = contract.commandRequestedAmount;
+      confirmationBasis = "authorized-command+success+cost-consumption";
+    }
+    return {
+      ...contract,
+      commandSucceeded,
+      confirmedPurchasedAmount,
+      confirmationBasis,
+      observedTotalCountDelta,
+      costResourceConsumed: consumed,
+      verifiedResourceConsumption,
+    };
+  }
+
+  function readExecutionAmountCostCounts(item) {
+    const counts = {};
+    for (const cost of safe("execution amount cost list", () => getCostList(item)) || []) {
+      const resourceName = String(cost?.unit?.name || "");
+      if (!resourceName) continue;
+      counts[resourceName] = decimalFrom(safe(`execution amount cost ${resourceName}`, () => cost.unit.count?.()) || 0, 0);
+    }
+    return counts;
+  }
+
+  function executeBoundedCoordinatorBuy({ commands, item, executionKind, authorizedRequestedAmount, commandRequestedAmount, label }) {
+    const contract = buildExecutionAmountContract({ authorizedRequestedAmount, commandRequestedAmount });
+    if (!contract.contractSatisfied) {
+      return { bought: false, amountContract: contract };
+    }
+    const amount = parseBoundedAmountToken(contract.commandRequestedAmount);
+    if (!amount) {
+      return {
+        bought: false,
+        amountContract: finalizeExecutionAmountContract(contract, { commandSucceeded: false, executionKind }),
+      };
+    }
+    const countBefore = decimalFrom(item.count?.() || 0, 0);
+    const costBefore = readExecutionAmountCostCounts(item);
+    const bought = executionKind === "upgrade"
+      ? safe(`Amount contract ${label}`, () => buyUpgradeAmount(commands, item, amount, label))
+      : safe(`Amount contract ${label}`, () => buyUnitAmount(commands, item, amount, label));
+    const observedTotalCountDelta = decimalFrom(item.count?.() || 0, 0).minus(countBefore);
+    const costAfter = readExecutionAmountCostCounts(item);
+    return {
+      bought: !!bought,
+      amountContract: finalizeExecutionAmountContract(contract, {
+        commandSucceeded: !!bought,
+        observedTotalCountDelta,
+        costBefore,
+        costAfter,
+        executionKind,
+      }),
     };
   }
 
@@ -19499,7 +19615,7 @@ function getDisplayName(item) {
       : null;
   }
 
-  function executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
+  function executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount, expectedCommandAmount }) {
     const amount = parseBoundedAmountToken(expectedAmount);
     const unit = expectedExecutionKind === "unit"
       ? resolveCoordinatorUnit(game, expectedExecutionId, expectedExecutionVariant, expectedCandidate)
@@ -19517,23 +19633,28 @@ function getDisplayName(item) {
       };
     }
 
-    const before = decimalFrom(unit.count?.() || 0, 0);
-    const bought = safe(`Unified Meat ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Target path action"));
-    const after = decimalFrom(unit.count?.() || 0, 0);
-    const delta = after.minus(before);
+    const execution = executeBoundedCoordinatorBuy({
+      commands,
+      item: unit,
+      executionKind: "unit",
+      authorizedRequestedAmount: expectedAmount,
+      commandRequestedAmount: expectedCommandAmount,
+      label: "Target path action",
+    });
     return {
-      actionTaken: bought,
-      bought: bought ? 1 : 0,
+      actionTaken: execution.bought,
+      bought: execution.bought ? 1 : 0,
       executedCandidate: getDisplayName(unit),
       executedExecutionId: unit.name,
       executedExecutionKind: "unit",
       executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
-      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-      summary: bought ? `Bought ${getDisplayName(unit)}` : `Meat exact buy failed for ${getDisplayName(unit)}`,
+      executedAmount: execution.amountContract.observedTotalCountDelta,
+      amountContract: execution.amountContract,
+      summary: execution.bought ? `Bought ${getDisplayName(unit)}` : `Meat exact buy failed for ${getDisplayName(unit)}`,
     };
   }
 
-  function executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
+  function executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount, expectedCommandAmount }) {
     const amount = parseBoundedAmountToken(expectedAmount);
     const upgrade = expectedExecutionKind === "upgrade" ? getGameUpgrade(game, expectedExecutionId || "") : null;
     if (
@@ -19554,23 +19675,28 @@ function getDisplayName(item) {
       };
     }
 
-    const before = decimalFrom(upgrade.count?.() || 0, 0);
-    const bought = safe(`Unified Engine ${getDisplayName(upgrade)}`, () => buyUpgradeAmount(commands, upgrade, amount, "Larva Engine"));
-    const after = decimalFrom(upgrade.count?.() || 0, 0);
-    const delta = after.minus(before);
+    const execution = executeBoundedCoordinatorBuy({
+      commands,
+      item: upgrade,
+      executionKind: "upgrade",
+      authorizedRequestedAmount: expectedAmount,
+      commandRequestedAmount: expectedCommandAmount,
+      label: "Larva Engine",
+    });
     return {
-      actionTaken: bought,
-      bought: bought ? 1 : 0,
+      actionTaken: execution.bought,
+      bought: execution.bought ? 1 : 0,
       executedCandidate: getDisplayName(upgrade),
       executedExecutionId: upgrade.name,
       executedExecutionKind: "upgrade",
       executedExecutionVariant: expectedExecutionVariant || "base",
-      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-      summary: bought ? `Bought ${getDisplayName(upgrade)}` : `Engine exact buy failed for ${getDisplayName(upgrade)}`,
+      executedAmount: execution.amountContract.observedTotalCountDelta,
+      amountContract: execution.amountContract,
+      summary: execution.bought ? `Bought ${getDisplayName(upgrade)}` : `Engine exact buy failed for ${getDisplayName(upgrade)}`,
     };
   }
 
-  function executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
+  function executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount, expectedCommandAmount }) {
     const amount = parseBoundedAmountToken(expectedAmount);
     const unit = expectedExecutionKind === "unit"
       ? resolveCoordinatorUnit(game, expectedExecutionId, expectedExecutionVariant, expectedCandidate)
@@ -19588,23 +19714,28 @@ function getDisplayName(item) {
       };
     }
 
-    const before = decimalFrom(unit.count?.() || 0, 0);
-    const bought = safe(`Unified Territory ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Territory Prep"));
-    const after = decimalFrom(unit.count?.() || 0, 0);
-    const delta = after.minus(before);
+    const execution = executeBoundedCoordinatorBuy({
+      commands,
+      item: unit,
+      executionKind: "unit",
+      authorizedRequestedAmount: expectedAmount,
+      commandRequestedAmount: expectedCommandAmount,
+      label: "Territory Prep",
+    });
     return {
-      actionTaken: bought,
-      bought: bought ? 1 : 0,
+      actionTaken: execution.bought,
+      bought: execution.bought ? 1 : 0,
       executedCandidate: getDisplayName(unit),
       executedExecutionId: unit.name,
       executedExecutionKind: "unit",
       executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
-      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-      summary: bought ? `Bought ${getDisplayName(unit)}` : `Territory exact buy failed for ${getDisplayName(unit)}`,
+      executedAmount: execution.amountContract.observedTotalCountDelta,
+      amountContract: execution.amountContract,
+      summary: execution.bought ? `Bought ${getDisplayName(unit)}` : `Territory exact buy failed for ${getDisplayName(unit)}`,
     };
   }
 
-  function executeExactEnergyCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount }) {
+  function executeExactEnergyCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount, expectedCommandAmount }) {
     const amount = parseBoundedAmountToken(expectedAmount);
     const currentProposal = buildEnergyProductionProposal(game);
     const currentAmount = normalizeBoundedAmountToken(currentProposal?.boundedAmount || currentProposal?.wouldBuyAmount || "0");
@@ -19649,18 +19780,24 @@ function getDisplayName(item) {
         };
       }
 
-      const before = decimalFrom(upgrade.count?.() || 0, 0);
-      const bought = safe(`Unified Energy ${getDisplayName(upgrade)}`, () => buyUpgradeAmount(commands, upgrade, amount, "Energy Upgrade"));
-      const delta = decimalFrom(upgrade.count?.() || 0, 0).minus(before);
+      const execution = executeBoundedCoordinatorBuy({
+        commands,
+        item: upgrade,
+        executionKind: "upgrade",
+        authorizedRequestedAmount: expectedAmount,
+        commandRequestedAmount: expectedCommandAmount,
+        label: "Energy Upgrade",
+      });
       return {
-        actionTaken: bought,
-        bought: bought ? 1 : 0,
+        actionTaken: execution.bought,
+        bought: execution.bought ? 1 : 0,
         executedCandidate: getDisplayName(upgrade),
         executedExecutionId: upgrade.name,
         executedExecutionKind: "upgrade",
         executedExecutionVariant: "base",
-        executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-        summary: bought ? `Bought ${getDisplayName(upgrade)}` : `Energy Nexus exact buy failed for ${getDisplayName(upgrade)}`,
+        executedAmount: execution.amountContract.observedTotalCountDelta,
+        amountContract: execution.amountContract,
+        summary: execution.bought ? `Bought ${getDisplayName(upgrade)}` : `Energy Nexus exact buy failed for ${getDisplayName(upgrade)}`,
       };
     }
 
@@ -19678,22 +19815,28 @@ function getDisplayName(item) {
       };
     }
 
-    const before = decimalFrom(unit.count?.() || 0, 0);
-    const bought = safe(`Unified Energy ${getDisplayName(unit)}`, () => buyUnitAmount(commands, unit, amount, "Energy Unit"));
-    const delta = decimalFrom(unit.count?.() || 0, 0).minus(before);
+    const execution = executeBoundedCoordinatorBuy({
+      commands,
+      item: unit,
+      executionKind: "unit",
+      authorizedRequestedAmount: expectedAmount,
+      commandRequestedAmount: expectedCommandAmount,
+      label: "Energy Unit",
+    });
     return {
-      actionTaken: bought,
-      bought: bought ? 1 : 0,
+      actionTaken: execution.bought,
+      bought: execution.bought ? 1 : 0,
       executedCandidate: getDisplayName(unit),
       executedExecutionId: unit.name,
       executedExecutionKind: "unit",
       executedExecutionVariant: normalizeLabelKey(unit.suffix || "") || "base",
-      executedAmount: bought ? normalizeBoundedAmountToken(delta) : "0",
-      summary: bought ? `Bought ${getDisplayName(unit)}` : `Energy Lepidoptera exact buy failed for ${getDisplayName(unit)}`,
+      executedAmount: execution.amountContract.observedTotalCountDelta,
+      amountContract: execution.amountContract,
+      summary: execution.bought ? `Bought ${getDisplayName(unit)}` : `Energy Lepidoptera exact buy failed for ${getDisplayName(unit)}`,
     };
   }
 
-  function executeUnifiedPurchaseWinner({ executionKey, game, commands, remainingActions, selectedLane, selectedCandidate, selectedExecutionId, selectedExecutionKind, selectedExecutionVariant, selectedAmount, selectedTarget, selectedFingerprint }) {
+  function executeUnifiedPurchaseWinner({ executionKey, game, commands, remainingActions, selectedLane, selectedCandidate, selectedExecutionId, selectedExecutionKind, selectedExecutionVariant, selectedAmount, commandRequestedAmount, selectedTarget, selectedFingerprint }) {
     if (!executionKey || remainingActions < 1) {
       return { label: "Unified", result: { actionTaken: false, bought: 0, summary: "no execution" } };
     }
@@ -19704,6 +19847,7 @@ function getDisplayName(item) {
     const expectedExecutionKind = selectedExecutionKind || "none";
     const expectedExecutionVariant = selectedExecutionVariant || "base";
     const expectedAmount = normalizeBoundedAmountToken(selectedAmount || "0");
+    const expectedCommandAmount = normalizeBoundedAmountToken(commandRequestedAmount || expectedAmount);
     const expectedTarget = selectedTarget || "none";
     const expectedFingerprint = selectedFingerprint || buildCoordinatorCandidateFingerprint({
       lane,
@@ -19721,16 +19865,16 @@ function getDisplayName(item) {
 
     if (executionKey === "meat") {
       label = "Unlock planner";
-      result = executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
+      result = executeExactMeatCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount, expectedCommandAmount });
     } else if (executionKey === "engine") {
       label = "Larva engine";
-      result = executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
+      result = executeExactEngineCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount, expectedCommandAmount });
     } else if (executionKey === "territory") {
       label = "Territory";
-      result = executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
+      result = executeExactTerritoryCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount, expectedCommandAmount });
     } else if (executionKey === "energy") {
       label = "Energy";
-      result = executeExactEnergyCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount });
+      result = executeExactEnergyCoordinatorCandidate({ game, commands, expectedCandidate, expectedExecutionId, expectedExecutionKind, expectedExecutionVariant, expectedAmount, expectedCommandAmount });
     }
 
     const executedFingerprint = buildCoordinatorCandidateFingerprint({
@@ -19741,7 +19885,7 @@ function getDisplayName(item) {
       executionKind: result.executedExecutionKind,
       executionVariant: result.executedExecutionVariant,
       target: expectedTarget,
-      boundedAmount: result.executedAmount,
+      boundedAmount: result.amountContract?.commandRequestedAmount || result.executedAmount,
     });
 
     return {
@@ -19976,6 +20120,7 @@ function getDisplayName(item) {
         selectedExecutionKind: wholeEconomyExecutionDecisionState.selectedExecutionKind,
         selectedExecutionVariant: wholeEconomyExecutionDecisionState.selectedExecutionVariant,
         selectedAmount: wholeEconomyExecutionDecisionState.selectedAmount,
+        commandRequestedAmount: wholeEconomyExecutionDecisionState.authorizedRequestedAmount,
         selectedTarget: wholeEconomyExecutionDecisionState.selectedTarget,
         selectedFingerprint: wholeEconomyExecutionDecisionState.selectedFingerprint,
       });
@@ -23383,6 +23528,15 @@ function getDisplayName(item) {
             decision = applyWholeEconomyExecutionRevalidationV1({ decision, revalidationState, actionBudget });
           }
           return laboratoryCloneJson(decision);
+        },
+      },
+
+      executionAmountContract: {
+        build(input = {}) {
+          return laboratoryCloneJson(buildExecutionAmountContract(input));
+        },
+        finalize(contract = {}, input = {}) {
+          return laboratoryCloneJson(finalizeExecutionAmountContract(contract, input));
         },
       },
 
