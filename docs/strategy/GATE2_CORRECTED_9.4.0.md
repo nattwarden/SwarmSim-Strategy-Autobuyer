@@ -43,8 +43,11 @@ planner's own reserve gate:
 
 - The runtime's only **BUY / safeEligible** proposal is the **goddess action-unit**. Its `reserveRatio`
   is ~5.5e7, far above the action-unit threshold (5) — it is **reserve-legal** and payback-bypass legal.
-- **Neural Cluster (pantheon) and Hive Network (pantheon2) are not proposed at all** — the old harness's
-  Step 1/Step 2 do not exist in the real proposal set.
+- **Hive Network (pantheon2) is not proposed at all.** (Correction, recorded in
+  [PLAN_GENERATOR_9.4.0.md](PLAN_GENERATOR_9.4.0.md) §1: **Neural Cluster / pantheon _is_ proposed** — as a
+  safeEligible **parent-step**, the runner-up to the goddess action-unit. This corrective report examined
+  only the first Meat proposal and mis-stated that pantheon is unproposed; the plan-generator trace shows
+  both goddess (action-unit) and pantheon (parent-step) are emitted, and it is pantheon2 that is missing.)
 - **No step is illegal on reserve.** The binding constraint is not reserve: the goddess action-unit is
   `milestoneOutcome = NO_EFFECT` (buying goddess does not touch pantheon2, the target's binding resource).
 
