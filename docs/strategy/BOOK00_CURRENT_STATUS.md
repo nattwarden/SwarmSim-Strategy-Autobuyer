@@ -201,11 +201,43 @@ Phase 3 slice 3 - metric-basis integrity - is complete:
 - bounded amounts, authorization, stale revalidation, action budget, hard
   safety defaults and legacy execution ownership were unchanged.
 
-Current work package: Phase 3 slice 4 - honest same-contract product
-comparison - is selected but not implemented. Start from one real active
-milestone and add one real competing reversible action whose target, horizon,
-metric id, unit, and basis all match the already validated production source.
-Do not invent a common-value conversion and do not broaden M6 ownership.
+Phase 3 slice 4 - honest same-contract product comparison - is complete:
+
+- implementation SHA: `9717d09c702a9757dc6009fcd3bfa98abe3a7cc6`;
+- implementation tree: `43143ca1530d318859bd24cbcf8f2bdeb7cd6b1b`;
+- evidence SHA: `d8fc2d51bcf57d8cee425a76957b6009886ed205`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-9717d09.md`;
+- the selected M6 comparison contract now binds exact horizon id and seconds
+  in addition to target, metric id, unit and basis; missing or mismatched
+  horizons fail closed as unranked;
+- ability calibration preserves action and WAIT branch horizons instead of
+  overwriting them with caller context, while standalone M4 remains at 300
+  seconds and M6 captures its selected 1800-second horizon separately;
+- a real production-formula pair now compares bounded Territory `swarmling`
+  with source-verified, advisor-only House of Mirrors on exact Expansion ETA,
+  seconds, ETA basis and `medium` / `1800` seconds;
+- the pinned player-save fixture uses real runtime objects and `_setCount`,
+  and the deterministic harness clears stale proposal/M6 state and rebuilds
+  the production proposal snapshot each cycle;
+- the investigation also aligned WAIT and House of Mirrors to the same direct
+  territory-bank/rate ETA baseline and treats mixed source-verified/runtime-
+  derived provenance conservatively as runtime-derived, not a false formula
+  mismatch;
+- the detached exact-SHA worktree passed guardrails, canonical build, the full
+  configured suite, default-save import and `git diff --check`; the mutation
+  removing only the horizon gate failed with exit `1` after a 300-second
+  ability incorrectly beat the 1800-second purchase; final status count was
+  `0`;
+- bounded amounts, authorization, stale revalidation, action budgets, hard
+  safety defaults and legacy execution ownership were unchanged.
+
+Current work package: Phase 3 slice 5 - advisor-only winner fallback and
+coverage inventory - is selected but not implemented. First prove one real
+same-contract state where an advisor-only action wins while a reversible
+action remains available, without suppressing the reversible legacy fallback.
+Then inventory critical upgrades, Clone paths, Energy and generic Smart paths
+before attempting any WAIT completeness or ownership change.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays

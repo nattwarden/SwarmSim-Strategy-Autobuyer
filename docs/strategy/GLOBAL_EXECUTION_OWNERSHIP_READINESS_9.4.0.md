@@ -18,8 +18,12 @@ Slice 3 implementation: `19822e1e0eb2fe364d6393d9bfb0f19d1f8bd66c`
 
 Slice 3 evidence: `6ec3c9a6cb855eafa4c5d118faf6538fe3898091`
 
-Status: read-only architecture audit with verified slice-1, slice-2 and
-slice-3 closures. This
+Slice 4 implementation: `9717d09c702a9757dc6009fcd3bfa98abe3a7cc6`
+
+Slice 4 evidence: `d8fc2d51bcf57d8cee425a76957b6009886ed205`
+
+Status: read-only architecture audit with verified slice-1 through slice-4
+closures. This
 document records why global execution ownership is not ready and selects the
 next evidence-gathering direction. It does not authorize an ownership change.
 
@@ -57,7 +61,7 @@ legacy planners.
 | Larva/Engine | Bounded reversible | Hatchery/Expansion completion has an honest progress contract and is correctly unranked when the cycle selects target ETA seconds. | Exact selected Hatchery/Expansion upgrade is supported. | Critical production upgrades and other Smart upgrades run separately. | NO-GO |
 | Army/Territory | Bounded reversible | Territory proposals can carry real ETA improvement, but the domain may be unsupported when no proposal is emitted. | Exact selected fighting unit is supported. | Territory diagnostics, seeding and saturation behavior do not always produce an executable M6 proposal. | NO-GO |
 | Energy production | Bounded reversible | Pre-Nexus ETA, Nexus completion and post-Nexus production gain remain distinct contracts; only an exact selected match may rank. | Accepted Nexus or bounded Lepidoptera only. | The legacy Energy guard remains responsible for ordinary supported progression. | NO-GO |
-| Energy abilities | Advisor only | Usually UNRANKED unless a validated non-WAIT ETA conversion exists. | Intentionally none. | Ability preparation and the narrow Clone Ramp exception remain separate. | KEEP ADVISOR-ONLY |
+| Energy abilities | Advisor only | One real House of Mirrors versus Territory pair now shares exact Expansion ETA identity and horizon; other ability/target combinations remain unranked. | Intentionally none. | Ability preparation and the narrow Clone Ramp exception remain separate. | KEEP ADVISOR-ONLY |
 | Ascension/Mutagen | Advisor only | UNRANKED without validated continue-versus-ascend recovery values. | Intentionally none. | Existing safety/default behavior must remain separate. | KEEP ADVISOR-ONLY |
 
 ## Finding R1: missing metrics became false zeroes - closed in slice 1
@@ -213,6 +217,37 @@ evidence. Exact-SHA verification plus independent basis, double-count and
 target mutation controls are recorded in
 `docs/test-data/9.4.0-clean-room/verification-19822e1.md`.
 
+## Finding R6: comparison horizon was asserted, not bound - closed in slice 4
+
+After slice 3, the selected M6 contract still omitted `horizonId` and
+`horizonSeconds`. Purchase rows inherited the M6 `medium` / `1800`-second
+context, while the standalone ability capture used `medium` / `300` seconds.
+Ability calibration then overwrote the branch horizon with the caller context,
+so the mismatch was not observable. Removing only the new horizon gate in the
+slice-4 mutation reproduces the concrete failure: a 300-second House of
+Mirrors result beats an aligned 1800-second Territory result.
+
+Slice 4 binds both horizon fields to the selected contract and preserves each
+ability branch's own horizon through calibration, context, effects and
+comparability. Missing or different horizons fail closed as `MISSING` or
+`MISMATCH` / `UNRANKED`.
+
+The first honest product pair is also proven. A disposable import of the
+SHA-256-pinned player save seeds real runtime army objects through `_setCount`;
+Territory `swarmling` and source-verified House of Mirrors then both match
+`Expansion` / `expansion-eta` / `seconds` / `milestone-eta-seconds` /
+`medium` / `1800`. Territory wins that state and is the only candidate with
+bounded execution authority; House of Mirrors remains advisor-only.
+
+The forensic path exposed three adjacent Laboratory/adapter shortcuts needed
+to make that proof honest: stale proposal/M6 state between deterministic
+cycles, different WAIT versus House of Mirrors ETA baselines, and treating
+mixed `source-verified` plus `runtime-derived` provenance as a formula
+`mismatch`. Slice 4 clears and rebuilds production state, uses the same direct
+territory-bank/rate ETA baseline, and conservatively retains the weaker
+`runtime-derived` provenance. Exact-SHA verification is recorded in
+`docs/test-data/9.4.0-clean-room/verification-9717d09.md`.
+
 ## Readiness gates
 
 | Gate | Status | Reason |
@@ -220,6 +255,7 @@ target mutation controls are recorded in
 | Missing metrics remain unranked | PASS | Slice 1 verifies `null`, `undefined` and empty ETA as unranked while preserving explicit numeric zero. |
 | Metric target matches the active target | PASS | Slice 2 requires explicit identity and fails closed on missing or mismatched targets; mutation removal is detected. |
 | Comparable candidates use one metric id, unit and basis | PASS | Slice 3 selects an exact cycle contract and fails closed on missing or mismatched metric id, unit, or basis. |
+| Comparable candidates use one exact horizon | PASS | Slice 4 binds horizon id and seconds, preserves branch provenance, and rejects a 300s result under the 1800s contract. |
 | Four reversible domains share the active milestone metric | FAIL | Territory is the only established real ETA source; other live outcomes frequently lack it. |
 | Advisor-only winner cannot suppress reversible fallback | PASS today | Legacy ownership remains active; this would fail if sole ownership were toggled on. |
 | Exact candidate authorization and stale revalidation | PASS | Phase 2 clean-room contracts cover identity, stale context and amount. |
@@ -273,16 +309,31 @@ missing cycle contracts grant no authority, honest ETA authority remains
 available, and three adjacent mutations reproduce and are rejected for the
 old basis, double-count, and target shortcuts.
 
-## Work after slice 3
+## Completed slice 4
 
-After the false-zero correction, add one honest shared-outcome product slice
-at a time, starting from the active player milestone rather than toggling
-ownership:
+Phase 3 slice 4 implements the first honest same-contract product comparison:
 
-1. select one real competing action pair for the same target, horizon and
-   validated unit;
-2. retain legacy execution until coverage and WAIT gates are complete;
-3. repeat exact-SHA verification after each product slice.
+> Exact target, metric id, unit, basis and horizon identity are mandatory;
+> compare a real bounded Territory action with source-verified House of
+> Mirrors without granting ability execution authority.
+
+Acceptance proves a horizon mismatch is unranked, removing the horizon gate
+reproduces the wrong winner, and the production pair is comparable only after
+real runtime state and formula provenance agree. Laboratory state cannot be
+borrowed from a preceding live cycle.
+
+## Work after slice 4
+
+Continue with evidence, not an ownership toggle:
+
+1. prove a production state where an advisor-only same-contract action wins
+   while a reversible action remains available, and verify that the reversible
+   legacy fallback is not suppressed;
+2. inventory every remaining critical upgrade, Clone, Energy and generic
+   Smart path with explicit proposal/metric coverage or an explicit legacy
+   ownership declaration;
+3. define a WAIT completeness proof only after that inventory is closed;
+4. repeat exact-SHA verification after each product slice.
 
 The old plan generator remains out of scope.
 
@@ -296,8 +347,8 @@ The user selected the incremental architecture:
 4. post-Nexus Energy and other unaligned classes remain explicitly
    legacy-owned until a later target priority is defined.
 
-Slices 2 and 3 implement the identity and comparison-contract boundaries of
-that decision. They intentionally do not decide when
+Slices 2 through 4 implement the identity, comparison-contract and first
+product-pair boundaries of that decision. They intentionally do not decide when
 `Post-Nexus energy growth` should outrank the Meat goal. The next blocker is
-one honest same-target, same-horizon, same-unit competing product pair, not a
-new synthetic conversion or global ownership.
+advisor-only-winner fallback plus complete reversible-path coverage, not a new
+synthetic conversion or global ownership.
