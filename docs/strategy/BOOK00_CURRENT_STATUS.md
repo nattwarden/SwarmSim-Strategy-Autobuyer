@@ -53,10 +53,38 @@ Phase 2 slice 1 - shared target/decision identity - is complete:
   Laboratory gates and legacy execution ownership were intentionally
   unchanged.
 
-Current work package: Phase 2 slice 2 - separate canonical proposal identity
-from decision authorization identity. This slice must remain additive and
-observable: no stale-authorization gate, amount-contract change or global
-execution ownership is included until its own later work package.
+Phase 2 slice 2 - canonical proposal identity versus decision authorization
+identity - is complete:
+
+- runtime implementation SHA: `21111d15d3e833673a8d6c6d7201ed20d402ae18`;
+- exact verified implementation SHA (including the cross-worktree verifier
+  correction): `cf7d0cfc88759e14069c569f12a1830fe02d53c9`;
+- implementation tree: `5a6f0ac5e51904db76e802e1f26f136fa517f2be`;
+- evidence SHA: `8820aa9b90f32c4cbea893f4660f1d048e472a51`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-cf7d0cf.md`;
+- `canonicalProposalId` now names only execution key, internal execution ID,
+  execution kind and variant, and deliberately excludes amount and display
+  text;
+- `authorizationId` separately binds that action type to decision cycle,
+  snapshot and active target, and changes when any of those decision-context
+  fields changes;
+- proposals, M2/M6 plan structures, Inspector, Council and the public
+  diagnostic API expose the two identities;
+- two focused mutation controls prove that amount cannot leak into the
+  canonical ID and that authorization cannot collapse to action type alone;
+- authorization remains explicitly `observability-only`; existing matching,
+  fingerprints, revalidation and execution behavior were intentionally not
+  changed;
+- the final detached exact-SHA run passed the full configured suite and ended
+  clean. An LF/CRLF mutation-verifier issue and one transient
+  `net::ERR_NETWORK_CHANGED` attempt were discarded and are recorded in the
+  evidence instead of being counted as acceptance.
+
+Current work package: Phase 2 slice 3 - stale authorization. The next change
+may make the observed authorization context a hard pre-purchase gate, but must
+not include the later four-value amount contract or enable global execution
+ownership. Healthy same-cycle M2/M3/live purchases must remain unchanged.
 
 ## Current status snapshot (2026-07-15)
 
