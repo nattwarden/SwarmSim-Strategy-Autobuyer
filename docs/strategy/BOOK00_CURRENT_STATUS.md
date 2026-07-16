@@ -232,12 +232,38 @@ Phase 3 slice 4 - honest same-contract product comparison - is complete:
 - bounded amounts, authorization, stale revalidation, action budgets, hard
   safety defaults and legacy execution ownership were unchanged.
 
-Current work package: Phase 3 slice 5 - advisor-only winner fallback and
-coverage inventory - is selected but not implemented. First prove one real
-same-contract state where an advisor-only action wins while a reversible
-action remains available, without suppressing the reversible legacy fallback.
-Then inventory critical upgrades, Clone paths, Energy and generic Smart paths
-before attempting any WAIT completeness or ownership change.
+Phase 3 slice 5 - advisor-only winner fallback and coverage inventory - is
+complete:
+
+- implementation SHA: `295fd71aa9b910105ab45090e86a2f265c2b748e`;
+- implementation tree: `098fe68d92f9cd13ec1f63706a1f9ccf0c208ca8`;
+- evidence SHA: `bfe304dcfbe3433d15fbf6412b9ec9f02cc5301d`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-295fd71.md`;
+- the honest same-contract product state now has advisor-only House of
+  Mirrors beat bounded Territory `swarmling x1` without receiving execution
+  authority or suppressing the ordinary reversible legacy fallback;
+- explicit scenario resource overlays can no longer borrow hidden
+  affordability from the imported live save through `unit.maxCostMet()`;
+  the fixed scenario stages real unit costs and returns exactly `1` or fails
+  closed;
+- the affordability mutation restores the leaked live bank, produces
+  `68,015,773` units and is rejected; the ownership mutation sets
+  `m6DecisionOwnsMainCycle=true`, removes the legacy action and is rejected;
+- real live acceptance still buys a legacy `drone` with M6 authority false
+  and executes exact M6-authorized `swarmling x3` with one main action;
+- engine guard, critical upgrades, Energy guard, Clone Ramp, Clone Buffer and
+  hard-lock recovery, unlock planning, generic Smart upgrades/units, and final
+  Clone preparation remain explicitly legacy-owned;
+- the detached exact-SHA worktree passed canonical build, guardrails, the full
+  configured suite, default-save import, both mutations and `git diff
+  --check`, ending with status count `0`.
+
+Current work package: Phase 3 slice 6 - proposal-coverage ledger and WAIT
+preconditions - is selected but not implemented. Map each legacy-owned path to
+explicit M6 proposal/metric coverage or a retained legacy owner, then define
+what evidence would be required before WAIT could claim that no safe normal
+purchase exists. Do not toggle global ownership in this slice.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays

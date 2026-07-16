@@ -248,6 +248,29 @@ territory-bank/rate ETA baseline, and conservatively retains the weaker
 `runtime-derived` provenance. Exact-SHA verification is recorded in
 `docs/test-data/9.4.0-clean-room/verification-9717d09.md`.
 
+## Finding R7: scenario affordability borrowed the imported live save - closed in slice 5
+
+The first slice-4 product pair proved a bounded reversible winner, but its
+deterministic resource overlay did not fully own affordability. Territory's
+amount helper could still call the real runtime unit's `maxCostMet()`, which
+read the imported player's hidden bank instead of the small resources staged
+by the scenario. That was a Laboratory shortcut: the displayed scenario and
+the purchase amount described different economies.
+
+Slice 5 makes explicit scenario resources authoritative. The harness checks
+one real unit cost against every staged resource and returns the conservative
+exact amount `1`, or fails closed with `0`; engine ETA overrides also set the
+matching buyable state. An in-memory mutation restoring `maxCostMet()` leaks
+the live bank, proposes `68,015,773` units and is rejected.
+
+On the corrected state, advisor-only House of Mirrors honestly beats bounded
+Territory on the exact same Expansion ETA contract. It remains advisor-only,
+receives no execution authority, and the real legacy path still buys a Drone
+because `m6DecisionOwnsMainCycle` remains false. A separate ownership mutation
+sets that flag true, suppresses the legacy action, and is rejected. Exact-SHA
+verification is recorded in
+`docs/test-data/9.4.0-clean-room/verification-295fd71.md`.
+
 ## Readiness gates
 
 | Gate | Status | Reason |
@@ -257,7 +280,7 @@ territory-bank/rate ETA baseline, and conservatively retains the weaker
 | Comparable candidates use one metric id, unit and basis | PASS | Slice 3 selects an exact cycle contract and fails closed on missing or mismatched metric id, unit, or basis. |
 | Comparable candidates use one exact horizon | PASS | Slice 4 binds horizon id and seconds, preserves branch provenance, and rejects a 300s result under the 1800s contract. |
 | Four reversible domains share the active milestone metric | FAIL | Territory is the only established real ETA source; other live outcomes frequently lack it. |
-| Advisor-only winner cannot suppress reversible fallback | PASS today | Legacy ownership remains active; this would fail if sole ownership were toggled on. |
+| Advisor-only winner cannot suppress reversible fallback | PASS | Slice 5 proves an honest House-of-Mirrors winner remains advisor-only while a real reversible legacy Drone purchase still executes; the sole-owner mutation is rejected. |
 | Exact candidate authorization and stale revalidation | PASS | Phase 2 clean-room contracts cover identity, stale context and amount. |
 | Exact supported purchase can execute | PASS, limited scope | M2/M3/live acceptance cover supported Meat/Engine/Territory/Energy examples. |
 | M6 covers critical upgrades, Clone paths and all normal Smart purchases | FAIL | Multiple legacy paths have no equivalent M6 proposal/adapter. |
@@ -322,17 +345,35 @@ reproduces the wrong winner, and the production pair is comparable only after
 real runtime state and formula provenance agree. Laboratory state cannot be
 borrowed from a preceding live cycle.
 
-## Work after slice 4
+## Completed slice 5
+
+Phase 3 slice 5 proves the fallback boundary and records the uncovered runtime
+inventory:
+
+> An advisor-only same-contract winner must never suppress a safe reversible
+> legacy action while M6 remains a partial executor.
+
+Acceptance proves House of Mirrors wins the corrected product state without
+authority, a real legacy Drone purchase still executes, and a mutation that
+grants M6 whole-cycle ownership is rejected. It also closes the hidden
+live-save affordability leak with an independent mutation.
+
+The remaining legacy-owned inventory is explicit: engine guard, critical
+production upgrades, Energy guard and post-Nexus Energy, Clone Ramp, Clone
+Buffer and zero-budget hard-lock recovery, unlock planning, generic Smart
+upgrades and units, and final Clone preparation. This is not equivalent M6
+coverage and therefore cannot support a complete WAIT verdict.
+
+## Work after slice 5
 
 Continue with evidence, not an ownership toggle:
 
-1. prove a production state where an advisor-only same-contract action wins
-   while a reversible action remains available, and verify that the reversible
-   legacy fallback is not suppressed;
-2. inventory every remaining critical upgrade, Clone, Energy and generic
-   Smart path with explicit proposal/metric coverage or an explicit legacy
-   ownership declaration;
-3. define a WAIT completeness proof only after that inventory is closed;
+1. turn the legacy-owned inventory into a coverage ledger: for every path,
+   name its M6 proposal/metric coverage or retain an explicit legacy owner;
+2. define a WAIT completeness proof only after that ledger has no undeclared
+   safe normal action;
+3. keep advisor-only, irreversible and hard-safety actions outside bounded M6
+   purchase authority;
 4. repeat exact-SHA verification after each product slice.
 
 The old plan generator remains out of scope.
@@ -347,8 +388,8 @@ The user selected the incremental architecture:
 4. post-Nexus Energy and other unaligned classes remain explicitly
    legacy-owned until a later target priority is defined.
 
-Slices 2 through 4 implement the identity, comparison-contract and first
-product-pair boundaries of that decision. They intentionally do not decide when
-`Post-Nexus energy growth` should outrank the Meat goal. The next blocker is
-advisor-only-winner fallback plus complete reversible-path coverage, not a new
-synthetic conversion or global ownership.
+Slices 2 through 5 implement the identity, comparison-contract, first product-
+pair and advisor-winner fallback boundaries of that decision. They
+intentionally do not decide when `Post-Nexus energy growth` should outrank the
+Meat goal. The next blocker is a complete proposal-coverage ledger and WAIT
+precondition, not a new synthetic conversion or global ownership.
