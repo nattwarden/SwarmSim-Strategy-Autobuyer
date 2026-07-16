@@ -102,6 +102,20 @@
     acceptanceGroups: ["six-domain-identity", "meat-winner", "larva-engine-winner", "army-territory-winner", "energy-production-winner", "energy-ability-winner-advisor-only", "ascension-winner-advisor-only", "hard-safety-outranks-value", "comparability-and-uncertainty", "effect-ledger-and-resource-conflicts", "bounded-execution-and-cycle-drift", "observability-coverage-and-safety-regression"],
   };
 
+  const MAIN_CYCLE_COVERAGE_LEDGER_SCHEMA_VERSION = "main-cycle-coverage-ledger.v1";
+  const MAIN_CYCLE_COVERAGE_PATHS = [
+    { pathId: "LARVA_ENGINE_GUARD", sourceCall: "executeEngineGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["LARVA_ENGINE"], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "CRITICAL_PRODUCTION_UPGRADES", sourceCall: "handleCriticalProductionUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "ENERGY_GUARD", sourceCall: "executeEnergyGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["ENERGY_PRODUCTION"], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "SMART_UPGRADES", sourceCall: "buySmartUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "SMART_UNITS", sourceCall: "buySmartUnits", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT", "ARMY_TERRITORY"], cycleApplicabilityEvidence: "MISSING" },
+    { pathId: "FINAL_CLONE_PREP", sourceCall: "manageCloneCocoons", actionClass: "SIDE", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING" },
+  ];
+
   const DEFAULT_CONFIG = {
     enabled: true,
     preset: "smart",
@@ -3361,6 +3375,7 @@ function getDisplayName(item) {
       reconsiderCondition: strategicCoordinator.reconsiderCondition,
       authorityState: strategicCoordinator.authorityState,
       coverage: strategicCoordinator.coverage,
+      mainCycleCoverage: strategicCoordinator.mainCycleCoverage,
     };
     const waitingSummary = getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries);
     const upcomingMilestone = getNextLikelyBuy(game, engine, protectedResources, candidateSummary);
@@ -5804,6 +5819,36 @@ function getDisplayName(item) {
     return `${snapshotId}:${String(fallbackActionId || "action")}`;
   }
 
+  function buildMainCycleCoverageLedger() {
+    const paths = laboratoryCloneJson(MAIN_CYCLE_COVERAGE_PATHS);
+    const uncoveredPaths = paths.filter((path) => path.m6Coverage !== "COMPLETE");
+    const missingCycleEvidencePaths = paths.filter((path) => path.cycleApplicabilityEvidence !== "PROVEN");
+    const wholeCycleOwnershipEligible = uncoveredPaths.length === 0 && missingCycleEvidencePaths.length === 0;
+    return laboratoryDeepFreeze({
+      schemaVersion: MAIN_CYCLE_COVERAGE_LEDGER_SCHEMA_VERSION,
+      ownershipModel: "PARTIAL_M6_WITH_LEGACY_FALLBACK",
+      requiredPathCount: paths.length,
+      completeM6PathCount: paths.length - uncoveredPaths.length,
+      retainedLegacyPathCount: paths.filter((path) => path.currentOwner === "LEGACY_SMART").length,
+      paths,
+      waitPrecondition: {
+        status: wholeCycleOwnershipEligible ? "PASS" : "FAIL",
+        wholeCycleOwnershipEligible,
+        recommendationAuthority: wholeCycleOwnershipEligible ? "WHOLE_CYCLE" : "ADVISOR_ONLY",
+        requiredConditions: [
+          "every safe normal execution path has COMPLETE M6 coverage",
+          "every path has same-cycle applicability evidence",
+          "advisor-only and hard-safety actions remain outside purchase authority",
+        ],
+        uncoveredPathIds: uncoveredPaths.map((path) => path.pathId),
+        missingCycleEvidencePathIds: missingCycleEvidencePaths.map((path) => path.pathId),
+        reason: wholeCycleOwnershipEligible
+          ? "All safe normal paths are completely represented and evaluated in this cycle."
+          : "WAIT cannot own the cycle while any safe normal path lacks complete M6 coverage or same-cycle applicability evidence.",
+      },
+    });
+  }
+
   function buildSixDomainCoverage(domainOutcomes, manifest = SIX_DOMAIN_MANIFEST) {
     const snapshotIds = Array.from(new Set((domainOutcomes || []).map((outcome) => String(outcome?.snapshotId || "")))).filter(Boolean);
     const decisionCycleIds = Array.from(new Set((domainOutcomes || []).map((outcome) => String(outcome?.decisionCycleId || "")))).filter(Boolean);
@@ -6074,6 +6119,7 @@ function getDisplayName(item) {
       },
       effectAudit: domainOutcomes.map((outcome) => ({ domainId: outcome.domainId, audit: outcome.effectAudit })),
       coverage: buildSixDomainCoverage(domainOutcomes, manifest),
+      mainCycleCoverage: buildMainCycleCoverageLedger(),
       manifest,
       executionPlan: buildSixDomainExecutionPlan({
         winner,
@@ -20468,6 +20514,7 @@ function getDisplayName(item) {
       });
     }
 
+    // main-cycle-coverage: LARVA_ENGINE_GUARD
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "engine") {
       const engineAction = executeEngineGuardAction({ game, commands, engine });
       addMainResult("Larva engine", engineAction);
@@ -20478,27 +20525,32 @@ function getDisplayName(item) {
       }
     }
 
+    // main-cycle-coverage: CRITICAL_PRODUCTION_UPGRADES
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const criticalUpgradeAction = handleCriticalProductionUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions));
       addMainResult("Critical upgrades", criticalUpgradeAction);
     }
 
+    // main-cycle-coverage: ENERGY_GUARD
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "energy") {
       const energyAction = executeEnergyGuardAction({ game, commands, protectedResources });
       addMainResult("Energy", energyAction);
     }
 
+    // main-cycle-coverage: CLONE_RAMP
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const cloneRampAction = executeCloneRampGuardAction({ game, commands, protectedResources });
       addMainResult("Clone Ramp", cloneRampAction);
     }
 
+    // main-cycle-coverage: CLONE_BUFFER
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const cloneBufferAction = executeCloneGuardAction({ game, commands });
       if (Number(cloneBufferAction?.bought || 0) > 0) {
         recordMainAction("Clone Prep", cloneBufferAction.boughtCandidate, cloneBufferAction.reason, cloneBufferAction.buyNum, cloneBufferAction.executedDelta);
       }
       addMainResult("Clone buffer", cloneBufferAction);
+    // main-cycle-coverage: CLONE_BUFFER_HARD_LOCK_RECOVERY
     } else if (!m6DecisionOwnsMainCycle) {
       // Hard-lock clone-buffer recovery runs even with zero remaining
       // budget (unchanged pre-existing behavior); it is intentionally not
@@ -20506,6 +20558,7 @@ function getDisplayName(item) {
       executeCloneGuardAction({ game, commands });
     }
 
+    // main-cycle-coverage: MEAT_UNLOCK_PLANNER
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "meat") {
       const unlockAction = runUnlockPlanner(game, commands, protectedResources);
       addMainResult("Unlock planner", unlockAction);
@@ -20557,6 +20610,7 @@ function getDisplayName(item) {
 
     recordAdvisor("INFO", "Smart focus", smartFocus);
 
+    // main-cycle-coverage: SMART_UPGRADES
     if (!m6DecisionOwnsMainCycle && config.buyUpgrades && canDoMoreMainActions()) {
       upgrades = safe("Smart upgrades", () => buySmartUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions))) || 0;
       if (upgrades > 0) {
@@ -20565,6 +20619,7 @@ function getDisplayName(item) {
       }
     }
 
+    // main-cycle-coverage: SMART_UNITS
     if (!m6DecisionOwnsMainCycle && config.buyUnits && canDoMoreMainActions()) {
       units = safe("Smart units", () => buySmartUnits(
         game,
@@ -20584,6 +20639,7 @@ function getDisplayName(item) {
 
     // Clone prep runs last as a side task. It may cocoon a small chunk, but it must
     // not prevent upgrades, Nexus, lepidoptera or normal unit decisions in the same run.
+    // main-cycle-coverage: FINAL_CLONE_PREP
     const clonePrep = m6DecisionOwnsMainCycle ? null : manageCloneCocoons(game, commands);
     addSideResult("Clone prep", clonePrep);
 
@@ -23761,6 +23817,9 @@ function getDisplayName(item) {
         },
         coverage() {
           return laboratoryCloneJson(strategyInspector?.strategicCoordinatorCoverage || strategyInspector?.strategicCoordinator?.coverage || []);
+        },
+        mainCycleCoverage() {
+          return laboratoryCloneJson(buildMainCycleCoverageLedger());
         },
         buildExecutionPlan(result = {}, purchaseProposalState = {}) {
           return laboratoryCloneJson(buildSixDomainExecutionPlan(result, purchaseProposalState));
