@@ -107,6 +107,6 @@ laboratory verdict `PLAN_MODEL_PROMISING_NEEDS_MORE_DATA`.
 
 ## 7. Full commit SHAs
 
-- corrected GATE 2 (this report + harness + evidence): _added in the commit below; SHA recorded on commit._
+- corrected GATE 2 (this report + harness + evidence): `396e6162653babe281d42b691592b21c41c4ca61`.
 - superseded old GATE 2: `644caf5ff5cbdc8d714b66df449c1c1718529608` (re-labelled, unchanged).
 - GATE 1 determinism: `fecd4c75d9be8f6449cbc5b757c8a42e22da2dd4`.

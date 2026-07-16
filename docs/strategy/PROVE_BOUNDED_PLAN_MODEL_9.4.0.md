@@ -11,10 +11,17 @@ requirement is a *complete* lane-sensitivity matrix, and that is blocked by a **
 Engine-binding or Territory-binding real save exists in the repo or its full git history, and neither
 can be legally derived from the one saturated late-game save) — not by any model or heuristic gap.
 
+> **Correction (2026-07-16):** the original GATE 2 claim below (row 2) was **retracted** — see
+> [GATE2_CORRECTED_9.4.0.md](GATE2_CORRECTED_9.4.0.md). The old GATE 2 tested a synthetic plan the runtime
+> never proposes and never enforced the reserve gate. Against the **real** runtime the coordinator
+> authorizes **0** actions on this save (verdict `RUNTIME_SAFE_PLAN_NOT_FOUND`). This does not weaken the
+> overall verdict — it makes the "deep Meat → WAIT" finding stronger and confirms the blocker is the
+> NO_EFFECT milestone metric, not the reserve policy.
+
 | PLAN_MODEL_PROVEN requirement | status |
 |---|---|
 | full determinism | ✅ GATE 1 |
-| runtime-safe bounded Meat plan gives progress (not only buyMax) | ✅ GATE 2 |
+| ~~runtime-safe bounded Meat plan gives progress (not only buyMax)~~ | ❌ **RETRACTED** → `RUNTIME_SAFE_PLAN_NOT_FOUND` (GATE 2 corrected): runtime authorizes 0 actions; multi-step mechanism proven but not runtime-realizable under the current NO_EFFECT metric |
 | lane-sensitivity matrix green | ⚠️ Meat-wins + WAIT-wins ✅; Engine-wins + Territory-wins = MISSING_DATA |
 | order-invariant ranking | ✅ GATE 5 |
 | mutation controls green | ✅ GATE 6 |
