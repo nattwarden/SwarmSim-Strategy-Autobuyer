@@ -148,15 +148,28 @@ Phase 3 slice 1 - reject false-zero shared metrics - is complete:
   action budgets, safety defaults and legacy execution ownership were
   intentionally unchanged.
 
-Current work package: Phase 3 slice 2 - measure one honest shared-outcome
-vertical slice. `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active because M6
-still does not cover critical upgrades, Clone paths or all normal Smart
-purchases, and WAIT/UNCERTAIN do not own a whole cycle. Measure which safe
-Meat/Engine/Energy proposals lack the active-target outcome, then select one
-real competing action pair for the same target and horizon. Do not add a
-generic score, infer a zero, toggle ownership or change safety defaults. The
-rejected feature branch remains research material only and must not be used as
-a base.
+Current work package: Phase 3 slice 2 - active-target metric alignment - is
+blocked on a product priority decision. Read-only measurement found no real
+competing pair in the pinned save: without artificial buyability overrides the
+active target is `Expansion` and only Engine is aligned. The adapter currently
+does not bind a metric target to that active target, while 9.1.0 also compares
+Engine/Nexus completion `100`, Meat action-step completion `100`, post-Nexus
+Energy boost gain and Territory ETA seconds as if they shared one unit.
+
+An uncommitted explicit-`metricTarget` prototype correctly rejected a
+mismatched high-value Meat row, but also failed the existing M3 execution,
+M6, M7 and live-purchase Scenario B checks because those fixtures and the
+post-Nexus Energy path depend on unaligned targets. The prototype and its
+generated test output were discarded; no runtime, verifier or fixture change
+was committed. See
+`docs/strategy/GLOBAL_EXECUTION_OWNERSHIP_READINESS_9.4.0.md` findings R4/R5.
+
+`NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Before implementation,
+decide when `Post-Nexus energy growth` may become the active cycle target
+relative to the Meat goal, or explicitly keep that class legacy-owned during
+migration. Do not retune a fixture merely to regain green status, add a generic
+score, toggle ownership or change safety defaults. The rejected feature branch
+remains research material only and must not be used as a base.
 
 ## Current status snapshot (2026-07-15)
 

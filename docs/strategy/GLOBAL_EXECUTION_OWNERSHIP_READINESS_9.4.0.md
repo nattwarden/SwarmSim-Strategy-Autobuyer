@@ -122,11 +122,68 @@ Until all reversible domains and required normal purchase classes share the
 same milestone/horizon contract, M6 WAIT is advice—not authority over the
 whole action cycle.
 
+## Finding R4: metric target is not bound to the active target
+
+The purchase adapter copies the decision's `activeTarget` into every domain
+outcome but never proves that the row's metric describes that target. The
+proposal field `target` is also overloaded: it may name a final planner goal,
+an action purpose, or the metric itself.
+
+A read-only replay of the pinned player save without the identity verifier's
+buyability overrides produced:
+
+| Domain | Proposal target | Metric | Decision active target |
+| --- | --- | --- | --- |
+| Engine | `Expansion` | local completion delta `100` | `Expansion` |
+| Meat | `lesser hive mind` | absent while blocked | `Expansion` |
+| Energy | `Post-Nexus energy growth` | absent while blocked | `Expansion` |
+| Territory | no proposal | absent | `Expansion` |
+
+Only Engine was aligned, so the replay supplied no real competing action pair
+for the same target and horizon. A controlled diagnostic then gave a Meat row
+for `lesser hive mind` a larger ETA value than an Engine row for `Expansion`;
+M6 selected Meat even though the decision's active target was `Expansion`.
+
+An uncommitted `metricTarget` fail-closed prototype correctly rejected that
+diagnostic, but it also exposed three existing acceptance shortcuts:
+
+- M6 and M7 synthetic rows use different action targets while claiming one
+  common comparison;
+- live-purchase Scenario B has active goal `construct nexus`, labels the
+  Territory proposal `House of Mirrors prep`, and supplies an Expansion-ETA
+  value;
+- M3 requires post-Nexus Lepidoptera to receive M6 authority even though the
+  product target selector never chooses `Post-Nexus energy growth` as the
+  active target.
+
+The prototype was discarded before commit. No test was retuned and the clean
+branch retained all accepted M2/M3/M6/M7/live-purchase behavior.
+
+## Finding R5: progress-delta bases are not globally commensurable
+
+Commit `be16d243bc5829a53c747693a94e3918386694d6` (9.1.0) introduced the
+current progress-delta shortcuts. The runtime directly sorts:
+
+- Engine and buyable Nexus completion as `100`;
+- any safe Meat action-unit chunk as `100`, although it completes only that
+  local purchase step and not necessarily the final Meat target;
+- post-Nexus Lepidoptera `boostGain`, a percentage-like production gain;
+- Territory and pre-Nexus Energy ROI as raw ETA-improvement seconds.
+
+Those values have different meanings and units. `evaluateSixDomainStrategicCoordinator`
+still compares them numerically. The same 9.1.0 field also changes M2 scoring:
+Engine/Nexus completion can receive ETA proximity, unlock bonus and progress
+delta for the same event. This matches the earlier F2 finding in
+`REPOSITORY_AUDIT_REVIEW_2026-07-14.md`; it is not evidence that a shared plan
+model has been proven.
+
 ## Readiness gates
 
 | Gate | Status | Reason |
 | --- | --- | --- |
 | Missing metrics remain unranked | PASS | Slice 1 verifies `null`, `undefined` and empty ETA as unranked while preserving explicit numeric zero. |
+| Metric target matches the active target | FAIL | No explicit metric-target identity or alignment gate exists. |
+| Comparable candidates use one metric id, unit and basis | FAIL | ETA seconds, local completion `100`, and Energy boost gain are sorted together. |
 | Four reversible domains share the active milestone metric | FAIL | Territory is the only established real ETA source; other live outcomes frequently lack it. |
 | Advisor-only winner cannot suppress reversible fallback | PASS today | Legacy ownership remains active; this would fail if sole ownership were toggled on. |
 | Exact candidate authorization and stale revalidation | PASS | Phase 2 clean-room contracts cover identity, stale context and amount. |
@@ -168,3 +225,23 @@ ownership:
 5. repeat exact-SHA verification after each product slice.
 
 The old plan generator remains out of scope.
+
+## Decision required before slice 2 implementation
+
+The next code change now depends on a real product choice, not another
+technical patch. Choose one target architecture:
+
+1. one active target per cycle, with only exactly aligned metrics rankable and
+   all unaligned safe actions left to legacy execution until their conversion
+   exists;
+2. a new versioned multi-objective common-value model that converts every
+   domain to one validated unit;
+3. retain M6 as advisor/partial bounded executor and keep post-Nexus Energy
+   and other unaligned classes explicitly legacy-owned.
+
+The safest incremental direction is option 1 combined with option 3 during
+migration. It still requires an explicit product priority decision for when
+`Post-Nexus energy growth` should become the cycle's active target relative to
+the Meat goal. No target-alignment implementation should land before that
+priority is selected and M3/live-purchase acceptance is redesigned around a
+genuinely aligned state.
