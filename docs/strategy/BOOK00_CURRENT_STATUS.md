@@ -81,10 +81,31 @@ identity - is complete:
   `net::ERR_NETWORK_CHANGED` attempt were discarded and are recorded in the
   evidence instead of being counted as acceptance.
 
-Current work package: Phase 2 slice 3 - stale authorization. The next change
-may make the observed authorization context a hard pre-purchase gate, but must
-not include the later four-value amount contract or enable global execution
-ownership. Healthy same-cycle M2/M3/live purchases must remain unchanged.
+Phase 2 slice 3 - stale authorization - is complete:
+
+- implementation SHA: `7ce5e72166cc0ed2698ce0ca6f0c2f3cb0d74d61`;
+- implementation tree: `89bde2dbf3ddd23b9ff52dbbcb4f758cf363257f`;
+- evidence SHA: `01a9214e27d08762c2e57fa2b635bd60d5b28ff3`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-7ce5e72.md`;
+- M6 now requires the fresh canonical proposal, decision cycle, snapshot and
+  active target to reproduce the authorization minted for the plan before it
+  may retain execution authority;
+- changed cycle, snapshot, target, canonical variant and missing fresh context
+  all fail closed as `STALE_AUTHORIZATION` before purchase;
+- the focused mutation control disables only the new stale gate and then fails
+  because a changed cycle retains authority;
+- the detached exact-SHA worktree passed guardrails, canonical build, the full
+  configured suite and `git diff --check`, ending clean;
+- ranking, fingerprints, amount semantics, purchase functions, action budgets,
+  safety defaults and legacy execution ownership were intentionally unchanged.
+
+Current work package: Phase 2 slice 4 - four-value amount contract. The next
+change may distinguish selected, requested, revalidated and executed amount
+observations across the existing bounded purchase path, but must not change
+amount calculation, widen eligibility, alter safety gates or enable global
+execution ownership. The rejected feature branch remains research material
+only and must not be used as an implementation base.
 
 ## Current status snapshot (2026-07-15)
 
