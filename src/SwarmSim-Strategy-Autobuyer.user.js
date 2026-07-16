@@ -2650,31 +2650,69 @@ function getDisplayName(item) {
     return "Meat-chain progression";
   }
 
-  function getCurrentStrategyGoal(game, engine, protectedResources, smartFocus) {
-    if (engine?.expansionBuyable) return "Buy Expansion now; it is the strongest larva-engine upgrade.";
-    if (engine?.hatcheryBuyable) return "Buy Hatchery now; larva production is the active engine goal.";
+  function getCurrentStrategyIdentity(game, engine, protectedResources, smartFocus) {
+    if (engine?.expansionBuyable) {
+      return {
+        activeMilestone: "Buy Expansion now; it is the strongest larva-engine upgrade.",
+        activeTarget: "Expansion",
+      };
+    }
+    if (engine?.hatcheryBuyable) {
+      return {
+        activeMilestone: "Buy Hatchery now; larva production is the active engine goal.",
+        activeTarget: "Hatchery",
+      };
+    }
 
     const nexusCount = Math.floor(decimalToNumber(getNexusCount(game), 0));
     const nextNexus = getNextNexusUpgrade(game);
     if (config.energyStrategy && nexusCount < config.nexusTarget && nextNexus) {
-      return `Reach ${getDisplayName(nextNexus)} while protecting energy.`;
+      const target = getDisplayName(nextNexus);
+      return {
+        activeMilestone: `Reach ${target} while protecting energy.`,
+        activeTarget: target,
+      };
     }
 
-    if (protectedResources?.has("territory")) return "Hold territory because Expansion is inside the save window.";
-    if (protectedResources?.has("meat")) return "Hold meat because Hatchery is inside the save window.";
+    if (protectedResources?.has("territory")) {
+      return {
+        activeMilestone: "Hold territory because Expansion is inside the save window.",
+        activeTarget: "Expansion",
+      };
+    }
+    if (protectedResources?.has("meat")) {
+      return {
+        activeMilestone: "Hold meat because Hatchery is inside the save window.",
+        activeTarget: "Hatchery",
+      };
+    }
 
     const plan = safe("Inspector meat goal plan", () => buildMeatGoalPlan(game));
     if (plan?.target) {
       const target = getDisplayName(plan.target);
       const action = plan.actionUnit ? getDisplayName(plan.actionUnit) : "unknown action";
-      return `Meat-chain target: ${target}; current action: ${action}.`;
+      return {
+        activeMilestone: `Meat-chain target: ${target}; current action: ${action}.`,
+        activeTarget: target,
+      };
     }
 
-    if (smartFocus === "territory") return "Improve territory/sec toward the next Expansion.";
-    if (smartFocus === "meat") return "Improve meat-chain production without breaking reserves.";
-    if (smartFocus === "save-territory") return "Save territory for Expansion.";
-    if (smartFocus === "save-meat") return "Save meat for Hatchery.";
-    return "Observe and make only safe incremental Smart decisions.";
+    if (smartFocus === "territory") {
+      return { activeMilestone: "Improve territory/sec toward the next Expansion.", activeTarget: "Expansion" };
+    }
+    if (smartFocus === "meat") {
+      return { activeMilestone: "Improve meat-chain production without breaking reserves.", activeTarget: "Meat chain" };
+    }
+    if (smartFocus === "save-territory") {
+      return { activeMilestone: "Save territory for Expansion.", activeTarget: "Expansion" };
+    }
+    if (smartFocus === "save-meat") {
+      return { activeMilestone: "Save meat for Hatchery.", activeTarget: "Hatchery" };
+    }
+    return {
+      activeMilestone: "Observe and make only safe incremental Smart decisions.",
+      activeTarget: "current strategic target",
+    };
   }
 
   function getWaitSignals(game, engine, protectedResources) {
@@ -3286,19 +3324,20 @@ function getDisplayName(item) {
         : "Main lanes held.";
     const councilWinningLane = selectedMainAction?.lane || "none";
     const councilWinningCandidate = selectedMainAction?.candidate || "none";
+    const strategyIdentity = getCurrentStrategyIdentity(game, engine, protectedResources, smartFocus);
     const energySupport = buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction);
     const abilityTimingSnapshot = captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction);
     const abilityTimingAdvisor = evaluateEnergyAbilityTimingSnapshot(abilityTimingSnapshot);
-    const ascensionMutagenSnapshot = captureAscensionMutagenSnapshot(game, { smartFocus, selectedMainAction, goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus) });
+    const ascensionMutagenSnapshot = captureAscensionMutagenSnapshot(game, { smartFocus, selectedMainAction, goal: strategyIdentity.activeMilestone });
     const ascensionMutagenAdvisor = evaluateAscensionMutagenSnapshot(ascensionMutagenSnapshot);
     const ascensionAdvisorMutagenPlan = laboratoryCloneJson(ascensionMutagenAdvisor?.mutagenPlan || null);
     const ascensionNowBranch = (ascensionMutagenAdvisor?.branches || []).find((branch) => branch?.actionId === "ASCEND_NOW") || null;
     const sixDomainCoordinatorSnapshot = captureSixDomainDecisionSnapshot(game, {
       smartFocus,
       selectedMainAction,
-      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
-      activeMilestone: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
-      activeTarget: selectedMainAction?.target || smartFocus || "current strategic target",
+      goal: strategyIdentity.activeMilestone,
+      activeMilestone: strategyIdentity.activeMilestone,
+      activeTarget: strategyIdentity.activeTarget,
       purchaseProposalState: unifiedPurchaseProposalState || {
         proposals: laneCandidates.slice(),
         evaluation: buildUnifiedPurchaseEvaluator(laneCandidates, selectedMainAction),
@@ -3373,7 +3412,7 @@ function getDisplayName(item) {
       time: new Date().toLocaleTimeString(),
       timestamp: new Date().toISOString(),
       phase: getCurrentStrategyPhase(game, engine),
-      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
+      goal: strategyIdentity.activeMilestone,
       decision,
       mainDecision: mainLaneDecisionLabel(mainActions, sideActions),
       sideDecision: sideTaskDecision,
@@ -19767,6 +19806,7 @@ function getDisplayName(item) {
     let engine = analyzeLarvaEngine(game);
     let protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
     const smartFocus = decideSmartFocus(engine);
+    const strategyIdentity = getCurrentStrategyIdentity(game, engine, protectedResources, smartFocus);
     unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
     let coordinatorExecutedKey = null;
     // M6's execution-authority gate requires a comparable milestone-eta metric,
@@ -19787,14 +19827,14 @@ function getDisplayName(item) {
     const m6AscensionAdvisor = evaluateAscensionMutagenSnapshot(captureAscensionMutagenSnapshot(game, {
       smartFocus,
       selectedMainAction: preExecutionMainAction,
-      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
+      goal: strategyIdentity.activeMilestone,
     }));
     const m6Snapshot = captureSixDomainDecisionSnapshot(game, {
       smartFocus,
       selectedMainAction: preExecutionMainAction,
-      goal: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
-      activeMilestone: getCurrentStrategyGoal(game, engine, protectedResources, smartFocus),
-      activeTarget: preExecutionMainAction?.target || smartFocus || "current strategic target",
+      goal: strategyIdentity.activeMilestone,
+      activeMilestone: strategyIdentity.activeMilestone,
+      activeTarget: strategyIdentity.activeTarget,
       purchaseProposalState: unifiedPurchaseProposalState,
       abilitySnapshot: m6AbilityAdvisor,
       ascensionSnapshot: m6AscensionAdvisor,
