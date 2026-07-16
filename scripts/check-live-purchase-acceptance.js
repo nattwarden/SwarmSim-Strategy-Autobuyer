@@ -251,7 +251,7 @@ async function main() {
 
 main().catch((error) => {
   console.error(error?.stack || error?.message || String(error));
-  process.exit(1);
+  process.exitCode = 1;
 }).finally(() => {
   executionsToClean.forEach(cleanupExecutionArtifacts);
 });
