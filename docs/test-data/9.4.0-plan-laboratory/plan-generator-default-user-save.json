@@ -1,0 +1,526 @@
+{
+ "schemaVersion": "plan-generator.v1",
+ "capturedAt": "2026-07-16T05:19:03.520Z",
+ "save": {
+  "name": "default-user-save",
+  "fixedTimeIso": "2026-07-14T00:02:09.201Z"
+ },
+ "track1_trace": {
+  "activeTarget": "pantheon3",
+  "goal": "Meat-chain target: lesser hive mind; current action: hive neuron.",
+  "proposals": [
+   {
+    "lane": "Engine",
+    "candidate": "Expansion",
+    "internalId": "expansion",
+    "decision": "HOLD",
+    "reason": "Expansion is not buyable yet"
+   },
+   {
+    "lane": "Engine",
+    "candidate": "Hatchery",
+    "internalId": "hatchery",
+    "decision": "HOLD",
+    "reason": "Hatchery is not buyable yet"
+   },
+   {
+    "lane": "Energy",
+    "candidate": "Lepidoptera",
+    "internalId": "moth",
+    "decision": "HOLD",
+    "reason": "post-Nexus Lepidoptera held: +90% energy is at/above stop threshold 90%"
+   },
+   {
+    "lane": "Meat",
+    "candidate": "hive neuron",
+    "internalId": "goddess",
+    "decision": "BUY",
+    "reason": "target-path action for lesser hive mind (payback-bypass eligible; ranked on progress, not "
+   },
+   {
+    "lane": "Meat",
+    "candidate": "neural cluster",
+    "internalId": "pantheon",
+    "decision": "BUY",
+    "reason": "target-path parent-step for lesser hive mind (payback-bypass eligible; ranked on progress,"
+   }
+  ],
+  "units": [
+   {
+    "internalId": "goddess",
+    "displayName": "goddess",
+    "count": "7.2142399444793607499e+27",
+    "velocity": "8.5948304422317427406e+23",
+    "costResources": [
+     "meat",
+     "prophet",
+     "larva"
+    ],
+    "buyable": true,
+    "maxAffordableChunk": "2.2479099878998956669e+21",
+    "proposalEmitted": true,
+    "plannerReason": "target-path action for lesser hive mind (payback-bypass eligible; ranked on progress, not auto-win)",
+    "proposalDecision": "BUY",
+    "safeEligible": true,
+    "proposalId": "meat::goddess::unit::base",
+    "classification": "EMITTED action-unit — WINNER (but NO_EFFECT => coordinator abstains) => CONSIDERED_BUT_HOLD"
+   },
+   {
+    "internalId": "pantheon",
+    "displayName": "pantheon",
+    "count": "191225004525912543770",
+    "velocity": "255875593612.57546584",
+    "costResources": [
+     "meat",
+     "goddess",
+     "larva"
+    ],
+    "buyable": true,
+    "maxAffordableChunk": "153302598820186415",
+    "proposalEmitted": true,
+    "plannerReason": "target-path parent-step for lesser hive mind (payback-bypass eligible; ranked on progress, not auto-win)",
+    "proposalDecision": "BUY",
+    "safeEligible": true,
+    "proposalId": "meat::pantheon::unit::base",
+    "classification": "EMITTED parent-step — runner-up (NO_EFFECT) => PLANNER_ORDER_PREEMPTED / CONSIDERED_BUT_HOLD"
+   },
+   {
+    "internalId": "pantheon2",
+    "displayName": "pantheon2",
+    "count": "927575665",
+    "velocity": "0",
+    "costResources": [
+     "meat",
+     "pantheon",
+     "larva"
+    ],
+    "buyable": true,
+    "maxAffordableChunk": "40635313",
+    "proposalEmitted": false,
+    "plannerReason": null,
+    "proposalDecision": null,
+    "safeEligible": null,
+    "proposalId": null,
+    "classification": "NOT emitted as a proposal => NOT_EMITTED_TO_GLOBAL_COORDINATOR (target-path node beyond action-unit+parent-step)"
+   },
+   {
+    "internalId": "pantheon3",
+    "displayName": "pantheon3",
+    "count": "0",
+    "velocity": "0",
+    "costResources": [
+     "meat",
+     "pantheon2",
+     "larva"
+    ],
+    "buyable": false,
+    "maxAffordableChunk": "0",
+    "proposalEmitted": false,
+    "plannerReason": null,
+    "proposalDecision": null,
+    "safeEligible": null,
+    "proposalId": null,
+    "classification": "TARGET (goal; not a buy candidate)"
+   }
+  ]
+ },
+ "track2_actionUniverse": [
+  {
+   "canonicalActionId": "meat::goddess::unit::base",
+   "internalId": "goddess",
+   "label": "Hive Neuron",
+   "executionKey": "meat",
+   "executionKind": "unit",
+   "executionVariant": "base",
+   "plannerKind": "action-unit",
+   "targetPathRole": "action-unit",
+   "amountPolicy": "floor(maxCostMet(0.85)*25/100)",
+   "reserveGate": "meatActionUnitMinReserveRatio=5",
+   "currentlyProposed": true
+  },
+  {
+   "canonicalActionId": "meat::pantheon::unit::base",
+   "internalId": "pantheon",
+   "label": "Neural Cluster",
+   "executionKey": "meat",
+   "executionKind": "unit",
+   "executionVariant": "base",
+   "plannerKind": "parent-step",
+   "targetPathRole": "parent-of-action-unit",
+   "amountPolicy": "floor(maxCostMet(0.85)*25/100)",
+   "reserveGate": "meatParentStepMinReserveRatio=1.5",
+   "currentlyProposed": true
+  },
+  {
+   "canonicalActionId": "meat::pantheon2::unit::base",
+   "internalId": "pantheon2",
+   "label": "Hive Network",
+   "executionKey": "meat",
+   "executionKind": "unit",
+   "executionVariant": "base",
+   "plannerKind": "binding-resource-producer",
+   "targetPathRole": "target-direct-bottleneck",
+   "amountPolicy": "floor(maxCostMet(0.85)*25/100)",
+   "reserveGate": "would inherit action-unit/parent-step gate when emitted",
+   "currentlyProposed": false
+  }
+ ],
+ "track3_4_plans": [
+  {
+   "planId": "WAIT",
+   "plan": [],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 0,
+   "bindingAfterActions": "0",
+   "horizonProgress": {
+    "5m": "0",
+    "30m": "0",
+    "60m": "0"
+   },
+   "targetAffordAfter": 0.00000927575665,
+   "firstAction": null,
+   "firstActionRealizability": "WAIT (no action)"
+  },
+  {
+   "planId": "Hive Neuron",
+   "plan": [
+    "goddess"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 1,
+   "bindingAfterActions": "0",
+   "horizonProgress": {
+    "5m": "0",
+    "30m": "0",
+    "60m": "0"
+   },
+   "targetAffordAfter": 0.00000927575665,
+   "firstAction": "goddess",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  },
+  {
+   "planId": "Neural Cluster",
+   "plan": [
+    "pantheon"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 1,
+   "bindingAfterActions": "0",
+   "horizonProgress": {
+    "5m": "0",
+    "30m": "0",
+    "60m": "0"
+   },
+   "targetAffordAfter": 0.00000927575665,
+   "firstAction": "pantheon",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  },
+  {
+   "planId": "Hive Network",
+   "plan": [
+    "pantheon2"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 1,
+   "bindingAfterActions": "40635313",
+   "horizonProgress": {
+    "5m": "40635313",
+    "30m": "40635313",
+    "60m": "40635313"
+   },
+   "targetAffordAfter": 0.00000968210978,
+   "firstAction": "pantheon2",
+   "firstActionRealizability": "CURRENT_RUNTIME_NOT_PROPOSED"
+  },
+  {
+   "planId": "Neural Cluster -> Neural Cluster",
+   "plan": [
+    "pantheon",
+    "pantheon"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 2,
+   "bindingAfterActions": "0",
+   "horizonProgress": {
+    "5m": "0",
+    "30m": "0",
+    "60m": "0"
+   },
+   "targetAffordAfter": 0.00000927575665,
+   "firstAction": "pantheon",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  },
+  {
+   "planId": "Neural Cluster -> Hive Network",
+   "plan": [
+    "pantheon",
+    "pantheon2"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 2,
+   "bindingAfterActions": "107352604",
+   "horizonProgress": {
+    "5m": "107352604",
+    "30m": "107352604",
+    "60m": "107352604"
+   },
+   "targetAffordAfter": 0.00001034928269,
+   "firstAction": "pantheon",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  },
+  {
+   "planId": "Hive Network -> Neural Cluster",
+   "plan": [
+    "pantheon2",
+    "pantheon"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 2,
+   "bindingAfterActions": "40635313",
+   "horizonProgress": {
+    "5m": "40635313",
+    "30m": "40635313",
+    "60m": "40635313"
+   },
+   "targetAffordAfter": 0.00000968210978,
+   "firstAction": "pantheon2",
+   "firstActionRealizability": "CURRENT_RUNTIME_NOT_PROPOSED"
+  },
+  {
+   "planId": "Hive Network -> Hive Network",
+   "plan": [
+    "pantheon2",
+    "pantheon2"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 2,
+   "bindingAfterActions": "72635622",
+   "horizonProgress": {
+    "5m": "72635622",
+    "30m": "72635622",
+    "60m": "72635622"
+   },
+   "targetAffordAfter": 0.00001000211287,
+   "firstAction": "pantheon2",
+   "firstActionRealizability": "CURRENT_RUNTIME_NOT_PROPOSED"
+  },
+  {
+   "planId": "Neural Cluster -> Neural Cluster -> Neural Cluster",
+   "plan": [
+    "pantheon",
+    "pantheon",
+    "pantheon"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 3,
+   "bindingAfterActions": "0",
+   "horizonProgress": {
+    "5m": "0",
+    "30m": "0",
+    "60m": "0"
+   },
+   "targetAffordAfter": 0.00000927575665,
+   "firstAction": "pantheon",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  },
+  {
+   "planId": "Neural Cluster -> Neural Cluster -> Hive Network",
+   "plan": [
+    "pantheon",
+    "pantheon",
+    "pantheon2"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 3,
+   "bindingAfterActions": "159892471",
+   "horizonProgress": {
+    "5m": "159892471",
+    "30m": "159892471",
+    "60m": "159892471"
+   },
+   "targetAffordAfter": 0.00001087468136,
+   "firstAction": "pantheon",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  },
+  {
+   "planId": "Neural Cluster -> Hive Network -> Neural Cluster",
+   "plan": [
+    "pantheon",
+    "pantheon2",
+    "pantheon"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 3,
+   "bindingAfterActions": "107352604",
+   "horizonProgress": {
+    "5m": "107352604",
+    "30m": "107352604",
+    "60m": "107352604"
+   },
+   "targetAffordAfter": 0.00001034928269,
+   "firstAction": "pantheon",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  },
+  {
+   "planId": "Neural Cluster -> Hive Network -> Hive Network",
+   "plan": [
+    "pantheon",
+    "pantheon2",
+    "pantheon2"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 3,
+   "bindingAfterActions": "191892780",
+   "horizonProgress": {
+    "5m": "191892780",
+    "30m": "191892780",
+    "60m": "191892780"
+   },
+   "targetAffordAfter": 0.00001119468445,
+   "firstAction": "pantheon",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  },
+  {
+   "planId": "Hive Network -> Neural Cluster -> Neural Cluster",
+   "plan": [
+    "pantheon2",
+    "pantheon",
+    "pantheon"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 3,
+   "bindingAfterActions": "40635313",
+   "horizonProgress": {
+    "5m": "40635313",
+    "30m": "40635313",
+    "60m": "40635313"
+   },
+   "targetAffordAfter": 0.00000968210978,
+   "firstAction": "pantheon2",
+   "firstActionRealizability": "CURRENT_RUNTIME_NOT_PROPOSED"
+  },
+  {
+   "planId": "Hive Network -> Neural Cluster -> Hive Network",
+   "plan": [
+    "pantheon2",
+    "pantheon",
+    "pantheon2"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 3,
+   "bindingAfterActions": "139352913",
+   "horizonProgress": {
+    "5m": "139352913",
+    "30m": "139352913",
+    "60m": "139352913"
+   },
+   "targetAffordAfter": 0.00001066928578,
+   "firstAction": "pantheon2",
+   "firstActionRealizability": "CURRENT_RUNTIME_NOT_PROPOSED"
+  },
+  {
+   "planId": "Hive Network -> Hive Network -> Neural Cluster",
+   "plan": [
+    "pantheon2",
+    "pantheon2",
+    "pantheon"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 3,
+   "bindingAfterActions": "72635622",
+   "horizonProgress": {
+    "5m": "72635622",
+    "30m": "72635622",
+    "60m": "72635622"
+   },
+   "targetAffordAfter": 0.00001000211287,
+   "firstAction": "pantheon2",
+   "firstActionRealizability": "CURRENT_RUNTIME_NOT_PROPOSED"
+  },
+  {
+   "planId": "Hive Network -> Hive Network -> Hive Network",
+   "plan": [
+    "pantheon2",
+    "pantheon2",
+    "pantheon2"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 3,
+   "bindingAfterActions": "97835865",
+   "horizonProgress": {
+    "5m": "97835865",
+    "30m": "97835865",
+    "60m": "97835865"
+   },
+   "targetAffordAfter": 0.0000102541153,
+   "firstAction": "pantheon2",
+   "firstActionRealizability": "CURRENT_RUNTIME_NOT_PROPOSED"
+  },
+  {
+   "planId": "Neural Cluster -> Hive Network -> Neural Cluster -> Hive Network",
+   "plan": [
+    "pantheon",
+    "pantheon2",
+    "pantheon",
+    "pantheon2"
+   ],
+   "feasible": "FEASIBLE",
+   "actionsCompleted": 4,
+   "bindingAfterActions": "244432646",
+   "horizonProgress": {
+    "5m": "244432646",
+    "30m": "244432646",
+    "60m": "244432646"
+   },
+   "targetAffordAfter": 0.00001172008311,
+   "firstAction": "pantheon",
+   "firstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)"
+  }
+ ],
+ "buyMaxMechanicalUpperReference": "1668701345",
+ "track4_ranking": {
+  "horizon": "60m",
+  "winner": "Neural Cluster -> Hive Network -> Neural Cluster -> Hive Network",
+  "winnerProgress": "244432646",
+  "winnerFirstAction": "pantheon",
+  "winnerFirstActionRealizability": "CURRENT_RUNTIME_PROPOSED_BUT_BLOCKED (emitted + safeEligible, but coordinator scores NO_EFFECT and abstains)",
+  "orderInvariant": true,
+  "top": [
+   "Neural Cluster -> Hive Network -> Neural Cluster -> Hive Network(244432646)",
+   "Neural Cluster -> Hive Network -> Hive Network(191892780)",
+   "Neural Cluster -> Neural Cluster -> Hive Network(159892471)",
+   "Hive Network -> Neural Cluster -> Hive Network(139352913)",
+   "Neural Cluster -> Hive Network(107352604)"
+  ]
+ },
+ "track7_mutationControls": {
+  "removeNeuralCluster": {
+   "detected": true
+  },
+  "removeHiveNetworkStep2": {
+   "detected": true
+  },
+  "buyMaxInsteadOfBounded": {
+   "detected": true
+  },
+  "ignoreReserveGate": {
+   "detected": true
+  },
+  "staleAmountStep2": {
+   "detected": true
+  },
+  "targetPathAsScore": {
+   "detected": true
+  },
+  "planByPlannerOrder": {
+   "detected": true
+  },
+  "authorizeWholePlan": {
+   "detected": true
+  },
+  "amountTamperDetected": {
+   "detected": true
+  }
+ },
+ "allMutationsDetected": true
+}
