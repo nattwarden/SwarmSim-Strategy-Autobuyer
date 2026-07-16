@@ -3347,6 +3347,10 @@ function getDisplayName(item) {
     const energySupport = buildEnergySupportBrokerSnapshot(game, engine, smartFocus, selectedMainAction);
     const abilityTimingSnapshot = captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction);
     const abilityTimingAdvisor = evaluateEnergyAbilityTimingSnapshot(abilityTimingSnapshot);
+    const m6DecisionHorizon = sixDomainHorizonById("medium");
+    const m6AbilityTimingAdvisor = evaluateEnergyAbilityTimingSnapshot(
+      captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction, m6DecisionHorizon)
+    );
     const ascensionMutagenSnapshot = captureAscensionMutagenSnapshot(game, { smartFocus, selectedMainAction, goal: strategyIdentity.activeMilestone });
     const ascensionMutagenAdvisor = evaluateAscensionMutagenSnapshot(ascensionMutagenSnapshot);
     const ascensionAdvisorMutagenPlan = laboratoryCloneJson(ascensionMutagenAdvisor?.mutagenPlan || null);
@@ -3362,7 +3366,7 @@ function getDisplayName(item) {
         evaluation: buildUnifiedPurchaseEvaluator(laneCandidates, selectedMainAction),
       },
       purchaseEvaluation: purchaseEvaluator,
-      abilitySnapshot: abilityTimingAdvisor,
+      abilitySnapshot: m6AbilityTimingAdvisor,
       ascensionSnapshot: ascensionMutagenAdvisor,
       selectedHorizonId: "medium",
       selectedHorizonSeconds: 1800,
@@ -5113,7 +5117,12 @@ function getDisplayName(item) {
       evaluation: strategyContext.purchaseEvaluation || buildUnifiedPurchaseEvaluator(Array.isArray(strategyContext.purchaseRows) ? strategyContext.purchaseRows : (laneCandidates || []), strategyContext.selectedMainAction || null),
     };
     const abilitySnapshot = strategyContext.abilitySnapshot || evaluateEnergyAbilityTimingSnapshot(
-      captureEnergyAbilityTimingSnapshot(game, strategyContext.smartFocus || "", strategyContext.selectedMainAction || null)
+      captureEnergyAbilityTimingSnapshot(
+        game,
+        strategyContext.smartFocus || "",
+        strategyContext.selectedMainAction || null,
+        selectedHorizon
+      )
     );
     const ascensionSnapshot = strategyContext.ascensionSnapshot || evaluateAscensionMutagenSnapshot(
       captureAscensionMutagenSnapshot(game, {
@@ -5175,6 +5184,20 @@ function getDisplayName(item) {
 
   function strategicCalibrationRankableFormulaStatus(status) {
     return status === "source-verified" || status === "runtime-derived";
+  }
+
+  function combineStrategicCalibrationFormulaStatuses(actionStatus, baselineStatus) {
+    const action = strategicCalibrationFormulaStatus(actionStatus);
+    const baseline = strategicCalibrationFormulaStatus(baselineStatus);
+    if (action === baseline) return action;
+    if (strategicCalibrationRankableFormulaStatus(action) && strategicCalibrationRankableFormulaStatus(baseline)) {
+      // A source-verified action compared with a runtime-derived WAIT baseline
+      // is still rankable; retain the weaker of the two provenance levels.
+      return "runtime-derived";
+    }
+    if (action === "mismatch" || baseline === "mismatch") return "mismatch";
+    if (action === "incomplete" || baseline === "incomplete") return "incomplete";
+    return "mismatch";
   }
 
   function validateStrategicCalibrationIdentity(action = {}, baseline = {}, context = {}) {
@@ -5309,13 +5332,17 @@ function getDisplayName(item) {
     const metricUnit = String(usingMilestoneEta ? "seconds" : (action?.metricUnit || baseline?.metricUnit || (usingLegacyEtaImprovement ? "seconds" : (action?.targetResource || "value"))));
     const metricId = String(usingMilestoneEta ? (action?.milestoneMetricId || baseline?.milestoneMetricId || "expansion-eta") : (action?.metricId || baseline?.metricId || (usingLegacyEtaImprovement ? "milestoneEtaImprovementSeconds" : `${metricUnit}-progress`)));
     const direction = usingMilestoneEta ? "LOWER_IS_BETTER" : String(action?.direction || baseline?.direction || "HIGHER_IS_BETTER");
+    const actionHorizonId = String(action?.horizonId || context?.horizonId || "medium");
+    const baselineHorizonId = String(baseline?.horizonId || context?.horizonId || "medium");
+    const actionHorizonSeconds = Number(action?.horizonSeconds || context?.horizonSeconds || 1800);
+    const baselineHorizonSeconds = Number(baseline?.horizonSeconds || context?.horizonSeconds || 1800);
     const actionFormulaStatus = hasExplicitFormulaStatus
       ? strategicCalibrationFormulaStatus(action?.formulaStatus || inferredFormulaStatus)
       : inferredFormulaStatus;
     const baselineFormulaStatus = hasExplicitFormulaStatus
       ? strategicCalibrationFormulaStatus(baseline?.formulaStatus || actionFormulaStatus || "incomplete")
       : inferredFormulaStatus;
-    const formulaStatus = actionFormulaStatus === baselineFormulaStatus ? actionFormulaStatus : "mismatch";
+    const formulaStatus = combineStrategicCalibrationFormulaStatuses(actionFormulaStatus, baselineFormulaStatus);
     return buildStrategicOutcomeCalibration({
       calibrationId: context?.calibrationId,
       sourceDomainId: "ENERGY_ABILITIES",
@@ -5332,8 +5359,8 @@ function getDisplayName(item) {
         metricId,
         metricUnit,
         direction,
-        horizonId: context?.horizonId || "medium",
-        horizonSeconds: context?.horizonSeconds || 1800,
+        horizonId: actionHorizonId,
+        horizonSeconds: actionHorizonSeconds,
         formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
         sourceRevision: String(action?.sourceRevision || baseline?.sourceRevision || LABORATORY_BASE_GAME_SOURCE_COMMIT),
       },
@@ -5347,8 +5374,8 @@ function getDisplayName(item) {
         metricId,
         metricUnit,
         direction,
-        horizonId: context?.horizonId || "medium",
-        horizonSeconds: context?.horizonSeconds || 1800,
+        horizonId: actionHorizonId,
+        horizonSeconds: actionHorizonSeconds,
         formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
         sourceRevision: String(action?.sourceRevision || baseline?.sourceRevision || LABORATORY_BASE_GAME_SOURCE_COMMIT),
         value: strategicCalibrationToNumber(actionValueRaw, null),
@@ -5366,8 +5393,8 @@ function getDisplayName(item) {
         metricId,
         metricUnit,
         direction,
-        horizonId: context?.horizonId || "medium",
-        horizonSeconds: context?.horizonSeconds || 1800,
+        horizonId: baselineHorizonId,
+        horizonSeconds: baselineHorizonSeconds,
         formulaSetId: String(action?.formulaSetId || baseline?.formulaSetId || "energy-ability-source-formulas.v1"),
         sourceRevision: String(action?.sourceRevision || baseline?.sourceRevision || LABORATORY_BASE_GAME_SOURCE_COMMIT),
         value: strategicCalibrationToNumber(baselineValueRaw, 0),
@@ -5455,9 +5482,11 @@ function getDisplayName(item) {
     const delta = strategicCalibrationToNumber(calibration?.delta, null);
     const effectMetric = String(calibration?.metricId || (comparable ? "projectedMilestoneProgressDelta" : "missingConversion"));
     const effectUnit = String(calibration?.metricUnit || "value");
+    const sourceHorizonId = String(calibration?.horizonId || sharedContext.horizonId || "medium");
+    const sourceHorizonSeconds = Number(calibration?.horizonSeconds || sharedContext.horizonSeconds || 1800);
     const effects = [
-      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ENERGY_ABILITIES", "DIRECT", effectMetric, effectUnit, sharedContext.horizonId || "medium", comparable && delta !== null ? delta : 0, false, [], String(calibration?.formulaStatus || "runtime-derived")),
-      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ENERGY_ABILITIES", "FINAL", effectMetric, effectUnit, sharedContext.horizonId || "medium", comparable && delta !== null ? delta : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], String(calibration?.formulaStatus || "runtime-derived")),
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ENERGY_ABILITIES", "DIRECT", effectMetric, effectUnit, sourceHorizonId, comparable && delta !== null ? delta : 0, false, [], String(calibration?.formulaStatus || "runtime-derived")),
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ENERGY_ABILITIES", "FINAL", effectMetric, effectUnit, sourceHorizonId, comparable && delta !== null ? delta : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], String(calibration?.formulaStatus || "runtime-derived")),
     ];
     return laboratoryDeepFreeze({
       schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
@@ -5473,8 +5502,8 @@ function getDisplayName(item) {
       context: {
         activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone || "unknown",
         activeTarget: sharedContext.activeTarget || advisor?.activeTarget || "unknown",
-        horizonId: sharedContext.horizonId || "medium",
-        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
+        horizonId: sourceHorizonId,
+        horizonSeconds: sourceHorizonSeconds,
       },
       safety: {
         status: unsupported ? "UNSUPPORTED" : (blockedBy.length ? "BLOCKED" : "ADVISOR_ONLY"),
@@ -5487,10 +5516,14 @@ function getDisplayName(item) {
         metricId: rankComparable ? String(calibration?.metricId || "unknown") : null,
         basis: rankComparable ? (String(calibration?.direction || "").toUpperCase() === "LOWER_IS_BETTER" ? "milestone-eta-seconds" : "same-unit-milestone-progress-delta") : null,
         metricUnit: rankComparable ? String(calibration?.metricUnit || "value") : null,
+        horizonId: rankComparable ? String(calibration?.horizonId || "") || null : null,
+        horizonSeconds: rankComparable && sixDomainHasFiniteMetric(calibration?.horizonSeconds) ? Number(calibration.horizonSeconds) : null,
         commonValue: rankComparable ? strategicCalibrationToNumber(calibration?.delta, null) : null,
-        missingConversions: Array.isArray(calibration?.missingInputs) && calibration.missingInputs.length
-          ? calibration.missingInputs.slice()
-          : [unsupported ? "Swarmwarp is unsupported" : (selectedActionId === "WAIT" ? "no non-WAIT calibrated action selected" : "validated milestone conversion for ability branch")],
+        missingConversions: rankComparable
+          ? []
+          : (Array.isArray(calibration?.missingInputs) && calibration.missingInputs.length
+            ? calibration.missingInputs.slice()
+            : [unsupported ? "Swarmwarp is unsupported" : (selectedActionId === "WAIT" ? "no non-WAIT calibrated action selected" : "validated milestone conversion for ability branch")]),
       },
       outcome: {
         milestoneEtaBeforeSeconds: String(calibration?.direction || "").toUpperCase() === "LOWER_IS_BETTER" ? strategicCalibrationToNumber(calibration?.baselineValue, null) : null,
@@ -5531,9 +5564,11 @@ function getDisplayName(item) {
     const delta = strategicCalibrationToNumber(calibration?.delta, null);
     const effectMetric = String(calibration?.metricId || (comparable ? "projectedMilestoneProgressDelta" : "missingRecoveryConversion"));
     const effectUnit = String(calibration?.metricUnit || "value");
+    const sourceHorizonId = String(calibration?.horizonId || sharedContext.horizonId || "medium");
+    const sourceHorizonSeconds = Number(calibration?.horizonSeconds || sharedContext.horizonSeconds || 1800);
     const effects = [
-      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ASCENSION_MUTAGEN", "DIRECT", effectMetric, effectUnit, sharedContext.horizonId || "medium", comparable && delta !== null ? delta : 0, false, [], String(calibration?.formulaStatus || "incomplete")),
-      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ASCENSION_MUTAGEN", "FINAL", effectMetric, effectUnit, sharedContext.horizonId || "medium", comparable && delta !== null ? delta : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], String(calibration?.formulaStatus || "incomplete")),
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:direct`, action.actionId, "ASCENSION_MUTAGEN", "DIRECT", effectMetric, effectUnit, sourceHorizonId, comparable && delta !== null ? delta : 0, false, [], String(calibration?.formulaStatus || "incomplete")),
+      buildStrategicEffect(`${snapshotActionId(sharedContext, action.actionId)}:final`, action.actionId, "ASCENSION_MUTAGEN", "FINAL", effectMetric, effectUnit, sourceHorizonId, comparable && delta !== null ? delta : 0, false, [`${snapshotActionId(sharedContext, action.actionId)}:direct`], String(calibration?.formulaStatus || "incomplete")),
     ];
     return laboratoryDeepFreeze({
       schemaVersion: STRATEGIC_DOMAIN_OUTCOME_SCHEMA_VERSION,
@@ -5549,8 +5584,8 @@ function getDisplayName(item) {
       context: {
         activeMilestone: sharedContext.activeMilestone || advisor?.activeMilestone || "unknown",
         activeTarget: sharedContext.activeTarget || advisor?.activeTarget || "unknown",
-        horizonId: sharedContext.horizonId || "medium",
-        horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
+        horizonId: sourceHorizonId,
+        horizonSeconds: sourceHorizonSeconds,
       },
       safety: {
         status: "ADVISOR_ONLY",
@@ -5563,6 +5598,8 @@ function getDisplayName(item) {
         metricId: comparable ? String(calibration?.metricId || "unknown") : null,
         basis: comparable ? "same-unit-milestone-progress-delta" : null,
         metricUnit: comparable ? String(calibration?.metricUnit || "value") : null,
+        horizonId: comparable ? String(calibration?.horizonId || "") || null : null,
+        horizonSeconds: comparable && sixDomainHasFiniteMetric(calibration?.horizonSeconds) ? Number(calibration.horizonSeconds) : null,
         commonValue: comparable ? strategicCalibrationToNumber(calibration?.delta, null) : null,
         missingConversions: Array.isArray(calibration?.missingInputs) ? calibration.missingInputs.slice() : ["validated recovery-to-horizon conversion for Ascension"],
       },
@@ -5701,6 +5738,8 @@ function getDisplayName(item) {
         metricId,
         basis: comparable ? comparability.basis : null,
         metricUnit: comparable ? comparability.unit : null,
+        horizonId: comparable ? String(sharedContext.horizonId || "") || null : null,
+        horizonSeconds: comparable && sixDomainHasFiniteMetric(sharedContext.horizonSeconds) ? Number(sharedContext.horizonSeconds) : null,
         commonValue: comparable ? commonValue : null,
         missingConversions,
       },
@@ -5848,28 +5887,36 @@ function getDisplayName(item) {
       metricId: String(selectedContract.metricId || "").trim() || null,
       metricUnit: String(selectedContract.metricUnit || "").trim() || null,
       basis: String(selectedContract.basis || "").trim() || null,
+      horizonId: String(selectedContract.horizonId || "").trim() || null,
+      horizonSeconds: sixDomainHasFiniteMetric(selectedContract.horizonSeconds) ? Number(selectedContract.horizonSeconds) : null,
     };
     const observed = {
       metricId: String(outcome?.comparability?.metricId || "").trim() || null,
       metricUnit: String(outcome?.comparability?.metricUnit || "").trim() || null,
       basis: String(outcome?.comparability?.basis || "").trim() || null,
+      horizonId: String(outcome?.comparability?.horizonId || "").trim() || null,
+      horizonSeconds: sixDomainHasFiniteMetric(outcome?.comparability?.horizonSeconds) ? Number(outcome.comparability.horizonSeconds) : null,
     };
     const sourceComparable = outcome?.comparability?.status === "COMPARABLE"
       && Number.isFinite(sixDomainComparableValue(outcome).value);
-    const selectedComplete = !!selected.metricId && !!selected.metricUnit && !!selected.basis;
-    const observedComplete = !!observed.metricId && !!observed.metricUnit && !!observed.basis;
+    const selectedComplete = !!selected.metricId && !!selected.metricUnit && !!selected.basis
+      && !!selected.horizonId && Number.isFinite(selected.horizonSeconds) && selected.horizonSeconds > 0;
+    const observedComplete = !!observed.metricId && !!observed.metricUnit && !!observed.basis
+      && !!observed.horizonId && Number.isFinite(observed.horizonSeconds) && observed.horizonSeconds > 0;
     const exactMatch = sourceComparable
       && selectedComplete
       && observedComplete
       && observed.metricId === selected.metricId
       && observed.metricUnit === selected.metricUnit
-      && observed.basis === selected.basis;
+      && observed.basis === selected.basis
+      && observed.horizonId === selected.horizonId
+      && observed.horizonSeconds === selected.horizonSeconds;
     const selectionStatus = !sourceComparable
       ? "NOT_COMPARABLE"
       : (!selectedComplete || !observedComplete ? "MISSING" : (exactMatch ? "MATCHED" : "MISMATCH"));
     const selectionReason = exactMatch
-      ? "metric id, unit and basis match the cycle comparison contract"
-      : `observed ${observed.metricId || "missing"}/${observed.metricUnit || "missing"}/${observed.basis || "missing"}; selected ${selected.metricId || "missing"}/${selected.metricUnit || "missing"}/${selected.basis || "missing"}`;
+      ? "metric id, unit, basis and horizon match the cycle comparison contract"
+      : `observed ${observed.metricId || "missing"}/${observed.metricUnit || "missing"}/${observed.basis || "missing"}/${observed.horizonId || "missing"}/${observed.horizonSeconds ?? "missing"}s; selected ${selected.metricId || "missing"}/${selected.metricUnit || "missing"}/${selected.basis || "missing"}/${selected.horizonId || "missing"}/${selected.horizonSeconds ?? "missing"}s`;
 
     const baseComparability = {
       ...(outcome.comparability || {}),
@@ -5877,9 +5924,13 @@ function getDisplayName(item) {
       selectedMetricId: selected.metricId,
       selectedMetricUnit: selected.metricUnit,
       selectedBasis: selected.basis,
+      selectedHorizonId: selected.horizonId,
+      selectedHorizonSeconds: selected.horizonSeconds,
       observedMetricId: observed.metricId,
       observedMetricUnit: observed.metricUnit,
       observedBasis: observed.basis,
+      observedHorizonId: observed.horizonId,
+      observedHorizonSeconds: observed.horizonSeconds,
     };
     if (!sourceComparable || exactMatch) {
       return laboratoryDeepFreeze({
@@ -5899,6 +5950,8 @@ function getDisplayName(item) {
         metricId: null,
         basis: null,
         metricUnit: null,
+        horizonId: null,
+        horizonSeconds: null,
         commonValue: null,
         missingConversions: [
           ...((outcome?.comparability?.missingConversions || []).map((entry) => String(entry))),
@@ -5916,7 +5969,7 @@ function getDisplayName(item) {
           `comparison contract ${selectionStatus.toLowerCase()}: ${selectionReason}`,
         ],
       },
-      reconsiderCondition: `Reconsider when the outcome uses ${selected.metricId || "the selected metric"} in ${selected.metricUnit || "the selected unit"} on ${selected.basis || "the selected basis"}.`,
+      reconsiderCondition: `Reconsider when the outcome uses ${selected.metricId || "the selected metric"} in ${selected.metricUnit || "the selected unit"} on ${selected.basis || "the selected basis"} for ${selected.horizonId || "the selected horizon"}/${selected.horizonSeconds ?? "unknown"}s.`,
     });
   }
 
@@ -5956,6 +6009,8 @@ function getDisplayName(item) {
       metricId: String(snapshot.selectedComparisonMetricId || "").trim() || null,
       metricUnit: String(snapshot.selectedComparisonMetricUnit || "").trim() || null,
       basis: String(snapshot.selectedComparisonBasis || "").trim() || null,
+      horizonId: String(snapshot.horizonId || "").trim() || null,
+      horizonSeconds: sixDomainHasFiniteMetric(snapshot.horizonSeconds) ? Number(snapshot.horizonSeconds) : null,
     };
     const domainOutcomes = [
       adaptPurchaseDomainOutcome("MEAT", purchaseRowByDomain.MEAT, sharedContext),
@@ -6417,13 +6472,15 @@ function getDisplayName(item) {
     });
   }
 
-  function captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction) {
+  function captureEnergyAbilityTimingSnapshot(game, smartFocus, selectedMainAction, decisionHorizon = null) {
     // 9.3.4: read the module-level Clone Ramp state directly rather than
     // threading it through every call site, so all callers of this
     // function (the main strategy-inspector snapshot, the energy support
     // broker's own snapshot, and the M6 pre-execution snapshot) see the
     // same Clone Ramp awareness.
     const cloneRampInfo = cloneRampState || null;
+    const horizonId = String(decisionHorizon?.horizonId || "medium");
+    const horizonSeconds = Math.max(1, Number(decisionHorizon?.horizonSeconds || 300));
     const warnings = [];
     const formulaStatuses = [];
     const army = buildLaboratoryArmySnapshot(game, warnings, formulaStatuses);
@@ -6458,7 +6515,7 @@ function getDisplayName(item) {
     };
     const ratioAgainstHorizon = (gain, resourceKey) => {
       const bankBaseline = current[resourceKey] || newDecimal(0);
-      const horizonBaseline = (rates[resourceKey] || newDecimal(0)).times(300);
+      const horizonBaseline = (rates[resourceKey] || newDecimal(0)).times(horizonSeconds);
       let baseline = bankBaseline.greaterThan(horizonBaseline) ? bankBaseline : horizonBaseline;
       if (baseline.lessThan(1)) baseline = newDecimal(1);
       return decimalToNumber(decimalFrom(gain || 0).dividedBy(baseline), 0);
@@ -6469,9 +6526,15 @@ function getDisplayName(item) {
     const rawMirrorGain = mirrorAfter.minus(mirrorBefore);
     const mirrorGain = rawMirrorGain.greaterThan(0) ? rawMirrorGain : newDecimal(0);
     const mirrorBaseline = mirrorBefore.greaterThan(1) ? mirrorBefore : newDecimal(1);
-    const expansionEtaBeforeSeconds = Number.isFinite(Number(engine?.expansionEta)) && Number(engine.expansionEta) >= 0
-      ? Number(engine.expansionEta)
-      : null;
+    // House of Mirrors and WAIT must use the same source-derived Expansion
+    // ETA baseline. The direct territory-bank/rate calculation below is also
+    // what the Territory purchase scorer uses; falling back to the engine
+    // estimate is only necessary when that exact shared metric is unavailable.
+    const expansionEtaBeforeSeconds = Number.isFinite(expansionEtaFromTerritory)
+      ? expansionEtaFromTerritory
+      : (Number.isFinite(Number(engine?.expansionEta)) && Number(engine.expansionEta) >= 0
+        ? Number(engine.expansionEta)
+        : null);
     const expansionEtaAfterSeconds = expansionEtaBeforeSeconds !== null
       && mirrorBefore.greaterThan(0)
       && mirrorAfter.greaterThan(0)
@@ -6530,8 +6593,6 @@ function getDisplayName(item) {
     const reserveSeconds = Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0));
     const snapshotId = `M4-LIVE-${Number(scenarioHarnessContext.evaluationRevision || 0) + 1}`;
     const decisionCycleId = `cycle-${Number(scenarioHarnessContext.evaluationRevision || 0) + 1}`;
-    const horizonId = "medium";
-    const horizonSeconds = 300;
     return laboratoryDeepFreeze({
       snapshotId,
       snapshotHash: `sha256:${snapshotId}`,
@@ -8686,6 +8747,10 @@ function getDisplayName(item) {
           abilityPrepPlannerState = null;
           postNexusEnergyPlannerState = null;
           territoryPrepPlannerState = null;
+          unifiedPurchaseProposalState = null;
+          wholeEconomyExecutionDecisionState = null;
+          sixDomainStrategicCoordinatorState = null;
+          sixDomainExecutionPlanState = null;
           // 9.3.4: unlike smartRunOnce, this harness previously never reset
           // laneCoordinatorState between cycles/scenarios. In advisor-only
           // harness mode no real buy ever repopulates it, so without this
@@ -8723,6 +8788,12 @@ function getDisplayName(item) {
           safe(`Scenario ${scenarioId} unlock`, () => runUnlockPlanner(game, commands, protectedResources));
           safe(`Scenario ${scenarioId} units`, () => buySmartUnits(game, commands, engine, protectedResources, Math.max(1, remainingActions)));
           runAbilityPrepPlanner(game);
+
+          // The Laboratory harness must not borrow a proposal or M6 result
+          // from the page's preceding live cycle. Rebuild the same production
+          // proposal snapshot that smartRunOnce uses, against this cycle's
+          // deterministic override state, before constructing Inspector/M6.
+          unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
 
           strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, [], 0, 0, Math.max(1, Number(config.smartMaxActionsPerRun || 1)));
 
@@ -20272,7 +20343,10 @@ function getDisplayName(item) {
       target: preExecutionWinner.target,
       reason: preExecutionWinner.reason,
     } : null;
-    const m6AbilityAdvisor = evaluateEnergyAbilityTimingSnapshot(captureEnergyAbilityTimingSnapshot(game, smartFocus, preExecutionMainAction));
+    const m6DecisionHorizon = sixDomainHorizonById("medium");
+    const m6AbilityAdvisor = evaluateEnergyAbilityTimingSnapshot(
+      captureEnergyAbilityTimingSnapshot(game, smartFocus, preExecutionMainAction, m6DecisionHorizon)
+    );
     const m6AscensionAdvisor = evaluateAscensionMutagenSnapshot(captureAscensionMutagenSnapshot(game, {
       smartFocus,
       selectedMainAction: preExecutionMainAction,
