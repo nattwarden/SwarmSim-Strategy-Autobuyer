@@ -16,19 +16,21 @@
 // economically-saturated (evaluated, both ratios <1% of their requirement),
 // buyable (a real BUY happened).
 //
-// The real-save cases below are derived from the same pinned save
-// (docs/test-data/strategy-audit-0/default-user-save/save.txt) via the
+// The real-save cases below are derived from the tracked, hash-pinned reported
+// save (docs/test-data/clone-ramp/live-user-save.txt) via the
 // game's own real `_setCount` API - the same real-count-seeding mechanism
 // already used by scripts/strategy-audit-testbed-core.js and
 // scripts/check-live-purchase-acceptance.js - not a synthetic scenario.
 
 const fs = require("fs");
+const crypto = require("crypto");
 const path = require("path");
 const { chromium } = require("playwright");
 
 const root = path.resolve(__dirname, "..");
 const userscript = fs.readFileSync(path.join(root, "src", "SwarmSim-Strategy-Autobuyer.user.js"), "utf8");
-const savePath = path.join(root, "docs", "test-data", "strategy-audit-0", "default-user-save", "save.txt");
+const savePath = path.join(root, "docs", "test-data", "clone-ramp", "live-user-save.txt");
+const EXPECTED_SAVE_SHA256 = "58933a235c0a442e8f6bfcafd5f01a9f97fa2a61a410507692f5d19437a9f5ec";
 
 const TERRITORY_ARMY_UNIT_NAMES = [
   "swarmling", "stinger", "spider", "mosquito", "locust",
@@ -39,6 +41,13 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function readPinnedSave() {
+  const bytes = fs.readFileSync(savePath);
+  const actualSha256 = crypto.createHash("sha256").update(bytes).digest("hex");
+  assert(actualSha256 === EXPECTED_SAVE_SHA256, `pinned Territory fixture hash mismatch: expected ${EXPECTED_SAVE_SHA256}, got ${actualSha256}`);
+  return bytes.toString("utf8").trim();
+}
+
 async function openSave() {
   const browser = await chromium.launch({ headless: true, channel: "chrome" });
   const page = await browser.newPage();
@@ -47,7 +56,7 @@ async function openSave() {
   await page.addScriptTag({ content: userscript });
   await page.waitForFunction(() => !!window.kbcSwarmBot && !!window.angular, { timeout: 90000 });
 
-  const save = fs.readFileSync(savePath, "utf8").trim();
+  const save = readPinnedSave();
   const imported = await page.evaluate((s) => {
     const game = window.angular.element(document.body).injector().get("game");
     try {

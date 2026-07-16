@@ -1,7 +1,19 @@
 #!/usr/bin/env node
 "use strict";
 
+const fs = require("fs");
+const path = require("path");
 const { runMode } = require("./strategy-audit-testbed-core");
+
+const executionsToClean = [];
+
+function cleanupExecutionArtifacts(execution) {
+  const candidatePaths = [execution?.resultJsonPath, execution?.resultMdPath].filter(Boolean);
+  const dirs = new Set(candidatePaths.map((candidatePath) => path.dirname(candidatePath)));
+  for (const dir of dirs) {
+    if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -28,6 +40,7 @@ async function runScenarioA() {
     "--keep-open", "false",
     "--leave-open-on-failure", "false",
   ]);
+  executionsToClean.push(...(Array.isArray(outcome?.executions) ? outcome.executions : []));
 
   assert(outcome?.exitCode === 0, `Scenario A: strategy audit live failed with exit code ${outcome?.exitCode}`);
 
@@ -119,6 +132,7 @@ async function runScenarioB() {
     "--keep-open", "false",
     "--leave-open-on-failure", "false",
   ]);
+  executionsToClean.push(...(Array.isArray(outcome?.executions) ? outcome.executions : []));
 
   assert(outcome?.exitCode === 0, `Scenario B: strategy audit live failed with exit code ${outcome?.exitCode}`);
 
@@ -206,4 +220,6 @@ async function main() {
 main().catch((error) => {
   console.error(error?.stack || error?.message || String(error));
   process.exit(1);
+}).finally(() => {
+  executionsToClean.forEach(cleanupExecutionArtifacts);
 });

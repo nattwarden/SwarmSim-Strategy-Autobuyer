@@ -10,10 +10,12 @@ Goal: find the smallest reproducible change where Territory can beat Meat in the
 
 Default user-save anchor (fixed for now):
 
-- path: `docs/test-data/strategy-audit-0/default-user-save/save.txt`
+- path: `docs/test-data/clone-ramp/live-user-save.txt`
 - verification command: `npm run strategy:audit:default-save:check`
 
-This default save is intentionally pinned for now (no save-switching workflow required).
+This player-reported save is intentionally pinned by SHA-256 for now (no
+save-switching workflow required). Its provenance and shared verifier use are
+recorded in `docs/test-data/clone-ramp/README.md`.
 
 For normal iterative tuning, run these in order:
 

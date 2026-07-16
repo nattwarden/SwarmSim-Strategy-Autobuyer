@@ -1,16 +1,24 @@
 const fs = require("fs");
+const crypto = require("crypto");
 const path = require("path");
 const { chromium } = require("playwright");
 
 const ROOT = path.resolve(__dirname, "..");
-const DEFAULT_SAVE_PATH = path.join(ROOT, "docs", "test-data", "strategy-audit-0", "default-user-save", "save.txt");
+const DEFAULT_SAVE_PATH = path.join(ROOT, "docs", "test-data", "clone-ramp", "live-user-save.txt");
+const EXPECTED_SAVE_SHA256 = "58933a235c0a442e8f6bfcafd5f01a9f97fa2a61a410507692f5d19437a9f5ec";
 
 async function main() {
   if (!fs.existsSync(DEFAULT_SAVE_PATH)) {
     throw new Error(`Default user save not found: ${DEFAULT_SAVE_PATH}`);
   }
 
-  const save = fs.readFileSync(DEFAULT_SAVE_PATH, "utf8").trim();
+  const bytes = fs.readFileSync(DEFAULT_SAVE_PATH);
+  const actualSha256 = crypto.createHash("sha256").update(bytes).digest("hex");
+  if (actualSha256 !== EXPECTED_SAVE_SHA256) {
+    throw new Error(`Default user save hash mismatch: expected ${EXPECTED_SAVE_SHA256}, got ${actualSha256}`);
+  }
+
+  const save = bytes.toString("utf8").trim();
   if (!save.startsWith("MS4xLjE3|")) {
     throw new Error("Default save has unexpected format (missing MS4xLjE3| prefix).");
   }
