@@ -100,12 +100,40 @@ Phase 2 slice 3 - stale authorization - is complete:
 - ranking, fingerprints, amount semantics, purchase functions, action budgets,
   safety defaults and legacy execution ownership were intentionally unchanged.
 
-Current work package: Phase 2 slice 4 - four-value amount contract. The next
-change may distinguish selected, requested, revalidated and executed amount
-observations across the existing bounded purchase path, but must not change
-amount calculation, widen eligibility, alter safety gates or enable global
-execution ownership. The rejected feature branch remains research material
-only and must not be used as an implementation base.
+Phase 2 slice 4 - four-value amount contract - is complete:
+
+- implementation SHA: `46961aed6c9e3d728fd1587df16dc6e83cd54824`;
+- implementation tree: `8b410d9de72df77f5b0bda7f4f6fcf6104ee3d87`;
+- evidence SHA: `05a67972160fd4b37796f2c60d46b264b1e94a5a`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-46961ae.md`;
+- the bounded purchase boundary now keeps authorized requested amount,
+  command requested amount, strongest confirmed purchased amount and raw
+  observed count delta separate as exact Decimal strings;
+- the production path has no clamp: authorized and command amounts must be
+  equal or execution fails closed as `AMOUNT_CONTRACT_VIOLATION`;
+- unit count delta remains supporting evidence because passive production can
+  contaminate it; a unit amount is confirmed only with command success and
+  strict cost-resource consumption, otherwise confirmation honestly remains
+  `0` with an explicit basis;
+- Inspector, the audit testbed and live-purchase acceptance expose and check
+  the contract without changing the legacy ledger's existing observed-delta
+  compatibility;
+- two mutation controls prove that command mismatch and count-delta/
+  purchased-amount conflation are detected;
+- the detached exact-SHA worktree passed guardrails, canonical build, the full
+  configured suite and both mutation controls, ending with status count `0`;
+- ranking, amount calculation, eligibility, action budgets, safety defaults,
+  supported keys and legacy execution ownership were intentionally unchanged.
+
+Phase 2 clean-room safety reconstruction is complete. Current work package:
+Phase 3 - global execution-ownership readiness audit, read-only first. Do not
+enable M6 as the sole owner while only Territory supplies its comparable
+milestone-ETA metric, advisor-only outcomes remain in the six-domain result,
+or legacy paths are still required for safe normal progression. Establish a
+versioned acceptance matrix for domain comparability, exact execution, WAIT
+behavior and legacy coverage before any ownership implementation. The rejected
+feature branch remains research material only and must not be used as a base.
 
 ## Current status snapshot (2026-07-15)
 
