@@ -103,6 +103,16 @@
   };
 
   const MAIN_CYCLE_COVERAGE_LEDGER_SCHEMA_VERSION = "main-cycle-coverage-ledger.v1";
+  const MAIN_CYCLE_APPLICABILITY_EVIDENCE_SCHEMA_VERSION = "main-cycle-applicability-evidence.v1";
+  const MAIN_CYCLE_ALLOWED_DISPOSITIONS = [
+    "EXECUTED",
+    "EVALUATED_ACTIONABLE",
+    "EVALUATED_BLOCKED",
+    "NOT_APPLICABLE",
+    "SKIPPED_BUDGET",
+    "SKIPPED_EXACT_M6_EXECUTION",
+    "SKIPPED_GLOBAL_M6_OWNERSHIP",
+  ];
   const MAIN_CYCLE_COVERAGE_PATHS = [
     { pathId: "LARVA_ENGINE_GUARD", sourceCall: "executeEngineGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["LARVA_ENGINE"], cycleApplicabilityEvidence: "MISSING" },
     { pathId: "CRITICAL_PRODUCTION_UPGRADES", sourceCall: "handleCriticalProductionUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING" },
@@ -3619,6 +3629,7 @@ function getDisplayName(item) {
       strategicCoordinatorAlternatives: strategicCoordinator?.importantAlternatives || [],
       strategicCoordinatorSharedResourceConflicts: strategicCoordinator?.sharedResourceConflicts || [],
       strategicCoordinatorCoverage: strategicCoordinator?.coverage || [],
+      mainCycleCoverage: strategicCoordinator?.mainCycleCoverage || buildMainCycleCoverageLedger(),
       strategicCoordinatorManifest: strategicCoordinator?.manifest || SIX_DOMAIN_MANIFEST,
       strategicCoordinatorExecutionPlan,
       strategicCalibration: strategicCoordinator?.strategicCalibration || null,
@@ -5819,8 +5830,33 @@ function getDisplayName(item) {
     return `${snapshotId}:${String(fallbackActionId || "action")}`;
   }
 
-  function buildMainCycleCoverageLedger() {
-    const paths = laboratoryCloneJson(MAIN_CYCLE_COVERAGE_PATHS);
+  function buildMainCycleCoverageLedger(cycleEvidence = null, expectedContext = {}) {
+    const rawDispositions = Array.isArray(cycleEvidence?.dispositions) ? cycleEvidence.dispositions : [];
+    const expectedPathIds = MAIN_CYCLE_COVERAGE_PATHS.map((path) => path.pathId);
+    const observedPathIds = rawDispositions.map((row) => String(row?.pathId || ""));
+    const uniqueObservedPathIds = new Set(observedPathIds);
+    const evidenceContextMatches = !!cycleEvidence
+      && cycleEvidence.schemaVersion === MAIN_CYCLE_APPLICABILITY_EVIDENCE_SCHEMA_VERSION
+      && String(cycleEvidence.snapshotId || "") === String(expectedContext.snapshotId || "")
+      && String(cycleEvidence.decisionCycleId || "") === String(expectedContext.decisionCycleId || "");
+    const dispositionIdentityComplete = rawDispositions.length === expectedPathIds.length
+      && uniqueObservedPathIds.size === expectedPathIds.length
+      && expectedPathIds.every((pathId) => uniqueObservedPathIds.has(pathId))
+      && observedPathIds.every((pathId) => expectedPathIds.includes(pathId));
+    const dispositionsValid = rawDispositions.every((row) => MAIN_CYCLE_ALLOWED_DISPOSITIONS.includes(String(row?.disposition || "")));
+    const dispositionsGrounded = rawDispositions.every((row) => row?.disposition !== "SKIPPED_GLOBAL_M6_OWNERSHIP");
+    const sameCycleEvidenceProven = evidenceContextMatches && dispositionIdentityComplete && dispositionsValid && dispositionsGrounded;
+    const dispositionByPathId = sameCycleEvidenceProven
+      ? new Map(rawDispositions.map((row) => [row.pathId, laboratoryCloneJson(row)]))
+      : new Map();
+    const paths = laboratoryCloneJson(MAIN_CYCLE_COVERAGE_PATHS).map((path) => {
+      const cycleDisposition = dispositionByPathId.get(path.pathId) || null;
+      return {
+        ...path,
+        cycleApplicabilityEvidence: cycleDisposition ? "PROVEN" : "MISSING",
+        cycleDisposition,
+      };
+    });
     const uncoveredPaths = paths.filter((path) => path.m6Coverage !== "COMPLETE");
     const missingCycleEvidencePaths = paths.filter((path) => path.cycleApplicabilityEvidence !== "PROVEN");
     const wholeCycleOwnershipEligible = uncoveredPaths.length === 0 && missingCycleEvidencePaths.length === 0;
@@ -5830,6 +5866,13 @@ function getDisplayName(item) {
       requiredPathCount: paths.length,
       completeM6PathCount: paths.length - uncoveredPaths.length,
       retainedLegacyPathCount: paths.filter((path) => path.currentOwner === "LEGACY_SMART").length,
+      cycleEvidence: {
+        schemaVersion: MAIN_CYCLE_APPLICABILITY_EVIDENCE_SCHEMA_VERSION,
+        status: sameCycleEvidenceProven ? "PROVEN" : "MISSING",
+        snapshotId: sameCycleEvidenceProven ? cycleEvidence.snapshotId : null,
+        decisionCycleId: sameCycleEvidenceProven ? cycleEvidence.decisionCycleId : null,
+        dispositionCount: sameCycleEvidenceProven ? rawDispositions.length : 0,
+      },
       paths,
       waitPrecondition: {
         status: wholeCycleOwnershipEligible ? "PASS" : "FAIL",
@@ -20361,6 +20404,63 @@ function getDisplayName(item) {
       return mainActions < maxActions;
     }
 
+    const mainCycleDispositionRows = [];
+
+    function beginMainCyclePathProbe() {
+      return {
+        mainActionLedgerCount: mainActionLedger.length,
+        sideActions,
+        laneCandidateCount: laneCandidates.length,
+      };
+    }
+
+    function recordMainCyclePathDisposition(pathId, disposition, reason, details = {}) {
+      mainCycleDispositionRows.push({
+        pathId,
+        disposition,
+        reason: String(reason || "none"),
+        evaluated: !String(disposition).startsWith("SKIPPED_"),
+        observedCandidateDecisions: Array.isArray(details.observedCandidateDecisions) ? details.observedCandidateDecisions : [],
+        executedMainActionCount: Math.max(0, Number(details.executedMainActionCount || 0)),
+        sideActionDelta: Math.max(0, Number(details.sideActionDelta || 0)),
+      });
+    }
+
+    function recordEvaluatedMainCyclePath(pathId, result, probe, fallbackReason) {
+      const candidates = laneCandidates.slice(probe.laneCandidateCount);
+      const executedMainActionCount = Math.max(0, mainActionLedger.length - probe.mainActionLedgerCount);
+      const sideActionDelta = Math.max(0, sideActions - probe.sideActions);
+      const candidateDecisions = candidates.map((candidate) => String(candidate?.decision || "UNKNOWN"));
+      const numericResult = typeof result === "number" ? result : Number(result?.bought || 0);
+      const resultReason = String(
+        result?.reason
+        || result?.summary
+        || result?.whyNoFollowUpAction
+        || candidates.find((candidate) => candidate?.reason)?.reason
+        || fallbackReason
+        || "none"
+      );
+      let disposition = "NOT_APPLICABLE";
+      if (executedMainActionCount > 0 || sideActionDelta > 0 || (!config.advisorOnly && Number.isFinite(numericResult) && numericResult > 0)) {
+        disposition = "EXECUTED";
+      } else if (result === "paused-ascension") {
+        disposition = "EVALUATED_BLOCKED";
+      } else if (result?.actionTaken === true || candidateDecisions.some((decision) => ["BUY", "SIDE", "PLAN", "NEXT"].includes(decision))) {
+        disposition = "EVALUATED_ACTIONABLE";
+      } else if (
+        candidateDecisions.some((decision) => ["HOLD", "BLOCKED"].includes(decision))
+        || (Array.isArray(result?.blockers) && result.blockers.length > 0)
+        || /block|protect|reserve|insufficient|not buyable|threshold|payback|locked|paused|no safe|wait/i.test(resultReason)
+      ) {
+        disposition = "EVALUATED_BLOCKED";
+      }
+      recordMainCyclePathDisposition(pathId, disposition, resultReason, {
+        observedCandidateDecisions: candidateDecisions,
+        executedMainActionCount,
+        sideActionDelta,
+      });
+    }
+
     if (tryAutoAscend(game, commands)) {
       refreshUi();
       refreshPanel();
@@ -20516,52 +20616,97 @@ function getDisplayName(item) {
 
     // main-cycle-coverage: LARVA_ENGINE_GUARD
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "engine") {
+      const pathProbe = beginMainCyclePathProbe();
       const engineAction = executeEngineGuardAction({ game, commands, engine });
       addMainResult("Larva engine", engineAction);
+      recordEvaluatedMainCyclePath("LARVA_ENGINE_GUARD", engineAction, pathProbe, "Larva Engine guard had no applicable action.");
 
       if (engineAction.actionTaken) {
         engine = analyzeLarvaEngine(game);
         protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
       }
+    } else if (m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("LARVA_ENGINE_GUARD", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed the legacy Engine guard");
+    } else if (coordinatorExecutedKey === "engine") {
+      recordMainCyclePathDisposition("LARVA_ENGINE_GUARD", "SKIPPED_EXACT_M6_EXECUTION", "the exact M6 Engine winner already executed");
+    } else {
+      recordMainCyclePathDisposition("LARVA_ENGINE_GUARD", "SKIPPED_BUDGET", "main-action budget exhausted before the Engine guard");
     }
 
     // main-cycle-coverage: CRITICAL_PRODUCTION_UPGRADES
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
+      const pathProbe = beginMainCyclePathProbe();
       const criticalUpgradeAction = handleCriticalProductionUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions));
       addMainResult("Critical upgrades", criticalUpgradeAction);
+      recordEvaluatedMainCyclePath("CRITICAL_PRODUCTION_UPGRADES", criticalUpgradeAction, pathProbe, "No critical production upgrade was applicable.");
+    } else if (m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("CRITICAL_PRODUCTION_UPGRADES", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed critical production upgrades");
+    } else {
+      recordMainCyclePathDisposition("CRITICAL_PRODUCTION_UPGRADES", "SKIPPED_BUDGET", "main-action budget exhausted before critical production upgrades");
     }
 
     // main-cycle-coverage: ENERGY_GUARD
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "energy") {
+      const pathProbe = beginMainCyclePathProbe();
       const energyAction = executeEnergyGuardAction({ game, commands, protectedResources });
       addMainResult("Energy", energyAction);
+      recordEvaluatedMainCyclePath("ENERGY_GUARD", energyAction, pathProbe, "Energy guard had no applicable action.");
+    } else if (m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("ENERGY_GUARD", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed the legacy Energy guard");
+    } else if (coordinatorExecutedKey === "energy") {
+      recordMainCyclePathDisposition("ENERGY_GUARD", "SKIPPED_EXACT_M6_EXECUTION", "the exact M6 Energy winner already executed");
+    } else {
+      recordMainCyclePathDisposition("ENERGY_GUARD", "SKIPPED_BUDGET", "main-action budget exhausted before the Energy guard");
     }
 
     // main-cycle-coverage: CLONE_RAMP
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
+      const pathProbe = beginMainCyclePathProbe();
       const cloneRampAction = executeCloneRampGuardAction({ game, commands, protectedResources });
       addMainResult("Clone Ramp", cloneRampAction);
+      recordEvaluatedMainCyclePath("CLONE_RAMP", cloneRampAction, pathProbe, "Clone Ramp was not applicable.");
+    } else if (m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("CLONE_RAMP", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed Clone Ramp");
+    } else {
+      recordMainCyclePathDisposition("CLONE_RAMP", "SKIPPED_BUDGET", "main-action budget exhausted before Clone Ramp");
     }
 
     // main-cycle-coverage: CLONE_BUFFER
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
+      const pathProbe = beginMainCyclePathProbe();
       const cloneBufferAction = executeCloneGuardAction({ game, commands });
       if (Number(cloneBufferAction?.bought || 0) > 0) {
         recordMainAction("Clone Prep", cloneBufferAction.boughtCandidate, cloneBufferAction.reason, cloneBufferAction.buyNum, cloneBufferAction.executedDelta);
       }
       addMainResult("Clone buffer", cloneBufferAction);
+      recordEvaluatedMainCyclePath("CLONE_BUFFER", cloneBufferAction, pathProbe, "Clone Buffer was not applicable.");
     // main-cycle-coverage: CLONE_BUFFER_HARD_LOCK_RECOVERY
+      recordMainCyclePathDisposition("CLONE_BUFFER_HARD_LOCK_RECOVERY", "NOT_APPLICABLE", "normal Clone Buffer path was evaluated with main-action budget available");
     } else if (!m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("CLONE_BUFFER", "SKIPPED_BUDGET", "main-action budget exhausted before normal Clone Buffer evaluation");
       // Hard-lock clone-buffer recovery runs even with zero remaining
       // budget (unchanged pre-existing behavior); it is intentionally not
       // counted toward mainActions or the action ledger in that case.
-      executeCloneGuardAction({ game, commands });
+      const pathProbe = beginMainCyclePathProbe();
+      const cloneRecoveryAction = executeCloneGuardAction({ game, commands });
+      recordEvaluatedMainCyclePath("CLONE_BUFFER_HARD_LOCK_RECOVERY", cloneRecoveryAction, pathProbe, "Clone Buffer hard-lock recovery was not applicable.");
+    } else {
+      recordMainCyclePathDisposition("CLONE_BUFFER", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed normal Clone Buffer evaluation");
+      recordMainCyclePathDisposition("CLONE_BUFFER_HARD_LOCK_RECOVERY", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed zero-budget Clone Buffer recovery");
     }
 
     // main-cycle-coverage: MEAT_UNLOCK_PLANNER
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "meat") {
+      const pathProbe = beginMainCyclePathProbe();
       const unlockAction = runUnlockPlanner(game, commands, protectedResources);
       addMainResult("Unlock planner", unlockAction);
+      recordEvaluatedMainCyclePath("MEAT_UNLOCK_PLANNER", unlockAction, pathProbe, "Meat unlock planner had no applicable action.");
+    } else if (m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("MEAT_UNLOCK_PLANNER", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed the Meat unlock planner");
+    } else if (coordinatorExecutedKey === "meat") {
+      recordMainCyclePathDisposition("MEAT_UNLOCK_PLANNER", "SKIPPED_EXACT_M6_EXECUTION", "the exact M6 Meat winner already executed");
+    } else {
+      recordMainCyclePathDisposition("MEAT_UNLOCK_PLANNER", "SKIPPED_BUDGET", "main-action budget exhausted before the Meat unlock planner");
     }
 
     if (protectedResources.has("territory")) {
@@ -20612,15 +20757,24 @@ function getDisplayName(item) {
 
     // main-cycle-coverage: SMART_UPGRADES
     if (!m6DecisionOwnsMainCycle && config.buyUpgrades && canDoMoreMainActions()) {
+      const pathProbe = beginMainCyclePathProbe();
       upgrades = safe("Smart upgrades", () => buySmartUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions))) || 0;
       if (upgrades > 0) {
         mainActions += upgrades;
         summaries.push(`${upgrades} upgrade(s)`);
       }
+      recordEvaluatedMainCyclePath("SMART_UPGRADES", upgrades, pathProbe, "No generic Smart upgrade was applicable.");
+    } else if (m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("SMART_UPGRADES", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed generic Smart upgrades");
+    } else if (!config.buyUpgrades) {
+      recordMainCyclePathDisposition("SMART_UPGRADES", "NOT_APPLICABLE", "generic Smart upgrades are disabled by configuration");
+    } else {
+      recordMainCyclePathDisposition("SMART_UPGRADES", "SKIPPED_BUDGET", "main-action budget exhausted before generic Smart upgrades");
     }
 
     // main-cycle-coverage: SMART_UNITS
     if (!m6DecisionOwnsMainCycle && config.buyUnits && canDoMoreMainActions()) {
+      const pathProbe = beginMainCyclePathProbe();
       units = safe("Smart units", () => buySmartUnits(
         game,
         commands,
@@ -20635,13 +20789,26 @@ function getDisplayName(item) {
         mainActions += units;
         summaries.push(`${units} unit buy`);
       }
+      recordEvaluatedMainCyclePath("SMART_UNITS", units, pathProbe, "No generic Smart unit was applicable.");
+    } else if (m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("SMART_UNITS", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed generic Smart units");
+    } else if (!config.buyUnits) {
+      recordMainCyclePathDisposition("SMART_UNITS", "NOT_APPLICABLE", "generic Smart units are disabled by configuration");
+    } else {
+      recordMainCyclePathDisposition("SMART_UNITS", "SKIPPED_BUDGET", "main-action budget exhausted before generic Smart units");
     }
 
     // Clone prep runs last as a side task. It may cocoon a small chunk, but it must
     // not prevent upgrades, Nexus, lepidoptera or normal unit decisions in the same run.
     // main-cycle-coverage: FINAL_CLONE_PREP
-    const clonePrep = m6DecisionOwnsMainCycle ? null : manageCloneCocoons(game, commands);
-    addSideResult("Clone prep", clonePrep);
+    if (!m6DecisionOwnsMainCycle) {
+      const pathProbe = beginMainCyclePathProbe();
+      const clonePrep = manageCloneCocoons(game, commands);
+      addSideResult("Clone prep", clonePrep);
+      recordEvaluatedMainCyclePath("FINAL_CLONE_PREP", clonePrep, pathProbe, "Final Clone Prep was not applicable.");
+    } else {
+      recordMainCyclePathDisposition("FINAL_CLONE_PREP", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed final Clone Prep");
+    }
 
     runAbilityPrepPlanner(game);
 
@@ -20653,6 +20820,20 @@ function getDisplayName(item) {
     if (mainActions > maxActions) {
       warn(`action-budget contract violated: mainActions=${mainActions} exceeds maxActions=${maxActions}`, mainActionLedger);
     }
+
+    const mainCycleApplicabilityEvidence = laboratoryDeepFreeze({
+      schemaVersion: MAIN_CYCLE_APPLICABILITY_EVIDENCE_SCHEMA_VERSION,
+      snapshotId: sixDomainStrategicCoordinatorState?.snapshotId || "unknown",
+      decisionCycleId: sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown",
+      dispositions: laboratoryCloneJson(mainCycleDispositionRows),
+    });
+    sixDomainStrategicCoordinatorState = laboratoryDeepFreeze({
+      ...laboratoryCloneJson(sixDomainStrategicCoordinatorState || {}),
+      mainCycleCoverage: buildMainCycleCoverageLedger(mainCycleApplicabilityEvidence, {
+        snapshotId: sixDomainStrategicCoordinatorState?.snapshotId || "unknown",
+        decisionCycleId: sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown",
+      }),
+    });
 
     strategyInspector = buildStrategyInspector(game, engine, protectedResources, smartFocus, summaries, mainActions, sideActions, maxActions);
     recordRunHistoryEntry(strategyInspector);
@@ -23819,7 +24000,7 @@ function getDisplayName(item) {
           return laboratoryCloneJson(strategyInspector?.strategicCoordinatorCoverage || strategyInspector?.strategicCoordinator?.coverage || []);
         },
         mainCycleCoverage() {
-          return laboratoryCloneJson(buildMainCycleCoverageLedger());
+          return laboratoryCloneJson(strategyInspector?.mainCycleCoverage || strategyInspector?.strategicCoordinator?.mainCycleCoverage || buildMainCycleCoverageLedger());
         },
         buildExecutionPlan(result = {}, purchaseProposalState = {}) {
           return laboratoryCloneJson(buildSixDomainExecutionPlan(result, purchaseProposalState));

@@ -2810,6 +2810,7 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
     row.coordinatorMatchedExecution = planner?.inspectorAfter?.coordinatorMatchedExecution || null;
     row.coordinatorExecutionResult = planner?.inspectorAfter?.coordinatorExecutionResult || null;
     row.purchaseProposalSnapshot = planner?.inspectorAfter?.purchaseProposalSnapshot || null;
+    row.mainCycleCoverage = planner?.inspectorAfter?.mainCycleCoverage || planner?.inspectorAfter?.strategicCoordinator?.mainCycleCoverage || null;
     row.territoryPrepCandidate = planner?.inspectorAfter?.territoryPrepCandidate || null;
     row.territoryPrepDecision = planner?.inspectorAfter?.territoryPrepDecision || null;
     row.territoryPrepReason = planner?.inspectorAfter?.territoryPrepReason || null;
