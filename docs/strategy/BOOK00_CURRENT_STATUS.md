@@ -282,11 +282,38 @@ complete:
   configured suite, default-save import, all three mutations and `git diff
   --check`, ending with status count `0`.
 
-Current work package: Phase 3 slice 7 - same-cycle legacy applicability
-evidence - is selected but not implemented. Record, for every ledger path in
-one real `smartRunOnce` cycle, whether it was evaluated and was actionable,
-blocked, not applicable, executed, or skipped after budget/exact-M6 execution.
-Do not mark any path `COMPLETE`, change comparison math, or toggle ownership.
+Phase 3 slice 7 - same-cycle legacy applicability evidence - is complete:
+
+- implementation SHA: `495513c660909cce9390af2a923256d8ecf52c23`;
+- implementation tree: `9aab4ca5d1ac5cef03d3b64793940bb17bf6ecca`;
+- evidence SHA: `04bdc78de4447d274dd2408f08e85520dac3cf98`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-495513c.md`;
+- the actual `smartRunOnce` cycle now records one snapshot/cycle-bound
+  disposition for each of the ten source-grounded paths;
+- a real legacy cycle proves the Smart Units path by an executed Drone
+  purchase, main-action ledger delta and unit-count delta; a real exact-M6
+  cycle proves the bounded `swarmling x3` purchase and the retained paths'
+  budget/not-applicable dispositions;
+- all ten paths now have `PROVEN` same-cycle applicability evidence, while
+  stale-cycle, missing-disposition and global-ownership mutations are
+  independently rejected;
+- `SKIPPED_GLOBAL_M6_OWNERSHIP` remains observable but cannot prove the
+  prerequisite, preventing circular ownership evidence;
+- zero paths have complete M6 execution coverage, so the WAIT precondition
+  remains `FAIL`, its authority remains `ADVISOR_ONLY`, and whole-cycle
+  ownership eligibility remains `false`;
+- the detached exact-SHA worktree passed canonical build, guardrails, the full
+  configured suite, default-save import, all three mutations and `git diff
+  --check`, ending with status count `0`.
+
+Current work package: Phase 3 slice 8 - critical production-upgrade proposal
+and accountability coverage - is selected but not implemented. Establish one
+truthful reversible-path boundary for the existing critical-upgrade callsite,
+including same-target proposal identity, bounded authorization and explicit
+accounting for execute/block/not-applicable outcomes. Do not invent an ETA
+conversion, widen upgrade eligibility, mark unrelated paths `COMPLETE`, or
+toggle whole-cycle ownership.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays

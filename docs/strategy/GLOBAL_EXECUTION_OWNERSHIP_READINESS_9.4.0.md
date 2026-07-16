@@ -292,6 +292,28 @@ that precondition and the prior global-ownership mutation are both rejected.
 Exact-SHA verification is recorded in
 `docs/test-data/9.4.0-clean-room/verification-230499b.md`.
 
+## Finding R9: same-cycle applicability was inferred, not observed - closed in slice 7
+
+The slice-6 ledger could prove that ten callsites existed, but every row still
+reported missing same-cycle evidence. Static source identity alone could not
+show whether a real path was evaluated, blocked, not applicable, executed, or
+skipped because the cycle budget had already been consumed.
+
+Slice 7 adds `main-cycle-applicability-evidence.v1` at the actual
+`smartRunOnce` callsites and binds every disposition to the coordinator's
+snapshot and cycle identities. A real legacy cycle grounds `SMART_UNITS` in a
+Drone count delta plus a main-action ledger delta; a real exact-M6 cycle
+grounds the bounded `swarmling x3` purchase and the retained paths' budget
+dispositions. Both cycles produce complete evidence for all ten paths.
+
+Missing-row and stale-cycle mutations fail closed. A global-ownership mutation
+also fails because `SKIPPED_GLOBAL_M6_OWNERSHIP` is observable but forbidden
+as proof of the prerequisite. This closes the applicability-evidence gap
+without manufacturing M6 coverage: complete M6 paths remain zero, WAIT remains
+advisor-only, and whole-cycle ownership eligibility remains false. Exact-SHA
+verification is recorded in
+`docs/test-data/9.4.0-clean-room/verification-495513c.md`.
+
 ## Readiness gates
 
 | Gate | Status | Reason |
@@ -305,7 +327,7 @@ Exact-SHA verification is recorded in
 | Exact candidate authorization and stale revalidation | PASS | Phase 2 clean-room contracts cover identity, stale context and amount. |
 | Exact supported purchase can execute | PASS, limited scope | M2/M3/live acceptance cover supported Meat/Engine/Territory/Energy examples. |
 | M6 covers critical upgrades, Clone paths and all normal Smart purchases | FAIL | Slice 6 binds ten real callsites to the ledger: zero are complete, four are partial and six have no M6 execution coverage. |
-| WAIT proves no safe normal purchase exists | FAIL | The explicit precondition fails because all ten paths lack complete coverage and same-cycle applicability evidence. |
+| WAIT proves no safe normal purchase exists | FAIL | Slice 7 proves same-cycle dispositions for all ten paths, but the explicit precondition still fails because complete M6 execution coverage remains zero of ten. |
 | Sole-owner live acceptance | FAIL by prior mutation | Reintroducing sole ownership previously produced no-buy behavior. |
 
 ## Completed slice 1
@@ -400,15 +422,29 @@ both ledger/source drift and a hardcoded WAIT pass. It records zero complete
 M6 paths and missing same-cycle evidence for all ten; it does not fabricate
 coverage from the four partial domain overlaps.
 
-## Work after slice 6
+## Completed slice 7
+
+Phase 3 slice 7 closes the runtime-observation half of the WAIT prerequisite:
+
+> Every retained path must report one disposition from the actual cycle, bound
+> to the exact snapshot and cycle identities. Suppression by global ownership
+> must never count as proof that suppression was safe.
+
+Acceptance exercises real legacy and exact-M6 purchases, requires ten unique
+dispositions, grounds execution in action and unit deltas, and rejects missing,
+stale and circular global-ownership evidence. It does not change scoring,
+proposal selection, action budgets, safety defaults or execution ownership.
+
+## Work after slice 7
 
 Continue with evidence, not an ownership toggle:
 
-1. record a same-cycle disposition for every ledger path: actionable, blocked,
-   not applicable, executed, or skipped after budget/exact M6 execution;
-2. bind each disposition to actual runtime evaluation rather than scenario
-   labels or static expectations;
-3. only after that evidence exists, close M6 proposal coverage path by path;
+1. close M6 proposal and accountability coverage one reversible path at a
+   time, starting with critical production upgrades;
+2. require exact proposal identity, bounded authorization and explicit
+   execute/block/not-applicable accounting before marking that path complete;
+3. do not invent milestone ETA conversions merely to make heterogeneous
+   actions rankable;
 4. keep advisor-only, irreversible and hard-safety actions outside bounded M6
    purchase authority and repeat exact-SHA verification after each slice.
 
