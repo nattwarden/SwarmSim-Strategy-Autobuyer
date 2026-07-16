@@ -174,12 +174,38 @@ Phase 3 slice 2 - active-target metric alignment - is complete:
 - ranking weights, bounded amounts, authorization, stale gates, action budget,
   hard safety defaults and legacy execution ownership were unchanged.
 
-Current work package: Phase 3 slice 3 - metric-basis integrity - is selected
-but not implemented. R5 remains open: aligned outcomes may still express ETA
-seconds, local completion delta `100`, or post-Nexus Energy production-gain
-percentages, and M2 can count Engine/Nexus completion through multiple score
-components. The next slice must fail closed across different metric bases and
-separately audit double counting before any new common-value conversion.
+Phase 3 slice 3 - metric-basis integrity - is complete:
+
+- implementation SHA: `19822e1e0eb2fe364d6393d9bfb0f19d1f8bd66c`;
+- implementation tree: `4c86f1f21fa71dde2b41f5cc6bcba7b2a81edff9`;
+- evidence SHA: `6ec3c9a6cb855eafa4c5d118faf6538fe3898091`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-19822e1.md`;
+- every M6 cycle now selects one complete `metricId` / `metricUnit` /
+  `metricBasis` contract, and only an exact match may remain `COMPARABLE`;
+- missing or mismatched contracts fail closed as `UNRANKED`; completion
+  percent cannot be ranked against ETA seconds even when both name the same
+  active target;
+- declared milestone-progress rows now count that progress delta once in M2,
+  without reusing the same completion event as ETA proximity, generic
+  progress, and unlock-text bonus; payback and reserve remain independent;
+- mutation controls independently remove the basis gate, double-count
+  isolation, and target gate, and all three are rejected for reproducing the
+  corresponding authority shortcut;
+- completion-only Expansion remains legacy Engine-owned, post-Nexus Energy
+  remains legacy-owned, and real Territory `swarmling x3` M6 execution remains
+  green;
+- the detached exact-SHA worktree passed canonical build, guardrails, the full
+  configured suite, all three mutation controls, and `git diff --check`, ending
+  with status count `0`;
+- bounded amounts, authorization, stale revalidation, action budget, hard
+  safety defaults and legacy execution ownership were unchanged.
+
+Current work package: Phase 3 slice 4 - honest same-contract product
+comparison - is selected but not implemented. Start from one real active
+milestone and add one real competing reversible action whose target, horizon,
+metric id, unit, and basis all match the already validated production source.
+Do not invent a common-value conversion and do not broaden M6 ownership.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
