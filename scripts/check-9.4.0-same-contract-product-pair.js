@@ -26,6 +26,12 @@ async function main() {
     userscript = userscript.replace(horizonGate, ";");
     assert(!horizonGate.test(userscript), "horizon-gate mutation did not apply");
   }
+  const scenarioAffordabilityGate = "if (!scenarioHarnessContext.active || !scenarioHarnessContext.overrides?.resourceCounts) {";
+  if (process.argv.includes("--mutate-harness-affordability")) {
+    assert(userscript.includes(scenarioAffordabilityGate), "missing scenario affordability isolation gate");
+    userscript = userscript.replace(scenarioAffordabilityGate, "if (true) {");
+    assert(!userscript.includes(scenarioAffordabilityGate), "scenario affordability mutation did not apply");
+  }
 
   const browser = await chromium.launch({ headless: true });
   try {
@@ -66,12 +72,13 @@ async function main() {
         if (!unit || typeof unit._setCount !== "function") {
           return { name, seeded: false, candidates: candidates.map((candidate) => ({ name: candidate?.name, suffix: candidate?.suffix })) };
         }
-        unit._setCount(new window.Decimal(100));
+        unit._setCount(new window.Decimal("1e15"));
         return { name, suffix: unit.suffix, seeded: true, count: String(unit.count()) };
       });
       return [...affected, ...preferredTiers];
     });
-    assert(seededArmy.every((row) => row.seeded && Number(row.count) > 0), `real army seeding failed: ${JSON.stringify(seededArmy)}`);
+    assert(seededArmy.every((row) => row.seeded), `real army seeding failed: ${JSON.stringify(seededArmy)}`);
+    assert(seededArmy.filter((row) => row.name).every((row) => Number(row.count) > 0), `preferred army tier seeding failed: ${JSON.stringify(seededArmy)}`);
 
     const report = await page.evaluate(() => {
       const bot = window.kbcSwarmBot;
@@ -168,8 +175,8 @@ async function main() {
           smartFocus: "territory",
           overrides: {
             resourceCounts: {
-              meat: 22000,
-              larva: 1500,
+              meat: 1e12,
+              larva: 1e6,
               cocoon: 300,
               territory: 0,
               energy: 1000000,
@@ -180,9 +187,9 @@ async function main() {
               energy: 100,
             },
             armyUnitCounts: {
-              "Stinger V": 100,
-              "Arachnomorph V": 100,
-              "Culicimorph V": 100,
+              "Stinger V": 1e15,
+              "Arachnomorph V": 1e15,
+              "Culicimorph V": 1e15,
             },
             abilities: {
               clonelarvae: { visible: false },
@@ -245,6 +252,16 @@ async function main() {
           executionAuthority: product?.executionAuthority === true,
           comparisonContract: product?.comparisonContract || null,
           territory: summarize(product?.domainOutcomes?.find((row) => row.domainId === "ARMY_TERRITORY")),
+          territoryDetails: (() => {
+            const outcome = product?.domainOutcomes?.find((row) => row.domainId === "ARMY_TERRITORY");
+            return {
+              reason: outcome?.reason || null,
+              amount: outcome?.action?.amount || null,
+              etaImprovementSeconds: outcome?.outcome?.milestoneEtaImprovementSeconds ?? null,
+              calibration: outcome?.calibration || null,
+              comparability: outcome?.comparability || null,
+            };
+          })(),
           ability: summarize(product?.domainOutcomes?.find((row) => row.domainId === "ENERGY_ABILITIES")),
           abilityDetails: (() => {
             const outcome = product?.domainOutcomes?.find((row) => row.domainId === "ENERGY_ABILITIES");
@@ -282,9 +299,14 @@ async function main() {
     assert(report.product.ability.actionId === "HOUSE_OF_MIRRORS" && report.product.ability.authorityClass === "ADVISOR_ONLY", `production ability row was not House of Mirrors advisor-only: ${JSON.stringify({ ability: report.product.ability, details: report.product.abilityDetails })}`);
     assert(report.product.ability.selectionStatus === "MATCHED" && report.product.ability.comparability === "COMPARABLE", `production House of Mirrors row did not match the contract: ${JSON.stringify({ ability: report.product.ability, details: report.product.abilityDetails })}`);
     assert(report.product.territory.horizonSeconds === 1800 && report.product.ability.horizonSeconds === 1800, "production pair did not share the exact 1800s horizon");
-    if (report.product.winnerAuthorityClass === "ADVISOR_ONLY") {
-      assert(report.product.executionAuthority === false, "advisor-only winner leaked execution authority");
-    }
+    assert(report.product.territoryDetails.amount === "1", `scenario resource overlay leaked live-save affordability: ${JSON.stringify(report.product.territoryDetails)}`);
+    assert(report.product.winner === "ENERGY_ABILITIES", `House of Mirrors did not win the honest same-contract state: ${JSON.stringify(report.product)}`);
+    assert(report.product.winnerAuthorityClass === "ADVISOR_ONLY", "House of Mirrors winner lost advisor-only classification");
+    assert(report.product.executionAuthority === false, "advisor-only winner leaked execution authority");
+    assert(
+      Number(report.product.abilityDetails.calibration.delta) > Number(report.product.territoryDetails.etaImprovementSeconds),
+      "reported advisor winner did not have the larger same-contract ETA improvement"
+    );
 
     console.log("9.4.0 SAME-CONTRACT PRODUCT PAIR ACCEPTANCE PASSED");
     console.log(JSON.stringify(report, null, 2));

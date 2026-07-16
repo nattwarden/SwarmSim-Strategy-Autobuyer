@@ -31,7 +31,7 @@ function assertNoAdvisorOnlyLeak(laneProposals, label) {
   assert(!leaked, `${label}: advisor-only domains (ability/ascension/mutagen) must remain non-executable`);
 }
 
-async function runScenarioA() {
+async function runScenarioA(userscriptContent = null) {
   const outcome = await runMode("live", [
     "--scenario", "book00-live-purchase-legacy",
     "--cycles", "1",
@@ -39,7 +39,7 @@ async function runScenarioA() {
     "--headed", "false",
     "--keep-open", "false",
     "--leave-open-on-failure", "false",
-  ]);
+  ], userscriptContent ? { userscriptContent } : {});
   executionsToClean.push(...(Array.isArray(outcome?.executions) ? outcome.executions : []));
 
   assert(outcome?.exitCode === 0, `Scenario A: strategy audit live failed with exit code ${outcome?.exitCode}`);
@@ -217,13 +217,28 @@ async function runScenarioB() {
 }
 
 async function main() {
-  const scenarioA = await runScenarioA();
+  const mutationRequested = process.argv.includes("--mutate-m6-cycle-ownership");
+  let userscriptContent = null;
+  if (mutationRequested) {
+    const userscriptPath = path.resolve(__dirname, "..", "src", "SwarmSim-Strategy-Autobuyer.user.js");
+    const source = fs.readFileSync(userscriptPath, "utf8");
+    const ownershipGate = "const m6DecisionOwnsMainCycle = false;";
+    assert(source.includes(ownershipGate), "mutation control could not find the M6 cycle-ownership gate");
+    userscriptContent = source.replace(ownershipGate, "const m6DecisionOwnsMainCycle = true;");
+    assert(!userscriptContent.includes(ownershipGate), "mutation control did not flip M6 cycle ownership");
+  }
+
+  const scenarioA = await runScenarioA(userscriptContent);
   console.log(
     `[check-live-purchase-acceptance] Scenario A (legacy) pass: candidate=${scenarioA.candidateKey}, `
       + `count ${scenarioA.countBefore}->${scenarioA.countAfter} (delta=${scenarioA.countDelta}), `
       + `meatDelta=${scenarioA.meatDelta.toFixed(3)}, larvaDelta=${scenarioA.larvaDelta.toFixed(3)}, `
       + `mainActions=${scenarioA.mainActions}, coordinatorExecutionAuthority=${scenarioA.coordinatorExecutionAuthority}`
   );
+
+  if (mutationRequested) {
+    throw new Error("mutation control unexpectedly preserved the legacy fallback purchase");
+  }
 
   const scenarioB = await runScenarioB();
   console.log(

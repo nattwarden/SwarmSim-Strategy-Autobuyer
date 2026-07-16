@@ -8774,8 +8774,14 @@ function getDisplayName(item) {
 
           let engine = analyzeLarvaEngine(game);
           const engineOverrides = scenarioHarnessContext.overrides?.engine || {};
-          if (Number.isFinite(engineOverrides.expansionEtaSeconds)) engine.expansionEta = engineOverrides.expansionEtaSeconds;
-          if (Number.isFinite(engineOverrides.hatcheryEtaSeconds)) engine.hatcheryEta = engineOverrides.hatcheryEtaSeconds;
+          if (Number.isFinite(engineOverrides.expansionEtaSeconds)) {
+            engine.expansionEta = engineOverrides.expansionEtaSeconds;
+            engine.expansionBuyable = engineOverrides.expansionEtaSeconds <= 0;
+          }
+          if (Number.isFinite(engineOverrides.hatcheryEtaSeconds)) {
+            engine.hatcheryEta = engineOverrides.hatcheryEtaSeconds;
+            engine.hatcheryBuyable = engineOverrides.hatcheryEtaSeconds <= 0;
+          }
 
           const protectedResources = mergeResourceSets(protectedResourcesFromEngine(engine), getEnergyProtectedResources(game));
           const smartFocus = scenario?.smartFocus || decideSmartFocus(engine);
@@ -15524,7 +15530,25 @@ function getDisplayName(item) {
   }
 
   function getExpansionArmySeedBuyNum(unit) {
-    const max = safe(`Expansion army seed max ${unit?.name}`, () => unit?.maxCostMet?.(config.unitBuyPercent)) || newDecimal(0);
+    const max = safe(`Expansion army seed max ${unit?.name}`, () => {
+      if (!scenarioHarnessContext.active || !scenarioHarnessContext.overrides?.resourceCounts) {
+        return decimalFrom(unit?.maxCostMet?.(config.unitBuyPercent) || 0);
+      }
+
+      // maxCostMet() closes over the live save's internal banks and cannot
+      // see deterministic resource overlays. Mixing that live affordability
+      // with overlay-based scoring creates a proposal from two different
+      // states, so harness mode proves only a conservative one-unit bound.
+      const resourceCounts = scenarioHarnessContext.overrides.resourceCounts;
+      const costs = (unit?.cost || []).filter((cost) => cost?.unit && isPositive(cost.val));
+      if (!costs.length) return newDecimal(0);
+      for (const cost of costs) {
+        const resourceId = String(cost.unit?.name || "").toLowerCase();
+        if (!Object.prototype.hasOwnProperty.call(resourceCounts, resourceId)) return newDecimal(0);
+        if (!decimalAtLeast(decimalFrom(resourceCounts[resourceId]), cost.val)) return newDecimal(0);
+      }
+      return newDecimal(1);
+    }) || newDecimal(0);
     if (!isPositive(max)) return newDecimal(0);
 
     const percent = clampNumber(config.expansionArmySeedMaxChunkPercent, 0.1, 25, DEFAULT_CONFIG.expansionArmySeedMaxChunkPercent);

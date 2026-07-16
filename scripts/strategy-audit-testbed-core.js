@@ -2610,7 +2610,7 @@ function assessCycle(row) {
   return { label: "GOOD", reason: "planner produced decision and cycle transition was observable" };
 }
 
-async function openGameContext(browser, cli, artifactDir) {
+async function openGameContext(browser, cli, artifactDir, userscriptContent = null) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 960 },
     locale: "en-US",
@@ -2627,7 +2627,7 @@ async function openGameContext(browser, cli, artifactDir) {
   await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.evaluate(() => localStorage.clear());
 
-  const userscript = fs.readFileSync(USERSCRIPT_PATH, "utf8");
+  const userscript = userscriptContent || fs.readFileSync(USERSCRIPT_PATH, "utf8");
   await page.addScriptTag({ content: userscript });
   await page.waitForFunction(() => !!window.kbcSwarmBot && !!window.angular, { timeout: 90000 });
   return { context, page, userscript };
@@ -3035,7 +3035,7 @@ async function runOneExecution(cli, options = {}) {
   const artifactDir = selectedArtifactDir(cli.mode, cli.scenario, cli.runId);
   fs.mkdirSync(artifactDir, { recursive: true });
 
-  const userscriptContent = fs.readFileSync(USERSCRIPT_PATH, "utf8");
+  const userscriptContent = options.userscriptContent || fs.readFileSync(USERSCRIPT_PATH, "utf8");
   const userscriptSha = sha256String(userscriptContent);
 
   if (cli.expectedUserscriptSha && cli.expectedUserscriptSha !== userscriptSha) {
@@ -3064,7 +3064,7 @@ async function runOneExecution(cli, options = {}) {
 
   try {
     if (!context || !page) {
-      const opened = await openGameContext(browser, cli, artifactDir);
+      const opened = await openGameContext(browser, cli, artifactDir, userscriptContent);
       context = opened.context;
       page = opened.page;
     }
@@ -3342,13 +3342,13 @@ async function runOneExecution(cli, options = {}) {
   }
 }
 
-async function runMode(mode, argv = process.argv.slice(2)) {
+async function runMode(mode, argv = process.argv.slice(2), options = {}) {
   const cli = buildCli(argv, mode);
   const executions = [];
 
   for (let i = 0; i < cli.scenarioRuns; i += 1) {
     const runCli = { ...cli, runId: cli.scenarioRuns > 1 ? `${cli.runId}-run${i + 1}` : cli.runId };
-    const outcome = await runOneExecution(runCli);
+    const outcome = await runOneExecution(runCli, options);
     executions.push(outcome);
     if (outcome.exitCode !== 0 && mode !== "watch") {
       break;
