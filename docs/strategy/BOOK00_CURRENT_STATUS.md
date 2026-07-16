@@ -259,11 +259,34 @@ complete:
   configured suite, default-save import, both mutations and `git diff
   --check`, ending with status count `0`.
 
-Current work package: Phase 3 slice 6 - proposal-coverage ledger and WAIT
-preconditions - is selected but not implemented. Map each legacy-owned path to
-explicit M6 proposal/metric coverage or a retained legacy owner, then define
-what evidence would be required before WAIT could claim that no safe normal
-purchase exists. Do not toggle global ownership in this slice.
+Phase 3 slice 6 - proposal-coverage ledger and WAIT preconditions - is
+complete:
+
+- implementation SHA: `230499b57f4b24f3f22b3b9ba37249cbc888d958`;
+- implementation tree: `3278b013e26e6aab8e9a90a07b33209ca35cd49c`;
+- evidence SHA: `67ceee6ba23f889744a30988aecad8876dcfc66e`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-230499b.md`;
+- the runtime and coordinator now expose a machine-readable main-cycle
+  coverage ledger grounded in the real, marked `smartRunOnce` callsites;
+- the inventory contains ten paths because normal Clone Buffer and its
+  zero-budget hard-lock recovery have separate budget semantics and callsites;
+- all ten paths retain explicit `LEGACY_SMART` ownership; four have partial M6
+  overlap, six have none, and zero have complete M6 execution coverage;
+- all ten still lack same-cycle applicability evidence, so the WAIT
+  precondition is `FAIL`, its authority is `ADVISOR_ONLY`, and whole-cycle
+  ownership eligibility is `false`;
+- mutations that rename a ledger path, bypass the WAIT precondition, or set
+  `m6DecisionOwnsMainCycle=true` are independently rejected;
+- the detached exact-SHA worktree passed canonical build, guardrails, the full
+  configured suite, default-save import, all three mutations and `git diff
+  --check`, ending with status count `0`.
+
+Current work package: Phase 3 slice 7 - same-cycle legacy applicability
+evidence - is selected but not implemented. Record, for every ledger path in
+one real `smartRunOnce` cycle, whether it was evaluated and was actionable,
+blocked, not applicable, executed, or skipped after budget/exact-M6 execution.
+Do not mark any path `COMPLETE`, change comparison math, or toggle ownership.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays

@@ -271,6 +271,27 @@ sets that flag true, suppresses the legacy action, and is rejected. Exact-SHA
 verification is recorded in
 `docs/test-data/9.4.0-clean-room/verification-295fd71.md`.
 
+## Finding R8: the legacy inventory was prose, not an enforceable coverage contract - closed in slice 6
+
+The slice-5 inventory grouped normal Clone Buffer and its zero-budget hard-
+lock recovery together. In `smartRunOnce` they are separate callsites with
+different budget semantics, and global M6 ownership suppresses both. A prose
+list could therefore drift without any verifier noticing.
+
+Slice 6 adds a runtime-exposed `main-cycle-coverage-ledger.v1` and binds its
+ordered rows to marked execution callsites in the canonical userscript. The
+verifier checks exact marker identity, source-call identity and callsite count;
+renaming the critical-upgrade row while leaving its real callsite is rejected.
+
+The source-grounded result is ten retained legacy paths, zero completely M6-
+covered paths, four partial overlaps and six paths with no M6 execution
+coverage. Same-cycle applicability evidence is still missing for all ten.
+Consequently the explicit WAIT precondition is `FAIL`, WAIT remains advisor-
+only, and whole-cycle ownership eligibility is false. A mutation bypassing
+that precondition and the prior global-ownership mutation are both rejected.
+Exact-SHA verification is recorded in
+`docs/test-data/9.4.0-clean-room/verification-230499b.md`.
+
 ## Readiness gates
 
 | Gate | Status | Reason |
@@ -283,8 +304,8 @@ verification is recorded in
 | Advisor-only winner cannot suppress reversible fallback | PASS | Slice 5 proves an honest House-of-Mirrors winner remains advisor-only while a real reversible legacy Drone purchase still executes; the sole-owner mutation is rejected. |
 | Exact candidate authorization and stale revalidation | PASS | Phase 2 clean-room contracts cover identity, stale context and amount. |
 | Exact supported purchase can execute | PASS, limited scope | M2/M3/live acceptance cover supported Meat/Engine/Territory/Energy examples. |
-| M6 covers critical upgrades, Clone paths and all normal Smart purchases | FAIL | Multiple legacy paths have no equivalent M6 proposal/adapter. |
-| WAIT proves no safe normal purchase exists | FAIL | WAIT/UNCERTAIN do not evaluate complete legacy coverage. |
+| M6 covers critical upgrades, Clone paths and all normal Smart purchases | FAIL | Slice 6 binds ten real callsites to the ledger: zero are complete, four are partial and six have no M6 execution coverage. |
+| WAIT proves no safe normal purchase exists | FAIL | The explicit precondition fails because all ten paths lack complete coverage and same-cycle applicability evidence. |
 | Sole-owner live acceptance | FAIL by prior mutation | Reintroducing sole ownership previously produced no-buy behavior. |
 
 ## Completed slice 1
@@ -364,17 +385,32 @@ Buffer and zero-budget hard-lock recovery, unlock planning, generic Smart
 upgrades and units, and final Clone preparation. This is not equivalent M6
 coverage and therefore cannot support a complete WAIT verdict.
 
-## Work after slice 5
+## Completed slice 6
+
+Phase 3 slice 6 turns the inventory and WAIT blocker into an enforceable
+runtime contract:
+
+> Every execution path suppressed by whole-cycle M6 ownership must have one
+> source-grounded ledger row. WAIT remains advisor-only until every row has
+> complete M6 coverage and same-cycle applicability evidence.
+
+Acceptance binds ten ledger rows to ten real `smartRunOnce` callsites, exposes
+the same ledger through coordinator results and the public API, and rejects
+both ledger/source drift and a hardcoded WAIT pass. It records zero complete
+M6 paths and missing same-cycle evidence for all ten; it does not fabricate
+coverage from the four partial domain overlaps.
+
+## Work after slice 6
 
 Continue with evidence, not an ownership toggle:
 
-1. turn the legacy-owned inventory into a coverage ledger: for every path,
-   name its M6 proposal/metric coverage or retain an explicit legacy owner;
-2. define a WAIT completeness proof only after that ledger has no undeclared
-   safe normal action;
-3. keep advisor-only, irreversible and hard-safety actions outside bounded M6
-   purchase authority;
-4. repeat exact-SHA verification after each product slice.
+1. record a same-cycle disposition for every ledger path: actionable, blocked,
+   not applicable, executed, or skipped after budget/exact M6 execution;
+2. bind each disposition to actual runtime evaluation rather than scenario
+   labels or static expectations;
+3. only after that evidence exists, close M6 proposal coverage path by path;
+4. keep advisor-only, irreversible and hard-safety actions outside bounded M6
+   purchase authority and repeat exact-SHA verification after each slice.
 
 The old plan generator remains out of scope.
 
@@ -388,8 +424,8 @@ The user selected the incremental architecture:
 4. post-Nexus Energy and other unaligned classes remain explicitly
    legacy-owned until a later target priority is defined.
 
-Slices 2 through 5 implement the identity, comparison-contract, first product-
-pair and advisor-winner fallback boundaries of that decision. They
+Slices 2 through 6 implement the identity, comparison-contract, first product-
+pair, advisor-winner fallback and source-grounded coverage boundaries. They
 intentionally do not decide when `Post-Nexus energy growth` should outrank the
-Meat goal. The next blocker is a complete proposal-coverage ledger and WAIT
-precondition, not a new synthetic conversion or global ownership.
+Meat goal. The next blocker is same-cycle applicability evidence for all ten
+paths, not a new synthetic conversion or global ownership.
