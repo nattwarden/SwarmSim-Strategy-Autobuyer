@@ -35,6 +35,11 @@ async function main() {
     assert(execution?.result?.cycles?.length === 1, "expected exactly one Energy execution cycle");
 
     const cycle = execution.result.cycles[0];
+    const selectedActions = Array.isArray(cycle.laneCoordinatorSelectedActions) ? cycle.laneCoordinatorSelectedActions : [];
+    const energyAction = selectedActions.find((action) => action?.lane === "Energy" && action?.candidate === "Lepidoptera") || null;
+    const mothBefore = Number(cycle.resourceBankBefore?.moth || 0);
+    const mothAfter = Number(cycle.resourceBankAfter?.moth || 0);
+    const mothDelta = mothAfter - mothBefore;
     const report = {
       scenarioId,
       authority: String(cycle.coordinatorExecutionAuthority || "false"),
@@ -48,20 +53,24 @@ async function main() {
       matched: String(cycle.coordinatorMatchedExecution || "no"),
       result: String(cycle.coordinatorExecutionResult || "none"),
       gatesFailed: String(cycle.coordinatorGatesFailed || "none"),
+      legacySelectedLane: String(energyAction?.lane || "none"),
+      legacySelectedCandidate: String(energyAction?.candidate || "none"),
+      legacySelectedAmount: String(energyAction?.amount || "0"),
+      mothBefore,
+      mothAfter,
+      mothDelta,
+      mainActions: Number(cycle.mainActions || 0),
       resetVerified: execution?.result?.resetVerified === true,
       stateLeakageDetected: execution?.result?.stateLeakageDetected === true,
     };
 
-    assert(report.authority === "true", `expected Energy executionAuthority=true but got ${report.authority}: ${JSON.stringify(report)}`);
-    assert(report.selectedLane === "Energy", `expected Energy winner but got ${report.selectedLane}`);
-    assert(report.selectedCandidate === "Lepidoptera", `expected Lepidoptera winner but got ${report.selectedCandidate}`);
-    assert(report.selectedExecutionKey === "energy", `expected executionKey=energy but got ${report.selectedExecutionKey}`);
-    assert(report.selectedExecutionId === "moth", `expected canonical executionId=moth but got ${report.selectedExecutionId}`);
-    assert(report.selectedExecutionKind === "unit", `expected executionKind=unit but got ${report.selectedExecutionKind}`);
-    assert(Number(report.selectedAmount) > 0 && Number(report.selectedAmount) <= 5, `expected bounded amount 1..5 but got ${report.selectedAmount}`);
-    assert(report.executed === "yes", `expected executed=yes but got ${report.executed}`);
-    assert(report.matched === "yes", `expected matchedExecution=yes but got ${report.matched}`);
-    assert(report.gatesFailed === "none", `unexpected coordinator gate failure: ${report.gatesFailed}`);
+    assert(report.authority === "false", `off-target post-Nexus Energy unexpectedly received M6 authority: ${JSON.stringify(report)}`);
+    assert(report.selectedLane === "none", `expected no M6 winner but got ${report.selectedLane}`);
+    assert(report.executed === "no", `M6 unexpectedly executed the off-target Energy proposal: ${report.executed}`);
+    assert(report.matched === "no", `M6 unexpectedly reported a matched execution: ${report.matched}`);
+    assert(report.legacySelectedLane === "Energy" && report.legacySelectedCandidate === "Lepidoptera", `legacy Energy path was not selected: ${JSON.stringify(report)}`);
+    assert(report.mothDelta > 0 && report.mothDelta <= 5, `expected a real bounded Lepidoptera count delta 1..5 but got ${report.mothDelta}`);
+    assert(report.mainActions === 1, `expected exactly one legacy main action but got ${report.mainActions}`);
     assert(report.resetVerified === true, "disposable execution state was not reset-verified");
     assert(report.stateLeakageDetected === false, "disposable execution state leaked");
 

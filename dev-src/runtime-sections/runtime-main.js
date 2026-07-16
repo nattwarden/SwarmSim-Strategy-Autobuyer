@@ -2200,6 +2200,7 @@ function getDisplayName(item) {
     ].filter(Boolean).length;
     const sharedOutcome = {
       schemaVersion: "whole-economy-outcome.v2",
+      metricTarget: String(raw?.metricTarget || "").trim() || null,
       etaSeconds: Number.isFinite(eta) ? roundWholeEconomy(eta) : null,
       etaImprovementSeconds: Number.isFinite(etaImprovement) ? roundWholeEconomy(etaImprovement) : null,
       paybackSeconds: Number.isFinite(paybackSeconds) ? roundWholeEconomy(paybackSeconds) : null,
@@ -5536,11 +5537,22 @@ function getDisplayName(item) {
     const row = purchaseRow ? laboratoryCloneJson(purchaseRow) : null;
     const safetyStatus = row ? (row.safeEligible ? "ALLOWED" : (row.blockers && row.blockers.length ? "BLOCKED" : "BLOCKED")) : "UNSUPPORTED";
     const comparability = row ? sixDomainComparableValue({ outcome: row.sharedOutcome || {}, comparability: row.comparability || {}, sharedComparableValue: row.sharedComparableValue }) : { basis: null, value: null, unit: null };
-    const comparable = Number.isFinite(comparability.value);
+    const proposalTarget = String(row?.target || row?.candidate || "").trim() || null;
+    const metricTarget = String(row?.sharedOutcome?.metricTarget || row?.raw?.metricTarget || "").trim() || null;
+    const activeTarget = String(sharedContext.activeTarget || "").trim() || null;
+    const targetAligned = !!metricTarget && !!activeTarget && normalizeLabelKey(metricTarget) === normalizeLabelKey(activeTarget);
+    const targetAlignmentStatus = !row
+      ? "UNSUPPORTED"
+      : (!metricTarget || !activeTarget ? "MISSING" : (targetAligned ? "MATCHED" : "MISMATCH"));
+    const comparable = targetAligned && Number.isFinite(comparability.value);
     const milestoneEtaImprovementSeconds = comparable && comparability.basis === "milestone-eta-seconds" ? comparability.value : null;
     const projectedMilestoneProgressDelta = comparable && comparability.basis === "same-unit-milestone-progress-delta" ? comparability.value : null;
     const commonValue = comparable && comparability.basis === "versioned-source-or-runtime-derived-common-value" ? comparability.value : null;
-    const missingConversions = comparable ? [] : [domain.domainLabel === "Energy abilities" ? "validated milestone-eta conversion for an ability branch" : domain.domainLabel === "Ascension/Mutagen" ? "validated recovery-to-horizon conversion for Ascension" : `shared outcome conversion for ${domain.domainLabel}`];
+    const missingConversions = comparable
+      ? []
+      : (!targetAligned && row
+        ? [`metric target ${metricTarget || "missing"} does not match active target ${activeTarget || "missing"}`]
+        : [domain.domainLabel === "Energy abilities" ? "validated milestone-eta conversion for an ability branch" : domain.domainLabel === "Ascension/Mutagen" ? "validated recovery-to-horizon conversion for Ascension" : `shared outcome conversion for ${domain.domainLabel}`]);
     const actionId = row?.candidate || row?.actionId || domain.domainLabel;
     const boundedAmount = normalizeBoundedAmountToken(row?.boundedAmount || row?.amount || row?.wouldBuyAmount || "1");
     const action = row ? {
@@ -5600,6 +5612,8 @@ function getDisplayName(item) {
       context: {
         activeMilestone: sharedContext.activeMilestone || "unknown",
         activeTarget: sharedContext.activeTarget || "unknown",
+        proposalTarget,
+        metricTarget,
         horizonId: sharedContext.horizonId || "medium",
         horizonSeconds: Number(sharedContext.horizonSeconds || 1800),
       },
@@ -5611,6 +5625,7 @@ function getDisplayName(item) {
       },
       comparability: {
         status: comparable ? "COMPARABLE" : "UNRANKED",
+        targetAlignmentStatus,
         basis: comparable ? comparability.basis : null,
         metricUnit: comparable ? comparability.unit : null,
         commonValue: comparable ? commonValue : null,
@@ -5631,7 +5646,9 @@ function getDisplayName(item) {
         confidence: row?.confidence || (domain.authorityClass === "ADVISOR_ONLY" ? "medium" : "low"),
         status: row ? "runtime-derived" : "unsupported",
         supportingFields: row ? Object.keys(row).slice(0, 12) : [],
-        warnings: row ? [] : ["missing adapter emitted unsupported outcome"],
+        warnings: row
+          ? (targetAligned ? [] : [`purchase metric target is ${targetAlignmentStatus.toLowerCase()}`])
+          : ["missing adapter emitted unsupported outcome"],
       },
       reason: row?.reason || (row ? `${domain.domainLabel} captured from live state.` : `No adapter available for ${domain.domainLabel}.`),
       reconsiderCondition: row?.reconsiderCondition || (comparable ? "Reconsider if the shared comparison basis changes." : `Reconsider when ${missingConversions[0] || "a shared conversion"} becomes available.`),
@@ -18938,6 +18955,7 @@ function getDisplayName(item) {
         boundedAmount: "1",
         wouldBuyAmount: "1",
         raw: {
+          metricTarget: getDisplayName(nextNexus),
           etaSeconds: 0,
           progressPercent: 100,
           costAmount: cost,
@@ -18977,6 +18995,7 @@ function getDisplayName(item) {
         boundedAmount: normalizeBoundedAmountToken(mothNum),
         wouldBuyAmount: formatSwarmNumber(mothNum),
         raw: {
+          metricTarget: getDisplayName(nextNexus),
           etaBeforeSeconds: roi?.etaBeforeSeconds,
           etaAfterSeconds: roi?.etaAfterSeconds,
           etaImprovementSeconds: roi?.etaImprovement,
@@ -19007,6 +19026,7 @@ function getDisplayName(item) {
         boundedAmount: normalizeBoundedAmountToken(plan.num || 0),
         wouldBuyAmount: plan.num ? formatSwarmNumber(plan.num) : "0",
         raw: {
+          metricTarget: "Post-Nexus energy growth",
           costAmount: spentEnergy,
           currentAmount: currentEnergy,
           velocity: energyVelocity,
@@ -19035,6 +19055,7 @@ function getDisplayName(item) {
         costResources: ["energy"],
         wouldBuyAmount: "",
         raw: {
+          metricTarget: getDisplayName(nextNexus),
           etaSeconds: eta,
           progressPercent: cost.greaterThan(0) ? currentEnergy.dividedBy(cost).times(100) : 0,
           costAmount: cost,
@@ -19055,7 +19076,10 @@ function getDisplayName(item) {
       target: "Energy production",
       resource: "energy",
       costResources: ["energy"],
-      raw: buildEnergyProductionOpportunityMetrics(game, 0, "unknown"),
+      raw: {
+        metricTarget: "Energy production",
+        ...buildEnergyProductionOpportunityMetrics(game, 0, "unknown"),
+      },
     };
   }
 
@@ -19096,6 +19120,7 @@ function getDisplayName(item) {
           boundedAmount: "1",
           wouldBuyAmount: buyable ? "1" : "",
           raw: {
+            metricTarget: row.target,
             etaSeconds: buyable ? 0 : eta,
             progressPercent: (progress || 0) * 100,
             // Hatchery/Expansion are discrete, one-time unlocks: buying now completes
@@ -19134,7 +19159,9 @@ function getDisplayName(item) {
           wouldBuyAmount: isPositive(num) ? formatSwarmNumber(num) : "",
           // A safe target-path action-unit buy completes that purchase step this
           // cycle (0% -> 100% done); this mirrors the Engine completion-event basis.
-          raw: safe ? { ...(guard?.raw || {}), projectedMilestoneProgressDelta: 100 } : (guard?.raw || null),
+          raw: safe
+            ? { ...(guard?.raw || {}), metricTarget: getDisplayName(plan.actionUnit), projectedMilestoneProgressDelta: 100 }
+            : { ...(guard?.raw || {}), metricTarget: getDisplayName(plan.actionUnit) },
         }, "meat");
       }
     }
@@ -19158,6 +19185,7 @@ function getDisplayName(item) {
         boundedAmount: normalizeBoundedAmountToken(territory.num),
         wouldBuyAmount: formatSwarmNumber(territory.num),
         raw: {
+          metricTarget: "Expansion",
           ...(territory.raw || {}),
           etaImprovementSeconds: territory.raw?.etaImprovementSeconds ?? territory.etaGainSeconds ?? 0,
           etaBeforeSeconds: territory.raw?.etaBeforeSeconds ?? territory.etaBeforeSeconds,
@@ -20037,12 +20065,11 @@ function getDisplayName(item) {
     const strategyIdentity = getCurrentStrategyIdentity(game, engine, protectedResources, smartFocus);
     unifiedPurchaseProposalState = buildUnifiedPurchaseProposals(game, engine, protectedResources);
     let coordinatorExecutedKey = null;
-    // M6's execution-authority gate requires a comparable milestone-eta metric,
-    // which only the Territory proposal populates today (Engine/Meat/Energy
-    // stay UNRANKED and can never win). Leaving this true disables every
-    // proven legacy purchase path and the bot buys nothing. Keep it false so
-    // legacy lane execution remains the acting purchaser while M6 still runs
-    // for Council display and claims any lane it can actually win.
+    // M6 may claim only bounded proposals whose explicit metric target matches
+    // this cycle's active target. It still does not own the whole main cycle:
+    // unaligned or uncalibrated safe actions remain on their proven legacy
+    // paths, including post-Nexus Energy, while M6 runs for Council display
+    // and executes only a winner that passes its own fail-closed gates.
     const m6DecisionOwnsMainCycle = false;
     const preExecutionWinner = unifiedPurchaseProposalState?.evaluation?.winner || null;
     const preExecutionMainAction = preExecutionWinner ? {

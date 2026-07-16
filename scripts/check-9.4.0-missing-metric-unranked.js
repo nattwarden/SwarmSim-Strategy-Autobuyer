@@ -49,7 +49,7 @@ async function main() {
         blockers: [],
         costResources: [],
         reason: "safe representative purchase",
-        raw: { etaSeconds: 600, etaImprovementSeconds, paybackSeconds: 10, reserveRatio: 2, progressPercent: 50 },
+        raw: { metricTarget: "shared target", etaSeconds: 600, etaImprovementSeconds, paybackSeconds: 10, reserveRatio: 2, progressPercent: 50 },
       });
       const evaluate = (proposals, suffix) => {
         const evaluation = bot.purchaseEvaluator.evaluate(proposals);

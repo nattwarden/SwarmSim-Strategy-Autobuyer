@@ -44,6 +44,9 @@ async function main() {
       }
 
       function buildPurchaseRow(lane, candidate, etaImprovementSeconds, options = {}) {
+        const metricTarget = options.metricTarget || "next strategic milestone";
+        const sharedOutcome = options.sharedOutcome || (etaImprovementSeconds === null ? {} : { etaImprovementSeconds });
+        const raw = options.raw || (etaImprovementSeconds === null ? {} : { etaImprovementSeconds });
         return {
           lane,
           candidate,
@@ -65,9 +68,9 @@ async function main() {
           executionVariant: options.executionVariant || "base",
           fingerprint: options.fingerprint || `${lane}:${candidate}`,
           costResources: options.costResources ? options.costResources.slice() : ["meat"],
-          sharedOutcome: options.sharedOutcome || (etaImprovementSeconds === null ? {} : { etaImprovementSeconds }),
+          sharedOutcome: { ...sharedOutcome, metricTarget: sharedOutcome.metricTarget || metricTarget },
           confidence: options.confidence || "high",
-          raw: options.raw || (etaImprovementSeconds === null ? {} : { etaImprovementSeconds }),
+          raw: { ...raw, metricTarget: raw.metricTarget || metricTarget },
           effects: options.effects ? clone(options.effects) : undefined,
         };
       }

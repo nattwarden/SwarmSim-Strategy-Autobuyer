@@ -956,8 +956,8 @@ SCENARIOS["book00-m9-resource-scoped-locks"] = {
 SCENARIOS["book00-m2-coordinator"] = {
   ...SCENARIOS["sa1-02"],
   id: "BOOK00-M2-COORDINATOR",
-  title: "Whole-Economy Coordinator Changes the First Reversible Purchase",
-  description: "A single deterministic acceptance state with concrete Engine, Meat, and Territory proposals from one pre-execution snapshot.",
+  title: "Whole-Economy Coordinator Refuses Cross-Target Authority",
+  description: "A deterministic negative-regression state with concrete Engine, Meat, and Territory proposals whose metrics do not describe the cycle's active Nexus target.",
   cycles: 1,
   unitCounts: {
     ...SCENARIOS["sa1-02"].unitCounts,
@@ -973,16 +973,16 @@ SCENARIOS["book00-m2-coordinator"] = {
   },
   syntheticArmyTerritoryPerUnit: 1,
   notes: [
-    "Milestone 2 acceptance only: compare the legacy first BUY with the coordinator winner from the preserved pre-execution snapshot.",
-    "Uses baseline synthetic army production, a slow Territory rate, and zero Territory bank so an army seed has measurable Expansion ETA value outside the protected save window.",
+    "Milestone 2 negative acceptance: preserve the former cross-target comparison state and prove it no longer grants coordinator authority merely because Territory has the largest numeric value.",
+    "The separate sa1-02 control in check-book00-m2-coordinator-acceptance still proves bounded exact M6 execution for a genuinely aligned Expansion target.",
   ],
 };
 
 SCENARIOS["book00-m3-energy-execution"] = {
   ...SCENARIOS["sa1-03"],
   id: "BOOK00-M3-ENERGY-EXECUTION",
-  title: "Bounded Energy Production Executes the Exact Coordinator Winner",
-  description: "A single disposable production-parity state that exercises the exact post-Nexus Lepidoptera coordinator buy path.",
+  title: "Bounded Post-Nexus Energy Production Remains Legacy-Owned",
+  description: "A single disposable production-parity state proving that an off-target post-Nexus Lepidoptera metric receives no M6 authority while the established bounded Energy path still executes the safe buy.",
   cycles: 1,
   executeActions: true,
   unitCounts: {
@@ -1010,9 +1010,12 @@ SCENARIOS["book00-m3-energy-execution"] = {
   config: {
     smartMaxActionsPerRun: 1,
     larvaEnginePriority: false,
+    prioritizeProductionUpgrades: false,
     meatGoalPlanner: false,
     territoryPrepPlanner: false,
     expansionArmySeedPlanner: false,
+    buyUpgrades: false,
+    buyUnits: false,
     energyStrategy: true,
     energyPlanner: true,
     lepidopteraRoiMode: true,
@@ -1021,9 +1024,10 @@ SCENARIOS["book00-m3-energy-execution"] = {
     postNexusEnergyReserveSeconds: 60,
     postNexusLepidopteraMinBoostGainPercent: 0,
   },
+  trackedUnitKeys: ["moth"],
   notes: [
-    "Milestone 3 execution acceptance only: the staged mature Energy state isolates the already-accepted Energy production domain at its exact buy boundary.",
-    "The disposable runner must report Energy/Lepidoptera authority, a real bounded command delta, and a matching canonical fingerprint without enabling abilities.",
+    "Milestone 3 execution acceptance only: the staged mature Energy state isolates the already-accepted bounded legacy Energy-production domain at its exact buy boundary.",
+    "Post-Nexus energy growth is not the cycle's active target, so the runner must report no M6 authority while still observing a real bounded Lepidoptera count delta without enabling abilities.",
   ],
 };
 
@@ -1065,8 +1069,8 @@ SCENARIOS["book00-live-purchase-legacy"] = {
 SCENARIOS["book00-live-purchase-m6"] = {
   ...SCENARIOS["book00-m2-coordinator"],
   id: "BOOK00-LIVE-PURCHASE-M6",
-  title: "M6-Authorized Purchase Path Executes the Exact Coordinator Winner",
-  description: "Reuses the proven Milestone 2 acceptance state (a buyable Territory army-seed candidate with a real, meaningful Expansion ETA improvement, where M6's six-domain comparison and the M2 unified evaluator already agree) but empties armyUnitCounts so the Territory army-seed candidate resolves to a real, observable game unit instead of the M2 scenario's in-memory-only synthetic placeholder unit, and real-seeds the formerly-synthetic stinger unit out of unitCounts so it no longer competes as a fake option. smartMaxActionsPerRun 1 bounds the cycle to the single M6-authorized buy and proves the legacy path does not also spend the same execution key.",
+  title: "Target-Aligned M6 Purchase Executes the Exact Coordinator Winner",
+  description: "Reuses the proven Milestone 2 Territory state while disabling unrelated Energy and Meat target selectors so the cycle's real active target is Expansion, exactly matching the Territory proposal's Expansion ETA metric. Synthetic army placeholders are removed, leaving one real observable bounded M6-authorized purchase.",
   cycles: 1,
   executeActions: true,
   unitCounts: (() => {
@@ -1077,15 +1081,23 @@ SCENARIOS["book00-live-purchase-m6"] = {
   realResourceSeeds: {
     stinger: "70",
   },
+  engine: {
+    hatcheryEtaSeconds: 3600,
+    expansionEtaSeconds: 9000,
+  },
   config: {
     ...SCENARIOS["book00-m2-coordinator"].config,
     smartMaxActionsPerRun: 1,
+    energyStrategy: false,
+    energyPlanner: false,
+    meatGoalPlanner: false,
   },
   trackedUnitKeys: ["stinger", "swarmling", "spider", "mosquito"],
   notes: [
     "Reuses the Milestone 2 acceptance state's proven shape (docs/strategy/BOOK00_M2_COORDINATOR foundation / sa1-02 lineage): zero starting territory and a slow real territory rate give an Army Seed buy measurable Expansion ETA value outside the protected save window.",
     "The original M2 scenario's armyUnitCounts (e.g. \"Stinger V\") creates fabricated, in-memory-only placeholder unit objects with their own fake __kbcIncrement counter; buyUnit special-cases them and never touches real game state. Emptying armyUnitCounts here forces the Territory army-seed candidate to resolve to a real game unit (swarmling in this staged state) so a genuine before/after count delta is observable; stinger is moved from the synthetic unitCounts formula to real-count seeding (_setCount) purely so it stops competing as a fake option and shows up as an honest, unchanged negative control.",
-    "smartMaxActionsPerRun 1 makes the single bounded execution unambiguous. The check must observe coordinatorExecutionAuthority === true and coordinatorMatchedExecution === yes (M6 executed its own selected winner) with a real count delta on the executed unit (read via trackedUnitKeys, not hardcoded to any one unit name), not just a lane decision.",
+    "Energy and Meat target selection are disabled and the staged Expansion ETA is more than the configured priority weight above Hatchery ETA, so the production decideSmartFocus/getCurrentStrategyIdentity path selects Territory/Expansion; no active-target field is overridden or fabricated.",
+    "smartMaxActionsPerRun 1 makes the single bounded execution unambiguous. The check must observe coordinatorExecutionAuthority === true and coordinatorMatchedExecution === yes (M6 executed its own target-aligned winner) with a real count delta on the executed unit (read via trackedUnitKeys, not hardcoded to any one unit name), not just a lane decision.",
   ],
 };
 

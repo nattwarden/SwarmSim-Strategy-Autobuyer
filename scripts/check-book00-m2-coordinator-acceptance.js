@@ -137,23 +137,18 @@ async function main() {
 
     const report = {
       scenarioId,
+      activeGoal: String(cycle.activeGoal || "none"),
       legacyFirstChoice: legacy,
       coordinator,
       alternatives,
     };
 
-    assert(coordinator.authority === "true", `expected executionAuthority=true but got ${coordinator.authority}`);
+    assert(report.activeGoal.toLowerCase().includes("nexus"), `expected the preserved cross-target state to have an active Nexus goal but got ${report.activeGoal}`);
+    assert(coordinator.authority === "false", `cross-target alternatives unexpectedly received executionAuthority=true`);
     assert(legacy.key === "engine" && legacy.candidate === "Hatchery", `expected legacy first choice Engine: Hatchery but got ${legacy.lane}: ${legacy.candidate}`);
-    assert(coordinator.selectedLane === "Territory" && coordinator.selectedCandidate === "Stinger V", `expected coordinator winner Territory: Stinger V but got ${coordinator.selectedLane}: ${coordinator.selectedCandidate}`);
-    assert(coordinator.selectedExecutionId === "stinger", `expected canonical executionId=stinger but got ${coordinator.selectedExecutionId}`);
-    assert(coordinator.selectedExecutionKind === "unit", `expected executionKind=unit but got ${coordinator.selectedExecutionKind}`);
-    assert(coordinator.selectedExecutionVariant === "v", `expected executionVariant=v but got ${coordinator.selectedExecutionVariant}`);
-    assert(coordinator.executed === "yes", `expected executed=yes but got ${coordinator.executed}`);
-    assert(coordinator.matched === "yes", `expected matchedExecution=yes but got ${coordinator.matched}`);
-    assert(
-      coordinator.selectedExecutionKey !== legacy.key || coordinator.selectedCandidate !== legacy.candidate,
-      `expected coordinator to improve the legacy first choice, but both selected ${legacy.lane}: ${legacy.candidate}`
-    );
+    assert(coordinator.selectedLane === "none" && coordinator.selectedCandidate === "none", `expected no cross-target M6 winner but got ${coordinator.selectedLane}: ${coordinator.selectedCandidate}`);
+    assert(coordinator.executed === "no" && coordinator.matched === "no", `cross-target M6 path unexpectedly executed: ${JSON.stringify(coordinator)}`);
+    assert(coordinator.fallbackReason.includes("No allowed comparable action"), `unexpected fail-closed reason: ${coordinator.fallbackReason}`);
 
     console.log("BOOK00 M2 COORDINATOR ACCEPTANCE PASSED");
     console.log(JSON.stringify(report, null, 2));
@@ -162,6 +157,7 @@ async function main() {
     const report = {
       scenarioId,
       error: error?.message || String(error),
+      activeGoal: String(cycle.activeGoal || "none"),
       legacyFirstChoice: inferLegacyFirstChoice(cycle.purchaseProposalSnapshot?.proposals || []),
       coordinator: {
         authority: String(cycle.coordinatorExecutionAuthority || "false"),
