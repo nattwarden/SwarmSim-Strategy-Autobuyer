@@ -13,7 +13,10 @@ function assert(condition, message) {
 }
 
 async function main() {
-  let userscript = fs.readFileSync(USERSCRIPT_PATH, "utf8");
+  // Git may materialize the userscript with CRLF in a fresh Windows worktree.
+  // Normalize only the in-memory verifier input so mutation controls exercise
+  // the same runtime source on LF and CRLF checkouts.
+  let userscript = fs.readFileSync(USERSCRIPT_PATH, "utf8").replace(/\r\n/g, "\n");
   if (process.env.KBC_MUTATE_CANONICAL_ID_AMOUNT === "1") {
     const needle = "String(input.executionVariant || \"base\"),\n    ].join(\"::\");";
     const replacement = "String(input.executionVariant || \"base\"),\n      normalizeBoundedAmountToken(input.boundedAmount || input.amount || \"0\"),\n    ].join(\"::\");";
