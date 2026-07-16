@@ -6,9 +6,13 @@ Audited branch: `codex/9.4.0-clean-room`
 
 Audited HEAD: `523b3894dcc4374aafac171285aadea2eca6881f`
 
-Status: read-only architecture audit. This document records why global
-execution ownership is not ready and selects the first narrow corrective
-slice. It does not authorize an ownership change.
+Slice 1 implementation: `21aa76ab03f5b75b2da32ecdc2db7aa7ee4d6b6a`
+
+Slice 1 evidence: `b91fbf939c54de93be0c203c7ea3ca981babe815`
+
+Status: read-only architecture audit with verified slice-1 closure. This
+document records why global execution ownership is not ready and selects the
+next evidence-gathering direction. It does not authorize an ownership change.
 
 ## Decision
 
@@ -40,14 +44,14 @@ legacy planners.
 
 | Domain | Current authority | Shared metric readiness | Exact execution coverage | Legacy coverage still outside M6 | Ownership verdict |
 | --- | --- | --- | --- | --- | --- |
-| Meat | Bounded reversible | Not reliable. Missing ETA is currently coerced to comparable zero. | Exact selected unit is supported. | Unlock planning, parent/refill, Twin preparation and generic Smart units still have separate behavior. | NO-GO |
-| Larva/Engine | Bounded reversible | Not reliable. Missing ETA is currently coerced to comparable zero. | Exact selected Hatchery/Expansion upgrade is supported. | Critical production upgrades and other Smart upgrades run separately. | NO-GO |
+| Meat | Bounded reversible | Missing ETA now remains unranked; a real active-target metric is still absent in common live proposals. | Exact selected unit is supported. | Unlock planning, parent/refill, Twin preparation and generic Smart units still have separate behavior. | NO-GO |
+| Larva/Engine | Bounded reversible | Missing ETA now remains unranked; a real active-target metric is still absent in common live proposals. | Exact selected Hatchery/Expansion upgrade is supported. | Critical production upgrades and other Smart upgrades run separately. | NO-GO |
 | Army/Territory | Bounded reversible | Territory proposals can carry real ETA improvement, but the domain may be unsupported when no proposal is emitted. | Exact selected fighting unit is supported. | Territory diagnostics, seeding and saturation behavior do not always produce an executable M6 proposal. | NO-GO |
-| Energy production | Bounded reversible | Not reliable for the active cross-domain target. Missing ETA is currently coerced to comparable zero. | Accepted Nexus or bounded Lepidoptera only. | The legacy Energy guard remains responsible for ordinary supported progression. | NO-GO |
+| Energy production | Bounded reversible | Missing ETA now remains unranked; a real active-target metric is still absent in common live branches. | Accepted Nexus or bounded Lepidoptera only. | The legacy Energy guard remains responsible for ordinary supported progression. | NO-GO |
 | Energy abilities | Advisor only | Usually UNRANKED unless a validated non-WAIT ETA conversion exists. | Intentionally none. | Ability preparation and the narrow Clone Ramp exception remain separate. | KEEP ADVISOR-ONLY |
 | Ascension/Mutagen | Advisor only | UNRANKED without validated continue-versus-ascend recovery values. | Intentionally none. | Existing safety/default behavior must remain separate. | KEEP ADVISOR-ONLY |
 
-## Finding R1: missing metrics become false zeroes
+## Finding R1: missing metrics became false zeroes - closed in slice 1
 
 `sixDomainComparableValue()` correctly checks
 `milestoneEtaImprovementSeconds` for a finite value, but its fallback applies
@@ -79,6 +83,14 @@ shared metric absent. Result:
 All four M6 purchase outcomes were marked `COMPARABLE` with value `0`.
 Confidence tied, so the domain-id tie-break selected Army/Territory. This is
 not an economic comparison and must not authorize global ownership.
+
+Slice 1 closed this shortcut without widening authority. Exact-SHA verification
+proved that `null`, `undefined` and empty ETA evidence remain `UNRANKED`, four
+safe missing-metric purchases produce no M6 winner or authority, explicit
+numeric zero remains comparable, and a real positive Territory value remains
+unchanged. A mutation restoring the direct `Number()` fallback fails the
+focused verifier. See
+`docs/test-data/9.4.0-clean-room/verification-21aa76a.md`.
 
 ## Finding R2: sole ownership would still suppress required paths
 
@@ -114,7 +126,7 @@ whole action cycle.
 
 | Gate | Status | Reason |
 | --- | --- | --- |
-| Missing metrics remain unranked | FAIL | `null` ETA becomes comparable zero. |
+| Missing metrics remain unranked | PASS | Slice 1 verifies `null`, `undefined` and empty ETA as unranked while preserving explicit numeric zero. |
 | Four reversible domains share the active milestone metric | FAIL | Territory is the only established real ETA source; other live outcomes frequently lack it. |
 | Advisor-only winner cannot suppress reversible fallback | PASS today | Legacy ownership remains active; this would fail if sole ownership were toggled on. |
 | Exact candidate authorization and stale revalidation | PASS | Phase 2 clean-room contracts cover identity, stale context and amount. |
@@ -123,7 +135,7 @@ whole action cycle.
 | WAIT proves no safe normal purchase exists | FAIL | WAIT/UNCERTAIN do not evaluate complete legacy coverage. |
 | Sole-owner live acceptance | FAIL by prior mutation | Reintroducing sole ownership previously produced no-buy behavior. |
 
-## Selected next slice
+## Completed slice 1
 
 Phase 3 slice 1 is deliberately narrow:
 

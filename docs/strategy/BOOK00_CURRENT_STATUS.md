@@ -126,15 +126,37 @@ Phase 2 slice 4 - four-value amount contract - is complete:
 - ranking, amount calculation, eligibility, action budgets, safety defaults,
   supported keys and legacy execution ownership were intentionally unchanged.
 
-Phase 2 clean-room safety reconstruction is complete. Current work package:
-Phase 3 slice 1 - reject false-zero shared metrics. The read-only readiness
-audit at `docs/strategy/GLOBAL_EXECUTION_OWNERSHIP_READINESS_9.4.0.md` records
-`NO_GO_GLOBAL_EXECUTION_OWNERSHIP`: missing ETA evidence is currently coerced
-from `null` to comparable zero, and M6 still does not cover critical upgrades,
-Clone paths or all normal Smart purchases. Fix only the missing-metric
-classification first; preserve explicit numeric zero, legacy execution
-ownership and every hard safety default. The rejected feature branch remains
-research material only and must not be used as a base.
+Phase 3 slice 1 - reject false-zero shared metrics - is complete:
+
+- implementation SHA: `21aa76ab03f5b75b2da32ecdc2db7aa7ee4d6b6a`;
+- implementation tree: `cdc0cff55f3212476ccab1d03438077e78296f84`;
+- evidence SHA: `b91fbf939c54de93be0c203c7ea3ca981babe815`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-21aa76a.md`;
+- M6 now accepts fallback ETA improvement only when the source field is an
+  actual finite metric; `null`, `undefined` and empty evidence remain
+  `UNRANKED` and cannot fabricate a winner or execution authority;
+- explicit numeric zero and a real positive Territory ETA remain comparable,
+  preserving the established bounded reversible path;
+- the focused mutation restores `Number(null) === 0` behavior and fails
+  because missing values become ranked;
+- the pinned player-save replay still resolves `lesser hive mind`, grants no
+  M6 execution authority and leaves tracked live unit counts unchanged;
+- the detached exact-SHA worktree passed guardrails, canonical build, the full
+  configured suite and mutation control, ending with status count `0`;
+- ranking weights, proposal construction, amounts, authorization, stale gates,
+  action budgets, safety defaults and legacy execution ownership were
+  intentionally unchanged.
+
+Current work package: Phase 3 slice 2 - measure one honest shared-outcome
+vertical slice. `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active because M6
+still does not cover critical upgrades, Clone paths or all normal Smart
+purchases, and WAIT/UNCERTAIN do not own a whole cycle. Measure which safe
+Meat/Engine/Energy proposals lack the active-target outcome, then select one
+real competing action pair for the same target and horizon. Do not add a
+generic score, infer a zero, toggle ownership or change safety defaults. The
+rejected feature branch remains research material only and must not be used as
+a base.
 
 ## Current status snapshot (2026-07-15)
 
