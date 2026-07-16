@@ -1,0 +1,244 @@
+{
+ "schemaVersion": "gate2-corrected.v1",
+ "capturedAt": "2026-07-16T00:13:45.491Z",
+ "supersedes": "gate2-bounded-*.json",
+ "oldLabel": [
+  "BOUNDED_CAUSAL_PLAN_PROVEN",
+  "RUNTIME_POLICY_FEASIBILITY_NOT_PROVEN"
+ ],
+ "save": {
+  "name": "default-user-save",
+  "fixedTimeIso": "2026-07-14T00:02:09.201Z"
+ },
+ "reservePolicy": {
+  "meatActionUnitMinReserveRatio": 5,
+  "meatParentStepMinReserveRatio": 1.5,
+  "meatUnlockMinReserveRatio": 3,
+  "twinUnlockMinReserveRatio": 1.25
+ },
+ "realProposals": [
+  {
+   "canonicalProposalId": "engine::expansion::upgrade::base",
+   "plannerKind": "engine-lane",
+   "lane": "Engine",
+   "candidateInternalId": "expansion",
+   "candidateLabel": "Expansion",
+   "requestedAmount": "1",
+   "wouldBuyAmount": "",
+   "decision": "HOLD",
+   "buyable": false,
+   "costResource": "territory",
+   "reserveRatio": null,
+   "hardBlockers": [
+    "territory threshold not reached"
+   ],
+   "safeEligible": false,
+   "reason": "Expansion is not buyable yet",
+   "milestoneState": "NO_EFFECT",
+   "requiredReserveRatio": null,
+   "reserveOk": null,
+   "paybackBypassed": false,
+   "bypassReason": null
+  },
+  {
+   "canonicalProposalId": "engine::hatchery::upgrade::base",
+   "plannerKind": "engine-lane",
+   "lane": "Engine",
+   "candidateInternalId": "hatchery",
+   "candidateLabel": "Hatchery",
+   "requestedAmount": "1",
+   "wouldBuyAmount": "",
+   "decision": "HOLD",
+   "buyable": false,
+   "costResource": "meat",
+   "reserveRatio": null,
+   "hardBlockers": [
+    "meat threshold not reached"
+   ],
+   "safeEligible": false,
+   "reason": "Hatchery is not buyable yet",
+   "milestoneState": "NO_EFFECT",
+   "requiredReserveRatio": null,
+   "reserveOk": null,
+   "paybackBypassed": false,
+   "bypassReason": null
+  },
+  {
+   "canonicalProposalId": "energy::moth::unit::base",
+   "plannerKind": "energy-lane",
+   "lane": "Energy",
+   "candidateInternalId": "moth",
+   "candidateLabel": "Lepidoptera",
+   "requestedAmount": "0",
+   "wouldBuyAmount": "0",
+   "decision": "HOLD",
+   "buyable": false,
+   "costResource": "energy",
+   "reserveRatio": 4706.284086436645,
+   "reserveAfter": 268258.19292688876,
+   "reserveRequired": 57,
+   "hardBlockers": [
+    "lepidoptera stop threshold"
+   ],
+   "safeEligible": false,
+   "reason": "post-Nexus Lepidoptera held: +90% energy is at/above stop threshold 90%",
+   "milestoneState": "NO_EFFECT",
+   "requiredReserveRatio": null,
+   "reserveOk": null,
+   "paybackBypassed": false,
+   "bypassReason": null
+  },
+  {
+   "canonicalProposalId": "meat::goddess::unit::base",
+   "plannerKind": "action-unit",
+   "lane": "Meat",
+   "candidateInternalId": "goddess",
+   "candidateLabel": "hive neuron",
+   "requestedAmount": "2.2479099878998956669e+21",
+   "wouldBuyAmount": "2.25Sx",
+   "decision": "BUY",
+   "buyable": true,
+   "costResource": "neuroprophet",
+   "reserveRatio": 55443983.88730539,
+   "reserveAfter": "1.5579135643654333355e+38",
+   "reserveRequired": "2.8098874848748695836e+30",
+   "paybackSeconds": 27438.085150955136,
+   "paybackLimitSeconds": 3600,
+   "paybackRatio": 7.62169031970976,
+   "hardBlockers": [],
+   "safeEligible": true,
+   "reason": "target-path action for lesser hive mind (payback-bypass eligible; ranked on progress, not auto-win)",
+   "milestoneState": "NO_EFFECT",
+   "requiredReserveRatio": 5,
+   "reserveOk": true,
+   "paybackBypassed": true,
+   "bypassReason": "payback 27438s > limit 3600s; reserveRatio 5.544e+7 >= required 5"
+  },
+  {
+   "canonicalProposalId": "meat::pantheon::unit::base",
+   "plannerKind": "parent-step",
+   "lane": "Meat",
+   "candidateInternalId": "pantheon",
+   "candidateLabel": "neural cluster",
+   "requestedAmount": "153302598820186415",
+   "wouldBuyAmount": "153Qa",
+   "decision": "BUY",
+   "buyable": true,
+   "costResource": "hive neuron",
+   "reserveRatio": 2.9647058823529413,
+   "reserveAfter": "5.6812139562774965999e+27",
+   "reserveRequired": "1.9162824852523301875e+27",
+   "paybackSeconds": 2224883.967300917,
+   "paybackLimitSeconds": 3600,
+   "paybackRatio": 618.0233242502547,
+   "hardBlockers": [],
+   "safeEligible": true,
+   "reason": "target-path parent-step for lesser hive mind (payback-bypass eligible; ranked on progress, not auto-win)",
+   "milestoneState": "NO_EFFECT",
+   "requiredReserveRatio": 1.5,
+   "reserveOk": true,
+   "paybackBypassed": true,
+   "bypassReason": "payback 2224884s > limit 3600s; reserveRatio 2.965e+0 >= required 1.5"
+  }
+ ],
+ "realMeatProposal": {
+  "canonicalProposalId": "meat::goddess::unit::base",
+  "plannerKind": "action-unit",
+  "lane": "Meat",
+  "candidateInternalId": "goddess",
+  "candidateLabel": "hive neuron",
+  "requestedAmount": "2.2479099878998956669e+21",
+  "wouldBuyAmount": "2.25Sx",
+  "decision": "BUY",
+  "buyable": true,
+  "costResource": "neuroprophet",
+  "reserveRatio": 55443983.88730539,
+  "reserveAfter": "1.5579135643654333355e+38",
+  "reserveRequired": "2.8098874848748695836e+30",
+  "paybackSeconds": 27438.085150955136,
+  "paybackLimitSeconds": 3600,
+  "paybackRatio": 7.62169031970976,
+  "hardBlockers": [],
+  "safeEligible": true,
+  "reason": "target-path action for lesser hive mind (payback-bypass eligible; ranked on progress, not auto-win)",
+  "milestoneState": "NO_EFFECT",
+  "requiredReserveRatio": 5,
+  "reserveOk": true,
+  "paybackBypassed": true,
+  "bypassReason": "payback 27438s > limit 3600s; reserveRatio 5.544e+7 >= required 5"
+ },
+ "coordinator": {
+  "recommendation": "UNCERTAIN",
+  "reason": "No allowed comparable action exists on this snapshot.",
+  "executionAuthority": "advisor-only",
+  "boundedCandidate": null
+ },
+ "executedCycle": {
+  "mainActions": 0,
+  "mainDecision": "HOLD — companion side-task allowed",
+  "goddessBefore": "7.2142399444793607499e+27",
+  "goddessAfter": "7.2142399444793607499e+27",
+  "goddessChanged": false,
+  "pantheon2Before": "927575665",
+  "pantheon2After": "927575665",
+  "pantheon2Changed": false
+ },
+ "replanLoop": {
+  "pantheon2Start": "927575665",
+  "pantheon2End": "927575665",
+  "targetProgress": 0,
+  "actionsCompleted": 0,
+  "steps": [
+   {
+    "step": 0,
+    "coordRecommendation": "UNCERTAIN",
+    "authorizedCandidate": null,
+    "mainActionsExecuted": 0
+   }
+  ],
+  "stopReason": "coordinator authorized no main action (WAIT)"
+ },
+ "manualCausalReference": {
+  "pantheon2Before": "927575665",
+  "pantheon2After": "2596277010",
+  "targetProgress": 1668701345,
+  "status": "MANUAL_CAUSAL_REFERENCE",
+  "note": "positive target progress but NOT a runtime proposal / not coordinator-authorized"
+ },
+ "reserveMutationMatrix": [
+  {
+   "name": "1 ratio just above action-unit threshold => allowed",
+   "caught": true
+  },
+  {
+   "name": "2 ratio just below action-unit threshold => blocked",
+   "caught": true
+  },
+  {
+   "name": "3 action-unit uses meatActionUnitMinReserveRatio(5)",
+   "caught": true
+  },
+  {
+   "name": "4 parent-step uses meatParentStepMinReserveRatio(1.5)",
+   "caught": true
+  },
+  {
+   "name": "5 unlock uses meatUnlockMinReserveRatio(3)",
+   "caught": true
+  },
+  {
+   "name": "6 wrong threshold (action-unit 5 forced on parent-step) detected",
+   "caught": true
+  },
+  {
+   "name": "7 ignoring the threshold (always-allow) detected on a below-threshold ratio",
+   "caught": true
+  },
+  {
+   "name": "8 bypass that also waives reserve is blocked by the reserve-respecting gate",
+   "caught": true
+  }
+ ],
+ "verdict": "RUNTIME_SAFE_PLAN_NOT_FOUND",
+ "verdictNote": "runtime authorizes 0 main actions on this save; the Meat action-unit (goddess) is reserve-safe (reserveRatio >> threshold) and safeEligible, but the coordinator scores it milestoneOutcome=NO_EFFECT and abstains -> WAIT. The multi-step causal mechanism is proven (manual reference) but the current safe model (the NO_EFFECT binding-resource-eta metric, NOT the reserve policy) does not realize it."
+}
