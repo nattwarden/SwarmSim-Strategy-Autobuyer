@@ -127,13 +127,14 @@ Phase 2 slice 4 - four-value amount contract - is complete:
   supported keys and legacy execution ownership were intentionally unchanged.
 
 Phase 2 clean-room safety reconstruction is complete. Current work package:
-Phase 3 - global execution-ownership readiness audit, read-only first. Do not
-enable M6 as the sole owner while only Territory supplies its comparable
-milestone-ETA metric, advisor-only outcomes remain in the six-domain result,
-or legacy paths are still required for safe normal progression. Establish a
-versioned acceptance matrix for domain comparability, exact execution, WAIT
-behavior and legacy coverage before any ownership implementation. The rejected
-feature branch remains research material only and must not be used as a base.
+Phase 3 slice 1 - reject false-zero shared metrics. The read-only readiness
+audit at `docs/strategy/GLOBAL_EXECUTION_OWNERSHIP_READINESS_9.4.0.md` records
+`NO_GO_GLOBAL_EXECUTION_OWNERSHIP`: missing ETA evidence is currently coerced
+from `null` to comparable zero, and M6 still does not cover critical upgrades,
+Clone paths or all normal Smart purchases. Fix only the missing-metric
+classification first; preserve explicit numeric zero, legacy execution
+ownership and every hard safety default. The rejected feature branch remains
+research material only and must not be used as a base.
 
 ## Current status snapshot (2026-07-15)
 
