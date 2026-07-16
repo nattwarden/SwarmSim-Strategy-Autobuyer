@@ -3,7 +3,38 @@
 Status: Active handoff board. Update this file at every completed work package,
 blocked handoff, milestone transition, and accepted verification result.
 
-Last reviewed: 2026-07-15
+Last reviewed: 2026-07-16
+
+## 9.4.0 clean-room recovery (2026-07-16)
+
+The rejected `feature/9.4.0-global-execution-ownership` series remains research
+material only. Product reconstruction now runs on
+`codex/9.4.0-clean-room`, created from exact main baseline
+`da1fcede6419b8124b11004c7562819b67180330`.
+
+Phase 1 - reproducible clean baseline - is complete:
+
+- implementation SHA: `68b77d0a5bd45c005c28a956b5ca15d731bf69d0`;
+- implementation tree: `da46c284e5bcd4e0bbb822a518527a777875f074`;
+- evidence SHA: `f31e962c14125f9fda8f4d5b8c83716259ba0630`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-68b77d0.md`;
+- the missing, untracked Territory/default-save path was replaced by the
+  existing tracked, player-reported and SHA-256-pinned
+  `docs/test-data/clone-ramp/live-user-save.txt`;
+- successful M8, M9 and live-purchase checks now remove their ephemeral
+  strategy-audit outputs, so the complete suite leaves an exact-SHA worktree
+  clean;
+- canonical runtime, product strategy, thresholds, defaults and version
+  surfaces were intentionally unchanged;
+- the detached exact-SHA worktree passed guardrails, canonical build, the full
+  configured `npm run verify`, default-save import and `git diff --check`, all
+  with exit code `0` and final status count `0`.
+
+Current work package: Phase 2 - reconstruct safety contracts one at a time.
+The first slice is shared target/decision identity only. It must preserve
+legacy execution ownership and all Phase 1 invariants; authorization identity,
+stale-authorization and amount contracts remain later separate slices.
 
 ## Current status snapshot (2026-07-15)
 
