@@ -3479,6 +3479,8 @@ function getDisplayName(item) {
       coordinatorSelectedExecutionId: coordinatorExecution.selectedExecutionId || "none",
       coordinatorSelectedExecutionKind: coordinatorExecution.selectedExecutionKind || "none",
       coordinatorSelectedExecutionVariant: coordinatorExecution.selectedExecutionVariant || "base",
+      coordinatorSelectedCanonicalProposalId: coordinatorExecution.selectedCanonicalProposalId || "none",
+      coordinatorSelectedAuthorizationId: coordinatorExecution.selectedAuthorizationId || "none",
       coordinatorSelectedFingerprint: coordinatorExecution.selectedFingerprint || "none",
       coordinatorExecutedFingerprint: coordinatorExecution.executedFingerprint || "none",
       coordinatorSelectedAmount: coordinatorExecution.selectedAmount || "0",
@@ -5542,6 +5544,12 @@ function getDisplayName(item) {
       executionId: row.executionId || row.candidate || "none",
       executionKind: row.executionKind || (row.candidate && String(row.candidate).includes("Upgrade") ? "upgrade" : "unit"),
       executionVariant: row.executionVariant || "base",
+      canonicalProposalId: row.canonicalProposalId || buildCanonicalProposalId({
+        executionKey: row.executionKey || domain.executionKey,
+        executionId: row.executionId || row.candidate || "none",
+        executionKind: row.executionKind || (row.candidate && String(row.candidate).includes("Upgrade") ? "upgrade" : "unit"),
+        executionVariant: row.executionVariant || "base",
+      }),
       fingerprint: buildCoordinatorCandidateFingerprint({
         lane: row.lane,
         executionKey: row.executionKey || domain.executionKey,
@@ -5561,6 +5569,7 @@ function getDisplayName(item) {
       executionId: "none",
       executionKind: "none",
       executionVariant: "base",
+      canonicalProposalId: null,
       fingerprint: "none",
     };
     const effectIdBase = `${snapshotActionId(sharedContext, action.actionId)}:${domain.domainId}`;
@@ -5872,6 +5881,23 @@ function getDisplayName(item) {
     const winner = result?.winner || null;
     const boundedCandidate = winner && winner.authorityClass === "BOUNDED_REVERSIBLE" ? winner : null;
     const proposalState = purchaseProposalState || { proposals: [], evaluation: null };
+    const canonicalProposalId = boundedCandidate
+      ? (boundedCandidate.action?.canonicalProposalId || buildCanonicalProposalId(boundedCandidate.action || {}))
+      : null;
+    const authorization = boundedCandidate && canonicalProposalId ? {
+      schemaVersion: "decision-authorization.v1",
+      authorizationId: buildDecisionAuthorizationId({
+        canonicalProposalId,
+        decisionCycleId: result?.decisionCycleId,
+        snapshotId: result?.snapshotId,
+        activeTarget: result?.activeTarget,
+      }),
+      canonicalProposalId,
+      decisionCycleId: String(result?.decisionCycleId || "unknown"),
+      snapshotId: String(result?.snapshotId || "unknown"),
+      activeTarget: String(result?.activeTarget || "unknown"),
+      enforcement: "observability-only",
+    } : null;
     const base = {
       schemaVersion: SIX_DOMAIN_STRATEGIC_COORDINATOR_SCHEMA_VERSION,
       decisionCycleId: result?.decisionCycleId || "unknown",
@@ -5885,9 +5911,11 @@ function getDisplayName(item) {
       revalidationStatus: "not-applicable",
       identityStatus: boundedCandidate ? "not-checked" : "not-applicable",
       preRevalidationEligible: false,
+      authorization,
       boundedCandidate: boundedCandidate ? {
         domainId: boundedCandidate.domainId,
         actionId: boundedCandidate.action?.actionId || "unknown",
+        canonicalProposalId,
         executionKey: boundedCandidate.action?.executionKey || null,
         executionId: boundedCandidate.action?.executionId || null,
         executionKind: boundedCandidate.action?.executionKind || null,
@@ -5917,7 +5945,10 @@ function getDisplayName(item) {
     const preRevalidationEligible = identityMatches && purchaseDecision?.preRevalidationEligible === true && result?.executionAuthority === true;
     return laboratoryDeepFreeze({
       ...base,
-      executionDecision: purchaseDecision,
+      executionDecision: {
+        ...purchaseDecision,
+        selectedAuthorizationId: authorization?.authorizationId || null,
+      },
       executionAuthority: false,
       identityStatus: identityMatches ? "matched" : "mismatch",
       preRevalidationEligible,
@@ -6918,6 +6949,8 @@ function getDisplayName(item) {
       executionId: usefulCouncilText(inspector?.coordinatorSelectedExecutionId) || null,
       executionKind: usefulCouncilText(inspector?.coordinatorSelectedExecutionKind) || null,
       executionVariant: usefulCouncilText(inspector?.coordinatorSelectedExecutionVariant) || null,
+      canonicalProposalId: usefulCouncilText(inspector?.coordinatorSelectedCanonicalProposalId) || null,
+      authorizationId: usefulCouncilText(inspector?.coordinatorSelectedAuthorizationId) || null,
       fingerprint: usefulCouncilText(inspector?.coordinatorSelectedFingerprint) || null,
     } : null;
     const gatesFailed = usefulCouncilText(inspector?.coordinatorGatesFailed)
@@ -18981,7 +19014,11 @@ function getDisplayName(item) {
     const proposals = [];
     const add = (candidate, executionKey) => {
       if (!candidate) return;
-      proposals.push({ ...candidate, executionKey });
+      const proposal = { ...candidate, executionKey };
+      proposals.push({
+        ...proposal,
+        canonicalProposalId: buildCanonicalProposalId(proposal),
+      });
     };
 
     if (config.larvaEnginePriority && engine) {
@@ -19135,6 +19172,28 @@ function getDisplayName(item) {
     return isPositive(amount) ? amount : null;
   }
 
+  function buildCanonicalProposalId(input = {}) {
+    const executionKey = String(input.executionKey || "");
+    const executionId = String(input.executionId || "");
+    const executionKind = String(input.executionKind || "");
+    if (!executionKey || !executionId || !executionKind) return null;
+    return [
+      executionKey,
+      executionId,
+      executionKind,
+      String(input.executionVariant || "base"),
+    ].join("::");
+  }
+
+  function buildDecisionAuthorizationId(input = {}) {
+    const canonicalProposalId = String(input.canonicalProposalId || "");
+    if (!canonicalProposalId) return null;
+    const decisionCycleId = String(input.decisionCycleId || "unknown");
+    const snapshotId = String(input.snapshotId || "unknown");
+    const activeTarget = String(input.activeTarget || "unknown");
+    return [canonicalProposalId, decisionCycleId, snapshotId, activeTarget].map(encodeURIComponent).join("@@");
+  }
+
   function buildCoordinatorCandidateFingerprint({ lane, executionKey, candidate, executionId, executionKind, executionVariant, target, boundedAmount }) {
     return [
       String(lane || "none"),
@@ -19160,6 +19219,8 @@ function getDisplayName(item) {
       selectedExecutionId: "none",
       selectedExecutionKind: "none",
       selectedExecutionVariant: "base",
+      selectedCanonicalProposalId: null,
+      selectedAuthorizationId: null,
       selectedAmount: "0",
       selectedTarget: "none",
       selectedFingerprint: "none",
@@ -19200,6 +19261,12 @@ function getDisplayName(item) {
     const selectedExecutionId = String(proposal?.executionId || "");
     const selectedExecutionKind = String(proposal?.executionKind || "");
     const selectedExecutionVariant = String(proposal?.executionVariant || "base");
+    const selectedCanonicalProposalId = proposal?.canonicalProposalId || buildCanonicalProposalId({
+      executionKey: selectedKey,
+      executionId: selectedExecutionId,
+      executionKind: selectedExecutionKind,
+      executionVariant: selectedExecutionVariant,
+    });
     const blockers = proposal?.blockers || [];
     const gatesPassed = [];
     const gatesFailed = [];
@@ -19252,6 +19319,7 @@ function getDisplayName(item) {
       selectedExecutionId: selectedExecutionId || "none",
       selectedExecutionKind: selectedExecutionKind || "none",
       selectedExecutionVariant,
+      selectedCanonicalProposalId,
       selectedAmount: selectedAmountToken,
       selectedTarget,
       selectedFingerprint,
@@ -23235,6 +23303,14 @@ function getDisplayName(item) {
       },
 
       purchaseEvaluator: {
+        identity: {
+          canonicalProposalId(input = {}) {
+            return buildCanonicalProposalId(input);
+          },
+          authorizationId(input = {}) {
+            return buildDecisionAuthorizationId(input);
+          },
+        },
         evaluate(candidates = [], selectedMainAction = null) {
           return laboratoryCloneJson(buildUnifiedPurchaseEvaluator(candidates, selectedMainAction));
         },
