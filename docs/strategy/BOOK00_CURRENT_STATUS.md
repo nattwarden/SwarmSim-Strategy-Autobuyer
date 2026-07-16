@@ -31,10 +31,32 @@ Phase 1 - reproducible clean baseline - is complete:
   configured `npm run verify`, default-save import and `git diff --check`, all
   with exit code `0` and final status count `0`.
 
-Current work package: Phase 2 - reconstruct safety contracts one at a time.
-The first slice is shared target/decision identity only. It must preserve
-legacy execution ownership and all Phase 1 invariants; authorization identity,
-stale-authorization and amount contracts remain later separate slices.
+Phase 2 slice 1 - shared target/decision identity - is complete:
+
+- implementation SHA: `bba78650d706f9fdade2fff57214117b255d3f8d`;
+- implementation tree: `48493cd9c282327ca7e079f3ad1fbb60c5e48afd`;
+- evidence SHA: `18adc8a3c92fa5c391efeab3fb3998e4b9f26608`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-bba7865.md`;
+- `getCurrentStrategyIdentity()` now resolves the milestone and active target
+  from one planner branch and supplies both the pre-execution M6 snapshot and
+  the later Inspector/Council reconstruction;
+- the pinned player save resolves `lesser hive mind` as both the meat-chain
+  target and all six domains' shared `activeTarget`, rather than leaking the
+  unrelated `smartFocus`/proposal target into the decision identity;
+- focused mutation control restores the old binding in memory and fails with
+  `activeTarget=balanced`, while tracked unit counts stay unchanged and M6
+  execution authority stays false;
+- the detached exact-SHA worktree passed the full configured suite, default
+  save import, guardrails and `git diff --check`, ending clean;
+- proposal ranking, authorization, amounts, thresholds, safety defaults,
+  Laboratory gates and legacy execution ownership were intentionally
+  unchanged.
+
+Current work package: Phase 2 slice 2 - separate canonical proposal identity
+from decision authorization identity. This slice must remain additive and
+observable: no stale-authorization gate, amount-contract change or global
+execution ownership is included until its own later work package.
 
 ## Current status snapshot (2026-07-15)
 
