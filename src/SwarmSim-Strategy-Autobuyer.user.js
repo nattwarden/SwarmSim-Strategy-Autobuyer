@@ -4998,7 +4998,9 @@ function getDisplayName(item) {
   function sixDomainComparableValue(outcome) {
     const etaImprovement = sixDomainHasFiniteMetric(outcome?.outcome?.milestoneEtaImprovementSeconds)
       ? Number(outcome?.outcome?.milestoneEtaImprovementSeconds)
-      : Number(outcome?.outcome?.etaImprovementSeconds);
+      : sixDomainHasFiniteMetric(outcome?.outcome?.etaImprovementSeconds)
+        ? Number(outcome.outcome.etaImprovementSeconds)
+        : NaN;
     if (Number.isFinite(etaImprovement)) return { basis: "milestone-eta-seconds", value: etaImprovement, unit: "seconds" };
     const progressDelta = sixDomainHasFiniteMetric(outcome?.outcome?.projectedMilestoneProgressDelta)
       ? Number(outcome?.outcome?.projectedMilestoneProgressDelta)
