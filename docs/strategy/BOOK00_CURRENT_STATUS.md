@@ -176,13 +176,21 @@ path toward complete M6 coverage, or a separate product capability) and is not
 implied by this sweep. Do not grant M6 whole-cycle ownership without the live
 purchase acceptance gate passing against that change first.
 
-Proposed next direction (DESIGN ONLY, awaiting review — no runtime change
-authorized): earn `m6Coverage = COMPLETE` one path at a time, starting with
-`LARVA_ENGINE_GUARD`, via a fail-closed, per-cycle-earned equivalence contract
-that never toggles ownership. See
-[BOOK00_M6_COMPLETENESS_LARVA_ENGINE_FOUNDATION.md](BOOK00_M6_COMPLETENESS_LARVA_ENGINE_FOUNDATION.md).
-`NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains in force until that design is
-approved and every gate is met.
+Next-direction status (measured 2026-07-18): the M6-completeness design was
+approved and its first path, `LARVA_ENGINE_GUARD`, was taken to a feasibility
+check before any runtime change. Result: identity/amount equivalence between the
+legacy guard and the M6 `LARVA_ENGINE` domain HOLDS, but the M6 domain is
+`comparability = UNRANKED` in every real execute cycle, so `COMPLETE` is not
+earnable under the current metric contract. This is readiness finding R5 / the
+FAIL gate "four reversible domains share the active milestone metric" in
+measured form. Slice A (the completeness classifier) is therefore DEFERRED; the
+real prerequisite is spec AC3 — a comparable `milestone-eta-seconds` outcome for
+the reversible domains, which is a scoring change requiring a fresh SA1/live
+evidence run. See
+[BOOK00_M6_COMPLETENESS_LARVA_ENGINE_FOUNDATION.md](BOOK00_M6_COMPLETENESS_LARVA_ENGINE_FOUNDATION.md)
+§9 and
+[BOOK00_ETA_DRIVEN_SELECTION_SPEC_FOUNDATION.md](BOOK00_ETA_DRIVEN_SELECTION_SPEC_FOUNDATION.md).
+No runtime change was made. `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains in force.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays

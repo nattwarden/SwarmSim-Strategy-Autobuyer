@@ -221,3 +221,42 @@ Approve, revise, or reject:
 
 Only after approval does any runtime change proceed, one exact-SHA-verified
 slice at a time.
+
+## 9. Feasibility finding (measured 2026-07-18) — Slice A is BLOCKED on the shared-metric prerequisite
+
+Before implementing the classifier, the equivalence conditions of §2 were
+measured directly on two live saves, over real cycles where the legacy
+`LARVA_ENGINE_GUARD` executes (`bot.strategicCoordinator.mainCycleCoverage()`
+for the legacy boundary proposal, `getCurrent().domainOutcomes` for the M6
+`LARVA_ENGINE` domain outcome):
+
+- **Identity + amount equivalence HOLD.** When the guard executes `expansion x1`,
+  the M6 `LARVA_ENGINE` domain's `action.executionId`/`executionKind`/`amount`
+  are `expansion`/`upgrade`/`1` — an exact match. The path-boundary sweep
+  (slice 11) set this up cleanly. (In some cycles the guard bought `hatchery`
+  while the M6 domain still pointed at `expansion`; identity then diverged, as
+  option 4.2 anticipated.)
+- **Executability FAILS in every observed cycle.** The M6 `LARVA_ENGINE` domain
+  outcome is `authorityClass = BOUNDED_REVERSIBLE`, `safety = ALLOWED`, but
+  `comparability = UNRANKED` in every cycle. Its metric (Expansion/Hatchery
+  completion, a `same-unit-milestone-progress-delta`) does not match the
+  cycle's selected comparison basis (target ETA seconds), so it is never
+  `COMPARABLE`.
+
+Therefore condition §2.2 ("executable M6 proposal", which requires
+`comparability = COMPARABLE`) can never be met while the guard executes, and
+`COMPLETE` is **not earnable** for `LARVA_ENGINE` under the current metric
+contract. This is the readiness FAIL gate "four reversible domains share the
+active milestone metric" / finding R5, in concrete measured form, and it
+confirms §5 of this document: a completeness conversion is meaningless until the
+reversible domains share one comparable ETA-to-next-gate metric (spec AC3 in
+[BOOK00_ETA_DRIVEN_SELECTION_SPEC_FOUNDATION.md](BOOK00_ETA_DRIVEN_SELECTION_SPEC_FOUNDATION.md)).
+
+**Consequence:** Slice A (the completeness classifier) is deferred. The real
+prerequisite is AC3 — giving the reversible domains (starting with
+Larva/Engine) a comparable `milestone-eta-seconds` outcome so the Engine domain
+can rank on the cycle's basis. That is a scoring change to the metric contract
+(`sixDomainComparableValue` / the selected-basis logic) and, per the readiness
+hard constraint, requires a fresh SA1 / live evidence run documented alongside
+it. It is a larger, separately-scoped work item than the boundary slices and
+must not be started as an incidental change.
