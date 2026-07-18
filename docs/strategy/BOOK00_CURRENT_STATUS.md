@@ -136,17 +136,30 @@ Completed slices (implementation SHA / evidence SHA / evidence file):
   recovery behavior are unchanged; M6 coverage stays `NONE`.
   `e2569dec0fcf2dd81d79e7a33f98aea216c3f1ad` /
   `c5e2c97` / `verification-e2569de.md`.
+- Phase 3 slice 15 - Meat unlock planner path boundary
+  (`meat-unlock-planner-path-boundary.v1`): the legacy meat
+  unlock/parent-step/twin planner (`runUnlockPlanner`) issues at most one
+  bounded command per cycle, so its body is wrapped to attach the boundary at a
+  single exit with at most one proposal. All four real buy sites - the two
+  twin-unlock threshold upgrades, the twin-prep unit buy and the
+  unlock/parent-step unit buy - carry canonical identity, cycle-bound
+  authorization and a fail-closed identity/amount check. Amount-`1` twin
+  upgrades confirm exactly via `real-upgrade-count-delta`; the large-magnitude
+  unit buys confirm via a real positive `real-unit-count-delta`. Live boundary
+  proof reports `PROVEN` `EXECUTED` for a real parent-step unit buy. Resolution,
+  reserve/payback/rebuild guards and buy amounts are unchanged; M6 coverage
+  stays `PARTIAL`. `6ce6b3df986e766b08edea31b578c9fafb2b69f9` /
+  `17ca41d` / `verification-6ce6b3d.md`.
 
-Standing verdict after slice 14: eight of ten retained legacy paths carry a
-proven path boundary (`CLONE_BUFFER` and `CLONE_BUFFER_HARD_LOCK_RECOVERY`
-both landed in slice 14); complete M6 execution paths remain `0` of `10`; the
-WAIT precondition remains `FAIL` with `ADVISOR_ONLY` authority; whole-cycle
+Standing verdict after slice 15: nine of ten retained legacy paths carry a
+proven path boundary; only `FINAL_CLONE_PREP` (`manageCloneCocoons`) remains
+unbounded; complete M6 execution paths remain `0` of `10`; the WAIT
+precondition remains `FAIL` with `ADVISOR_ONLY` authority; whole-cycle
 ownership eligibility remains `false`.
 
-Current work package: none selected. Slice 14 is closed; select the next
-retained legacy path only as a narrow, source-grounded boundary slice. The
-remaining unbounded paths are `MEAT_UNLOCK_PLANNER` and `FINAL_CLONE_PREP`,
-each to be taken only after separate scope analysis.
+Current work package: none selected. Slice 15 is closed; the one remaining
+unbounded path is `FINAL_CLONE_PREP` (`manageCloneCocoons`), to be taken only
+as a narrow, source-grounded boundary slice after separate scope analysis.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
