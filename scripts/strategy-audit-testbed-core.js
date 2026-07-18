@@ -1158,6 +1158,48 @@ SCENARIOS["book00-critical-upgrade-boundary-advisor"] = {
   ],
 };
 
+SCENARIOS["book00-larva-engine-guard-boundary"] = {
+  id: "BOOK00-LARVA-ENGINE-GUARD-BOUNDARY",
+  title: "Larva Engine Guard Executes Inside Its Boundary",
+  description: "Real meat and territory banks make the existing Engine guard's Expansion/Hatchery upgrade eligible. With all other purchase paths disabled and a one-action budget, its first real one-upgrade buy must carry exact proposal identity, cycle-bound authorization, an exact amount contract, and explicit accounting.",
+  cycles: 1,
+  executeActions: true,
+  realResourceSeeds: { meat: "1e12", territory: "1e12", larva: "1e9" },
+  config: {
+    smartMaxActionsPerRun: 1,
+    meatGoalPlanner: false,
+    larvaEnginePriority: true,
+    prioritizeProductionUpgrades: false,
+    territoryPrepPlanner: false,
+    expansionArmySeedPlanner: false,
+    territoryArmySeedWhenEmpty: false,
+    territoryRoiMode: false,
+    buyUpgrades: false,
+    buyUnits: false,
+    focusTab: "larva",
+  },
+  trackedUpgradeKeys: ["expansion", "hatchery"],
+  notes: [
+    "The existing Engine order remains Expansion before Hatchery; this state only makes its real game upgrades affordable and does not synthesize a winner.",
+    "All later purchase paths are disabled so the real upgrade-count delta can be attributed solely to LARVA_ENGINE_GUARD.",
+  ],
+};
+
+SCENARIOS["book00-larva-engine-guard-boundary-advisor"] = {
+  ...SCENARIOS["book00-larva-engine-guard-boundary"],
+  id: "BOOK00-LARVA-ENGINE-GUARD-BOUNDARY-ADVISOR",
+  title: "Larva Engine Guard Is Accounted As Blocked In Advisor Mode",
+  description: "Identical Engine state with execution disabled: the reached Engine proposal must be BLOCKED_SAFE_MODE and no real upgrade count may change.",
+  executeActions: false,
+};
+
+SCENARIOS["book00-larva-engine-guard-boundary-disabled"] = {
+  ...SCENARIOS["book00-larva-engine-guard-boundary"],
+  id: "BOOK00-LARVA-ENGINE-GUARD-BOUNDARY-DISABLED",
+  title: "Disabled Larva Engine Guard States Its Not-Applicable Reason",
+  config: { ...SCENARIOS["book00-larva-engine-guard-boundary"].config, larvaEnginePriority: false },
+};
+
 SCENARIOS["book00-smart-upgrade-boundary"] = {
   id: "BOOK00-SMART-UPGRADE-BOUNDARY",
   title: "Generic Smart-Upgrade Path Executes Inside Its Boundary",

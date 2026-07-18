@@ -114,7 +114,7 @@
     "SKIPPED_GLOBAL_M6_OWNERSHIP",
   ];
   const MAIN_CYCLE_COVERAGE_PATHS = [
-    { pathId: "LARVA_ENGINE_GUARD", sourceCall: "executeEngineGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["LARVA_ENGINE"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
+    { pathId: "LARVA_ENGINE_GUARD", sourceCall: "executeEngineGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["LARVA_ENGINE"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "larva-engine-guard-path-boundary.v1" },
     { pathId: "CRITICAL_PRODUCTION_UPGRADES", sourceCall: "handleCriticalProductionUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "critical-upgrade-path-boundary.v1" },
     { pathId: "ENERGY_GUARD", sourceCall: "executeEnergyGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["ENERGY_PRODUCTION"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
@@ -5850,6 +5850,9 @@ function getDisplayName(item) {
     if (boundaryContract === CRITICAL_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isCriticalUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
+    if (boundaryContract === LARVA_ENGINE_GUARD_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isLarvaEngineGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
     if (boundaryContract === SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
@@ -5930,6 +5933,33 @@ function getDisplayName(item) {
         if (String(amountContract.authorizedRequestedAmount || "") !== String(proposal.boundedAmount)) return false;
         if (String(amountContract.commandRequestedAmount || "") !== String(proposal.boundedAmount)) return false;
         if (String(amountContract.confirmedPurchasedAmount || "") !== String(proposal.boundedAmount)) return false;
+      }
+    }
+    return true;
+  }
+
+  function isLarvaEngineGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    if (heldCandidates.length !== 0) return false;
+    if (!proposals.length && !boundary.notApplicableReason) return false;
+    const accountedOutcomeCount = Number(accounting.executedCount)
+      + Number(accounting.blockedSafeModeCount)
+      + Number(accounting.commandFailedCount)
+      + Number(accounting.contractViolationCount);
+    if (!Number.isFinite(accountedOutcomeCount) || accountedOutcomeCount !== proposals.length) return false;
+    const allowedOutcomes = ["EXECUTED", "BLOCKED_SAFE_MODE", "COMMAND_FAILED", "CONTRACT_VIOLATION"];
+    for (const proposal of proposals) {
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId) return false;
+      if (String(proposal?.executionKey || "") !== "larva-engine-guard" || String(proposal?.executionKind || "") !== "upgrade") return false;
+      if (String(proposal?.boundedAmount || "") !== "1") return false;
+      if (!proposal?.metricTarget || !proposal?.metricId || !proposal?.metricUnit || !proposal?.metricBasis) return false;
+      if (!allowedOutcomes.includes(String(proposal?.outcome || ""))) return false;
+      if (String(proposal?.outcome) === "EXECUTED") {
+        const amountContract = proposal?.amountContract;
+        if (!amountContract) return false;
+        if (String(amountContract.authorizedRequestedAmount || "") !== String(proposal.boundedAmount)) return false;
+        if (String(amountContract.commandRequestedAmount || "") !== String(proposal.boundedAmount)) return false;
+        if (String(amountContract.confirmedPurchasedAmount || "") !== String(proposal.boundedAmount)) return false;
+        if (String(amountContract.confirmationBasis || "") !== "real-upgrade-count-delta") return false;
       }
     }
     return true;
@@ -12841,9 +12871,27 @@ function getDisplayName(item) {
     return false;
   }
 
-  function handleLarvaEnginePriority(game, commands, engine) {
+  const LARVA_ENGINE_GUARD_PATH_BOUNDARY_SCHEMA_VERSION = "larva-engine-guard-path-boundary.v1";
+
+  function handleLarvaEnginePriority(game, commands, engine, cycleIdentity = null) {
+    // Slice 11 preserves the existing Engine order and eligibility. The added
+    // boundary only binds its one-upgrade command to exact identity and cycle.
+    const boundary = {
+      schemaVersion: LARVA_ENGINE_GUARD_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: "LARVA_ENGINE_GUARD",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason: null,
+      heldCandidates: [],
+      proposals: [],
+      accounting: { proposalCount: 0, executedCount: 0, blockedSafeModeCount: 0, commandFailedCount: 0, contractViolationCount: 0 },
+    };
     if (!config.larvaEnginePriority || !engine) {
-      return { actionTaken: false, bought: 0 };
+      boundary.notApplicableReason = !config.larvaEnginePriority
+        ? "larva engine priority is disabled by configuration"
+        : "larva engine analysis is unavailable";
+      return { actionTaken: false, bought: 0, pathBoundary: boundary };
     }
 
     const order = [
@@ -12881,6 +12929,24 @@ function getDisplayName(item) {
       const upgrade = item.upgrade;
       if (!upgrade?.isBuyable?.()) continue;
 
+      const proposal = {
+        lane: "Engine", candidate: item.key, executionKey: "larva-engine-guard",
+        executionId: String(upgrade?.name || ""), executionKind: "upgrade", executionVariant: "base",
+        boundedAmount: "1", metricTarget: item.key,
+        metricId: `${strategicMetricTargetSlug(item.key)}-step-completion`, metricUnit: "percent",
+        metricBasis: "same-unit-milestone-progress-delta", rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY",
+        outcome: "PENDING", outcomeReason: "", amountContract: null,
+      };
+      proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+      proposal.authorizationId = buildDecisionAuthorizationId({
+        canonicalProposalId: proposal.canonicalProposalId,
+        decisionCycleId: boundary.decisionCycleId,
+        snapshotId: boundary.snapshotId,
+        activeTarget: boundary.activeTarget,
+      });
+      boundary.proposals.push(proposal);
+      boundary.accounting.proposalCount = boundary.proposals.length;
+
       recordAdvisor("BUY", item.key, item.reason);
       addLaneCandidate({
         lane: "Engine",
@@ -12899,17 +12965,49 @@ function getDisplayName(item) {
 
       if (config.advisorOnly || !config.autoBuySafeDecisions) {
         recordMessage(`Advisor: WOULD BUY ${item.key} — ${item.reason}`);
-        return { actionTaken: true, bought: 0, summary: `Would buy ${item.key}` };
+        proposal.outcome = "BLOCKED_SAFE_MODE";
+        proposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+        boundary.accounting.blockedSafeModeCount++;
+        return { actionTaken: true, bought: 0, summary: `Would buy ${item.key}`, pathBoundary: boundary };
+      }
+
+      const engineCommandAmount = newDecimal(1);
+      const engineCommandAmountToken = normalizeBoundedAmountToken(engineCommandAmount);
+      const boundaryContractSatisfied = !!proposal.canonicalProposalId
+        && String(upgrade?.name || "") === proposal.executionId
+        && engineCommandAmountToken === proposal.boundedAmount;
+      if (!boundaryContractSatisfied) {
+        proposal.outcome = "CONTRACT_VIOLATION";
+        proposal.outcomeReason = `authorized ${proposal.boundedAmount} of ${proposal.executionId} but the command requested ${engineCommandAmountToken} of ${String(upgrade?.name || "")}`;
+        boundary.accounting.contractViolationCount++;
+        return { actionTaken: true, bought: 0, summary: `Blocked ${item.key}`, pathBoundary: boundary };
       }
 
       const engineDelta = {};
-      const bought = safe(`Smart köp ${item.key}`, () => buyUpgradeAmount(commands, upgrade, newDecimal(1), "Engine", engineDelta));
-      if (bought) recordMainAction("Engine", item.key, item.reason, "1", engineDelta.value);
-      return { actionTaken: true, bought: bought ? 1 : 0, summary: `Bought ${item.key}` };
+      const bought = safe(`Smart köp ${item.key}`, () => buyUpgradeAmount(commands, upgrade, engineCommandAmount, "Engine", engineDelta));
+      if (bought) {
+        proposal.outcome = "EXECUTED";
+        proposal.outcomeReason = `${item.key} purchased`;
+        proposal.amountContract = {
+          authorizedRequestedAmount: proposal.boundedAmount,
+          commandRequestedAmount: engineCommandAmountToken,
+          confirmedPurchasedAmount: normalizeBoundedAmountToken(engineDelta.value),
+          observedUpgradeCountDelta: String(engineDelta.value || "0"),
+          confirmationBasis: "real-upgrade-count-delta",
+        };
+        boundary.accounting.executedCount++;
+        recordMainAction("Engine", item.key, item.reason, "1", engineDelta.value);
+      } else {
+        proposal.outcome = "COMMAND_FAILED";
+        proposal.outcomeReason = "buy command produced no upgrade count delta";
+        boundary.accounting.commandFailedCount++;
+      }
+      return { actionTaken: true, bought: bought ? 1 : 0, summary: `Bought ${item.key}`, pathBoundary: boundary };
     }
 
     recordAdvisor("INFO", "Larva engine", engineSummary(engine));
-    return { actionTaken: false, bought: 0 };
+    boundary.notApplicableReason = "no visible, buyable larva-engine upgrade is eligible";
+    return { actionTaken: false, bought: 0, pathBoundary: boundary };
   }
 
   function isCriticalProductionUpgrade(upgrade) {
@@ -19763,8 +19861,8 @@ function getDisplayName(item) {
 
   // <build:section:adapter-smart-execution:start>
   // Phase 3 extraction: dedicated execution adapter boundary for engine lane.
-  function executeEngineGuardAction({ game, commands, engine }) {
-    return handleLarvaEnginePriority(game, commands, engine);
+  function executeEngineGuardAction({ game, commands, engine, cycleIdentity = null }) {
+    return handleLarvaEnginePriority(game, commands, engine, cycleIdentity);
   }
   
   // Phase 3 extraction: dedicated execution adapter boundary for energy lane.
@@ -21217,7 +21315,16 @@ function getDisplayName(item) {
     // main-cycle-coverage: LARVA_ENGINE_GUARD
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "engine") {
       const pathProbe = beginMainCyclePathProbe();
-      const engineAction = executeEngineGuardAction({ game, commands, engine });
+      const engineAction = executeEngineGuardAction({
+        game,
+        commands,
+        engine,
+        cycleIdentity: {
+          decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+          snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+          activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+        },
+      });
       addMainResult("Larva engine", engineAction);
       recordEvaluatedMainCyclePath("LARVA_ENGINE_GUARD", engineAction, pathProbe, "Larva Engine guard had no applicable action.");
 
