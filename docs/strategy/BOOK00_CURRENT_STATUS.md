@@ -3,7 +3,7 @@
 Status: Active handoff board. Update this file at every completed work package,
 blocked handoff, milestone transition, and accepted verification result.
 
-Last reviewed: 2026-07-16
+Last reviewed: 2026-07-18
 
 ## 9.4.0 clean-room recovery (2026-07-16)
 
@@ -307,13 +307,54 @@ Phase 3 slice 7 - same-cycle legacy applicability evidence - is complete:
   configured suite, default-save import, all three mutations and `git diff
   --check`, ending with status count `0`.
 
-Current work package: Phase 3 slice 8 - critical production-upgrade proposal
-and accountability coverage - is selected but not implemented. Establish one
-truthful reversible-path boundary for the existing critical-upgrade callsite,
-including same-target proposal identity, bounded authorization and explicit
-accounting for execute/block/not-applicable outcomes. Do not invent an ETA
-conversion, widen upgrade eligibility, mark unrelated paths `COMPLETE`, or
-toggle whole-cycle ownership.
+Phase 3 slice 8 - critical production-upgrade proposal and accountability
+coverage - is complete:
+
+- implementation SHA: `e47c308e3d4398f5d5e431f1715ecfce00e78810`;
+- implementation tree: `ba35f4cf213b1003a28fa67452fb5e972f1dadae`;
+- evidence SHA: `18137fbbf466ec135ebe9098387f6f44b941949c`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-e47c308.md`;
+- `handleCriticalProductionUpgrades` now emits one
+  `critical-upgrade-path-boundary.v1` per evaluated cycle: every ranked
+  candidate is bound to an exact canonical proposal identity, an
+  authorization bound to the coordinator's decision cycle, snapshot and
+  active target, and a command amount of exactly `1` enforced fail-closed
+  before the real buy;
+- every candidate outcome is accounted explicitly (`EXECUTED` with a
+  four-value amount contract confirmed by a real upgrade-count delta,
+  `BLOCKED_SAFE_MODE`, `BLOCKED_PROTECTED_COST`, `SKIPPED_BUDGET`,
+  `COMMAND_FAILED`, `CONTRACT_VIOLATION`), and a disabled or empty path
+  must state its not-applicable reason;
+- the proposal carries an honest same-target step-completion metric
+  identity and `PATH_BOUNDARY_OBSERVABILITY_ONLY` ranking authority; no ETA
+  conversion was invented and M2/M6 scoring, ranking, eligibility, budgets
+  and thresholds are unchanged;
+- the coverage ledger declares the boundary contract on the
+  `CRITICAL_PRODUCTION_UPGRADES` row only and classifies per-cycle boundary
+  evidence as `PROVEN`, `NOT_EVALUATED` (legitimate skips are never proof)
+  or `MISSING`;
+- `check:9.4.0:critical-upgrade-boundary` proves a real executed `droneprod`
+  purchase grounded in a real upgrade count `0 -> 1` with every other
+  tracked upgrade unchanged, an advisor-only cycle accounted as blocked with
+  no state change, and an honest disabled `NOT_APPLICABLE` cycle; amount,
+  identity-drift and accounting-removal mutations are independently
+  rejected;
+- `m6Coverage` for the path remains `NONE`, complete M6 execution paths
+  remain `0`, the WAIT precondition remains `FAIL`, its authority remains
+  `ADVISOR_ONLY`, and whole-cycle ownership eligibility remains `false`;
+- the detached exact-SHA worktree passed canonical build, guardrails, the
+  full configured suite, default-save import, all three mutations and
+  `git diff --check`, ending with status count `0`.
+
+Current work package: Phase 3 slice 9 - generic Smart-upgrade path boundary -
+is selected but not implemented. Extend the slice-8 path-boundary discipline
+(exact proposal identity, cycle-bound authorization, fail-closed amount
+guard, explicit execute/block/not-applicable accounting) to the
+`SMART_UPGRADES` callsite (`buySmartUpgrades`), the closest sibling of the
+critical-upgrade path. Do not invent an ETA conversion, widen upgrade
+eligibility, mark unrelated paths `COMPLETE`, or toggle whole-cycle
+ownership.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays

@@ -326,7 +326,7 @@ verification is recorded in
 | Advisor-only winner cannot suppress reversible fallback | PASS | Slice 5 proves an honest House-of-Mirrors winner remains advisor-only while a real reversible legacy Drone purchase still executes; the sole-owner mutation is rejected. |
 | Exact candidate authorization and stale revalidation | PASS | Phase 2 clean-room contracts cover identity, stale context and amount. |
 | Exact supported purchase can execute | PASS, limited scope | M2/M3/live acceptance cover supported Meat/Engine/Territory/Energy examples. |
-| M6 covers critical upgrades, Clone paths and all normal Smart purchases | FAIL | Slice 6 binds ten real callsites to the ledger: zero are complete, four are partial and six have no M6 execution coverage. |
+| M6 covers critical upgrades, Clone paths and all normal Smart purchases | FAIL | Slice 6 binds ten real callsites to the ledger: zero are complete, four are partial and six have no M6 execution coverage. Slice 8 adds the required proposal/authorization/accounting boundary to the critical-upgrade path, but M6 execution coverage for it remains `NONE`. |
 | WAIT proves no safe normal purchase exists | FAIL | Slice 7 proves same-cycle dispositions for all ten paths, but the explicit precondition still fails because complete M6 execution coverage remains zero of ten. |
 | Sole-owner live acceptance | FAIL by prior mutation | Reintroducing sole ownership previously produced no-buy behavior. |
 
@@ -434,6 +434,28 @@ Acceptance exercises real legacy and exact-M6 purchases, requires ten unique
 dispositions, grounds execution in action and unit deltas, and rejects missing,
 stale and circular global-ownership evidence. It does not change scoring,
 proposal selection, action budgets, safety defaults or execution ownership.
+
+## Completed slice 8
+
+Phase 3 slice 8 establishes the first per-path boundary required by the
+work-after-slice-7 plan, on the critical production-upgrade path:
+
+> Every candidate the path may execute must first carry an exact canonical
+> proposal identity, an authorization bound to the coordinator's decision
+> cycle, snapshot and active target, and a fail-closed command amount of
+> exactly the authorized bounded amount; every candidate outcome must be
+> accounted explicitly.
+
+Acceptance proves a real executed `droneprod` purchase grounded in a real
+upgrade-count delta with all other tracked upgrades unchanged, an advisor-only
+cycle fully accounted as blocked with no state change, and an honest disabled
+`NOT_APPLICABLE` cycle. Amount, identity-drift and accounting-removal
+mutations are independently rejected; the amount mutant is refused by the
+boundary guard itself before any real purchase. The proposal carries an
+honest same-target step-completion metric and is observability-only - it is
+not an M2/M6 ranking input, no ETA conversion was invented, `m6Coverage`
+remains `NONE`, and the WAIT precondition still fails. Exact-SHA verification
+is recorded in `docs/test-data/9.4.0-clean-room/verification-e47c308.md`.
 
 ## Work after slice 7
 
