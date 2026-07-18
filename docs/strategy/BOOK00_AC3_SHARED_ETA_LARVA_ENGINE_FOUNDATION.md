@@ -217,3 +217,51 @@ in §9.1 instead:
 
 This remains design-only until the corrected §9.1 direction is approved; the
 approved-but-refuted §3 contract will not be implemented.
+
+## 10. Implementation attempt — §9.1 is BLOCKED by an accepted safety invariant (2026-07-18)
+
+The corrected §9.1 basis selection was implemented (a `decisionType` on the
+strategy identity — `COMPLETION` for the buy-now Expansion/Hatchery branches —
+selecting `same-unit-milestone-progress-delta` for completion cycles) and
+measured live: the M6 `LARVA_ENGINE` domain became `COMPARABLE` exactly as
+designed, and M6's recommendation moved from `UNCERTAIN` to `ACT`.
+
+But `npm run verify` failed at `check-book00-m2-coordinator` (lines 89–92),
+which enforces an accepted, tested invariant:
+
+```
+local completion-only Expansion: legacy executes it;
+coordinatorExecutionAuthority === "false"; coordinatorSelectedExecutionId === "none".
+```
+
+Making the Engine completion rank turns it into the M6 winner and gives it M6
+execution authority — which this invariant forbids. The runtime change was
+reverted; the tree is green again.
+
+### 10.1 Why this is a real block, not a check to edit
+
+The invariant encodes the architecture's division of labour (findings
+R1/R3/R5): **M6 ranks economic ETA comparisons; a "buy the affordable
+completion now" step is legacy-owned and must not gain M6 authority from a 100%
+completion metric.** Combined with the feasibility finding (§9: the Larva/Engine
+guard's executable action is *always* a completion, `etaBefore = 0`), this means:
+
+> The Larva/Engine path cannot be given M6 ranking-with-authority — and
+> therefore cannot be converted to M6 `COMPLETE` / ownership — without
+> overturning the "completions stay legacy-owned" invariant. That is not a
+> scoring tweak; it *is* the gated ownership decision that
+> `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` and the sole-owner live-acceptance gate
+> exist to protect.
+
+### 10.2 Consequence for the whole completeness direction
+
+Because every reversible domain whose action is a directly-buyable completion
+falls under the same legacy-owned invariant, converting such a path to M6
+COMPLETE is blocked by design, not by a missing metric. The M6-completeness
+route to lifting `NO_GO` therefore reduces to one deliberate, evidence-heavy
+decision — allow M6 to own completions (change the invariant) under the
+sole-owner live-acceptance gate — rather than a sequence of incremental scoring
+slices. This is the honest end state of the AC3/completeness investigation: the
+remaining work is a single gated ownership decision, and no smaller runtime
+change can reach it without violating an accepted safety invariant. Recorded so
+the next agent does not re-attempt the incremental path.

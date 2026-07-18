@@ -202,9 +202,21 @@ fabrication (R1/R3/R5). The corrected §9.1 design instead selects the compariso
 basis from the active target's decision type (completion → progress-delta;
 future gate → eta-seconds) and gives completion domains an aligned
 `metricTarget` — Engine then ranks on the honest metric it already emits, with
-no fabrication. Still ranking-only (no ownership change), still gated behind a
-fresh SA1/live evidence run. Awaiting approval of the corrected §9.2 decisions
-before any implementation. No runtime change made.
+no fabrication.
+
+That corrected design was implemented and measured (2026-07-18): the Engine
+domain did become `COMPARABLE`, but `npm run verify` failed at
+`check-book00-m2-coordinator` — an accepted, tested invariant forbids a local
+completion-only Expansion from receiving M6 authority or becoming the M6 winner
+(completions are legacy-owned; M6 ranks economic ETA comparisons). The runtime
+change was reverted; the tree is green. Conclusion (AC3 foundation §10):
+because the Larva/Engine guard's executable action is always a directly-buyable
+completion, converting it to M6 ranking-with-authority / `COMPLETE` requires
+overturning the "completions stay legacy-owned" invariant — which *is* the
+gated ownership decision `NO_GO` and the sole-owner live-acceptance gate
+protect, not a scoring change. The incremental M6-completeness path is therefore
+closed; lifting `NO_GO` reduces to that single deliberate, evidence-heavy
+ownership decision. No net runtime change; `NO_GO` remains in force.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
