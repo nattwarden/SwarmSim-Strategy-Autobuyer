@@ -457,6 +457,27 @@ not an M2/M6 ranking input, no ETA conversion was invented, `m6Coverage`
 remains `NONE`, and the WAIT precondition still fails. Exact-SHA verification
 is recorded in `docs/test-data/9.4.0-clean-room/verification-e47c308.md`.
 
+## Completed slice 9
+
+Phase 3 slice 9 extends the per-path boundary discipline to the generic
+Smart-upgrade path:
+
+> The buy-max command must be bounded by the exact authorized percent and
+> confirmed only by the real upgrade-count delta; the target-aware delegation
+> must be an explicit accounted branch; held and structurally excluded
+> candidates must be inventoried, and every ranked candidate outcome must be
+> explicit.
+
+Acceptance proves a real executed `greaterqueenprod` buy-max purchase with
+eight held twin upgrades as unchanged negative controls, an advisor-only
+cycle fully accounted as blocked, and a disabled path stating its
+not-applicable reason from the callsite. Percent, identity-drift and
+accounting-removal mutations are independently rejected; the percent mutant
+is refused by the boundary guard itself before any real purchase. Two of ten
+retained paths now carry a proven boundary; M6 execution coverage is
+unchanged and the WAIT precondition still fails. Exact-SHA verification is
+recorded in `docs/test-data/9.4.0-clean-room/verification-84fa70e.md`.
+
 ## Work after slice 7
 
 Continue with evidence, not an ownership toggle:

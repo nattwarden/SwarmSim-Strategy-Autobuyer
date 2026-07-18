@@ -347,14 +347,50 @@ coverage - is complete:
   full configured suite, default-save import, all three mutations and
   `git diff --check`, ending with status count `0`.
 
-Current work package: Phase 3 slice 9 - generic Smart-upgrade path boundary -
-is selected but not implemented. Extend the slice-8 path-boundary discipline
-(exact proposal identity, cycle-bound authorization, fail-closed amount
-guard, explicit execute/block/not-applicable accounting) to the
-`SMART_UPGRADES` callsite (`buySmartUpgrades`), the closest sibling of the
-critical-upgrade path. Do not invent an ETA conversion, widen upgrade
-eligibility, mark unrelated paths `COMPLETE`, or toggle whole-cycle
-ownership.
+Phase 3 slice 9 - generic Smart-upgrade path boundary - is complete:
+
+- implementation SHA: `84fa70e4a3f4e7c2c8d8dfaebb1e84349428fb4b`;
+- implementation tree: `aa8efe3d7a7a2d035340c37e8f37badd89f188eb`;
+- evidence SHA: `acc5ba58bd6447255d89496d3da6b1b99162c9b0`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-84fa70e.md`;
+- `buySmartUpgrades` now emits one `smart-upgrade-path-boundary.v1` per
+  evaluated cycle: every ranked candidate is bound to an exact canonical
+  proposal identity, a cycle/snapshot/target-bound authorization and the
+  exact authorized buy-max percent, enforced fail-closed before the real
+  command;
+- the buy-max semantics are reflected honestly: the bound is the authorized
+  percent and execution is confirmed only by the real upgrade-count delta,
+  never a pretended unit amount;
+- the target-aware delegation is an explicit accounted branch, held
+  candidates are accounted per class (ability, twin, protected cost),
+  structural exclusions are inventoried, and every ranked candidate outcome
+  is explicit; a disabled path states its not-applicable reason from the
+  callsite;
+- the coverage ledger validates each declared boundary contract with
+  contract-specific rules; the slice-8 critical-upgrade rules are unchanged;
+- `check:9.4.0:smart-upgrade-boundary` proves a real executed
+  `greaterqueenprod` buy-max purchase grounded in a real upgrade-count delta
+  with eight held twin upgrades as unchanged negative controls, an
+  advisor-only cycle accounted as blocked with no state change, and an
+  honest disabled `NOT_APPLICABLE` cycle; percent, identity-drift and
+  accounting-removal mutations are independently rejected;
+- two of ten retained paths now carry a proven path boundary, but
+  `m6Coverage` remains `NONE` for both, complete M6 execution paths remain
+  `0`, the WAIT precondition remains `FAIL`, its authority remains
+  `ADVISOR_ONLY`, and whole-cycle ownership eligibility remains `false`;
+- the detached exact-SHA worktree passed canonical build, guardrails, the
+  full configured suite, default-save import, all three mutations and
+  `git diff --check`, ending with status count `0`.
+
+Current work package: Phase 3 slice 10 - generic Smart-unit path boundary -
+is selected but not implemented. Extend the path-boundary discipline (exact
+proposal identity, cycle-bound authorization, fail-closed command bound,
+explicit execute/block/not-applicable accounting) to the `SMART_UNITS`
+callsite (`buySmartUnits`), the generic unit sibling of the slice-9 path
+and one of the four partial-M6 overlap paths. Do not invent an ETA
+conversion, widen unit eligibility, mark unrelated paths `COMPLETE`, or
+toggle whole-cycle ownership.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
