@@ -143,7 +143,7 @@
   const MAIN_CYCLE_COVERAGE_PATHS = [
     { pathId: "LARVA_ENGINE_GUARD", sourceCall: "executeEngineGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["LARVA_ENGINE"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "larva-engine-guard-path-boundary.v1" },
     { pathId: "CRITICAL_PRODUCTION_UPGRADES", sourceCall: "handleCriticalProductionUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "critical-upgrade-path-boundary.v1" },
-    { pathId: "ENERGY_GUARD", sourceCall: "executeEnergyGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["ENERGY_PRODUCTION"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
+    { pathId: "ENERGY_GUARD", sourceCall: "executeEnergyGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["ENERGY_PRODUCTION"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "energy-guard-path-boundary.v1" },
     { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
@@ -5880,6 +5880,9 @@ function getDisplayName(item) {
     if (boundaryContract === LARVA_ENGINE_GUARD_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isLarvaEngineGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
+    if (boundaryContract === ENERGY_GUARD_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isEnergyGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
     if (boundaryContract === SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
@@ -5987,6 +5990,27 @@ function getDisplayName(item) {
         if (String(amountContract.commandRequestedAmount || "") !== String(proposal.boundedAmount)) return false;
         if (String(amountContract.confirmedPurchasedAmount || "") !== String(proposal.boundedAmount)) return false;
         if (String(amountContract.confirmationBasis || "") !== "real-upgrade-count-delta") return false;
+      }
+    }
+    return true;
+  }
+
+  function isEnergyGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    if (heldCandidates.length !== 0) return false;
+    if (!proposals.length && !boundary.notApplicableReason) return false;
+    const accounted = Number(accounting.executedCount) + Number(accounting.blockedSafeModeCount)
+      + Number(accounting.commandFailedCount) + Number(accounting.contractViolationCount);
+    if (!Number.isFinite(accounted) || accounted !== proposals.length) return false;
+    for (const proposal of proposals) {
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId || !proposal?.boundedAmount) return false;
+      if (proposal.executionKey !== "energy-guard" || !["upgrade", "unit"].includes(proposal.executionKind)) return false;
+      if (!["EXECUTED", "BLOCKED_SAFE_MODE", "COMMAND_FAILED", "CONTRACT_VIOLATION"].includes(proposal.outcome)) return false;
+      if (!proposal.metricTarget || !proposal.metricId || !proposal.metricUnit || !proposal.metricBasis) return false;
+      if (proposal.outcome === "EXECUTED") {
+        const amount = proposal.amountContract;
+        if (!amount || String(amount.authorizedRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.commandRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.confirmedPurchasedAmount) !== String(proposal.boundedAmount)) return false;
       }
     }
     return true;
@@ -15507,8 +15531,38 @@ function getDisplayName(item) {
     return "";
   }
 
-  function handleEnergyStrategy(game, commands, protectedResources) {
-    if (!config.energyStrategy) return { actionTaken: false, bought: 0 };
+  const ENERGY_GUARD_PATH_BOUNDARY_SCHEMA_VERSION = "energy-guard-path-boundary.v1";
+
+  function handleEnergyStrategy(game, commands, protectedResources, cycleIdentity = null) {
+    const boundary = {
+      schemaVersion: ENERGY_GUARD_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: "ENERGY_GUARD",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason: null,
+      heldCandidates: [],
+      proposals: [],
+      accounting: { proposalCount: 0, executedCount: 0, blockedSafeModeCount: 0, commandFailedCount: 0, contractViolationCount: 0 },
+    };
+    if (!config.energyStrategy) {
+      boundary.notApplicableReason = "energy strategy is disabled by configuration";
+      return { actionTaken: false, bought: 0, pathBoundary: boundary };
+    }
+
+    function createEnergyProposal({ candidate, executionId, executionKind, amount, metricTarget, metricId, metricUnit, metricBasis }) {
+      const proposal = {
+        lane: "Energy", candidate, executionKey: "energy-guard", executionId,
+        executionKind, executionVariant: "base", boundedAmount: normalizeBoundedAmountToken(amount),
+        metricTarget, metricId, metricUnit, metricBasis,
+        rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY", outcome: "PENDING", outcomeReason: "", amountContract: null,
+      };
+      proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+      proposal.authorizationId = buildDecisionAuthorizationId({ canonicalProposalId: proposal.canonicalProposalId, decisionCycleId: boundary.decisionCycleId, snapshotId: boundary.snapshotId, activeTarget: boundary.activeTarget });
+      boundary.proposals.push(proposal);
+      boundary.accounting.proposalCount = boundary.proposals.length;
+      return proposal;
+    }
 
     const nexusCount = decimalToNumber(getNexusCount(game), 0);
     const nextNexus = getNextNexusUpgrade(game);
@@ -15524,10 +15578,15 @@ function getDisplayName(item) {
         target: `Nexus ${Math.floor(nexusCount) + 1}`,
         resource: "energy",
       });
-      return { actionTaken: false, bought: 0, summary: "Energy/Nexus locked" };
+      boundary.notApplicableReason = "Energy/Nexus locked";
+      return { actionTaken: false, bought: 0, summary: "Energy/Nexus locked", pathBoundary: boundary };
     }
 
     if (nexusCount < config.nexusTarget && nextNexus?.isBuyable?.()) {
+      const proposal = createEnergyProposal({
+        candidate: getDisplayName(nextNexus), executionId: String(nextNexus?.name || ""), executionKind: "upgrade", amount: "1",
+        metricTarget: `Nexus ${Math.floor(nexusCount) + 1}`, metricId: "nexus-step-completion", metricUnit: "percent", metricBasis: "same-unit-milestone-progress-delta",
+      });
       recordAdvisor("BUY", getDisplayName(nextNexus), `Nexus priority: ${Math.floor(nexusCount)} / ${config.nexusTarget}`);
       addLaneCandidate({
         lane: "Energy",
@@ -15549,13 +15608,33 @@ function getDisplayName(item) {
 
       if (config.advisorOnly || !config.autoBuySafeDecisions) {
         recordMessage(`Advisor: WOULD BUY ${getDisplayName(nextNexus)} — Nexus priority`);
-        return { actionTaken: true, bought: 0, summary: "Would buy Nexus" };
+        proposal.outcome = "BLOCKED_SAFE_MODE";
+        proposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+        boundary.accounting.blockedSafeModeCount++;
+        return { actionTaken: true, bought: 0, summary: "Would buy Nexus", pathBoundary: boundary };
       }
 
+      const nexusCommandAmount = newDecimal(1);
+      if (String(nextNexus?.name || "") !== proposal.executionId || normalizeBoundedAmountToken(nexusCommandAmount) !== proposal.boundedAmount) {
+        proposal.outcome = "CONTRACT_VIOLATION";
+        proposal.outcomeReason = "Nexus command identity or amount differs from authorization";
+        boundary.accounting.contractViolationCount++;
+        return { actionTaken: true, bought: 0, summary: "Nexus buy blocked", pathBoundary: boundary };
+      }
       const nexusDelta = {};
-      const didBuy = safe("Energy Nexus priority", () => buyUpgradeAmount(commands, nextNexus, newDecimal(1), "Energy Upgrade", nexusDelta));
-      if (didBuy) recordMainAction("Energy", getDisplayName(nextNexus), `Nexus priority: ${Math.floor(nexusCount)} / ${config.nexusTarget}`, "1", nexusDelta.value);
-      return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought Nexus" : "Nexus buy failed" };
+      const didBuy = safe("Energy Nexus priority", () => buyUpgradeAmount(commands, nextNexus, nexusCommandAmount, "Energy Upgrade", nexusDelta));
+      if (didBuy) {
+        proposal.outcome = "EXECUTED";
+        proposal.outcomeReason = "Nexus purchased";
+        proposal.amountContract = { authorizedRequestedAmount: proposal.boundedAmount, commandRequestedAmount: normalizeBoundedAmountToken(nexusCommandAmount), confirmedPurchasedAmount: normalizeBoundedAmountToken(nexusDelta.value), confirmationBasis: "real-upgrade-count-delta" };
+        boundary.accounting.executedCount++;
+        recordMainAction("Energy", getDisplayName(nextNexus), `Nexus priority: ${Math.floor(nexusCount)} / ${config.nexusTarget}`, "1", nexusDelta.value);
+      } else {
+        proposal.outcome = "COMMAND_FAILED";
+        proposal.outcomeReason = "buy command produced no upgrade count delta";
+        boundary.accounting.commandFailedCount++;
+      }
+      return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought Nexus" : "Nexus buy failed", pathBoundary: boundary };
     }
 
     if (nexusCount < config.nexusTarget && nextNexus) {
@@ -15614,6 +15693,10 @@ function getDisplayName(item) {
             const roi = scoreLepidopteraInvestment(game, mothNum);
             if (roi?.ok) {
               const moth = getGameUnit(game, "moth");
+              const proposal = createEnergyProposal({
+                candidate: "Lepidoptera", executionId: String(moth?.name || "moth"), executionKind: "unit", amount: mothNum,
+                metricTarget: "Nexus ETA", metricId: "nexus-eta-improvement", metricUnit: "seconds", metricBasis: "nexus-eta-improvement-seconds",
+              });
               const mothCount = getLepidopteraCount(game);
               const boost = getLepidopteraBoostPercent(game);
               recordAdvisor(
@@ -15644,13 +15727,33 @@ function getDisplayName(item) {
 
               if (config.advisorOnly || !config.autoBuySafeDecisions) {
                 recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(mothNum)} lepidoptera — ${roi.reason}`);
-                return { actionTaken: true, bought: 0, summary: "Would buy Lepidoptera" };
+                proposal.outcome = "BLOCKED_SAFE_MODE";
+                proposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+                boundary.accounting.blockedSafeModeCount++;
+                return { actionTaken: true, bought: 0, summary: "Would buy Lepidoptera", pathBoundary: boundary };
               }
 
+              const mothCommandAmount = decimalFrom(mothNum);
+              if (String(moth?.name || "") !== proposal.executionId || normalizeBoundedAmountToken(mothCommandAmount) !== proposal.boundedAmount) {
+                proposal.outcome = "CONTRACT_VIOLATION";
+                proposal.outcomeReason = "pre-Nexus Lepidoptera command identity or amount differs from authorization";
+                boundary.accounting.contractViolationCount++;
+                return { actionTaken: true, bought: 0, summary: "Lepidoptera buy blocked", pathBoundary: boundary };
+              }
               const mothRoiDelta = {};
-              const didBuy = safe("Energy ROI lepidoptera", () => buyUnitAmount(commands, moth, mothNum, "Energy Unit", mothRoiDelta));
-              if (didBuy) recordMainAction("Energy", "Lepidoptera", roi.reason, formatSwarmNumber(mothNum), mothRoiDelta.value);
-              return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought Lepidoptera ROI" : "Lepidoptera buy failed" };
+              const didBuy = safe("Energy ROI lepidoptera", () => buyUnitAmount(commands, moth, mothCommandAmount, "Energy Unit", mothRoiDelta));
+              if (didBuy) {
+                proposal.outcome = "EXECUTED";
+                proposal.outcomeReason = "pre-Nexus Lepidoptera purchased";
+                proposal.amountContract = { authorizedRequestedAmount: proposal.boundedAmount, commandRequestedAmount: normalizeBoundedAmountToken(mothCommandAmount), confirmedPurchasedAmount: normalizeBoundedAmountToken(mothRoiDelta.value), confirmationBasis: "real-unit-count-delta" };
+                boundary.accounting.executedCount++;
+                recordMainAction("Energy", "Lepidoptera", roi.reason, formatSwarmNumber(mothNum), mothRoiDelta.value);
+              } else {
+                proposal.outcome = "COMMAND_FAILED";
+                proposal.outcomeReason = "buy command produced no unit count delta";
+                boundary.accounting.commandFailedCount++;
+              }
+              return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought Lepidoptera ROI" : "Lepidoptera buy failed", pathBoundary: boundary };
             }
 
             if (roi?.reason) {
@@ -15696,6 +15799,10 @@ function getDisplayName(item) {
         });
 
         if (plan.ok) {
+          const proposal = createEnergyProposal({
+            candidate: "Lepidoptera", executionId: String(moth?.name || "moth"), executionKind: "unit", amount: plan.num,
+            metricTarget: "Post-Nexus energy growth", metricId: "post-nexus-energy-boost", metricUnit: "percent", metricBasis: "post-nexus-lepidoptera-boost-gain",
+          });
           recordAdvisor("BUY", "Lepidoptera", plan.reason);
           addLaneCandidate({
             lane: "Energy",
@@ -15719,13 +15826,33 @@ function getDisplayName(item) {
 
           if (config.advisorOnly || !config.autoBuySafeDecisions) {
             recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(plan.num)} lepidoptera - ${plan.reason}`);
-            return { actionTaken: true, bought: 0, summary: "Would buy post-Nexus Lepidoptera" };
+            proposal.outcome = "BLOCKED_SAFE_MODE";
+            proposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+            boundary.accounting.blockedSafeModeCount++;
+            return { actionTaken: true, bought: 0, summary: "Would buy post-Nexus Lepidoptera", pathBoundary: boundary };
           }
 
+          const postNexusCommandAmount = decimalFrom(plan.num);
+          if (String(moth?.name || "") !== proposal.executionId || normalizeBoundedAmountToken(postNexusCommandAmount) !== proposal.boundedAmount) {
+            proposal.outcome = "CONTRACT_VIOLATION";
+            proposal.outcomeReason = "post-Nexus Lepidoptera command identity or amount differs from authorization";
+            boundary.accounting.contractViolationCount++;
+            return { actionTaken: true, bought: 0, summary: "Post-Nexus Lepidoptera buy blocked", pathBoundary: boundary };
+          }
           const postNexusMothDelta = {};
-          const didBuy = safe("Post-Nexus Energy Planner lepidoptera", () => buyUnitAmount(commands, moth, plan.num, "Energy Unit", postNexusMothDelta));
-          if (didBuy) recordMainAction("Energy", "Lepidoptera", plan.reason, formatSwarmNumber(plan.num), postNexusMothDelta.value);
-          return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought post-Nexus Lepidoptera" : "Post-Nexus Lepidoptera buy failed" };
+          const didBuy = safe("Post-Nexus Energy Planner lepidoptera", () => buyUnitAmount(commands, moth, postNexusCommandAmount, "Energy Unit", postNexusMothDelta));
+          if (didBuy) {
+            proposal.outcome = "EXECUTED";
+            proposal.outcomeReason = "post-Nexus Lepidoptera purchased";
+            proposal.amountContract = { authorizedRequestedAmount: proposal.boundedAmount, commandRequestedAmount: normalizeBoundedAmountToken(postNexusCommandAmount), confirmedPurchasedAmount: normalizeBoundedAmountToken(postNexusMothDelta.value), confirmationBasis: "real-unit-count-delta" };
+            boundary.accounting.executedCount++;
+            recordMainAction("Energy", "Lepidoptera", plan.reason, formatSwarmNumber(plan.num), postNexusMothDelta.value);
+          } else {
+            proposal.outcome = "COMMAND_FAILED";
+            proposal.outcomeReason = "buy command produced no unit count delta";
+            boundary.accounting.commandFailedCount++;
+          }
+          return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Bought post-Nexus Lepidoptera" : "Post-Nexus Lepidoptera buy failed", pathBoundary: boundary };
         } else {
           recordAdvisor("HOLD", "Lepidoptera", plan.reason);
           addLaneCandidate({
@@ -15787,7 +15914,8 @@ function getDisplayName(item) {
       }
     }
 
-    return { actionTaken: false, bought: 0 };
+    boundary.notApplicableReason = "no reversible Energy purchase is currently applicable";
+    return { actionTaken: false, bought: 0, pathBoundary: boundary };
   }
 
   function decideSmartFocus(engine) {
@@ -19893,8 +20021,8 @@ function getDisplayName(item) {
   }
   
   // Phase 3 extraction: dedicated execution adapter boundary for energy lane.
-  function executeEnergyGuardAction({ game, commands, protectedResources }) {
-    return handleEnergyStrategy(game, commands, protectedResources);
+  function executeEnergyGuardAction({ game, commands, protectedResources, cycleIdentity = null }) {
+    return handleEnergyStrategy(game, commands, protectedResources, cycleIdentity);
   }
   
   // Phase 3 extraction: dedicated execution adapter boundary for clone lane.
@@ -21386,7 +21514,14 @@ function getDisplayName(item) {
     // main-cycle-coverage: ENERGY_GUARD
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "energy") {
       const pathProbe = beginMainCyclePathProbe();
-      const energyAction = executeEnergyGuardAction({ game, commands, protectedResources });
+      const energyAction = executeEnergyGuardAction({
+        game, commands, protectedResources,
+        cycleIdentity: {
+          decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+          snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+          activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+        },
+      });
       addMainResult("Energy", energyAction);
       recordEvaluatedMainCyclePath("ENERGY_GUARD", energyAction, pathProbe, "Energy guard had no applicable action.");
     } else if (m6DecisionOwnsMainCycle) {

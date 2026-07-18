@@ -10,6 +10,7 @@ const BOUNDARY_SCHEMA_VERSION = "smart-upgrade-path-boundary.v1";
 const BOUNDARY_PATH_ID = "SMART_UPGRADES";
 const DECLARED_BOUNDARY_CONTRACTS = {
   LARVA_ENGINE_GUARD: "larva-engine-guard-path-boundary.v1",
+  ENERGY_GUARD: "energy-guard-path-boundary.v1",
   CRITICAL_PRODUCTION_UPGRADES: "critical-upgrade-path-boundary.v1",
   SMART_UPGRADES: "smart-upgrade-path-boundary.v1",
   SMART_UNITS: "smart-unit-path-boundary.v1",
