@@ -82,7 +82,7 @@ Before changing code, read:
 13. relevant verifier scripts and `package.json`
 14. `reference/` only when needed for sanity checks
 
-`AI.md` is retained as supplementary historical orientation only and must not be treated as a separate steering authority.
+`AI.md` has been merged into this file and deleted; every unique rule it carried now lives here. Historical prompts and release notes referencing it describe the repository as it was at their timestamps. For mechanics claims, also read the relevant evidence book in `docs/BOOK-01` through `docs/BOOK-05`.
 
 For modularization tasks, also read `docs/process/MODULARIZATION_PLAN.md` and relevant `dev-src/` modules.
 
@@ -146,6 +146,37 @@ to any other ability without an equally explicit, separate user request.
 
 These are hard boundaries, not a directive to under-optimize reversible normal purchases.
 
+The full numeric contract (verified against `DEFAULT_CONFIG` in
+`dev-src/runtime-sections/runtime-main.js`, 2026-07-18; the runtime is the
+source of truth if they ever diverge — fix the divergence, do not guess):
+
+```js
+autoCastAbilities: false
+autoCastCloneLarvae: true
+autoAscend: false
+saveEnergyForNexus: true
+nexusTarget: 5
+energyPlanner: true
+blockLepidopteraBeforeNexus: 4
+fastNexus5MothSoftTarget: 572
+lepidopteraStopAtBoostPercent: 90
+territoryRoiMode: true
+territoryMinEtaImprovementSeconds: 2
+territoryMinEtaImprovementRatio: 0.001
+smartUnitBuyPercent: 0.35
+meatChainReserveMultiplier: 1.25
+meatChainMaxPaybackSeconds: 3600
+meatActionUnitPaybackBypass: true
+meatActionUnitMinReserveRatio: 5
+meatFallbackDoNotDropBelowActionUnit: true
+meatUnlockPlanner: true
+meatParentStepPlanner: true
+twinUnlockPlanner: true
+twinUpgradeOpportunityCostBypass: true
+cloneBufferPlanner: true
+cloneBufferProtectLarvae: true
+```
+
 ## Repository hygiene
 
 Do not create:
@@ -175,6 +206,70 @@ For every patch:
 - preserve deterministic hashes and non-mutation guarantees where applicable
 - keep scenario and test fixtures honest
 - never rewrite expectations merely to force a pass
+
+## Lane adapter boundaries
+
+For lane runtime work, use the extracted adapter boundaries in the canonical
+userscript and keep behavior parity unless explicitly changing strategy:
+
+- territory/army execution: `executeTerritoryGuardAction(...)`
+- territory/army proposals: `buildTerritoryGuardProposal(...)`
+- meat execution: `executeMeatGuardAction(...)`
+- engine execution: `executeEngineGuardAction(...)`
+- energy execution: `executeEnergyGuardAction(...)`
+- clone execution: `executeCloneGuardAction(...)`
+
+Use `dev-src/contracts/lane-proposal.js` for lane module boundaries when
+modularizing; extract one lane at a time with Inspector/export observability
+parity.
+
+## Strategy research fast path
+
+Keep browser-game research lightweight:
+
+1. Use Laboratory to compare counterfactual actions from one read-only
+   snapshot, and Strategy Audit to test actual behavior across staged states.
+2. Run many SA1 cases locally with `npm run strategy:audit:matrix:sa1`; use
+   `:single` for smoke and `:isolated` only to confirm an important finding.
+3. Require `resetVerified=true` and `stateLeakageDetected=false`; read
+   generated artifacts as a batch.
+4. Reproduce a finding before proposing a narrow production change; keep
+   Laboratory findings advisory until separately verified, and never widen
+   automation or safety defaults merely because one experiment looks
+   favorable.
+
+For narrow deterministic scenario-transition issues: classify the root cause
+layer (harness/definition/reporting versus production planner) before coding;
+keep scenario expectations observing real planner outputs (no injected
+decision overrides); make between-cycle transitions explicit input-state
+overrides only; require cycle-level observability (decision, applied marker,
+fresh snapshot/revision) and a targeted versioned check.
+
+## Browser verification fact capture
+
+When a browser verification pass discovers new, undocumented game-mechanics
+data, write a concise factual note to the relevant evidence book in the same
+work cycle: facts first, version-scoped, with reproducible evidence. If the
+claim already exists, append a dated update instead of a new file.
+
+## Version markers and guardrail compatibility
+
+When bumping versions, update together: `package.json` and
+`package-lock.json` (root + `packages[""]`), the userscript `// @version`
+metadata, the runtime constants (`AUTOBUYER_VERSION`, from which
+`SCRIPT_VERSION` and `SCENARIO_REPORT_VERSION` derive) in both
+`dev-src/runtime-sections/runtime-main.js` and the built userscript, the
+browser badge/version text, and scenario report templates for the new
+version. `npm run check:version:surfaces` verifies these mechanically from
+`package.json`. Do not create a new per-version
+`check-X.Y.Z-version-surfaces.js` script — that pattern is retired; the old
+numbered scripts are historical artifacts only.
+
+Keep at least one explicit literal `scriptVersion: "<version>"` in the
+canonical userscript export payload while
+`scripts/validate-repo-guardrails.js` checks for string-literal matches; do
+not replace all payload literals with constant references unless the
+guardrail matcher is updated in the same narrow change.
 
 ## Git workflow
 

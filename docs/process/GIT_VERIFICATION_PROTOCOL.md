@@ -198,7 +198,6 @@ Never silently restore unexpected changes and continue. First report and classif
 Run every command required by:
 
 - `AGENTS.md`
-- `AI.md`
 - `package.json`
 - the active work order
 - every relevant versioned verifier for the changed subsystem

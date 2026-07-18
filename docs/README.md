@@ -85,12 +85,11 @@ that fit no existing book. Name it BOOK-06, BOOK-07, etc. and list it here.
 Before any code change:
 
 1. `../AGENTS.md` — repo guardrails and hard safety defaults
-2. `../AI.md` — AI workflow rules
-3. `strategy/BOOK00_CURRENT_STATUS.md` — active milestone and next action
-4. `BOOK-00-vision-goals-and-dreams.md` for strategy, architecture, or roadmap work
-5. `strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` for product milestone work
-6. `SWARMSIM_GAME_MODEL.md` — active strategy contract
-7. Relevant evidence book (BOOK-01 through BOOK-05), or BOOK-06 for UI work
+2. `strategy/BOOK00_CURRENT_STATUS.md` — active milestone and next action
+3. `BOOK-00-vision-goals-and-dreams.md` for strategy, architecture, or roadmap work
+4. `strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` for product milestone work
+5. `SWARMSIM_GAME_MODEL.md` — active strategy contract
+6. Relevant evidence book (BOOK-01 through BOOK-05), or BOOK-06 for UI work
 8. Other `strategy/` document if the work requires it
 9. `prompts/` work order if one exists for the task
 10. `live-logs/` only when current claim-level evidence needs payload verification

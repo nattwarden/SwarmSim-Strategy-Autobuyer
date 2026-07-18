@@ -34,7 +34,6 @@ scripts/
   build-canonical-userscript.js             # phase-4 build entrypoint (canonical userscript)
   canonical-build.config.json               # configured assembly parts for canonical userscript
 AGENTS.md                                   # repo/process guard for AI agents
-AI.md                                       # source map and AI-agent instructions
 ```
 
 ## Canonical script source

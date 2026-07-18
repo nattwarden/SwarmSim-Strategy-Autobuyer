@@ -169,8 +169,7 @@ below.
 
 A new implementation agent should read, in order:
 
-1. `AGENTS.md` (the sole AI steering authority; `AI.md` is historical
-   orientation only and is not required reading)
+1. `AGENTS.md` (the sole AI steering authority)
 2. this file
 4. `docs/BOOK-00-vision-goals-and-dreams.md`
 5. `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md`

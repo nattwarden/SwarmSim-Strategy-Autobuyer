@@ -7,7 +7,6 @@ Active instructions remain:
 
 ```text
 AGENTS.md
-AI.md
 docs/SWARMSIM_GAME_MODEL.md
 ```
 
@@ -211,7 +210,7 @@ Removed from the working tree:
 
 Reason:
 
-- `AI.md` and `AGENTS.md` are the active agent entrypoints.
+- `AGENTS.md` is the active agent entrypoint (`AI.md` was later merged into it).
 - `docs/release-notes/` already holds detailed release history.
 - executable source must exist only at
   `src/SwarmSim-Strategy-Autobuyer.user.js`.
