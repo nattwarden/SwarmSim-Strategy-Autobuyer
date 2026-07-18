@@ -108,14 +108,29 @@ Completed slices (implementation SHA / evidence SHA / evidence file):
   purchases carry exact identity, cycle-bound authorization and real-delta
   amount confirmation. `d550fb5b7199f78047b7ac809b197a7eedd31683` /
   `4452a29` / `verification-d550fb5.md`.
+- Phase 3 slice 13 - Clone Ramp guard path boundary
+  (`clone-ramp-guard-path-boundary.v1`): the narrow, user-authorized Clone
+  Larvae auto-cast exception now emits a boundary for each real command - the
+  single amount-`1` cast (confirmed by `real-upgrade-count-delta`) and, on a
+  growth cast, the exact cocoon bank (confirmed by `real-unit-count-delta`) -
+  each with canonical identity, cycle-bound authorization and a fail-closed
+  identity/amount check. Live boundary proof against the pinned Clone Ramp
+  save reports `PROVEN` with a two-proposal `EXECUTED` boundary. Strategy,
+  cast/bank amounts, reserve/visibility gates, release-at-cap behavior and the
+  `autoCastCloneLarvae` exception boundary are unchanged; M6 coverage stays
+  `NONE`. `23fdf2a52ec58bcd3b230cbec9b2ab81bcf52aac` /
+  `83a46c3` / `verification-23fdf2a.md`.
 
-Standing verdict after slice 12: five of ten retained legacy paths carry a
+Standing verdict after slice 13: six of ten retained legacy paths carry a
 proven path boundary; complete M6 execution paths remain `0` of `10`; the
 WAIT precondition remains `FAIL` with `ADVISOR_ONLY` authority; whole-cycle
 ownership eligibility remains `false`.
 
-Current work package: none selected. Slice 12 is closed; select the next
-retained legacy path only as a narrow, source-grounded boundary slice.
+Current work package: none selected. Slice 13 is closed; select the next
+retained legacy path only as a narrow, source-grounded boundary slice. The
+recommended next path is `CLONE_BUFFER` (with its
+`CLONE_BUFFER_HARD_LOCK_RECOVERY` recovery branch), followed by
+`MEAT_UNLOCK_PLANNER` and `FINAL_CLONE_PREP` after separate scope analysis.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
