@@ -118,8 +118,8 @@
     { pathId: "CRITICAL_PRODUCTION_UPGRADES", sourceCall: "handleCriticalProductionUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "critical-upgrade-path-boundary.v1" },
     { pathId: "ENERGY_GUARD", sourceCall: "executeEnergyGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["ENERGY_PRODUCTION"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "energy-guard-path-boundary.v1" },
     { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-ramp-guard-path-boundary.v1" },
-    { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
-    { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
+    { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-buffer-guard-path-boundary.v1" },
+    { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-buffer-guard-path-boundary.v1" },
     { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "SMART_UPGRADES", sourceCall: "buySmartUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-upgrade-path-boundary.v1" },
     { pathId: "SMART_UNITS", sourceCall: "buySmartUnits", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT", "ARMY_TERRITORY"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-unit-path-boundary.v1" },
@@ -5859,6 +5859,9 @@ function getDisplayName(item) {
     if (boundaryContract === CLONE_RAMP_GUARD_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isCloneRampGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
+    if (boundaryContract === CLONE_BUFFER_GUARD_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isCloneBufferGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
     if (boundaryContract === SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
@@ -6008,6 +6011,32 @@ function getDisplayName(item) {
         if (!amount || String(amount.authorizedRequestedAmount) !== String(proposal.boundedAmount)
           || String(amount.commandRequestedAmount) !== String(proposal.boundedAmount)
           || String(amount.confirmedPurchasedAmount) !== String(proposal.boundedAmount)) return false;
+      }
+    }
+    return true;
+  }
+
+  function isCloneBufferGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    if (heldCandidates.length !== 0) return false;
+    if (!proposals.length && !boundary.notApplicableReason) return false;
+    const accounted = Number(accounting.executedCount) + Number(accounting.blockedSafeModeCount)
+      + Number(accounting.commandFailedCount) + Number(accounting.contractViolationCount);
+    if (!Number.isFinite(accounted) || accounted !== proposals.length) return false;
+    for (const proposal of proposals) {
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId || !proposal?.boundedAmount) return false;
+      if (proposal.executionKey !== "clone-buffer-guard" || proposal.executionKind !== "unit") return false;
+      if (!["EXECUTED", "BLOCKED_SAFE_MODE", "COMMAND_FAILED", "CONTRACT_VIOLATION"].includes(proposal.outcome)) return false;
+      if (!proposal.metricTarget || !proposal.metricId || !proposal.metricUnit || !proposal.metricBasis) return false;
+      if (proposal.outcome === "EXECUTED") {
+        const amount = proposal.amountContract;
+        // The command must be fail-closed to the authorized bounded amount
+        // (never buyMax). The confirmed amount is a large-magnitude unit count
+        // delta with Decimal precision noise, so it is required to be a real
+        // positive purchase rather than an exact-string match of the request.
+        if (!amount || String(amount.authorizedRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.commandRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.confirmationBasis || "") !== "real-unit-count-delta"
+          || !parseBoundedAmountToken(amount.confirmedPurchasedAmount)) return false;
       }
     }
     return true;
@@ -13833,7 +13862,46 @@ function getDisplayName(item) {
     };
   }
 
-  function runCloneBufferPlanner(game, commands) {
+  const CLONE_BUFFER_GUARD_PATH_BOUNDARY_SCHEMA_VERSION = "clone-buffer-guard-path-boundary.v1";
+
+  function runCloneBufferPlanner(game, commands, cycleIdentity = null) {
+    // Path-boundary observability for the legacy Clone Buffer planner. Its one
+    // real command is the hard-lock cocoon recovery buy; it carries a canonical
+    // proposal identity, cycle-bound authorization, a fail-closed
+    // identity/amount check and a real unit-count-delta confirmation. This is
+    // observability only: the mode/target resolution, protection ratios, the
+    // recovery buy amount and the budget-exempt recovery behavior are unchanged.
+    const boundary = {
+      schemaVersion: CLONE_BUFFER_GUARD_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: cycleIdentity?.pathId === "CLONE_BUFFER_HARD_LOCK_RECOVERY" ? "CLONE_BUFFER_HARD_LOCK_RECOVERY" : "CLONE_BUFFER",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason: null,
+      heldCandidates: [],
+      proposals: [],
+      accounting: { proposalCount: 0, executedCount: 0, blockedSafeModeCount: 0, commandFailedCount: 0, contractViolationCount: 0 },
+    };
+
+    function createBufferProposal({ candidate, executionId, executionKind, executionVariant, amount, metricTarget, metricId, metricUnit, metricBasis }) {
+      const proposal = {
+        lane: "Clone Prep", candidate, executionKey: "clone-buffer-guard", executionId,
+        executionKind, executionVariant: executionVariant || "base", boundedAmount: normalizeBoundedAmountToken(amount),
+        metricTarget, metricId, metricUnit, metricBasis,
+        rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY", outcome: "PENDING", outcomeReason: "", amountContract: null,
+      };
+      proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+      proposal.authorizationId = buildDecisionAuthorizationId({ canonicalProposalId: proposal.canonicalProposalId, decisionCycleId: boundary.decisionCycleId, snapshotId: boundary.snapshotId, activeTarget: boundary.activeTarget });
+      boundary.proposals.push(proposal);
+      boundary.accounting.proposalCount = boundary.proposals.length;
+      return proposal;
+    }
+
+    function notApplicable(reason, extra = {}) {
+      boundary.notApplicableReason = reason;
+      return { actionTaken: false, bought: 0, pathBoundary: boundary, ...extra };
+    }
+
     if (!config.cloneBufferPlanner || !config.manageCloneLarvaeCocoons) {
       cloneBufferPostCloneTargetSnapshotRaw = null;
       cloneBufferPreviousMode = "OFF";
@@ -13853,7 +13921,7 @@ function getDisplayName(item) {
         cloneBufferProtectLarvae: false,
         postCloneLockActive: false,
       });
-      return { actionTaken: false, bought: 0 };
+      return notApplicable("clone buffer planner is disabled by configuration");
     }
 
     const cloneAbility = getGameUpgrade(game, "clonelarvae");
@@ -13879,7 +13947,7 @@ function getDisplayName(item) {
         cloneBufferProtectLarvae: false,
         postCloneLockActive: false,
       });
-      return { actionTaken: false, bought: 0 };
+      return notApplicable("Clone Larvae not visible yet");
     }
 
     const cap = decimalFrom(getCloneLarvaeCap(game));
@@ -14004,13 +14072,13 @@ function getDisplayName(item) {
 
     if (!hardLockActive) {
       cloneBufferPreviousMode = mode;
-      return { actionTaken: false, bought: 0 };
+      return notApplicable("clone buffer is observing; no hard-lock cocoon recovery is required this cycle");
     }
 
     if (!cocoon?.isVisible?.() || !cocoon?.isBuyable?.()) {
       cloneBufferPreviousMode = mode;
       recordAdvisor("HOLD", "Clone Buffer", `post-clone lock active but cocoons are not buyable; ${modeReason}`);
-      return { actionTaken: false, bought: 0 };
+      return notApplicable("post-clone lock active but cocoons are not buyable");
     }
 
     const maxChunk = larvae.floor ? larvae.floor() : larvae;
@@ -14018,7 +14086,7 @@ function getDisplayName(item) {
     if (!isPositive(buyNum)) {
       cloneBufferPreviousMode = mode;
       recordAdvisor("HOLD", "Clone Buffer", "post-clone lock active; no larvae available for cocoon recovery");
-      return { actionTaken: false, bought: 0 };
+      return notApplicable("post-clone lock active; no larvae available for cocoon recovery");
     }
 
     const reason = `post-clone buffer recovery; cloned larvae must be cocooned before normal spending (${formatSwarmNumber(cocoons)} / ${formatSwarmNumber(target)})`;
@@ -14034,15 +14102,62 @@ function getDisplayName(item) {
       resource: "larva",
     });
 
+    const recoveryProposal = createBufferProposal({
+      candidate: getDisplayName(cocoon),
+      executionId: String(cocoon?.name || "cocoon"),
+      executionKind: "unit",
+      executionVariant: "recovery",
+      amount: buyNum,
+      metricTarget: "Clone Buffer recovery",
+      metricId: "clone-buffer-cocoon-recovery",
+      metricUnit: "count",
+      metricBasis: "clone-buffer-cocoon-debt",
+    });
+
     if (config.advisorOnly || !config.autoBuySafeDecisions) {
       cloneBufferPreviousMode = mode;
       recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(buyNum)} ${getDisplayName(cocoon)} — post-clone lock recovery`);
-      return { actionTaken: true, bought: 0, summary: "Would recover clone buffer" };
+      recoveryProposal.outcome = "BLOCKED_SAFE_MODE";
+      recoveryProposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+      boundary.accounting.blockedSafeModeCount++;
+      return { actionTaken: true, bought: 0, summary: "Would recover clone buffer", pathBoundary: boundary };
+    }
+
+    // Fail-closed: the recovery command must carry exactly the authorized
+    // cocoon identity and the bounded buy amount before any real buy is issued.
+    const bufferCommandAmount = buyNum;
+    if (String(cocoon?.name || "") !== recoveryProposal.executionId || normalizeBoundedAmountToken(bufferCommandAmount) !== recoveryProposal.boundedAmount) {
+      cloneBufferPreviousMode = mode;
+      recoveryProposal.outcome = "CONTRACT_VIOLATION";
+      recoveryProposal.outcomeReason = "Clone Buffer recovery identity or amount differs from authorization";
+      boundary.accounting.contractViolationCount++;
+      return { actionTaken: true, bought: 0, summary: "Clone buffer recovery blocked", pathBoundary: boundary };
     }
 
     const cloneBufferDelta = {};
-    const didBuy = safe("Clone buffer recovery", () => buyUnitAmount(commands, cocoon, buyNum, "Clone Buffer", cloneBufferDelta));
+    const didBuy = safe("Clone buffer recovery", () => buyUnitAmount(commands, cocoon, bufferCommandAmount, "Clone Buffer", cloneBufferDelta));
     cloneBufferPreviousMode = mode;
+    if (didBuy) {
+      recoveryProposal.outcome = "EXECUTED";
+      recoveryProposal.outcomeReason = "cloned larvae recovered into cocoons";
+      // The command was fail-closed to the authorized bounded amount above.
+      // Confirmation records the real cocoon count delta; unlike the amount-1
+      // upgrade paths, this is a large-magnitude unit count whose delta carries
+      // Decimal precision noise (it is the difference of two ~1e24 banks), so
+      // the honest confirmation is a real positive delta, not exact-string
+      // equality with the requested amount.
+      recoveryProposal.amountContract = {
+        authorizedRequestedAmount: recoveryProposal.boundedAmount,
+        commandRequestedAmount: normalizeBoundedAmountToken(bufferCommandAmount),
+        confirmedPurchasedAmount: normalizeBoundedAmountToken(cloneBufferDelta.value),
+        confirmationBasis: "real-unit-count-delta",
+      };
+      boundary.accounting.executedCount++;
+    } else {
+      recoveryProposal.outcome = "COMMAND_FAILED";
+      recoveryProposal.outcomeReason = "recovery buy command produced no cocoon count delta";
+      boundary.accounting.commandFailedCount++;
+    }
     // recordMainAction() intentionally happens at the smartRunOnce call
     // site (only on the budget-gated branch), not here: this hard-lock
     // recovery purchase runs unconditionally even when the main-action
@@ -14050,7 +14165,7 @@ function getDisplayName(item) {
     // exactly mirroring the pre-existing addMainResult()-only-when-gated
     // behavior. Recording it here unconditionally would count budget-exempt
     // purchases against the budget ledger.
-    return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed", reason, buyNum: formatSwarmNumber(buyNum), boughtCandidate: getDisplayName(cocoon), executedDelta: didBuy ? cloneBufferDelta.value : null };
+    return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? "Clone buffer recovery" : "Clone buffer recovery failed", reason, buyNum: formatSwarmNumber(buyNum), boughtCandidate: getDisplayName(cocoon), executedDelta: didBuy ? cloneBufferDelta.value : null, pathBoundary: boundary };
   }
 
   function recordCloneRampState(fields = {}) {
@@ -20138,8 +20253,8 @@ function getDisplayName(item) {
   }
   
   // Phase 3 extraction: dedicated execution adapter boundary for clone lane.
-  function executeCloneGuardAction({ game, commands }) {
-    return runCloneBufferPlanner(game, commands);
+  function executeCloneGuardAction({ game, commands, cycleIdentity = null }) {
+    return runCloneBufferPlanner(game, commands, cycleIdentity);
   }
 
   // Narrow, dedicated execution adapter for Clone Ramp. Kept independent from
@@ -21666,7 +21781,14 @@ function getDisplayName(item) {
     // main-cycle-coverage: CLONE_BUFFER
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const pathProbe = beginMainCyclePathProbe();
-      const cloneBufferAction = executeCloneGuardAction({ game, commands });
+      const cloneBufferAction = executeCloneGuardAction({
+        game, commands,
+        cycleIdentity: {
+          decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+          snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+          activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+        },
+      });
       if (Number(cloneBufferAction?.bought || 0) > 0) {
         recordMainAction("Clone Prep", cloneBufferAction.boughtCandidate, cloneBufferAction.reason, cloneBufferAction.buyNum, cloneBufferAction.executedDelta);
       }
@@ -21680,7 +21802,15 @@ function getDisplayName(item) {
       // budget (unchanged pre-existing behavior); it is intentionally not
       // counted toward mainActions or the action ledger in that case.
       const pathProbe = beginMainCyclePathProbe();
-      const cloneRecoveryAction = executeCloneGuardAction({ game, commands });
+      const cloneRecoveryAction = executeCloneGuardAction({
+        game, commands,
+        cycleIdentity: {
+          pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY",
+          decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+          snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+          activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+        },
+      });
       recordEvaluatedMainCyclePath("CLONE_BUFFER_HARD_LOCK_RECOVERY", cloneRecoveryAction, pathProbe, "Clone Buffer hard-lock recovery was not applicable.");
     } else {
       recordMainCyclePathDisposition("CLONE_BUFFER", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed normal Clone Buffer evaluation");
