@@ -82,7 +82,7 @@ Before changing code, read:
 13. relevant verifier scripts and `package.json`
 14. `reference/` only when needed for sanity checks
 
-`AI.md` has been merged into this file and deleted; every unique rule it carried now lives here. Historical prompts and release notes referencing it describe the repository as it was at their timestamps. For mechanics claims, also read the relevant evidence book in `docs/BOOK-01` through `docs/BOOK-05`.
+`AI.md` has been merged into this file and deleted; every unique rule it carried now lives here. Historical prompts and release notes referencing it describe the repository as it was at their timestamps. For mechanics claims, also read the relevant evidence book in `docs/BOOK-01` through `docs/BOOK-07`.
 
 For modularization tasks, also read `docs/process/MODULARIZATION_PLAN.md` and relevant `dev-src/` modules.
 

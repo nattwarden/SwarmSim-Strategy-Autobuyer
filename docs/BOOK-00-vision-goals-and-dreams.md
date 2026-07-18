@@ -1,6 +1,6 @@
 # Book 00 - Vision, Goals, and Dreams
 
-> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-18` | Revision: `901822eec3e250608076d5afd0a7c09249ac5237` | Result: `slice 11 verified; status advanced to no selected work package`
+> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-18` | Revision: `d550fb5b7199f78047b7ac809b197a7eedd31683` | Result: `manual early-game evidence, save states, UI map, and active-play principles added; documentation changes uncommitted`
 
 Status: Strategic north star for SwarmSim Strategy Autobuyer.
 
@@ -360,3 +360,5 @@ claims.
 - `BOOK-03-verification-history-and-artifacts.md`: verification and evidence map.
 - `BOOK-04-strategy-intelligence-findings.md`: behavioral audit findings.
 - `BOOK-05-community-strategy-claims.md`: external strategy claims and status.
+- `BOOK-06-council-chamber-ui-and-experience.md`: Council UI and player-facing experience.
+- `BOOK-07-realtime-play-data-and-reproducible-saves.md`: manual live-play facts and reproducible save-state registry.
