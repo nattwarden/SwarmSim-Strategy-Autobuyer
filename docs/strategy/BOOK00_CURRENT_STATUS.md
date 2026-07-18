@@ -150,16 +150,31 @@ Completed slices (implementation SHA / evidence SHA / evidence file):
   reserve/payback/rebuild guards and buy amounts are unchanged; M6 coverage
   stays `PARTIAL`. `6ce6b3df986e766b08edea31b578c9fafb2b69f9` /
   `17ca41d` / `verification-6ce6b3d.md`.
+- Phase 3 slice 16 - Final Clone Prep path boundary
+  (`final-clone-prep-path-boundary.v1`): the Clone Prep cocoon side-task
+  (`manageCloneCocoons`) issues one real command, the bounded cocoon side-buy,
+  wrapped so the boundary attaches at a single exit with at most one proposal;
+  canonical identity, cycle-bound authorization, fail-closed identity/amount
+  check and a real positive `real-unit-count-delta` confirmation. Live boundary
+  proof reports `PROVEN` `EXECUTED`. Cooldown, target/chunk sizing and the
+  side-buy amount are unchanged; M6 coverage stays `NONE`.
+  `5e3145c7db826e08ac72458b9c384f1343b372a9` /
+  `20413a9` / `verification-5e3145c.md`.
 
-Standing verdict after slice 15: nine of ten retained legacy paths carry a
-proven path boundary; only `FINAL_CLONE_PREP` (`manageCloneCocoons`) remains
-unbounded; complete M6 execution paths remain `0` of `10`; the WAIT
-precondition remains `FAIL` with `ADVISOR_ONLY` authority; whole-cycle
-ownership eligibility remains `false`.
+Standing verdict after slice 16: all ten retained legacy paths now carry a
+proven path boundary (each real main-cycle command is a canonical, cycle-bound,
+fail-closed, real-delta-confirmed proposal). This is a bounding/observability
+milestone only - it does NOT change execution ownership: complete M6 execution
+paths remain `0` of `10`, the WAIT precondition remains `FAIL` with
+`ADVISOR_ONLY` authority, whole-cycle ownership eligibility remains `false`,
+and `m6DecisionOwnsMainCycle` stays `false`.
 
-Current work package: none selected. Slice 15 is closed; the one remaining
-unbounded path is `FINAL_CLONE_PREP` (`manageCloneCocoons`), to be taken only
-as a narrow, source-grounded boundary slice after separate scope analysis.
+Current work package: none selected. The path-boundary sweep of all ten
+retained legacy paths is complete. There is no further boundary slice to take;
+the next direction must be chosen deliberately (e.g. begin converting a bounded
+path toward complete M6 coverage, or a separate product capability) and is not
+implied by this sweep. Do not grant M6 whole-cycle ownership without the live
+purchase acceptance gate passing against that change first.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
