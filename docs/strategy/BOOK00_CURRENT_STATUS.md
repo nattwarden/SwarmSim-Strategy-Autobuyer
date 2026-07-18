@@ -109,11 +109,12 @@ proven path boundary; complete M6 execution paths remain `0` of `10`; the
 WAIT precondition remains `FAIL` with `ADVISOR_ONLY` authority; whole-cycle
 ownership eligibility remains `false`.
 
-Current work package: none selected. Phase 3 slice 11 is complete; select the
-next retained legacy path only after confirming a comparably narrow,
-source-grounded boundary and focused real-cycle acceptance. Do not invent an
-ETA conversion, widen eligibility, mark unrelated paths `COMPLETE`, or toggle
-whole-cycle ownership.
+Current work package: Phase 3 slice 12 - Energy guard path boundary. Extend
+the path-boundary discipline to every existing reversible `ENERGY_GUARD` buy
+(Nexus and the pre-/post-Nexus Lepidoptera branches): exact proposal identity,
+cycle-bound authorization, fail-closed command amount and explicit
+execute/block/not-applicable accounting. Exclude ability auto-cast, strategy
+changes, ETA conversions, safety-default changes and whole-cycle ownership.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
@@ -529,8 +530,7 @@ this file. Durable facts belong in the owning documents, not in this log.
   `docs/test-data/player-saves/live-user-save-2026-07-18.txt` (SHA-256 in
   its README; import verified; not yet consumed by any verifier). A first
   chat-pasted copy arrived corrupted and was discarded.
-- Exact next action: select the next retained legacy path for a narrow boundary
-  slice (see Current work package).
+- Exact next action: implement Phase 3 slice 12 (see Current work package).
 
 ### 2026-07-15 - DEL B research findings (read-only, unique caveats)
 
