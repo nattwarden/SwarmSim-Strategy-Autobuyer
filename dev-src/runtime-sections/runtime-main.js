@@ -117,7 +117,7 @@
     { pathId: "LARVA_ENGINE_GUARD", sourceCall: "executeEngineGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["LARVA_ENGINE"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "larva-engine-guard-path-boundary.v1" },
     { pathId: "CRITICAL_PRODUCTION_UPGRADES", sourceCall: "handleCriticalProductionUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "critical-upgrade-path-boundary.v1" },
     { pathId: "ENERGY_GUARD", sourceCall: "executeEnergyGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["ENERGY_PRODUCTION"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "energy-guard-path-boundary.v1" },
-    { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
+    { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-ramp-guard-path-boundary.v1" },
     { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
@@ -5856,6 +5856,9 @@ function getDisplayName(item) {
     if (boundaryContract === ENERGY_GUARD_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isEnergyGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
+    if (boundaryContract === CLONE_RAMP_GUARD_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isCloneRampGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
     if (boundaryContract === SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
@@ -5977,6 +5980,27 @@ function getDisplayName(item) {
     for (const proposal of proposals) {
       if (!proposal?.canonicalProposalId || !proposal?.authorizationId || !proposal?.boundedAmount) return false;
       if (proposal.executionKey !== "energy-guard" || !["upgrade", "unit"].includes(proposal.executionKind)) return false;
+      if (!["EXECUTED", "BLOCKED_SAFE_MODE", "COMMAND_FAILED", "CONTRACT_VIOLATION"].includes(proposal.outcome)) return false;
+      if (!proposal.metricTarget || !proposal.metricId || !proposal.metricUnit || !proposal.metricBasis) return false;
+      if (proposal.outcome === "EXECUTED") {
+        const amount = proposal.amountContract;
+        if (!amount || String(amount.authorizedRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.commandRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.confirmedPurchasedAmount) !== String(proposal.boundedAmount)) return false;
+      }
+    }
+    return true;
+  }
+
+  function isCloneRampGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    if (heldCandidates.length !== 0) return false;
+    if (!proposals.length && !boundary.notApplicableReason) return false;
+    const accounted = Number(accounting.executedCount) + Number(accounting.blockedSafeModeCount)
+      + Number(accounting.commandFailedCount) + Number(accounting.contractViolationCount);
+    if (!Number.isFinite(accounted) || accounted !== proposals.length) return false;
+    for (const proposal of proposals) {
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId || !proposal?.boundedAmount) return false;
+      if (proposal.executionKey !== "clone-ramp-guard" || !["upgrade", "unit"].includes(proposal.executionKind)) return false;
       if (!["EXECUTED", "BLOCKED_SAFE_MODE", "COMMAND_FAILED", "CONTRACT_VIOLATION"].includes(proposal.outcome)) return false;
       if (!proposal.metricTarget || !proposal.metricId || !proposal.metricUnit || !proposal.metricBasis) return false;
       if (proposal.outcome === "EXECUTED") {
@@ -14085,18 +14109,56 @@ function getDisplayName(item) {
   // left as loose larva instead: the ramp is done growing, so that larva is
   // handed straight to normal Meat progression on the very next cycle rather
   // than being locked away as cocoons it no longer needs to protect.
-  function runCloneRampPlanner(game, commands, protectedResources) {
-    const noop = { actionTaken: false, bought: 0 };
+  const CLONE_RAMP_GUARD_PATH_BOUNDARY_SCHEMA_VERSION = "clone-ramp-guard-path-boundary.v1";
+
+  function runCloneRampPlanner(game, commands, protectedResources, cycleIdentity = null) {
+    // Path-boundary observability for the narrow Clone Ramp exception. Each real
+    // command (the single Clone Larvae cast and, on a growth cast, the exact
+    // cocoon bank) carries a canonical proposal identity, cycle-bound
+    // authorization, a fail-closed identity/amount check and a real
+    // count-delta confirmation. This is observability only: it never changes
+    // the cast/bank amounts, the reserve/visibility gates, or the release-at-cap
+    // behavior documented in AGENTS.md.
+    const boundary = {
+      schemaVersion: CLONE_RAMP_GUARD_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: "CLONE_RAMP",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason: null,
+      heldCandidates: [],
+      proposals: [],
+      accounting: { proposalCount: 0, executedCount: 0, blockedSafeModeCount: 0, commandFailedCount: 0, contractViolationCount: 0 },
+    };
+
+    function createCloneRampProposal({ candidate, executionId, executionKind, executionVariant, amount, metricTarget, metricId, metricUnit, metricBasis }) {
+      const proposal = {
+        lane: "Clone Ramp", candidate, executionKey: "clone-ramp-guard", executionId,
+        executionKind, executionVariant: executionVariant || "base", boundedAmount: normalizeBoundedAmountToken(amount),
+        metricTarget, metricId, metricUnit, metricBasis,
+        rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY", outcome: "PENDING", outcomeReason: "", amountContract: null,
+      };
+      proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+      proposal.authorizationId = buildDecisionAuthorizationId({ canonicalProposalId: proposal.canonicalProposalId, decisionCycleId: boundary.decisionCycleId, snapshotId: boundary.snapshotId, activeTarget: boundary.activeTarget });
+      boundary.proposals.push(proposal);
+      boundary.accounting.proposalCount = boundary.proposals.length;
+      return proposal;
+    }
+
+    function notApplicable(reason) {
+      boundary.notApplicableReason = reason;
+      return { actionTaken: false, bought: 0, pathBoundary: boundary };
+    }
 
     if (!config.autoCastCloneLarvae) {
       recordCloneRampState({ cloneRampPhase: "IDLE", cloneRampReason: "Clone Ramp disabled (autoCastCloneLarvae off)", cloneRampBlockedBy: "disabled" });
-      return noop;
+      return notApplicable("Clone Ramp is disabled by configuration (autoCastCloneLarvae off)");
     }
 
     const cloneAbility = getGameUpgrade(game, "clonelarvae");
     if (!cloneAbility) {
       recordCloneRampState({ cloneRampPhase: "IDLE", cloneRampReason: "Clone Larvae is unavailable from runtime", cloneRampBlockedBy: "no ability" });
-      return noop;
+      return notApplicable("Clone Larvae is unavailable from runtime");
     }
 
     const bankBefore = decimalFrom(getCloneLarvaeBank(game));
@@ -14116,7 +14178,7 @@ function getDisplayName(item) {
         cloneRampPercentOfCapBefore: percentBefore,
         cloneRampBlockedBy: "empty bank",
       });
-      return noop;
+      return notApplicable("no larvae/cocoons banked yet for Clone Larvae");
     }
 
     const visible = isItemVisibleWithScenarioOverride(cloneAbility);
@@ -14144,7 +14206,7 @@ function getDisplayName(item) {
         cloneRampReason: "Clone Larvae is not castable yet (locked, on cooldown, or not visible)",
         cloneRampBlockedBy: "not castable",
       });
-      return noop;
+      return notApplicable("Clone Larvae is not castable yet (locked, on cooldown, or not visible)");
     }
 
     if (!decimalAtLeast(currentEnergy, energyCost)) {
@@ -14154,7 +14216,7 @@ function getDisplayName(item) {
         cloneRampReason: `waiting on Energy for Clone Larvae cast: ${formatSwarmNumber(currentEnergy)} / ${formatSwarmNumber(energyCost)}`,
         cloneRampBlockedBy: "insufficient energy",
       });
-      return noop;
+      return notApplicable("waiting on Energy for the Clone Larvae cast");
     }
 
     if (energyAfterCast.lessThan(reserveRequired)) {
@@ -14164,7 +14226,7 @@ function getDisplayName(item) {
         cloneRampReason: "Clone Larvae cast would violate the Nexus/Energy reserve; holding",
         cloneRampBlockedBy: "energy reserve",
       });
-      return noop;
+      return notApplicable("Clone Larvae cast would violate the Nexus/Energy reserve");
     }
 
     if (readyForFinalCast && cloneRampReleasedAtCap) {
@@ -14174,7 +14236,7 @@ function getDisplayName(item) {
         cloneRampReason: `Clone Ramp complete; final cloned larvae released to Meat progression. (bank ${trimNumber(percentBefore)}% of cap; execution stays with normal Meat progression until bank falls again)`,
         cloneRampBlockedBy: "already released at cap",
       });
-      return noop;
+      return notApplicable("Clone Ramp already released to Meat progression at cap");
     }
 
     const phase = readyForFinalCast ? "FINAL_CAST" : "CAST_TO_GROW_BANK";
@@ -14195,22 +14257,61 @@ function getDisplayName(item) {
       raw: { costAmount: energyCost, currentAmount: currentEnergy, velocity: energyVelocity },
     });
 
+    const castProposal = createCloneRampProposal({
+      candidate: "Clone Larvae",
+      executionId: String(cloneAbility?.name || "clonelarvae"),
+      executionKind: "upgrade",
+      executionVariant: "base",
+      amount: "1",
+      metricTarget: "Clone Larvae bank/cap",
+      metricId: readyForFinalCast ? "clone-ramp-final-cast" : "clone-ramp-growth-cast",
+      metricUnit: "percent",
+      metricBasis: "clone-larvae-bank-progress",
+    });
+
     if (config.advisorOnly || !config.autoBuySafeDecisions) {
       recordCloneRampState({ ...baseFields, cloneRampPhase: phase, cloneRampReason: reason, cloneRampBlockedBy: "advisor-only" });
       recordMessage(`Advisor: WOULD CAST Clone Larvae — ${reason}`);
-      return { actionTaken: true, bought: 0, summary: "Would cast Clone Larvae (Clone Ramp)" };
+      castProposal.outcome = "BLOCKED_SAFE_MODE";
+      castProposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+      boundary.accounting.blockedSafeModeCount++;
+      return { actionTaken: true, bought: 0, summary: "Would cast Clone Larvae (Clone Ramp)", pathBoundary: boundary };
     }
 
     const larvaUnit = getGameUnit(game, "larva");
     const larvaBeforeCast = decimalFrom(larvaUnit?.count?.() || 0);
 
+    // Fail-closed: the cast command must carry exactly the authorized identity
+    // and the bounded amount of 1 before any real cast is issued.
+    const castCommandAmount = newDecimal(1);
+    if (String(cloneAbility?.name || "") !== castProposal.executionId || normalizeBoundedAmountToken(castCommandAmount) !== castProposal.boundedAmount) {
+      recordCloneRampState({ ...baseFields, cloneRampPhase: "PREPARE_BANK", cloneRampReason: "Clone Larvae cast blocked by contract check", cloneRampBlockedBy: "contract violation" });
+      castProposal.outcome = "CONTRACT_VIOLATION";
+      castProposal.outcomeReason = "Clone Larvae cast identity or amount differs from authorization";
+      boundary.accounting.contractViolationCount++;
+      return { actionTaken: true, bought: 0, summary: "Clone Ramp cast blocked", pathBoundary: boundary };
+    }
+
     const castDeltaOut = {};
-    const didCast = safe("Clone Ramp cast", () => buyUpgradeAmount(commands, cloneAbility, newDecimal(1), "Clone Ramp", castDeltaOut));
+    const didCast = safe("Clone Ramp cast", () => buyUpgradeAmount(commands, cloneAbility, castCommandAmount, "Clone Ramp", castDeltaOut));
 
     if (!didCast) {
       recordCloneRampState({ ...baseFields, cloneRampPhase: "PREPARE_BANK", cloneRampReason: "Clone Larvae cast attempt did not register", cloneRampBlockedBy: "cast failed" });
-      return noop;
+      castProposal.outcome = "COMMAND_FAILED";
+      castProposal.outcomeReason = "Clone Larvae cast attempt did not register";
+      boundary.accounting.commandFailedCount++;
+      return { actionTaken: false, bought: 0, summary: "Clone Ramp cast failed", pathBoundary: boundary };
     }
+
+    castProposal.outcome = "EXECUTED";
+    castProposal.outcomeReason = readyForFinalCast ? "Clone Ramp full-cap cast" : "Clone Ramp growth cast";
+    castProposal.amountContract = {
+      authorizedRequestedAmount: castProposal.boundedAmount,
+      commandRequestedAmount: normalizeBoundedAmountToken(castCommandAmount),
+      confirmedPurchasedAmount: normalizeBoundedAmountToken(castDeltaOut.value),
+      confirmationBasis: "real-upgrade-count-delta",
+    };
+    boundary.accounting.executedCount++;
 
     const larvaAfterCast = decimalFrom(getGameUnit(game, "larva")?.count?.() || 0);
     const castOutputAmount = larvaAfterCast.minus(larvaBeforeCast);
@@ -14226,8 +14327,46 @@ function getDisplayName(item) {
       if (isPositive(boundedBankAmount)) {
         const cocoonUnit = getGameUnit(game, "cocoon");
         if (cocoonUnit?.isVisible?.() && cocoonUnit?.isBuyable?.()) {
-          const bankedOk = safe("Clone Ramp bank cloned larvae", () => buyUnitAmount(commands, cocoonUnit, boundedBankAmount, "Clone Ramp Bank"));
-          if (bankedOk) bankedAmount = boundedBankAmount;
+          const bankProposal = createCloneRampProposal({
+            candidate: "Clone Larvae bank",
+            executionId: String(cocoonUnit?.name || "cocoon"),
+            executionKind: "unit",
+            executionVariant: "bank",
+            amount: boundedBankAmount,
+            metricTarget: "Clone Larvae bank protection",
+            metricId: "clone-ramp-bank-cocoons",
+            metricUnit: "count",
+            metricBasis: "clone-larvae-banked-cocoons",
+          });
+          const bankCommandAmount = boundedBankAmount;
+          if (String(cocoonUnit?.name || "") !== bankProposal.executionId || normalizeBoundedAmountToken(bankCommandAmount) !== bankProposal.boundedAmount) {
+            bankProposal.outcome = "CONTRACT_VIOLATION";
+            bankProposal.outcomeReason = "Clone Ramp bank identity or amount differs from authorization";
+            boundary.accounting.contractViolationCount++;
+          } else {
+            const bankDeltaOut = {};
+            const bankedOk = safe("Clone Ramp bank cloned larvae", () => buyUnitAmount(commands, cocoonUnit, bankCommandAmount, "Clone Ramp Bank", bankDeltaOut));
+            // Preserve the pre-existing recorded bank amount exactly: the
+            // display ledger still reports the full bounded amount whenever the
+            // buy registered, while the proposal contract records the honest,
+            // separately-observed real cocoon count delta.
+            if (bankedOk) bankedAmount = boundedBankAmount;
+            if (bankedOk && normalizeBoundedAmountToken(bankDeltaOut.value) === bankProposal.boundedAmount) {
+              bankProposal.outcome = "EXECUTED";
+              bankProposal.outcomeReason = "cloned larvae banked into cocoons";
+              bankProposal.amountContract = {
+                authorizedRequestedAmount: bankProposal.boundedAmount,
+                commandRequestedAmount: normalizeBoundedAmountToken(bankCommandAmount),
+                confirmedPurchasedAmount: normalizeBoundedAmountToken(bankDeltaOut.value),
+                confirmationBasis: "real-unit-count-delta",
+              };
+              boundary.accounting.executedCount++;
+            } else {
+              bankProposal.outcome = "COMMAND_FAILED";
+              bankProposal.outcomeReason = "bank did not register the exact bounded cocoon amount";
+              boundary.accounting.commandFailedCount++;
+            }
+          }
         }
       }
     }
@@ -14260,7 +14399,7 @@ function getDisplayName(item) {
     });
 
     recordMainAction("Clone Ramp", "Clone Larvae", reason, "1", castDeltaOut.value);
-    return { actionTaken: true, bought: 1, summary: readyForFinalCast ? "Clone Ramp full-cap cast" : "Clone Ramp growth cast" };
+    return { actionTaken: true, bought: 1, summary: readyForFinalCast ? "Clone Ramp full-cap cast" : "Clone Ramp growth cast", pathBoundary: boundary };
   }
 
   function runUnlockPlanner(game, commands, protectedResources) {
@@ -20008,8 +20147,8 @@ function getDisplayName(item) {
   // grants execution authority to abilities, see SIX_DOMAIN_MANIFEST's
   // M6-ABILITY-AUTHORITY invariant) so this narrow exception cannot widen the
   // coordinator's own advisor-only ability boundary.
-  function executeCloneRampGuardAction({ game, commands, protectedResources }) {
-    return runCloneRampPlanner(game, commands, protectedResources);
+  function executeCloneRampGuardAction({ game, commands, protectedResources, cycleIdentity = null }) {
+    return runCloneRampPlanner(game, commands, protectedResources, cycleIdentity);
   }
 
   function buildEnergyProductionOpportunityMetrics(game, spentEnergyValue, nexusProtectionGate, energyProductionGainPercent = NaN) {
@@ -21508,7 +21647,14 @@ function getDisplayName(item) {
     // main-cycle-coverage: CLONE_RAMP
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const pathProbe = beginMainCyclePathProbe();
-      const cloneRampAction = executeCloneRampGuardAction({ game, commands, protectedResources });
+      const cloneRampAction = executeCloneRampGuardAction({
+        game, commands, protectedResources,
+        cycleIdentity: {
+          decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+          snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+          activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+        },
+      });
       addMainResult("Clone Ramp", cloneRampAction);
       recordEvaluatedMainCyclePath("CLONE_RAMP", cloneRampAction, pathProbe, "Clone Ramp was not applicable.");
     } else if (m6DecisionOwnsMainCycle) {
