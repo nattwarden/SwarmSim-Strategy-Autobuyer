@@ -1101,6 +1101,63 @@ SCENARIOS["book00-live-purchase-m6"] = {
   ],
 };
 
+SCENARIOS["book00-critical-upgrade-boundary"] = {
+  id: "BOOK00-CRITICAL-UPGRADE-BOUNDARY",
+  title: "Critical Production Upgrade Path Executes Inside Its Boundary",
+  description: "Meat-chain unit counts are real-seeded so the game's own rules make several real 'faster X' production upgrades (droneprod/queenprod/nestprod lineage) visible and buyable. Proposal sources for M6 are disabled, the Engine guard is off and the single-action budget flows to handleCriticalProductionUpgrades, which must execute exactly one real upgrade purchase bound to its slice-8 path boundary (exact proposal identity, cycle-bound authorization, amount exactly 1, explicit outcome accounting).",
+  cycles: 1,
+  executeActions: true,
+  realResourceSeeds: {
+    meat: "1e12",
+    larva: "1e9",
+    drone: "1000000",
+    queen: "100000",
+    nest: "10000",
+    greaterqueen: "1000",
+    hive: "100",
+  },
+  engine: {
+    hatcheryEtaSeconds: 3600,
+    expansionEtaSeconds: 300,
+  },
+  config: {
+    smartMaxActionsPerRun: 1,
+    saveForExpansionSeconds: 600,
+    meatGoalPlanner: false,
+    larvaEnginePriority: false,
+    prioritizeProductionUpgrades: true,
+    productionUpgradesIgnoreNotify: true,
+    targetAwareUpgradePlanner: false,
+    criticalProductionMaxPerRun: 3,
+    territoryPrepPlanner: false,
+    expansionArmySeedPlanner: false,
+    territoryArmySeedWhenEmpty: false,
+    territoryRoiMode: false,
+    buyUpgrades: false,
+    focusTab: "meat",
+  },
+  trackedUnitKeys: ["drone", "queen", "nest"],
+  trackedUpgradeKeys: ["droneprod", "queenprod", "nestprod", "greaterqueenprod", "hiveprod"],
+  notes: [
+    "Real _setCount seeding makes the production upgrades genuinely visible and buyable by the game's own unlock rules (each costs 66 of its own unit), so the executed purchase deducts a real unit cost and increments a real upgrade count that the check reads back from game state.",
+    "meatGoalPlanner/larvaEnginePriority disabled remove every unified purchase proposal source, so M6 cannot claim the action budget; the Engine guard takes no action and the budget reaches the critical-upgrade path first.",
+    "criticalProductionMaxPerRun 3 with smartMaxActionsPerRun 1 forces the boundary to account one EXECUTED candidate and the remaining ranked candidates as SKIPPED_BUDGET in the same cycle.",
+    "trackedUpgradeKeys lets the check assert that exactly the boundary-claimed upgrade count increased and every other tracked production upgrade stayed unchanged - the executed identity is grounded in game state, not in the bot's self-report.",
+  ],
+};
+
+SCENARIOS["book00-critical-upgrade-boundary-advisor"] = {
+  ...SCENARIOS["book00-critical-upgrade-boundary"],
+  id: "BOOK00-CRITICAL-UPGRADE-BOUNDARY-ADVISOR",
+  title: "Critical Production Upgrade Path Is Accounted As Blocked In Advisor Mode",
+  description: "Identical staged state to book00-critical-upgrade-boundary, but executeActions is false so the harness runs advisor-only. The boundary must account every ranked candidate as BLOCKED_SAFE_MODE, execute nothing, and leave every tracked real upgrade count unchanged.",
+  executeActions: false,
+  notes: [
+    "Same staged economy as the executed scenario; only the advisor-only/autoBuySafeDecisions execution gate differs, so the only allowed accounting difference is EXECUTED/SKIPPED_BUDGET becoming BLOCKED_SAFE_MODE.",
+    "No real upgrade count may change; the check reads tracked upgrade counts from game state to prove the blocked accounting is honest.",
+  ],
+};
+
 function getScenarioDefinition(scenarioId) {
   const normalizedId = String(scenarioId || "canary").toLowerCase();
   const v2Scenario = buildSa1V2Scenario(normalizedId);
@@ -2254,8 +2311,8 @@ async function applyScenarioRuntimePatch(page, patch) {
   }, patch || {});
 }
 
-async function captureStateDigest(page, extraUnitKeys = []) {
-  return page.evaluate((keys) => {
+async function captureStateDigest(page, extraUnitKeys = [], extraUpgradeKeys = []) {
+  return page.evaluate(({ unitKeys, upgradeKeys }) => {
     const game = window.angular.element(document.body).injector().get("game");
     const bot = window.kbcSwarmBot;
     const inspector = bot.getStrategyInspector?.() || null;
@@ -2265,18 +2322,28 @@ async function captureStateDigest(page, extraUnitKeys = []) {
       territory: String(game.unit("territory")?.count?.() || "0"),
       energy: String(game.unit("energy")?.count?.() || "0")
     };
-    for (const key of keys || []) {
+    for (const key of unitKeys || []) {
       if (Object.prototype.hasOwnProperty.call(resources, key)) continue;
       resources[key] = String(game.unit(key)?.count?.() || "0");
     }
-    return {
+    const digest = {
       runHistoryLength: Array.isArray(bot.getRunHistory?.()) ? bot.getRunHistory().length : 0,
       inspectorTimestamp: inspector?.timestamp || null,
       phase: inspector?.phase || null,
       decision: inspector?.decision || null,
       resources
     };
-  }, extraUnitKeys);
+    // Real upgrade counts are tracked only when a scenario asks for them, so
+    // existing scenarios keep byte-identical digests and state hashes.
+    if (Array.isArray(upgradeKeys) && upgradeKeys.length) {
+      const upgrades = {};
+      for (const key of upgradeKeys) {
+        upgrades[key] = String(game.upgrade(key)?.count?.() || "0");
+      }
+      digest.upgrades = upgrades;
+    }
+    return digest;
+  }, { unitKeys: extraUnitKeys, upgradeKeys: extraUpgradeKeys });
 }
 
 async function captureResetFingerprint(page) {
@@ -2670,7 +2737,7 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
   const staged = await stageCanaryState(page, scenarioState);
   const stateMutationManifestHash = sha256Object(staged.manifest);
   const preResetStateHash = sha256Object(staged.preResetDigest);
-  const initialDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys);
+  const initialDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys, scenarioState.trackedUpgradeKeys);
   const initialStateHash = sha256Object(initialDigest);
 
   await installStateVisibilityOverlay(page, {
@@ -2724,9 +2791,9 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
       break;
     }
 
-    const beforeDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys);
+    const beforeDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys, scenarioState.trackedUpgradeKeys);
     const planner = await runPlannerCycle(page);
-    const afterDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys);
+    const afterDigest = await captureStateDigest(page, scenarioState.trackedUnitKeys, scenarioState.trackedUpgradeKeys);
 
     const beforeHash = sha256Object(beforeDigest);
     const afterHash = sha256Object(afterDigest);
@@ -2844,6 +2911,8 @@ async function runSingleScenario({ page, cli, userscriptSha, artifactDir, browse
     row.goalMetricDelta = String(afterDigest.runHistoryLength - beforeDigest.runHistoryLength);
     row.resourceBankBefore = beforeDigest.resources;
     row.resourceBankAfter = afterDigest.resources;
+    row.upgradeCountsBefore = beforeDigest.upgrades || null;
+    row.upgradeCountsAfter = afterDigest.upgrades || null;
     row.productionBefore = null;
     row.productionAfter = null;
     row.targetEtaBefore = null;
