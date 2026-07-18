@@ -383,14 +383,54 @@ Phase 3 slice 9 - generic Smart-upgrade path boundary - is complete:
   full configured suite, default-save import, all three mutations and
   `git diff --check`, ending with status count `0`.
 
-Current work package: Phase 3 slice 10 - generic Smart-unit path boundary -
+Phase 3 slice 10 - generic Smart-unit path boundary - is complete:
+
+- implementation SHA: `9a2e2c8e5b4743d4d9048c55131dc14994d758f0`;
+- implementation tree: `f2af65874fc02c2f47e1c559ce244098689369d9`;
+- evidence SHA: `f3e3b01b6c11d8c60857dfc4cf6a9c10002e8120`;
+- evidence path:
+  `docs/test-data/9.4.0-clean-room/verification-9a2e2c8.md`;
+- `buySmartUnits` now emits one `smart-unit-path-boundary.v1` per evaluated
+  cycle: every ranked queue candidate that reaches the buy decision is bound
+  to an exact canonical proposal identity, a cycle/snapshot/target-bound
+  authorization and an exact per-candidate bounded amount, enforced
+  fail-closed before the real buy command; `EXECUTED` requires authorized,
+  command and confirmed amounts exactly equal on a real unit-count basis;
+- the orchestrated branches are explicit accounted records instead of
+  silent control flow: ascension pause, the delegated meat-guard planner,
+  the pre-queue and post-meat territory guards and meat chain prep all
+  report their real bought counts; held queue candidates are accounted per
+  class and a disabled path or empty queue states its explicit
+  not-applicable reason;
+- the polymorphic return value is preserved; the boundary travels through
+  cycle state, and the coverage ledger validates the contract with
+  contract-specific rules while the slice-8/9 rules are unchanged;
+- `check:9.4.0:smart-unit-boundary` proves a real executed exact-amount
+  `drone x446` queue purchase grounded in a real unit-count delta with all
+  delegated branches at explicit zero, an advisor-only cycle accounted as
+  blocked with no state change, and an honest disabled `NOT_APPLICABLE`
+  cycle; amount, identity-drift and accounting-removal mutations are
+  independently rejected;
+- one transient live Scenario B failure during the first exact-SHA suite
+  attempt was discarded per protocol after an isolated same-SHA rerun and a
+  complete suite rerun both passed; it is recorded in the evidence, not
+  counted as acceptance;
+- three of ten retained paths now carry a proven path boundary, `m6Coverage`
+  for `SMART_UNITS` remains `PARTIAL`, complete M6 execution paths remain
+  `0`, the WAIT precondition remains `FAIL`, its authority remains
+  `ADVISOR_ONLY`, and whole-cycle ownership eligibility remains `false`;
+- the detached exact-SHA worktree passed canonical build, guardrails, the
+  full configured suite, default-save import, all three mutations and
+  `git diff --check`, ending with status count `0`.
+
+Current work package: Phase 3 slice 11 - Larva Engine guard path boundary -
 is selected but not implemented. Extend the path-boundary discipline (exact
-proposal identity, cycle-bound authorization, fail-closed command bound,
-explicit execute/block/not-applicable accounting) to the `SMART_UNITS`
-callsite (`buySmartUnits`), the generic unit sibling of the slice-9 path
-and one of the four partial-M6 overlap paths. Do not invent an ETA
-conversion, widen unit eligibility, mark unrelated paths `COMPLETE`, or
-toggle whole-cycle ownership.
+proposal identity, cycle-bound authorization, fail-closed amount guard,
+explicit execute/block/not-applicable accounting) to the
+`LARVA_ENGINE_GUARD` callsite (`executeEngineGuardAction`), a partial-M6
+overlap path whose single-upgrade buys mirror the slice-8 exact-amount
+contract. Do not invent an ETA conversion, widen eligibility, mark
+unrelated paths `COMPLETE`, or toggle whole-cycle ownership.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays

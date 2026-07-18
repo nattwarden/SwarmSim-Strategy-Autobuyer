@@ -478,6 +478,29 @@ retained paths now carry a proven boundary; M6 execution coverage is
 unchanged and the WAIT precondition still fails. Exact-SHA verification is
 recorded in `docs/test-data/9.4.0-clean-room/verification-84fa70e.md`.
 
+## Completed slice 10
+
+Phase 3 slice 10 extends the per-path boundary discipline to the generic
+Smart-unit path, the most complex orchestrator so far:
+
+> The ranked queue's own buy must be bounded by an exact per-candidate
+> amount with authorized, command and confirmed amounts exactly equal on a
+> real unit-count basis; every orchestrated branch (ascension pause,
+> delegated meat-guard planner, territory guards, chain prep) must be an
+> explicit accounted record instead of silent control flow.
+
+Acceptance reuses the proven legacy-purchase state: a real executed
+exact-amount `drone x446` queue purchase with all delegated branches at
+explicit zero, an advisor-only cycle fully accounted as blocked, and a
+disabled path stating its not-applicable reason from the callsite. Amount,
+identity-drift and accounting-removal mutations are independently rejected;
+both guard mutations are refused by the boundary itself before any real
+purchase. Three of ten retained paths now carry a proven boundary; M6
+execution coverage is unchanged (`SMART_UNITS` remains `PARTIAL`) and the
+WAIT precondition still fails. Exact-SHA verification, including one
+discarded transient live-staging failure, is recorded in
+`docs/test-data/9.4.0-clean-room/verification-9a2e2c8.md`.
+
 ## Work after slice 7
 
 Continue with evidence, not an ownership toggle:
