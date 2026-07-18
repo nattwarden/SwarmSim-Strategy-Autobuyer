@@ -148,7 +148,7 @@
     { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
-    { pathId: "SMART_UPGRADES", sourceCall: "buySmartUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
+    { pathId: "SMART_UPGRADES", sourceCall: "buySmartUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-upgrade-path-boundary.v1" },
     { pathId: "SMART_UNITS", sourceCall: "buySmartUnits", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT", "ARMY_TERRITORY"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "FINAL_CLONE_PREP", sourceCall: "manageCloneCocoons", actionClass: "SIDE", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
   ];
@@ -5869,33 +5869,81 @@ function getDisplayName(item) {
     if (String(boundary.snapshotId || "") !== String(expectedContext.snapshotId || "")) return "MISSING";
     const proposals = Array.isArray(boundary.proposals) ? boundary.proposals : null;
     const accounting = boundary.accounting || null;
-    if (!proposals || !accounting) return "MISSING";
+    const heldCandidates = Array.isArray(boundary.heldCandidates) ? boundary.heldCandidates : null;
+    if (!proposals || !accounting || !heldCandidates) return "MISSING";
     if (Number(accounting.contractViolationCount) !== 0) return "MISSING";
     if (Number(accounting.proposalCount) !== proposals.length) return "MISSING";
-    const heldCandidates = Array.isArray(boundary.heldCandidates) ? boundary.heldCandidates : null;
-    if (!heldCandidates || Number(accounting.blockedProtectedCostCount) !== heldCandidates.length) return "MISSING";
-    if (!proposals.length && !heldCandidates.length && !boundary.notApplicableReason) return "MISSING";
+    if (boundaryContract === CRITICAL_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isCriticalUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
+    if (boundaryContract === SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
+    return "MISSING";
+  }
+
+  function isCriticalUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    if (Number(accounting.blockedProtectedCostCount) !== heldCandidates.length) return false;
+    if (!proposals.length && !heldCandidates.length && !boundary.notApplicableReason) return false;
     const accountedOutcomeCount = Number(accounting.executedCount)
       + Number(accounting.blockedSafeModeCount)
       + Number(accounting.skippedBudgetCount)
       + Number(accounting.commandFailedCount)
       + Number(accounting.contractViolationCount);
-    if (!Number.isFinite(accountedOutcomeCount) || accountedOutcomeCount !== proposals.length) return "MISSING";
+    if (!Number.isFinite(accountedOutcomeCount) || accountedOutcomeCount !== proposals.length) return false;
     const allowedOutcomes = ["EXECUTED", "BLOCKED_SAFE_MODE", "SKIPPED_BUDGET", "COMMAND_FAILED", "CONTRACT_VIOLATION"];
     for (const proposal of proposals) {
-      if (!proposal?.canonicalProposalId || !proposal?.authorizationId) return "MISSING";
-      if (String(proposal?.boundedAmount || "") !== "1") return "MISSING";
-      if (!proposal?.metricTarget || !proposal?.metricId || !proposal?.metricUnit || !proposal?.metricBasis) return "MISSING";
-      if (!allowedOutcomes.includes(String(proposal?.outcome || ""))) return "MISSING";
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId) return false;
+      if (String(proposal?.boundedAmount || "") !== "1") return false;
+      if (!proposal?.metricTarget || !proposal?.metricId || !proposal?.metricUnit || !proposal?.metricBasis) return false;
+      if (!allowedOutcomes.includes(String(proposal?.outcome || ""))) return false;
       if (String(proposal?.outcome) === "EXECUTED") {
         const amountContract = proposal?.amountContract;
-        if (!amountContract) return "MISSING";
-        if (String(amountContract.authorizedRequestedAmount || "") !== String(proposal.boundedAmount)) return "MISSING";
-        if (String(amountContract.commandRequestedAmount || "") !== String(proposal.boundedAmount)) return "MISSING";
-        if (String(amountContract.confirmedPurchasedAmount || "") !== String(proposal.boundedAmount)) return "MISSING";
+        if (!amountContract) return false;
+        if (String(amountContract.authorizedRequestedAmount || "") !== String(proposal.boundedAmount)) return false;
+        if (String(amountContract.commandRequestedAmount || "") !== String(proposal.boundedAmount)) return false;
+        if (String(amountContract.confirmedPurchasedAmount || "") !== String(proposal.boundedAmount)) return false;
       }
     }
-    return "PROVEN";
+    return true;
+  }
+
+  function isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    const delegation = boundary.targetAwareDelegation;
+    if (!delegation || typeof delegation.enabled !== "boolean") return false;
+    if (!["EXECUTED_DELEGATED", "NO_ACTION", "NOT_EVALUATED"].includes(String(delegation.outcome || ""))) return false;
+    if (!Number.isFinite(Number(delegation.bought)) || Number(delegation.bought) < 0) return false;
+    const heldSum = Number(accounting.heldAbilityCount)
+      + Number(accounting.heldTwinCount)
+      + Number(accounting.heldProtectedCostCount);
+    if (!Number.isFinite(heldSum) || heldSum !== heldCandidates.length) return false;
+    if (!proposals.length && Number(delegation.bought) === 0 && !boundary.notApplicableReason) return false;
+    const accountedOutcomeCount = Number(accounting.executedCount)
+      + Number(accounting.blockedSafeModeCount)
+      + Number(accounting.skippedBudgetCount)
+      + Number(accounting.commandNoEffectCount)
+      + Number(accounting.commandFailedCount)
+      + Number(accounting.contractViolationCount);
+    if (!Number.isFinite(accountedOutcomeCount) || accountedOutcomeCount !== proposals.length) return false;
+    const allowedOutcomes = ["EXECUTED", "BLOCKED_SAFE_MODE", "SKIPPED_BUDGET", "COMMAND_NO_EFFECT", "COMMAND_FAILED", "CONTRACT_VIOLATION"];
+    for (const proposal of proposals) {
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId) return false;
+      if (String(proposal?.authorizedCommand || "") !== "BUY_MAX_PERCENT") return false;
+      if (!proposal?.metricTarget || !proposal?.metricId || !proposal?.metricUnit || !proposal?.metricBasis) return false;
+      if (!allowedOutcomes.includes(String(proposal?.outcome || ""))) return false;
+      if (String(proposal?.outcome) === "EXECUTED") {
+        const amountContract = proposal?.amountContract;
+        if (!amountContract) return false;
+        const authorizedPercent = Number(proposal.authorizedPercent);
+        if (!Number.isFinite(authorizedPercent) || authorizedPercent <= 0) return false;
+        if (String(amountContract.authorizedPercent || "") !== String(proposal.authorizedPercent)) return false;
+        if (String(amountContract.commandPercent || "") !== String(proposal.authorizedPercent)) return false;
+        const confirmed = Number(amountContract.confirmedPurchasedAmount);
+        if (!Number.isFinite(confirmed) || confirmed <= 0) return false;
+        if (String(amountContract.confirmationBasis || "") !== "real-upgrade-count-delta") return false;
+      }
+    }
+    return true;
   }
 
   function buildMainCycleCoverageLedger(cycleEvidence = null, expectedContext = {}) {
@@ -17747,18 +17795,78 @@ function getDisplayName(item) {
     return analysis?.ok && analysis.reason ? analysis.reason : "";
   }
 
-  function buySmartUpgrades(game, commands, protectedResources, remainingMainActions = Infinity) {
+  const SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION = "smart-upgrade-path-boundary.v1";
+
+  function createSmartUpgradePathBoundary(cycleIdentity, notApplicableReason = null) {
+    return {
+      schemaVersion: SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: "SMART_UPGRADES",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason,
+      targetAwareDelegation: {
+        enabled: !!config.targetAwareUpgradePlanner,
+        evaluatedCandidateCount: 0,
+        bought: 0,
+        outcome: "NOT_EVALUATED",
+      },
+      heldCandidates: [],
+      proposals: [],
+      excludedCandidates: {
+        totalAvailableCount: 0,
+        engineOwnedCount: 0,
+        targetAwareEvaluatedCount: 0,
+        criticalProductionDeferredCount: 0,
+        truncatedByMaxPerRunCount: 0,
+      },
+      accounting: {
+        proposalCount: 0,
+        executedCount: 0,
+        blockedSafeModeCount: 0,
+        heldAbilityCount: 0,
+        heldTwinCount: 0,
+        heldProtectedCostCount: 0,
+        skippedBudgetCount: 0,
+        commandNoEffectCount: 0,
+        commandFailedCount: 0,
+        contractViolationCount: 0,
+      },
+    };
+  }
+
+  function buySmartUpgrades(game, commands, protectedResources, remainingMainActions = Infinity, cycleIdentity = null) {
+    // 9.4.0 slice 9: the generic safe-upgrade path carries the same
+    // path-boundary discipline as the critical-upgrade path. The buy-max
+    // command is bounded by the authorized percent, not a unit amount, so the
+    // boundary binds identity plus the exact command percent fail-closed and
+    // confirms execution with the real upgrade-count delta. Candidate
+    // eligibility, ranking, thresholds and buy order are unchanged.
+    const boundary = createSmartUpgradePathBoundary(cycleIdentity);
     const targetAwareResult = handleTargetAwareUpgradePlanner(game, commands, protectedResources);
     const targetAwareEvaluatedNames = targetAwareResult?.evaluatedNames || new Set();
+    boundary.targetAwareDelegation = {
+      enabled: !!config.targetAwareUpgradePlanner,
+      evaluatedCandidateCount: targetAwareEvaluatedNames.size,
+      bought: Number(targetAwareResult?.bought || 0),
+      outcome: Number(targetAwareResult?.bought || 0) > 0 ? "EXECUTED_DELEGATED" : "NO_ACTION",
+    };
 
     if (Number(targetAwareResult?.bought || 0) > 0) {
-      return Number(targetAwareResult.bought || 0);
+      return { actionTaken: true, bought: Number(targetAwareResult.bought || 0), pathBoundary: boundary };
     }
 
-    let upgrades = game.availableAutobuyUpgrades(config.upgradeBuyPercent) || [];
+    const availableUpgrades = game.availableAutobuyUpgrades(config.upgradeBuyPercent) || [];
+    boundary.excludedCandidates.totalAvailableCount = availableUpgrades.length;
 
-    upgrades = upgrades
-      .filter((upgrade) => upgrade.name !== "hatchery" && upgrade.name !== "expansion")
+    const scoredUpgrades = availableUpgrades
+      .filter((upgrade) => {
+        if (upgrade.name === "hatchery" || upgrade.name === "expansion") {
+          boundary.excludedCandidates.engineOwnedCount++;
+          return false;
+        }
+        return true;
+      })
       .filter((upgrade) => {
         if (!config.autoCastAbilities && shouldSkipAbility(upgrade)) {
           recordAdvisor("HOLD", getDisplayName(upgrade), "ability auto-cast disabled");
@@ -17770,15 +17878,37 @@ function getDisplayName(item) {
             blockers: ["ability auto-cast disabled"],
             score: 20000,
           });
+          boundary.heldCandidates.push({
+            candidate: getDisplayName(upgrade),
+            executionId: String(upgrade?.name || ""),
+            outcome: "HELD_ABILITY",
+            reason: "ability auto-cast disabled",
+          });
+          boundary.accounting.heldAbilityCount++;
           return false;
         }
         return true;
       })
-      .filter((upgrade) => !targetAwareEvaluatedNames.has(upgrade.name))
+      .filter((upgrade) => {
+        if (targetAwareEvaluatedNames.has(upgrade.name)) {
+          boundary.excludedCandidates.targetAwareEvaluatedCount++;
+          return false;
+        }
+        return true;
+      })
       .filter((upgrade) => {
         if (!isTwinUpgrade(upgrade)) return true;
 
-        if (shouldHoldTwinForRecovery(upgrade, "safe upgrade twin")) return false;
+        if (shouldHoldTwinForRecovery(upgrade, "safe upgrade twin")) {
+          boundary.heldCandidates.push({
+            candidate: getDisplayName(upgrade),
+            executionId: String(upgrade?.name || ""),
+            outcome: "HELD_TWIN",
+            reason: "twin held for clone-buffer recovery",
+          });
+          boundary.accounting.heldTwinCount++;
+          return false;
+        }
 
         recordAdvisor("HOLD", getDisplayName(upgrade), "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying");
         addLaneCandidate({
@@ -17789,14 +17919,35 @@ function getDisplayName(item) {
           blockers: ["handled by twin planner"],
           score: unitCostScore(upgrade),
         });
+        boundary.heldCandidates.push({
+          candidate: getDisplayName(upgrade),
+          executionId: String(upgrade?.name || ""),
+          outcome: "HELD_TWIN",
+          reason: "twin upgrades are handled by goal planner / chain prep, not generic safe-upgrade buying",
+        });
+        boundary.accounting.heldTwinCount++;
         return false;
       })
-      .filter((upgrade) => !config.prioritizeProductionUpgrades || !isCriticalProductionUpgrade(upgrade))
+      .filter((upgrade) => {
+        if (config.prioritizeProductionUpgrades && isCriticalProductionUpgrade(upgrade)) {
+          boundary.excludedCandidates.criticalProductionDeferredCount++;
+          return false;
+        }
+        return true;
+      })
       .filter((upgrade) => {
         const protectedCost = shouldAvoidProtectedCost(upgrade, protectedResources);
 
         if (protectedCost) {
           recordAdvisor("HOLD", getDisplayName(upgrade), protectedResourceHoldReason(protectedCost));
+          boundary.heldCandidates.push({
+            candidate: getDisplayName(upgrade),
+            executionId: String(upgrade?.name || ""),
+            outcome: "HELD_PROTECTED_COST",
+            reason: protectedResourceHoldReason(protectedCost),
+            resource: String(protectedCost || ""),
+          });
+          boundary.accounting.heldProtectedCostCount++;
           return false;
         }
 
@@ -17806,11 +17957,19 @@ function getDisplayName(item) {
         upgrade,
         score: scoreUpgrade(upgrade, index),
       }))
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score);
+
+    boundary.excludedCandidates.truncatedByMaxPerRunCount = Math.max(0, scoredUpgrades.length - config.maxUpgradesPerRun);
+    const upgrades = scoredUpgrades
       .slice(0, config.maxUpgradesPerRun)
       .map((entry) => entry.upgrade);
 
-    if (!upgrades.length) return 0;
+    if (!upgrades.length) {
+      boundary.notApplicableReason = boundary.heldCandidates.length
+        ? "every available generic upgrade is held or owned by another path"
+        : "no generic Smart upgrade is available at the configured threshold";
+      return { actionTaken: false, bought: 0, pathBoundary: boundary };
+    }
 
     // 9.3.3 action-budget contract: this loop can buy up to
     // config.maxUpgradesPerRun (default 10) real upgrades per call; it must
@@ -17820,8 +17979,42 @@ function getDisplayName(item) {
 
     let bought = 0;
 
-    for (const upgrade of upgrades) {
-      if (bought >= budget) break;
+    for (let upgradeIndex = 0; upgradeIndex < upgrades.length; upgradeIndex++) {
+      const upgrade = upgrades[upgradeIndex];
+      const proposal = {
+        lane: "Upgrade",
+        candidate: getDisplayName(upgrade),
+        executionKey: "smart-upgrade",
+        executionId: String(upgrade?.name || ""),
+        executionKind: "upgrade",
+        executionVariant: "base",
+        authorizedCommand: "BUY_MAX_PERCENT",
+        authorizedPercent: null,
+        metricTarget: getDisplayName(upgrade),
+        metricId: `${strategicMetricTargetSlug(getDisplayName(upgrade))}-owned-count`,
+        metricUnit: "count",
+        metricBasis: "real-upgrade-count-delta",
+        rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY",
+        outcome: "PENDING",
+        outcomeReason: "",
+        amountContract: null,
+      };
+      proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+      proposal.authorizationId = buildDecisionAuthorizationId({
+        canonicalProposalId: proposal.canonicalProposalId,
+        decisionCycleId: boundary.decisionCycleId,
+        snapshotId: boundary.snapshotId,
+        activeTarget: boundary.activeTarget,
+      });
+      boundary.proposals.push(proposal);
+      boundary.accounting.proposalCount = boundary.proposals.length;
+
+      if (bought >= budget) {
+        proposal.outcome = "SKIPPED_BUDGET";
+        proposal.outcomeReason = "main-action budget exhausted before this candidate";
+        boundary.accounting.skippedBudgetCount++;
+        continue;
+      }
 
       recordAdvisor("BUY", getDisplayName(upgrade), "safe upgrade after larva-engine checks");
       addLaneCandidate({
@@ -17833,7 +18026,12 @@ function getDisplayName(item) {
         target: "safe upgrade",
       });
 
-      if (config.advisorOnly || !config.autoBuySafeDecisions) continue;
+      if (config.advisorOnly || !config.autoBuySafeDecisions) {
+        proposal.outcome = "BLOCKED_SAFE_MODE";
+        proposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+        boundary.accounting.blockedSafeModeCount++;
+        continue;
+      }
 
       safe(`Smart upgrade ${getDisplayName(upgrade)}`, () => {
         const divisor =
@@ -17841,11 +18039,26 @@ function getDisplayName(item) {
             ? upgrade.watchedDivisor()
             : 1;
 
+        const smartUpgradeAuthorizedPercent = config.upgradeBuyPercent / divisor;
+        proposal.authorizedPercent = String(smartUpgradeAuthorizedPercent);
+        const smartUpgradeCommandPercent = smartUpgradeAuthorizedPercent;
+        const boundaryContractSatisfied = !!proposal.canonicalProposalId
+          && String(upgrade?.name || "") === proposal.executionId
+          && Number.isFinite(smartUpgradeCommandPercent)
+          && smartUpgradeCommandPercent > 0
+          && String(smartUpgradeCommandPercent) === proposal.authorizedPercent;
+        if (!boundaryContractSatisfied) {
+          proposal.outcome = "CONTRACT_VIOLATION";
+          proposal.outcomeReason = `authorized BUY_MAX_PERCENT ${proposal.authorizedPercent} of ${proposal.executionId} but the command requested ${String(smartUpgradeCommandPercent)} of ${String(upgrade?.name || "")}`;
+          boundary.accounting.contractViolationCount++;
+          return;
+        }
+
         const before = upgrade.count();
 
         commands.buyMaxUpgrade({
           upgrade,
-          percent: config.upgradeBuyPercent / divisor,
+          percent: smartUpgradeCommandPercent,
           ui: BOT_NAME,
         });
 
@@ -17856,11 +18069,31 @@ function getDisplayName(item) {
           recordPurchase("Upgrade", upgrade, delta);
           recordMainAction("Upgrade", getDisplayName(upgrade), "safe upgrade after larva-engine checks", "", delta);
           bought++;
+          proposal.outcome = "EXECUTED";
+          proposal.outcomeReason = "safe upgrade purchased";
+          proposal.amountContract = {
+            authorizedCommand: "BUY_MAX_PERCENT",
+            authorizedPercent: proposal.authorizedPercent,
+            commandPercent: String(smartUpgradeCommandPercent),
+            confirmedPurchasedAmount: String(delta),
+            confirmationBasis: "real-upgrade-count-delta",
+          };
+          boundary.accounting.executedCount++;
+        } else {
+          proposal.outcome = "COMMAND_NO_EFFECT";
+          proposal.outcomeReason = "buy-max command produced no upgrade count delta";
+          boundary.accounting.commandNoEffectCount++;
         }
       });
+
+      if (proposal.outcome === "PENDING") {
+        proposal.outcome = "COMMAND_FAILED";
+        proposal.outcomeReason = "buy attempt threw and was contained";
+        boundary.accounting.commandFailedCount++;
+      }
     }
 
-    return bought;
+    return { actionTaken: true, bought, pathBoundary: boundary };
   }
 
 
@@ -20943,16 +21176,27 @@ function getDisplayName(item) {
     // main-cycle-coverage: SMART_UPGRADES
     if (!m6DecisionOwnsMainCycle && config.buyUpgrades && canDoMoreMainActions()) {
       const pathProbe = beginMainCyclePathProbe();
-      upgrades = safe("Smart upgrades", () => buySmartUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions))) || 0;
+      const smartUpgradeAction = safe("Smart upgrades", () => buySmartUpgrades(game, commands, protectedResources, Math.max(0, maxActions - mainActions), {
+        decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+        snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+        activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+      })) || { actionTaken: false, bought: 0, pathBoundary: null };
+      upgrades = Number(smartUpgradeAction.bought || 0);
       if (upgrades > 0) {
         mainActions += upgrades;
         summaries.push(`${upgrades} upgrade(s)`);
       }
-      recordEvaluatedMainCyclePath("SMART_UPGRADES", upgrades, pathProbe, "No generic Smart upgrade was applicable.");
+      recordEvaluatedMainCyclePath("SMART_UPGRADES", smartUpgradeAction, pathProbe, "No generic Smart upgrade was applicable.");
     } else if (m6DecisionOwnsMainCycle) {
       recordMainCyclePathDisposition("SMART_UPGRADES", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed generic Smart upgrades");
     } else if (!config.buyUpgrades) {
-      recordMainCyclePathDisposition("SMART_UPGRADES", "NOT_APPLICABLE", "generic Smart upgrades are disabled by configuration");
+      recordMainCyclePathDisposition("SMART_UPGRADES", "NOT_APPLICABLE", "generic Smart upgrades are disabled by configuration", {
+        pathBoundary: createSmartUpgradePathBoundary({
+          decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+          snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+          activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+        }, "generic Smart upgrades are disabled by configuration"),
+      });
     } else {
       recordMainCyclePathDisposition("SMART_UPGRADES", "SKIPPED_BUDGET", "main-action budget exhausted before generic Smart upgrades");
     }

@@ -1158,6 +1158,62 @@ SCENARIOS["book00-critical-upgrade-boundary-advisor"] = {
   ],
 };
 
+SCENARIOS["book00-smart-upgrade-boundary"] = {
+  id: "BOOK00-SMART-UPGRADE-BOUNDARY",
+  title: "Generic Smart-Upgrade Path Executes Inside Its Boundary",
+  description: "Meat-chain unit counts are real-seeded so several real production upgrades are available to the generic safe-upgrade buyer (prioritizeProductionUpgrades and the target-aware planner are disabled, so nothing defers them to another path). With a single-action budget, buySmartUpgrades must execute exactly one real buy-max purchase bound to its slice-9 path boundary: exact proposal identity, cycle-bound authorization, fail-closed command percent and explicit outcome accounting confirmed by a real upgrade-count delta.",
+  cycles: 1,
+  executeActions: true,
+  realResourceSeeds: {
+    meat: "1e12",
+    larva: "1e9",
+    drone: "1000000",
+    queen: "100000",
+    nest: "10000",
+    greaterqueen: "1000",
+    hive: "100",
+  },
+  engine: {
+    hatcheryEtaSeconds: 3600,
+    expansionEtaSeconds: 300,
+  },
+  config: {
+    smartMaxActionsPerRun: 1,
+    saveForExpansionSeconds: 600,
+    meatGoalPlanner: false,
+    larvaEnginePriority: false,
+    prioritizeProductionUpgrades: false,
+    productionUpgradesIgnoreNotify: false,
+    targetAwareUpgradePlanner: false,
+    territoryPrepPlanner: false,
+    expansionArmySeedPlanner: false,
+    territoryArmySeedWhenEmpty: false,
+    territoryRoiMode: false,
+    buyUpgrades: true,
+    focusTab: "meat",
+  },
+  trackedUnitKeys: ["drone", "queen", "nest"],
+  trackedUpgradeKeys: ["droneprod", "queenprod", "nestprod", "greaterqueenprod", "hiveprod", "achievementbonus", "dronetwin", "queentwin"],
+  notes: [
+    "prioritizeProductionUpgrades false routes the real 'faster X' production upgrades to the generic safe-upgrade buyer instead of the critical-upgrade path; targetAwareUpgradePlanner false makes the delegation branch an explicit NO_ACTION record instead of an unpredictable sub-planner interaction.",
+    "The generic loop uses the real buy-max command bounded by the authorized percent, so the confirmed purchased amount is the real upgrade-count delta (which may exceed 1); the check asserts the executed identity by comparing tracked real upgrade counts, not the bot's self-report.",
+    "Twin upgrades are tracked as negative controls: they must be accounted as held by the twin planner and their real counts must not change.",
+    "smartMaxActionsPerRun 1 forces exactly one EXECUTED candidate with every remaining ranked candidate accounted as SKIPPED_BUDGET.",
+  ],
+};
+
+SCENARIOS["book00-smart-upgrade-boundary-advisor"] = {
+  ...SCENARIOS["book00-smart-upgrade-boundary"],
+  id: "BOOK00-SMART-UPGRADE-BOUNDARY-ADVISOR",
+  title: "Generic Smart-Upgrade Path Is Accounted As Blocked In Advisor Mode",
+  description: "Identical staged state to book00-smart-upgrade-boundary, but executeActions is false so the harness runs advisor-only. The boundary must account every ranked candidate as BLOCKED_SAFE_MODE, execute nothing, and leave every tracked real upgrade count unchanged.",
+  executeActions: false,
+  notes: [
+    "Same staged economy as the executed scenario; only the advisor-only/autoBuySafeDecisions execution gate differs, so the only allowed accounting difference is EXECUTED/SKIPPED_BUDGET becoming BLOCKED_SAFE_MODE.",
+    "No real upgrade count may change; the check reads tracked upgrade counts from game state to prove the blocked accounting is honest.",
+  ],
+};
+
 function getScenarioDefinition(scenarioId) {
   const normalizedId = String(scenarioId || "canary").toLowerCase();
   const v2Scenario = buildSa1V2Scenario(normalizedId);
