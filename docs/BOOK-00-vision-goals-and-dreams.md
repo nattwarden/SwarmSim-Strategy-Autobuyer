@@ -1,6 +1,6 @@
 # Book 00 - Vision, Goals, and Dreams
 
-> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-18` | Revision: `37a36fe15b15040b3fb548bdbed7ab3f8eaaf2f4` | Result: `single-authority restored: AI.md merged into AGENTS.md and deleted; CHATGPT_REPO_CONTEXT reduced to a pointer; status board at Books size budget`
+> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-18` | Revision: `901822eec3e250608076d5afd0a7c09249ac5237` | Result: `slice 11 verified; status advanced to no selected work package`
 
 Status: Strategic north star for SwarmSim Strategy Autobuyer.
 

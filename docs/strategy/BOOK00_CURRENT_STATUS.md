@@ -97,20 +97,23 @@ Completed slices (implementation SHA / evidence SHA / evidence file):
   transient live failure was discarded per protocol and is recorded in the
   evidence. `9a2e2c8e5b4743d4d9048c55131dc14994d758f0` /
   `f3e3b01b6c11d8c60857dfc4cf6a9c10002e8120` / `verification-9a2e2c8.md`.
+- Phase 3 slice 11 - Larva Engine guard path boundary
+  (`larva-engine-guard-path-boundary.v1`): existing Expansion/Hatchery buys
+  carry exact proposal identity, cycle-bound authorization, fail-closed amount
+  `1`, and explicit execute/block/not-applicable accounting.
+  `c0101cc1055fac8f82b81202771c3f1e3cee29e7` /
+  `901822eec3e250608076d5afd0a7c09249ac5237` / `verification-c0101cc.md`.
 
-Standing verdict after slice 10: three of ten retained legacy paths carry a
+Standing verdict after slice 11: four of ten retained legacy paths carry a
 proven path boundary; complete M6 execution paths remain `0` of `10`; the
 WAIT precondition remains `FAIL` with `ADVISOR_ONLY` authority; whole-cycle
 ownership eligibility remains `false`.
 
-Current work package: Phase 3 slice 11 - Larva Engine guard path boundary -
-is selected but not implemented. Extend the path-boundary discipline (exact
-proposal identity, cycle-bound authorization, fail-closed amount guard,
-explicit execute/block/not-applicable accounting) to the
-`LARVA_ENGINE_GUARD` callsite (`executeEngineGuardAction`), a partial-M6
-overlap path whose single-upgrade buys mirror the slice-8 exact-amount
-contract. Do not invent an ETA conversion, widen eligibility, mark
-unrelated paths `COMPLETE`, or toggle whole-cycle ownership.
+Current work package: none selected. Phase 3 slice 11 is complete; select the
+next retained legacy path only after confirming a comparably narrow,
+source-grounded boundary and focused real-cycle acceptance. Do not invent an
+ETA conversion, widen eligibility, mark unrelated paths `COMPLETE`, or toggle
+whole-cycle ownership.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
@@ -526,7 +529,8 @@ this file. Durable facts belong in the owning documents, not in this log.
   `docs/test-data/player-saves/live-user-save-2026-07-18.txt` (SHA-256 in
   its README; import verified; not yet consumed by any verifier). A first
   chat-pasted copy arrived corrupted and was discarded.
-- Exact next action: implement Phase 3 slice 11 (see Current work package).
+- Exact next action: select the next retained legacy path for a narrow boundary
+  slice (see Current work package).
 
 ### 2026-07-15 - DEL B research findings (read-only, unique caveats)
 

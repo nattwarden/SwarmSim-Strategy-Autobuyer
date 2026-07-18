@@ -516,6 +516,22 @@ Continue with evidence, not an ownership toggle:
 
 The old plan generator remains out of scope.
 
+## Completed slice 11
+
+Phase 3 slice 11 applies the same per-path discipline to the existing Larva
+Engine guard:
+
+> A real Expansion or Hatchery purchase must have exact proposal identity,
+> cycle-bound authorization, an exact amount of one and explicit outcome
+> accounting, without changing the Engine's existing order or eligibility.
+
+Acceptance proves a real Engine upgrade-count delta, an advisor-only blocked
+cycle and a disabled-path not-applicable reason. Amount, target-identity and
+accounting-removal mutations are independently rejected. The path remains
+`PARTIAL` M6 coverage, whole-cycle ownership remains disabled, and WAIT stays
+advisor-only. Exact-SHA verification is recorded in
+`docs/test-data/9.4.0-clean-room/verification-c0101cc.md`.
+
 ## Selected slice-2 decision
 
 The user selected the incremental architecture:
