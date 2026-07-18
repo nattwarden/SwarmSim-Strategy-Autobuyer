@@ -226,9 +226,21 @@ lift.** Key point for a future agent: `NO_GO` is the "change nothing" state
 risky change (it suppresses the working legacy paths and reproduces the no-buy
 bug). The lift reopens only if a real reproducing live failure appears AND M6
 earns complete coverage AND the sole-owner live-acceptance gate passes (the
-verdict's three conditions). No queued next work package; the clean-room
+verdict's three conditions). No queued next work package on the strategy side; the clean-room
 objective is delivered (full path-boundary observability, a measured-mitigated
 meat-dominance, and a fully-mapped ownership question).
+
+Active next work package (UI, handed off 2026-07-19): a **unified single-window
+UI** milestone — merge the bot's floating panels and the game into one
+integrated, single-theme window (the current floating overlays hide the game).
+Feasibility is proven by a live POC (the game survives re-parenting into a
+custom shell); the user has authorized redesigning the "protected" Council UI3
+layout for this, which means the UI acceptance checks must be reworked. Full
+design, DOM facts, the proven approach, user feedback, and the implementation
+plan are in
+[BOOK00_UNIFIED_SINGLE_WINDOW_UI_FOUNDATION.md](BOOK00_UNIFIED_SINGLE_WINDOW_UI_FOUNDATION.md).
+This is UI-only: no strategy/safety change, `NO_GO` and
+`m6DecisionOwnsMainCycle = false` remain.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
