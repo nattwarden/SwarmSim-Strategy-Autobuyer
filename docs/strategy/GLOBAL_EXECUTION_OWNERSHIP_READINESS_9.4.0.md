@@ -38,6 +38,73 @@ identity, stale-authorization and amount boundaries are now sound, but its
 shared-outcome inputs and runtime coverage are not sufficient to replace the
 legacy planners.
 
+## Final ownership verdict (2026-07-19): NO_GO stands — do not re-attempt the incremental lift
+
+After the Phase-3 boundary sweep (all ten legacy paths bounded) and a full
+M6-completeness / AC3 investigation (2026-07-18/19), the verdict is confirmed
+and closed. This section tells a future agent **why** `NO_GO` stays and the only
+conditions that would ever reopen it, so the lift is not re-attempted from
+scratch.
+
+### The inversion — "the bot works" is an argument to KEEP NO_GO, not to lift it
+
+`NO_GO` (`m6DecisionOwnsMainCycle = false`) is the state in which the **legacy
+paths execute the purchases**, and that is exactly what makes the bot work well
+today (measured 2026-07-18: full action budget, Engine+Meat sharing, no idle
+cycles, the historical meat-dominance mitigated by the earlier F3/F7/
+territory-saturation fixes). Lifting `NO_GO` (`m6DecisionOwnsMainCycle = true`)
+**suppresses those working legacy paths** and hands execution to M6, which does
+not have complete coverage — reproducing the historical no-buy bug (finding R2;
+`check:live-purchase-acceptance` exists to catch exactly this). Therefore "the
+bot works" means the legacy-owned architecture the flag enforces is working, so
+the change to avoid is the lift itself.
+
+### The incremental completeness path is closed (not merely unfinished)
+
+- Feasibility measurement: the Larva/Engine guard's executable action is
+  **always a directly-buyable completion** (`etaBefore = 0`,
+  `progressDelta = 100`); it is never an ETA-accelerator.
+- Accepted, tested invariant (`check-book00-m2-coordinator`, findings R1/R3/R5):
+  a local completion-only step stays **legacy-owned**; M6 must not gain
+  authority or become the winner from a completion metric.
+- Implementing AC3 (making Engine rank on the completion basis) made Engine the
+  M6 winner and **broke that invariant in `npm run verify`** — implemented,
+  observed, then reverted.
+- Consequence: converting any completion path to M6 `COMPLETE`/ownership
+  requires overturning that invariant, which **is** the gated ownership decision
+  itself — not a scoring slice. No smaller runtime change reaches ownership
+  without violating an accepted safety invariant.
+
+### The only conditions that would ever reopen the lift
+
+Do not re-attempt lifting `NO_GO` unless ALL of these hold, in order:
+
+1. **A real, reproducing product failure in live/continuous play** (not an
+   imported-save artifact — see the offline-catch-up caveat in
+   `docs/BOOK-07-realtime-play-data-and-reproducible-saves.md`) that the current
+   legacy-owned behavior genuinely mis-plays. As of 2026-07-19 no such
+   reproducing failure exists on any committed save.
+2. **M6 complete coverage** for every path it would own, *earned* not asserted —
+   which for completion paths requires a deliberate decision to let M6 own
+   completions (overturning the invariant above) with its own evidence.
+3. **The sole-owner live-purchase-acceptance gate passes** against the exact
+   change (`check:live-purchase-acceptance` with `m6DecisionOwnsMainCycle = true`),
+   proving the bot still buys through the M6-owned path with real count/resource
+   deltas.
+
+If any of the three is missing, the honest answer is to keep `NO_GO`.
+
+### Evidence trail
+
+- Boundary sweep and running status: `BOOK00_CURRENT_STATUS.md` (Phase 3 slices 8–16).
+- Meat-dominance mitigation measurement and manual-play ground truth:
+  `LANE_DOMINANCE_ROOT_CAUSE_LABORATORY_2026-07-15.md`,
+  `docs/BOOK-07-realtime-play-data-and-reproducible-saves.md`.
+- Completeness/AC3 investigation and the invariant block:
+  `BOOK00_M6_COMPLETENESS_LARVA_ENGINE_FOUNDATION.md` §9,
+  `BOOK00_AC3_SHARED_ETA_LARVA_ENGINE_FOUNDATION.md` §9–§10,
+  `BOOK00_ETA_DRIVEN_SELECTION_SPEC_FOUNDATION.md`.
+
 ## Evidence examined
 
 - `docs/BOOK-00-vision-goals-and-dreams.md`

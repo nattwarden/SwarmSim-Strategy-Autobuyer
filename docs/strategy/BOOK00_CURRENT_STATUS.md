@@ -218,6 +218,18 @@ protect, not a scoring change. The incremental M6-completeness path is therefore
 closed; lifting `NO_GO` reduces to that single deliberate, evidence-heavy
 ownership decision. No net runtime change; `NO_GO` remains in force.
 
+Closing decision (2026-07-19): the verdict is recorded canonically in
+[GLOBAL_EXECUTION_OWNERSHIP_READINESS_9.4.0.md](GLOBAL_EXECUTION_OWNERSHIP_READINESS_9.4.0.md)
+"Final ownership verdict" — **`NO_GO` stands; do not re-attempt the incremental
+lift.** Key point for a future agent: `NO_GO` is the "change nothing" state
+(legacy paths execute and the bot works well because of them); lifting it is the
+risky change (it suppresses the working legacy paths and reproduces the no-buy
+bug). The lift reopens only if a real reproducing live failure appears AND M6
+earns complete coverage AND the sole-owner live-acceptance gate passes (the
+verdict's three conditions). No queued next work package; the clean-room
+objective is delivered (full path-boundary observability, a measured-mitigated
+meat-dominance, and a fully-mapped ownership question).
+
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
 `false`. The rejected feature branch remains research material only and must
