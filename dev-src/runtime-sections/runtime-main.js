@@ -123,7 +123,7 @@
     { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "meat-unlock-planner-path-boundary.v1" },
     { pathId: "SMART_UPGRADES", sourceCall: "buySmartUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-upgrade-path-boundary.v1" },
     { pathId: "SMART_UNITS", sourceCall: "buySmartUnits", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT", "ARMY_TERRITORY"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-unit-path-boundary.v1" },
-    { pathId: "FINAL_CLONE_PREP", sourceCall: "manageCloneCocoons", actionClass: "SIDE", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
+    { pathId: "FINAL_CLONE_PREP", sourceCall: "manageCloneCocoons", actionClass: "SIDE", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "final-clone-prep-path-boundary.v1" },
   ];
 
   const DEFAULT_CONFIG = {
@@ -5865,6 +5865,9 @@ function getDisplayName(item) {
     if (boundaryContract === MEAT_UNLOCK_PLANNER_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isMeatUnlockPlannerBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
+    if (boundaryContract === FINAL_CLONE_PREP_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isFinalClonePrepBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
     if (boundaryContract === SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
@@ -6036,6 +6039,31 @@ function getDisplayName(item) {
         // (never buyMax). The confirmed amount is a large-magnitude unit count
         // delta with Decimal precision noise, so it is required to be a real
         // positive purchase rather than an exact-string match of the request.
+        if (!amount || String(amount.authorizedRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.commandRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.confirmationBasis || "") !== "real-unit-count-delta"
+          || !parseBoundedAmountToken(amount.confirmedPurchasedAmount)) return false;
+      }
+    }
+    return true;
+  }
+
+  function isFinalClonePrepBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    if (heldCandidates.length !== 0) return false;
+    if (!proposals.length && !boundary.notApplicableReason) return false;
+    const accounted = Number(accounting.executedCount) + Number(accounting.blockedSafeModeCount)
+      + Number(accounting.commandFailedCount) + Number(accounting.contractViolationCount);
+    if (!Number.isFinite(accounted) || accounted !== proposals.length) return false;
+    for (const proposal of proposals) {
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId || !proposal?.boundedAmount) return false;
+      if (proposal.executionKey !== "final-clone-prep-guard" || proposal.executionKind !== "unit") return false;
+      if (!["EXECUTED", "BLOCKED_SAFE_MODE", "COMMAND_FAILED", "CONTRACT_VIOLATION"].includes(proposal.outcome)) return false;
+      if (!proposal.metricTarget || !proposal.metricId || !proposal.metricUnit || !proposal.metricBasis) return false;
+      if (proposal.outcome === "EXECUTED") {
+        const amount = proposal.amountContract;
+        // The command is fail-closed to the authorized bounded amount; the
+        // confirmed amount is a large-magnitude unit count delta with Decimal
+        // precision noise, so it is required to be a real positive purchase.
         if (!amount || String(amount.authorizedRequestedAmount) !== String(proposal.boundedAmount)
           || String(amount.commandRequestedAmount) !== String(proposal.boundedAmount)
           || String(amount.confirmationBasis || "") !== "real-unit-count-delta"
@@ -13655,7 +13683,41 @@ function getDisplayName(item) {
     return safe("Clone Larvae bank", () => effect?.bank?.()) || newDecimal(0);
   }
 
-  function manageCloneCocoons(game, commands) {
+  const FINAL_CLONE_PREP_PATH_BOUNDARY_SCHEMA_VERSION = "final-clone-prep-path-boundary.v1";
+
+  function manageCloneCocoons(game, commands, cycleIdentity = null) {
+    // Path-boundary observability for the Clone Prep cocoon side-task. Its one
+    // real command (the bounded cocoon side-buy) carries a canonical proposal
+    // identity, cycle-bound authorization, a fail-closed identity/amount check
+    // and a real unit-count-delta confirmation. This is observability only: the
+    // cooldown, target/chunk sizing and the side-buy amount are unchanged.
+    const boundary = {
+      schemaVersion: FINAL_CLONE_PREP_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: "FINAL_CLONE_PREP",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason: null,
+      heldCandidates: [],
+      proposals: [],
+      accounting: { proposalCount: 0, executedCount: 0, blockedSafeModeCount: 0, commandFailedCount: 0, contractViolationCount: 0 },
+    };
+
+    function createClonePrepProposal({ candidate, executionId, executionKind, executionVariant, amount, metricTarget, metricId, metricUnit, metricBasis }) {
+      const proposal = {
+        lane: "Clone Prep", candidate, executionKey: "final-clone-prep-guard", executionId,
+        executionKind, executionVariant: executionVariant || "base", boundedAmount: normalizeBoundedAmountToken(amount),
+        metricTarget, metricId, metricUnit, metricBasis,
+        rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY", outcome: "PENDING", outcomeReason: "", amountContract: null,
+      };
+      proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+      proposal.authorizationId = buildDecisionAuthorizationId({ canonicalProposalId: proposal.canonicalProposalId, decisionCycleId: boundary.decisionCycleId, snapshotId: boundary.snapshotId, activeTarget: boundary.activeTarget });
+      boundary.proposals.push(proposal);
+      boundary.accounting.proposalCount = boundary.proposals.length;
+      return proposal;
+    }
+
+    const clonePrepResult = (() => {
     // Clone-prep is a side task. It should never block Nexus, upgrades or unit buys.
     if (!config.energyStrategy || !config.manageCloneLarvaeCocoons) {
       addLaneCandidate({
@@ -13771,18 +13833,53 @@ function getDisplayName(item) {
       target: "Clone Larvae cocoon buffer",
     });
 
+    const prepProposal = createClonePrepProposal({
+      candidate: getDisplayName(cocoon), executionId: String(cocoon?.name || "cocoon"), executionKind: "unit", executionVariant: "cocoon-prep", amount: num,
+      metricTarget: "Clone Larvae cocoon buffer", metricId: "clone-cocoon-prep", metricUnit: "count", metricBasis: "clone-cocoon-side-buy",
+    });
+
     if (config.advisorOnly || !config.autoBuySafeDecisions) {
       recordMessage(`Advisor: WOULD COCOON ${formatSwarmNumber(num)} larvae for Clone Larvae`);
+      prepProposal.outcome = "BLOCKED_SAFE_MODE";
+      prepProposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+      boundary.accounting.blockedSafeModeCount++;
       return { actionTaken: true, bought: 0, sideAction: true, summary: "Would cocoon larvae" };
     }
 
-    const didBuy = safe("Cocoon larvae for Clone Larvae", () => buyUnitAmount(commands, cocoon, num, "Clone Prep"));
+    const prepCommandAmount = num;
+    if (String(cocoon?.name || "") !== prepProposal.executionId || normalizeBoundedAmountToken(prepCommandAmount) !== prepProposal.boundedAmount) {
+      prepProposal.outcome = "CONTRACT_VIOLATION";
+      prepProposal.outcomeReason = "Clone Prep command identity or amount differs from authorization";
+      boundary.accounting.contractViolationCount++;
+      return { actionTaken: true, bought: 0, sideAction: true, summary: "Clone prep blocked" };
+    }
+    const prepDelta = {};
+    const didBuy = safe("Cocoon larvae for Clone Larvae", () => buyUnitAmount(commands, cocoon, prepCommandAmount, "Clone Prep", prepDelta));
 
     if (didBuy) {
       lastClonePrepAt = Date.now();
+      prepProposal.outcome = "EXECUTED";
+      prepProposal.outcomeReason = "cocoon side-task prepared";
+      prepProposal.amountContract = { authorizedRequestedAmount: prepProposal.boundedAmount, commandRequestedAmount: normalizeBoundedAmountToken(prepCommandAmount), confirmedPurchasedAmount: normalizeBoundedAmountToken(prepDelta.value), confirmationBasis: "real-unit-count-delta" };
+      boundary.accounting.executedCount++;
+    } else {
+      prepProposal.outcome = "COMMAND_FAILED";
+      prepProposal.outcomeReason = "cocoon side-buy produced no unit count delta";
+      boundary.accounting.commandFailedCount++;
     }
 
     return { actionTaken: !!didBuy, bought: didBuy ? 1 : 0, sideAction: true, summary: didBuy ? "prepared Clone Larvae cocoons" : "Clone prep failed" };
+    })();
+
+    if (boundary.proposals.length === 0 && !boundary.notApplicableReason) {
+      boundary.notApplicableReason = String(
+        clonePrepResult?.summary || clonePrepResult?.reason || "clone prep side-task took no bounded purchase this cycle"
+      );
+    }
+    return {
+      ...(clonePrepResult && typeof clonePrepResult === "object" ? clonePrepResult : { actionTaken: false, bought: 0, sideAction: true }),
+      pathBoundary: boundary,
+    };
   }
 
   function resolveCloneBufferMode({ cap, bank, larvae, larvaVelocity }) {
@@ -22139,7 +22236,11 @@ function getDisplayName(item) {
     // main-cycle-coverage: FINAL_CLONE_PREP
     if (!m6DecisionOwnsMainCycle) {
       const pathProbe = beginMainCyclePathProbe();
-      const clonePrep = manageCloneCocoons(game, commands);
+      const clonePrep = manageCloneCocoons(game, commands, {
+        decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+        snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+        activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+      });
       addSideResult("Clone prep", clonePrep);
       recordEvaluatedMainCyclePath("FINAL_CLONE_PREP", clonePrep, pathProbe, "Final Clone Prep was not applicable.");
     } else {
