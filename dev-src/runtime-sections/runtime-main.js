@@ -120,7 +120,7 @@
     { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-ramp-guard-path-boundary.v1" },
     { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-buffer-guard-path-boundary.v1" },
     { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-buffer-guard-path-boundary.v1" },
-    { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
+    { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "meat-unlock-planner-path-boundary.v1" },
     { pathId: "SMART_UPGRADES", sourceCall: "buySmartUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-upgrade-path-boundary.v1" },
     { pathId: "SMART_UNITS", sourceCall: "buySmartUnits", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT", "ARMY_TERRITORY"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-unit-path-boundary.v1" },
     { pathId: "FINAL_CLONE_PREP", sourceCall: "manageCloneCocoons", actionClass: "SIDE", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
@@ -5862,6 +5862,9 @@ function getDisplayName(item) {
     if (boundaryContract === CLONE_BUFFER_GUARD_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isCloneBufferGuardBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
+    if (boundaryContract === MEAT_UNLOCK_PLANNER_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isMeatUnlockPlannerBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
     if (boundaryContract === SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
@@ -6037,6 +6040,38 @@ function getDisplayName(item) {
           || String(amount.commandRequestedAmount) !== String(proposal.boundedAmount)
           || String(amount.confirmationBasis || "") !== "real-unit-count-delta"
           || !parseBoundedAmountToken(amount.confirmedPurchasedAmount)) return false;
+      }
+    }
+    return true;
+  }
+
+  function isMeatUnlockPlannerBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    if (heldCandidates.length !== 0) return false;
+    if (!proposals.length && !boundary.notApplicableReason) return false;
+    const accounted = Number(accounting.executedCount) + Number(accounting.blockedSafeModeCount)
+      + Number(accounting.commandFailedCount) + Number(accounting.contractViolationCount);
+    if (!Number.isFinite(accounted) || accounted !== proposals.length) return false;
+    for (const proposal of proposals) {
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId || !proposal?.boundedAmount) return false;
+      if (proposal.executionKey !== "meat-unlock-guard" || !["upgrade", "unit"].includes(proposal.executionKind)) return false;
+      if (!["EXECUTED", "BLOCKED_SAFE_MODE", "COMMAND_FAILED", "CONTRACT_VIOLATION"].includes(proposal.outcome)) return false;
+      if (!proposal.metricTarget || !proposal.metricId || !proposal.metricUnit || !proposal.metricBasis) return false;
+      if (proposal.outcome === "EXECUTED") {
+        const amount = proposal.amountContract;
+        if (!amount || String(amount.authorizedRequestedAmount) !== String(proposal.boundedAmount)
+          || String(amount.commandRequestedAmount) !== String(proposal.boundedAmount)) return false;
+        if (proposal.executionKind === "upgrade") {
+          // Amount-1 upgrade counts have no passive production, so the exact
+          // real-upgrade-count-delta confirms the request precisely.
+          if (String(amount.confirmationBasis || "") !== "real-upgrade-count-delta"
+            || String(amount.confirmedPurchasedAmount) !== String(proposal.boundedAmount)) return false;
+        } else {
+          // Large-magnitude unit-count deltas carry Decimal precision noise, so
+          // the command is fail-closed to the authorized amount and confirmation
+          // requires a real positive delta rather than exact-string equality.
+          if (String(amount.confirmationBasis || "") !== "real-unit-count-delta"
+            || !parseBoundedAmountToken(amount.confirmedPurchasedAmount)) return false;
+        }
       }
     }
     return true;
@@ -14517,7 +14552,45 @@ function getDisplayName(item) {
     return { actionTaken: true, bought: 1, summary: readyForFinalCast ? "Clone Ramp full-cap cast" : "Clone Ramp growth cast", pathBoundary: boundary };
   }
 
-  function runUnlockPlanner(game, commands, protectedResources) {
+  const MEAT_UNLOCK_PLANNER_PATH_BOUNDARY_SCHEMA_VERSION = "meat-unlock-planner-path-boundary.v1";
+
+  function runUnlockPlanner(game, commands, protectedResources, cycleIdentity = null) {
+    // Path-boundary observability for the legacy meat unlock/parent-step/twin
+    // planner. Whichever single real command this planner issues this cycle
+    // (a twin-unlock upgrade, a twin-prep unit buy, or the unlock/parent-step
+    // unit buy) is wrapped in a canonical proposal with cycle-bound
+    // authorization, a fail-closed identity/amount check and a real count-delta
+    // confirmation. The planner has one bounded action per cycle (every buy
+    // path returns immediately), so the boundary carries at most one proposal.
+    // This is observability only: target/parent/twin resolution, reserve and
+    // payback guards, and every buy amount are unchanged.
+    const boundary = {
+      schemaVersion: MEAT_UNLOCK_PLANNER_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: "MEAT_UNLOCK_PLANNER",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason: null,
+      heldCandidates: [],
+      proposals: [],
+      accounting: { proposalCount: 0, executedCount: 0, blockedSafeModeCount: 0, commandFailedCount: 0, contractViolationCount: 0 },
+    };
+
+    function createUnlockProposal({ candidate, executionId, executionKind, executionVariant, amount, metricTarget, metricId, metricUnit, metricBasis }) {
+      const proposal = {
+        lane: "Meat", candidate, executionKey: "meat-unlock-guard", executionId,
+        executionKind, executionVariant: executionVariant || "base", boundedAmount: normalizeBoundedAmountToken(amount),
+        metricTarget, metricId, metricUnit, metricBasis,
+        rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY", outcome: "PENDING", outcomeReason: "", amountContract: null,
+      };
+      proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+      proposal.authorizationId = buildDecisionAuthorizationId({ canonicalProposalId: proposal.canonicalProposalId, decisionCycleId: boundary.decisionCycleId, snapshotId: boundary.snapshotId, activeTarget: boundary.activeTarget });
+      boundary.proposals.push(proposal);
+      boundary.accounting.proposalCount = boundary.proposals.length;
+      return proposal;
+    }
+
+    const unlockResult = (() => {
     if (!config.meatUnlockPlanner || !config.meatGoalPlanner) {
       recordUnlockPlannerState({
         candidate: "none",
@@ -14961,14 +15034,39 @@ function getDisplayName(item) {
             resource: twinCostUnitName,
           });
 
+          const twinBypassProposal = createUnlockProposal({
+            candidate: twinUpgradeName, executionId: String(twinUpgrade?.name || ""), executionKind: "upgrade", executionVariant: "twin", amount: "1",
+            metricTarget: twinDecisionTarget, metricId: "twin-unlock-threshold", metricUnit: "count", metricBasis: "twin-threshold-upgrade",
+          });
+
           if (config.advisorOnly || !config.autoBuySafeDecisions) {
             recordMessage(`Advisor: WOULD BUY ${twinUpgradeName} — twin unlock threshold (opportunity-cost bypass)`);
+            twinBypassProposal.outcome = "BLOCKED_SAFE_MODE";
+            twinBypassProposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+            boundary.accounting.blockedSafeModeCount++;
             return { actionTaken: true, bought: 0, summary: "Would buy twin unlock upgrade" };
           }
 
+          const twinBypassCommandAmount = newDecimal(1);
+          if (String(twinUpgrade?.name || "") !== twinBypassProposal.executionId || normalizeBoundedAmountToken(twinBypassCommandAmount) !== twinBypassProposal.boundedAmount) {
+            twinBypassProposal.outcome = "CONTRACT_VIOLATION";
+            twinBypassProposal.outcomeReason = "twin unlock command identity or amount differs from authorization";
+            boundary.accounting.contractViolationCount++;
+            return { actionTaken: true, bought: 0, summary: "Twin unlock buy blocked" };
+          }
           const twinBuyDelta = {};
-          const didTwinBuy = safe(`Twin unlock threshold ${twinUpgradeName}`, () => buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Twin Unlock", twinBuyDelta));
+          const didTwinBuy = safe(`Twin unlock threshold ${twinUpgradeName}`, () => buyUpgradeAmount(commands, twinUpgrade, twinBypassCommandAmount, "Twin Unlock", twinBuyDelta));
           if (didTwinBuy) recordMainAction("Twin", twinUpgradeName, reason, "1", twinBuyDelta.value);
+          if (didTwinBuy) {
+            twinBypassProposal.outcome = "EXECUTED";
+            twinBypassProposal.outcomeReason = "twin unlock threshold upgrade purchased";
+            twinBypassProposal.amountContract = { authorizedRequestedAmount: twinBypassProposal.boundedAmount, commandRequestedAmount: normalizeBoundedAmountToken(twinBypassCommandAmount), confirmedPurchasedAmount: normalizeBoundedAmountToken(twinBuyDelta.value), confirmationBasis: "real-upgrade-count-delta" };
+            boundary.accounting.executedCount++;
+          } else {
+            twinBypassProposal.outcome = "COMMAND_FAILED";
+            twinBypassProposal.outcomeReason = "twin unlock buy produced no upgrade count delta";
+            boundary.accounting.commandFailedCount++;
+          }
           if (didTwinBuy) {
             recordTwinUnlockPlannerState({
               candidate: twinUpgradeName,
@@ -15069,12 +15167,38 @@ function getDisplayName(item) {
           resource: twinCostUnitName,
         });
 
+        const twinSafeProposal = createUnlockProposal({
+          candidate: twinUpgradeName, executionId: String(twinUpgrade?.name || ""), executionKind: "upgrade", executionVariant: "twin", amount: "1",
+          metricTarget: twinDecisionTarget, metricId: "twin-unlock-threshold", metricUnit: "count", metricBasis: "twin-threshold-upgrade",
+        });
+
         if (config.advisorOnly || !config.autoBuySafeDecisions) {
           recordMessage(`Advisor: WOULD BUY ${twinUpgradeName} — twin unlock threshold`);
+          twinSafeProposal.outcome = "BLOCKED_SAFE_MODE";
+          twinSafeProposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+          boundary.accounting.blockedSafeModeCount++;
           return { actionTaken: true, bought: 0, summary: "Would buy twin unlock upgrade" };
         }
 
-        const didTwinBuy = safe(`Twin unlock threshold ${twinUpgradeName}`, () => buyUpgradeAmount(commands, twinUpgrade, newDecimal(1), "Twin Unlock"));
+        const twinSafeCommandAmount = newDecimal(1);
+        if (String(twinUpgrade?.name || "") !== twinSafeProposal.executionId || normalizeBoundedAmountToken(twinSafeCommandAmount) !== twinSafeProposal.boundedAmount) {
+          twinSafeProposal.outcome = "CONTRACT_VIOLATION";
+          twinSafeProposal.outcomeReason = "twin unlock command identity or amount differs from authorization";
+          boundary.accounting.contractViolationCount++;
+          return { actionTaken: true, bought: 0, summary: "Twin unlock buy blocked" };
+        }
+        const twinSafeDelta = {};
+        const didTwinBuy = safe(`Twin unlock threshold ${twinUpgradeName}`, () => buyUpgradeAmount(commands, twinUpgrade, twinSafeCommandAmount, "Twin Unlock", twinSafeDelta));
+        if (didTwinBuy) {
+          twinSafeProposal.outcome = "EXECUTED";
+          twinSafeProposal.outcomeReason = "twin unlock threshold upgrade purchased";
+          twinSafeProposal.amountContract = { authorizedRequestedAmount: twinSafeProposal.boundedAmount, commandRequestedAmount: normalizeBoundedAmountToken(twinSafeCommandAmount), confirmedPurchasedAmount: normalizeBoundedAmountToken(twinSafeDelta.value), confirmationBasis: "real-upgrade-count-delta" };
+          boundary.accounting.executedCount++;
+        } else {
+          twinSafeProposal.outcome = "COMMAND_FAILED";
+          twinSafeProposal.outcomeReason = "twin unlock buy produced no upgrade count delta";
+          boundary.accounting.commandFailedCount++;
+        }
         if (didTwinBuy) {
           recordTwinUnlockPlannerState({
             candidate: twinUpgradeName,
@@ -15357,14 +15481,39 @@ function getDisplayName(item) {
             raw: guard?.raw || null,
           });
 
+          const twinPrepProposal = createUnlockProposal({
+            candidate: twinCostUnitName, executionId: String(twinCostUnit?.name || ""), executionKind: "unit", executionVariant: "twin-prep", amount: prepNum,
+            metricTarget: targetName, metricId: "twin-unlock-prep", metricUnit: "count", metricBasis: "twin-prep-unit-buy",
+          });
+
           if (config.advisorOnly || !config.autoBuySafeDecisions) {
             recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(prepNum)} ${twinCostUnitName} — twin unlock threshold prep`);
+            twinPrepProposal.outcome = "BLOCKED_SAFE_MODE";
+            twinPrepProposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+            boundary.accounting.blockedSafeModeCount++;
             return { actionTaken: true, bought: 0, summary: "Would buy twin threshold prep" };
           }
 
+          const twinPrepCommandAmount = prepNum;
+          if (String(twinCostUnit?.name || "") !== twinPrepProposal.executionId || normalizeBoundedAmountToken(twinPrepCommandAmount) !== twinPrepProposal.boundedAmount) {
+            twinPrepProposal.outcome = "CONTRACT_VIOLATION";
+            twinPrepProposal.outcomeReason = "twin prep command identity or amount differs from authorization";
+            boundary.accounting.contractViolationCount++;
+            return { actionTaken: true, bought: 0, summary: "Twin threshold prep blocked" };
+          }
           const twinPrepDelta = {};
-          const didPrepBuy = safe(`Twin unlock prep ${twinCostUnitName}`, () => buyUnitAmount(commands, twinCostUnit, prepNum, "Twin Unlock Prep", twinPrepDelta));
+          const didPrepBuy = safe(`Twin unlock prep ${twinCostUnitName}`, () => buyUnitAmount(commands, twinCostUnit, twinPrepCommandAmount, "Twin Unlock Prep", twinPrepDelta));
           if (didPrepBuy) recordMainAction("Meat", twinCostUnitName, reason, formatSwarmNumber(prepNum), twinPrepDelta.value);
+          if (didPrepBuy) {
+            twinPrepProposal.outcome = "EXECUTED";
+            twinPrepProposal.outcomeReason = "twin prep unit purchased";
+            twinPrepProposal.amountContract = { authorizedRequestedAmount: twinPrepProposal.boundedAmount, commandRequestedAmount: normalizeBoundedAmountToken(twinPrepCommandAmount), confirmedPurchasedAmount: normalizeBoundedAmountToken(twinPrepDelta.value), confirmationBasis: "real-unit-count-delta" };
+            boundary.accounting.executedCount++;
+          } else {
+            twinPrepProposal.outcome = "COMMAND_FAILED";
+            twinPrepProposal.outcomeReason = "twin prep buy produced no unit count delta";
+            boundary.accounting.commandFailedCount++;
+          }
           if (didPrepBuy) {
             recordTwinUnlockPlannerState({
               candidate: twinUpgradeName,
@@ -15543,14 +15692,40 @@ function getDisplayName(item) {
       paybackBypassed,
     });
 
+    const unlockStepProposal = createUnlockProposal({
+      candidate: candidateName, executionId: String(candidate?.name || ""), executionKind: "unit",
+      executionVariant: parentChoice ? "parent-step" : "unlock-step", amount: num,
+      metricTarget: targetName, metricId: parentChoice ? "meat-parent-step" : "meat-unlock-step", metricUnit: "count", metricBasis: "meat-unlock-unit-buy",
+    });
+
     if (config.advisorOnly || !config.autoBuySafeDecisions) {
       recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(num)} ${candidateName} — unlock planner`);
+      unlockStepProposal.outcome = "BLOCKED_SAFE_MODE";
+      unlockStepProposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+      boundary.accounting.blockedSafeModeCount++;
       return { actionTaken: true, bought: 0, summary: "Would buy unlock step" };
     }
 
+    const unlockCommandAmount = num;
+    if (String(candidate?.name || "") !== unlockStepProposal.executionId || normalizeBoundedAmountToken(unlockCommandAmount) !== unlockStepProposal.boundedAmount) {
+      unlockStepProposal.outcome = "CONTRACT_VIOLATION";
+      unlockStepProposal.outcomeReason = "unlock step command identity or amount differs from authorization";
+      boundary.accounting.contractViolationCount++;
+      return { actionTaken: true, bought: 0, summary: "Unlock planner buy blocked" };
+    }
     const unlockPlannerDelta = {};
-    const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, num, parentChoice ? "Parent Step" : "Unlock Step", unlockPlannerDelta));
+    const didBuy = safe(`Unlock planner ${candidateName}`, () => buyUnitAmount(commands, candidate, unlockCommandAmount, parentChoice ? "Parent Step" : "Unlock Step", unlockPlannerDelta));
     if (didBuy) recordMainAction("Meat", candidateName, reason, formatSwarmNumber(num), unlockPlannerDelta.value);
+    if (didBuy) {
+      unlockStepProposal.outcome = "EXECUTED";
+      unlockStepProposal.outcomeReason = parentChoice ? "parent step unit purchased" : "unlock step unit purchased";
+      unlockStepProposal.amountContract = { authorizedRequestedAmount: unlockStepProposal.boundedAmount, commandRequestedAmount: normalizeBoundedAmountToken(unlockCommandAmount), confirmedPurchasedAmount: normalizeBoundedAmountToken(unlockPlannerDelta.value), confirmationBasis: "real-unit-count-delta" };
+      boundary.accounting.executedCount++;
+    } else {
+      unlockStepProposal.outcome = "COMMAND_FAILED";
+      unlockStepProposal.outcomeReason = "unlock step buy produced no unit count delta";
+      boundary.accounting.commandFailedCount++;
+    }
     if (didBuy && parentChoice) {
       const consumedActionUnit = !!parentSupportsActionUnit && String(bottleneckResource || "") === String(actionUnitName || "");
       recordParentStepPlannerState({
@@ -15570,6 +15745,17 @@ function getDisplayName(item) {
       });
     }
     return { actionTaken: true, bought: didBuy ? 1 : 0, summary: didBuy ? `Unlock planner ${candidateName}` : "Unlock planner buy failed" };
+    })();
+
+    if (boundary.proposals.length === 0 && !boundary.notApplicableReason) {
+      boundary.notApplicableReason = String(
+        unlockResult?.summary || unlockResult?.reason || "meat unlock planner took no bounded purchase this cycle"
+      );
+    }
+    return {
+      ...(unlockResult && typeof unlockResult === "object" ? unlockResult : { actionTaken: false, bought: 0 }),
+      pathBoundary: boundary,
+    };
   }
 
   function unitCountByNameLike(game, query) {
@@ -21820,7 +22006,11 @@ function getDisplayName(item) {
     // main-cycle-coverage: MEAT_UNLOCK_PLANNER
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions() && coordinatorExecutedKey !== "meat") {
       const pathProbe = beginMainCyclePathProbe();
-      const unlockAction = runUnlockPlanner(game, commands, protectedResources);
+      const unlockAction = runUnlockPlanner(game, commands, protectedResources, {
+        decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+        snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+        activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+      });
       addMainResult("Unlock planner", unlockAction);
       recordEvaluatedMainCyclePath("MEAT_UNLOCK_PLANNER", unlockAction, pathProbe, "Meat unlock planner had no applicable action.");
     } else if (m6DecisionOwnsMainCycle) {
