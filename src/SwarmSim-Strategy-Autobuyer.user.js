@@ -149,7 +149,7 @@
     { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
     { pathId: "SMART_UPGRADES", sourceCall: "buySmartUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-upgrade-path-boundary.v1" },
-    { pathId: "SMART_UNITS", sourceCall: "buySmartUnits", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT", "ARMY_TERRITORY"], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
+    { pathId: "SMART_UNITS", sourceCall: "buySmartUnits", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT", "ARMY_TERRITORY"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "smart-unit-path-boundary.v1" },
     { pathId: "FINAL_CLONE_PREP", sourceCall: "manageCloneCocoons", actionClass: "SIDE", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: null },
   ];
 
@@ -615,6 +615,7 @@
   let wholeEconomyExecutionDecisionState = null;
   let sixDomainStrategicCoordinatorState = null;
   let sixDomainExecutionPlanState = null;
+  let smartUnitPathBoundaryState = null;
   let runHistory = [];
   let liveDiagnostics = null;
   let lastLaboratorySnapshot = null;
@@ -5879,7 +5880,60 @@ function getDisplayName(item) {
     if (boundaryContract === SMART_UPGRADE_PATH_BOUNDARY_SCHEMA_VERSION) {
       return isSmartUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
     }
+    if (boundaryContract === SMART_UNIT_PATH_BOUNDARY_SCHEMA_VERSION) {
+      return isSmartUnitBoundaryValid(boundary, proposals, accounting, heldCandidates) ? "PROVEN" : "MISSING";
+    }
     return "MISSING";
+  }
+
+  function isSmartUnitBoundaryValid(boundary, proposals, accounting, heldCandidates) {
+    const pause = boundary.ascensionPause;
+    const planner = boundary.meatGuardPlanner;
+    const territoryGuard = boundary.territoryGuard;
+    const chainPrep = boundary.chainPrep;
+    const queue = boundary.queue;
+    if (!pause || typeof pause.paused !== "boolean") return false;
+    if (!planner || !["SKIPPED_EXACT_M6_EXECUTION", "EXECUTED_DELEGATED", "STOPPED_FURTHER_BUYS", "NO_ACTION", "NOT_EVALUATED"].includes(String(planner.outcome || ""))) return false;
+    if (!Number.isFinite(Number(planner.bought)) || Number(planner.bought) < 0) return false;
+    if (!territoryGuard || !Number.isFinite(Number(territoryGuard.preQueueBought)) || !Number.isFinite(Number(territoryGuard.postMeatBought))) return false;
+    if (!chainPrep || !Number.isFinite(Number(chainPrep.bought))) return false;
+    if (!queue || !Number.isFinite(Number(queue.candidateCount))) return false;
+    const heldSum = Number(accounting.heldMeatGuardedCount)
+      + Number(accounting.heldGuardedCount)
+      + Number(accounting.heldFallbackDisabledCount);
+    if (!Number.isFinite(heldSum) || heldSum !== heldCandidates.length) return false;
+    const delegatedBought = Number(planner.bought)
+      + Number(territoryGuard.preQueueBought)
+      + Number(territoryGuard.postMeatBought)
+      + Number(chainPrep.bought);
+    if (!proposals.length
+      && !pause.paused
+      && delegatedBought === 0
+      && !heldCandidates.length
+      && !boundary.notApplicableReason) return false;
+    const accountedOutcomeCount = Number(accounting.executedCount)
+      + Number(accounting.blockedSafeModeCount)
+      + Number(accounting.commandFailedCount)
+      + Number(accounting.contractViolationCount);
+    if (!Number.isFinite(accountedOutcomeCount) || accountedOutcomeCount !== proposals.length) return false;
+    const allowedOutcomes = ["EXECUTED", "BLOCKED_SAFE_MODE", "COMMAND_FAILED", "CONTRACT_VIOLATION"];
+    for (const proposal of proposals) {
+      if (!proposal?.canonicalProposalId || !proposal?.authorizationId) return false;
+      if (String(proposal?.executionKey || "") !== "smart-unit" || String(proposal?.executionKind || "") !== "unit") return false;
+      const authorizedAmount = parseBoundedAmountToken(proposal?.authorizedAmount);
+      if (!authorizedAmount) return false;
+      if (!proposal?.metricTarget || !proposal?.metricId || !proposal?.metricUnit || !proposal?.metricBasis) return false;
+      if (!allowedOutcomes.includes(String(proposal?.outcome || ""))) return false;
+      if (String(proposal?.outcome) === "EXECUTED") {
+        const amountContract = proposal?.amountContract;
+        if (!amountContract) return false;
+        if (String(amountContract.authorizedRequestedAmount || "") !== String(proposal.authorizedAmount)) return false;
+        if (String(amountContract.commandRequestedAmount || "") !== String(proposal.authorizedAmount)) return false;
+        if (String(amountContract.confirmedPurchasedAmount || "") !== String(proposal.authorizedAmount)) return false;
+        if (String(amountContract.confirmationBasis || "") !== "real-unit-count-delta") return false;
+      }
+    }
+    return true;
   }
 
   function isCriticalUpgradeBoundaryValid(boundary, proposals, accounting, heldCandidates) {
@@ -19157,8 +19211,48 @@ function getDisplayName(item) {
   }
   // <build:section:adapter-territory-execution:end>
 
+  const SMART_UNIT_PATH_BOUNDARY_SCHEMA_VERSION = "smart-unit-path-boundary.v1";
+
+  function createSmartUnitPathBoundary(cycleIdentity, notApplicableReason = null) {
+    return {
+      schemaVersion: SMART_UNIT_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: "SMART_UNITS",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason,
+      ascensionPause: { paused: false },
+      meatGuardPlanner: { evaluated: false, actionTaken: false, bought: 0, stopFurtherUnitBuys: false, outcome: "NOT_EVALUATED" },
+      territoryGuard: { preQueueBought: 0, postMeatBought: 0 },
+      chainPrep: { bought: 0 },
+      queue: { candidateCount: 0 },
+      heldCandidates: [],
+      proposals: [],
+      accounting: {
+        proposalCount: 0,
+        executedCount: 0,
+        blockedSafeModeCount: 0,
+        heldMeatGuardedCount: 0,
+        heldGuardedCount: 0,
+        heldFallbackDisabledCount: 0,
+        commandFailedCount: 0,
+        contractViolationCount: 0,
+      },
+    };
+  }
+
   function buySmartUnits(game, commands, engine, protectedResources, remainingActions = 1, options = {}) {
+    // 9.4.0 slice 10: the generic Smart-unit path carries the same
+    // path-boundary discipline as the upgrade paths. The ranked-queue buy is
+    // bounded by an exact per-candidate amount enforced fail-closed; the
+    // delegated meat-guard planner, territory guard and chain prep are
+    // explicit accounted branches. Candidate collection, ranking, fallback
+    // rules, guards and buy order are unchanged.
+    const boundary = createSmartUnitPathBoundary(options.cycleIdentity || null);
+    smartUnitPathBoundaryState = boundary;
+
     if (shouldPauseUnitsForAscension(game)) {
+      boundary.ascensionPause = { paused: true };
       recordAdvisor("HOLD", "Units", "near ascension");
       addLaneCandidate({
         lane: "Meat",
@@ -19180,6 +19274,7 @@ function getDisplayName(item) {
     let boughtCount = 0;
 
     if (maxUnitActions <= 0) {
+      boundary.notApplicableReason = "no unit action budget remained for this cycle";
       return 0;
     }
     const selectedLaneActions = (laneCoordinatorState?.selectedLaneActions || []).slice();
@@ -19234,6 +19329,19 @@ function getDisplayName(item) {
     const plannerResult = options.skipMeatFirst
       ? { actionTaken: false, bought: 0, summary: "Meat winner already executed by unified evaluator" }
       : executeMeatGuardAction({ game, commands, protectedResources, remainingActions: Math.max(0, maxUnitActions - boughtCount) });
+    boundary.meatGuardPlanner = {
+      evaluated: !options.skipMeatFirst,
+      actionTaken: plannerResult.actionTaken === true,
+      bought: Number(plannerResult.bought || 0),
+      stopFurtherUnitBuys: plannerResult.stopFurtherUnitBuys === true,
+      outcome: options.skipMeatFirst
+        ? "SKIPPED_EXACT_M6_EXECUTION"
+        : Number(plannerResult.bought || 0) > 0
+          ? "EXECUTED_DELEGATED"
+          : plannerResult.stopFurtherUnitBuys === true
+            ? "STOPPED_FURTHER_BUYS"
+            : "NO_ACTION",
+    };
     if (plannerResult.actionTaken && Number(plannerResult.bought || 0) > 0) {
       boughtCount += Number(plannerResult.bought || 0);
       const row = latestAdvisorRow(["BUY"]);
@@ -19259,6 +19367,7 @@ function getDisplayName(item) {
           markSelectedLane,
           syncCoordinatorHold,
         });
+        boundary.territoryGuard.postMeatBought += Number(territoryAction?.bought || 0);
         boughtCount += Number(territoryAction?.bought || 0);
       } else {
         syncCoordinatorHold(`not selected by coordinator: meat planner consumed the remaining unit action budget`);
@@ -19294,6 +19403,7 @@ function getDisplayName(item) {
       markSelectedLane,
       syncCoordinatorHold,
     });
+    boundary.territoryGuard.preQueueBought += Number(preQueueTerritoryAction?.bought || 0);
     boughtCount += Number(preQueueTerritoryAction?.bought || 0);
 
     if (preQueueTerritoryAction?.executed && boughtCount >= maxUnitActions) {
@@ -19306,7 +19416,9 @@ function getDisplayName(item) {
     const strategicActionRank = getStrategicActionRank(strategicPlan);
     const collected = collectSmartUnitCandidates(game, engine, protectedResources);
     const candidates = collected.candidates || [];
+    boundary.queue.candidateCount = candidates.length;
     if (!candidates.length) {
+      boundary.notApplicableReason = "no ranked unit candidates after protected-resource, save-window and payback guards";
       const stallBreakerActive = isMeatStallBreakerPatternReady();
       if (stallBreakerActive) {
         recordMeatFallbackState({
@@ -19344,6 +19456,13 @@ function getDisplayName(item) {
 
       if (isFallbackMeat) {
         if (!config.meatFallbackEnabled) {
+          boundary.heldCandidates.push({
+            candidate: getDisplayName(unit),
+            executionId: String(unit?.name || ""),
+            outcome: "HELD_FALLBACK_DISABLED",
+            reason: "meat fallback is disabled by configuration",
+          });
+          boundary.accounting.heldFallbackDisabledCount++;
           continue;
         }
 
@@ -19354,6 +19473,13 @@ function getDisplayName(item) {
             blockers: ["fallback rank drop limit"],
           };
           skipped.push(addSkippedMeatCandidate(candidate, newDecimal(0), block, fallbackRankDrop, strategicTarget, topMeatCandidate, topMeatBlockedBy));
+          boundary.heldCandidates.push({
+            candidate: getDisplayName(unit),
+            executionId: String(unit?.name || ""),
+            outcome: "HELD_MEAT_GUARDED",
+            reason: block.reason,
+          });
+          boundary.accounting.heldMeatGuardedCount++;
           continue;
         }
 
@@ -19365,6 +19491,13 @@ function getDisplayName(item) {
             blockers: ["not lower-chain fallback"],
           };
           skipped.push(addSkippedMeatCandidate(candidate, newDecimal(0), block, fallbackRankDrop, strategicTarget, topMeatCandidate, topMeatBlockedBy));
+          boundary.heldCandidates.push({
+            candidate: getDisplayName(unit),
+            executionId: String(unit?.name || ""),
+            outcome: "HELD_MEAT_GUARDED",
+            reason: block.reason,
+          });
+          boundary.accounting.heldMeatGuardedCount++;
           continue;
         }
 
@@ -19380,6 +19513,13 @@ function getDisplayName(item) {
             blockers: ["fallback below action unit"],
           };
           skipped.push(addSkippedMeatCandidate(candidate, newDecimal(0), block, fallbackRankDrop, strategicTarget, topMeatCandidate, topMeatBlockedBy));
+          boundary.heldCandidates.push({
+            candidate: getDisplayName(unit),
+            executionId: String(unit?.name || ""),
+            outcome: "HELD_MEAT_GUARDED",
+            reason: block.reason,
+          });
+          boundary.accounting.heldMeatGuardedCount++;
           continue;
         }
       }
@@ -19390,6 +19530,7 @@ function getDisplayName(item) {
       if (isMeat && !isFallbackMeat) {
         // Normal top candidate behavior keeps the existing methodical chain prep.
         prep = performMeatChainPrep(game, commands, unit, protectedResources, Math.max(0, maxUnitActions - boughtCount));
+        boundary.chainPrep.bought += prep.bought || 0;
         boughtCount += prep.bought || 0;
         if (boughtCount > 0) return boughtCount;
       }
@@ -19431,9 +19572,23 @@ function getDisplayName(item) {
           }
 
           skipped.push(addSkippedMeatCandidate(candidate, num, block, fallbackRankDrop, strategicTarget, topMeatCandidate, topMeatBlockedBy));
+          boundary.heldCandidates.push({
+            candidate: getDisplayName(unit),
+            executionId: String(unit?.name || ""),
+            outcome: "HELD_MEAT_GUARDED",
+            reason: block.reason || shortBlockReason(block),
+          });
+          boundary.accounting.heldMeatGuardedCount++;
           continue;
         }
 
+        boundary.heldCandidates.push({
+          candidate: getDisplayName(unit),
+          executionId: String(unit?.name || ""),
+          outcome: "HELD_GUARDED",
+          reason: block.reason || "blocked by safety guard",
+        });
+        boundary.accounting.heldGuardedCount++;
         recordAdvisor("HOLD", getDisplayName(unit), block.reason || "blocked by safety guard");
         addLaneCandidate({
           lane: tab === "territory" ? "Territory" : "Other",
@@ -19468,6 +19623,33 @@ function getDisplayName(item) {
         });
       }
 
+      const proposal = {
+        lane: tab === "territory" ? "Territory" : "Meat",
+        candidate: getDisplayName(unit),
+        executionKey: "smart-unit",
+        executionId: String(unit?.name || ""),
+        executionKind: "unit",
+        executionVariant: normalizeLabelKey(unit?.suffix || "") || "base",
+        authorizedAmount: normalizeBoundedAmountToken(num),
+        metricTarget: getDisplayName(unit),
+        metricId: `${strategicMetricTargetSlug(getDisplayName(unit))}-owned-count`,
+        metricUnit: "count",
+        metricBasis: "real-unit-count-delta",
+        rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY",
+        outcome: "PENDING",
+        outcomeReason: "",
+        amountContract: null,
+      };
+      proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+      proposal.authorizationId = buildDecisionAuthorizationId({
+        canonicalProposalId: proposal.canonicalProposalId,
+        decisionCycleId: boundary.decisionCycleId,
+        snapshotId: boundary.snapshotId,
+        activeTarget: boundary.activeTarget,
+      });
+      boundary.proposals.push(proposal);
+      boundary.accounting.proposalCount = boundary.proposals.length;
+
       recordAdvisor("BUY", getDisplayName(unit), fallbackReason);
       addLaneCandidate({
         lane: tab === "territory" ? "Territory" : "Meat",
@@ -19495,19 +19677,44 @@ function getDisplayName(item) {
       });
 
       if (config.advisorOnly || !config.autoBuySafeDecisions) {
+        proposal.outcome = "BLOCKED_SAFE_MODE";
+        proposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+        boundary.accounting.blockedSafeModeCount++;
         markSelectedLane(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num));
         recordMessage(`Advisor: WOULD BUY ${formatSwarmNumber(num)} ${getDisplayName(unit)}${isFallbackMeat ? " — meat fallback" : ""}`);
         boughtCount++;
         return boughtCount;
       }
 
+      const smartUnitCommandAmount = num;
+      const boundaryContractSatisfied = !!proposal.canonicalProposalId
+        && String(unit?.name || "") === proposal.executionId
+        && normalizeBoundedAmountToken(smartUnitCommandAmount) === proposal.authorizedAmount
+        && isPositive(smartUnitCommandAmount);
+      if (!boundaryContractSatisfied) {
+        proposal.outcome = "CONTRACT_VIOLATION";
+        proposal.outcomeReason = `authorized ${proposal.authorizedAmount} of ${proposal.executionId} but the command requested ${normalizeBoundedAmountToken(smartUnitCommandAmount)} of ${String(unit?.name || "")}`;
+        boundary.accounting.contractViolationCount++;
+        continue;
+      }
+
       const label = isFallbackMeat ? "Meat Fallback" : "Smart Unit";
       const fallbackDelta = {};
       const bought = safe(`${label} ${getDisplayName(unit)}`, () =>
-        buyUnitAmount(commands, unit, num, label, fallbackDelta)
+        buyUnitAmount(commands, unit, smartUnitCommandAmount, label, fallbackDelta)
       );
 
       if (bought) {
+        proposal.outcome = "EXECUTED";
+        proposal.outcomeReason = "bounded queue purchase executed";
+        proposal.amountContract = {
+          authorizedRequestedAmount: proposal.authorizedAmount,
+          commandRequestedAmount: normalizeBoundedAmountToken(smartUnitCommandAmount),
+          confirmedPurchasedAmount: normalizeBoundedAmountToken(fallbackDelta.value),
+          observedUnitCountDelta: String(fallbackDelta.value || "0"),
+          confirmationBasis: "real-unit-count-delta",
+        };
+        boundary.accounting.executedCount++;
         markSelectedLane(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num));
         recordMainAction(tab === "territory" ? "Territory" : "Meat", getDisplayName(unit), fallbackReason, formatSwarmNumber(num), fallbackDelta.value);
         boughtCount++;
@@ -19524,11 +19731,16 @@ function getDisplayName(item) {
             markSelectedLane,
             syncCoordinatorHold,
           });
+          boundary.territoryGuard.postMeatBought += Number(territoryAction?.bought || 0);
           boughtCount += Number(territoryAction?.bought || 0);
         }
 
         return boughtCount;
       }
+
+      proposal.outcome = "COMMAND_FAILED";
+      proposal.outcomeReason = "buy command produced no unit count delta";
+      boundary.accounting.commandFailedCount++;
     }
 
     if (topMeatBlockedBy) {
@@ -20716,6 +20928,7 @@ function getDisplayName(item) {
     wholeEconomyExecutionDecisionState = null;
     sixDomainStrategicCoordinatorState = null;
     sixDomainExecutionPlanState = null;
+    smartUnitPathBoundaryState = null;
     abilityPrepPlannerState = null;
     postNexusEnergyPlannerState = null;
     territoryPrepPlannerState = null;
@@ -20839,7 +21052,7 @@ function getDisplayName(item) {
       });
     }
 
-    function recordEvaluatedMainCyclePath(pathId, result, probe, fallbackReason) {
+    function recordEvaluatedMainCyclePath(pathId, result, probe, fallbackReason, extraDetails = {}) {
       const candidates = laneCandidates.slice(probe.laneCandidateCount);
       const executedMainActionCount = Math.max(0, mainActionLedger.length - probe.mainActionLedgerCount);
       const sideActionDelta = Math.max(0, sideActions - probe.sideActions);
@@ -20871,7 +21084,7 @@ function getDisplayName(item) {
         observedCandidateDecisions: candidateDecisions,
         executedMainActionCount,
         sideActionDelta,
-        pathBoundary: result?.pathBoundary || null,
+        pathBoundary: extraDetails.pathBoundary || result?.pathBoundary || null,
       });
     }
 
@@ -21210,7 +21423,14 @@ function getDisplayName(item) {
         engine,
         protectedResources,
         Math.max(0, maxActions - mainActions),
-        { skipMeatFirst: coordinatorExecutedKey === "meat" }
+        {
+          skipMeatFirst: coordinatorExecutedKey === "meat",
+          cycleIdentity: {
+            decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+            snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+            activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+          },
+        }
       )) || 0;
       if (units === "paused-ascension") {
         summaries.push("fallback unit purchases paused near ascension");
@@ -21218,11 +21438,17 @@ function getDisplayName(item) {
         mainActions += units;
         summaries.push(`${units} unit buy`);
       }
-      recordEvaluatedMainCyclePath("SMART_UNITS", units, pathProbe, "No generic Smart unit was applicable.");
+      recordEvaluatedMainCyclePath("SMART_UNITS", units, pathProbe, "No generic Smart unit was applicable.", { pathBoundary: smartUnitPathBoundaryState });
     } else if (m6DecisionOwnsMainCycle) {
       recordMainCyclePathDisposition("SMART_UNITS", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed generic Smart units");
     } else if (!config.buyUnits) {
-      recordMainCyclePathDisposition("SMART_UNITS", "NOT_APPLICABLE", "generic Smart units are disabled by configuration");
+      recordMainCyclePathDisposition("SMART_UNITS", "NOT_APPLICABLE", "generic Smart units are disabled by configuration", {
+        pathBoundary: createSmartUnitPathBoundary({
+          decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+          snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+          activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+        }, "generic Smart units are disabled by configuration"),
+      });
     } else {
       recordMainCyclePathDisposition("SMART_UNITS", "SKIPPED_BUDGET", "main-action budget exhausted before generic Smart units");
     }

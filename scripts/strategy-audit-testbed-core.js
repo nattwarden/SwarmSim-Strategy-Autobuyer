@@ -1214,6 +1214,45 @@ SCENARIOS["book00-smart-upgrade-boundary-advisor"] = {
   ],
 };
 
+SCENARIOS["book00-smart-unit-boundary"] = {
+  ...SCENARIOS["book00-live-purchase-legacy"],
+  id: "BOOK00-SMART-UNIT-BOUNDARY",
+  title: "Generic Smart-Unit Queue Executes Inside Its Boundary",
+  description: "Reuses the exact proven legacy-purchase state (meat lane isolated, zero unified proposals, no M6 authority): the ranked Smart-unit queue itself must execute exactly one real bounded drone purchase bound to its slice-10 path boundary - exact proposal identity, cycle-bound authorization, fail-closed exact amount and explicit outcome accounting confirmed by a real unit-count delta - with the delegated meat-guard planner, territory guard and chain prep all recording explicit zero-action branches.",
+  trackedUnitKeys: ["drone", "queen", "nest"],
+  notes: [
+    "Same isolation as book00-live-purchase-legacy: meatGoalPlanner and larvaEnginePriority disabled remove every unified proposal source, so M6 cannot claim the budget and the delegated meat-guard planner records an explicit no-action branch.",
+    "The top-ranked candidate is the bottom-of-chain drone, which has no chain-prep feeder, so the ranked queue itself performs the real bounded buy and the chain-prep branch must record zero delegated buys.",
+    "The queue buy uses the real bounded buyUnit command with an exact per-candidate amount; the amount contract requires authorized, command and confirmed amounts to be exactly equal on a real unit-count basis, and the executed identity is grounded in the tracked real unit counts.",
+  ],
+};
+
+SCENARIOS["book00-smart-unit-boundary-advisor"] = {
+  ...SCENARIOS["book00-smart-unit-boundary"],
+  id: "BOOK00-SMART-UNIT-BOUNDARY-ADVISOR",
+  title: "Generic Smart-Unit Queue Is Accounted As Blocked In Advisor Mode",
+  description: "Identical staged state to book00-smart-unit-boundary, but executeActions is false so the harness runs advisor-only. The boundary must account the reached candidate as BLOCKED_SAFE_MODE, execute nothing, and leave every tracked real unit count unchanged apart from passive production.",
+  executeActions: false,
+  notes: [
+    "Same staged economy as the executed scenario; only the advisor-only/autoBuySafeDecisions execution gate differs.",
+    "The advisor branch returns after the first would-buy candidate, so exactly one proposal with BLOCKED_SAFE_MODE is expected.",
+  ],
+};
+
+SCENARIOS["book00-smart-unit-boundary-disabled"] = {
+  ...SCENARIOS["book00-smart-unit-boundary"],
+  id: "BOOK00-SMART-UNIT-BOUNDARY-DISABLED",
+  title: "Disabled Smart-Unit Path States Its Not-Applicable Reason",
+  description: "Identical staged state to book00-smart-unit-boundary, but buyUnits is false so the callsite itself must supply the disabled boundary with an explicit not-applicable reason and a NOT_EVALUATED planner branch.",
+  config: {
+    ...SCENARIOS["book00-smart-unit-boundary"].config,
+    buyUnits: false,
+  },
+  notes: [
+    "The path is disabled by configuration, so the disposition is NOT_APPLICABLE and the boundary must still be proven with an explicit reason.",
+  ],
+};
+
 function getScenarioDefinition(scenarioId) {
   const normalizedId = String(scenarioId || "canary").toLowerCase();
   const v2Scenario = buildSa1V2Scenario(normalizedId);

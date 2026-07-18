@@ -11,6 +11,7 @@ const BOUNDARY_PATH_ID = "CRITICAL_PRODUCTION_UPGRADES";
 const DECLARED_BOUNDARY_CONTRACTS = {
   CRITICAL_PRODUCTION_UPGRADES: "critical-upgrade-path-boundary.v1",
   SMART_UPGRADES: "smart-upgrade-path-boundary.v1",
+  SMART_UNITS: "smart-unit-path-boundary.v1",
 };
 
 function assert(condition, message) {
