@@ -192,6 +192,14 @@ evidence run. See
 [BOOK00_ETA_DRIVEN_SELECTION_SPEC_FOUNDATION.md](BOOK00_ETA_DRIVEN_SELECTION_SPEC_FOUNDATION.md).
 No runtime change was made. `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains in force.
 
+The AC3 prerequisite now has a design proposal (DESIGN ONLY, awaiting review):
+[BOOK00_AC3_SHARED_ETA_LARVA_ENGINE_FOUNDATION.md](BOOK00_AC3_SHARED_ETA_LARVA_ENGINE_FOUNDATION.md)
+— give the Larva/Engine domain a real, non-fabricated `milestone-eta-seconds`
+outcome toward the active target (copying the proven Energy/Territory pattern),
+fail-closed `UNRANKED` otherwise. It changes ranking only, not ownership, and
+per the readiness hard constraint may not land without a fresh SA1/live evidence
+run. Awaiting approval of its §8 decisions before any implementation.
+
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
 `false`. The rejected feature branch remains research material only and must
