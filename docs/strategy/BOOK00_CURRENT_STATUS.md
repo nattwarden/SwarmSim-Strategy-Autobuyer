@@ -176,6 +176,14 @@ path toward complete M6 coverage, or a separate product capability) and is not
 implied by this sweep. Do not grant M6 whole-cycle ownership without the live
 purchase acceptance gate passing against that change first.
 
+Proposed next direction (DESIGN ONLY, awaiting review — no runtime change
+authorized): earn `m6Coverage = COMPLETE` one path at a time, starting with
+`LARVA_ENGINE_GUARD`, via a fail-closed, per-cycle-earned equivalence contract
+that never toggles ownership. See
+[BOOK00_M6_COMPLETENESS_LARVA_ENGINE_FOUNDATION.md](BOOK00_M6_COMPLETENESS_LARVA_ENGINE_FOUNDATION.md).
+`NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains in force until that design is
+approved and every gate is met.
+
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
 `false`. The rejected feature branch remains research material only and must
