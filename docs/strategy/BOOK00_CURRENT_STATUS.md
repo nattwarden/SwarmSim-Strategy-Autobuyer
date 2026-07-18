@@ -103,18 +103,19 @@ Completed slices (implementation SHA / evidence SHA / evidence file):
   `1`, and explicit execute/block/not-applicable accounting.
   `c0101cc1055fac8f82b81202771c3f1e3cee29e7` /
   `901822eec3e250608076d5afd0a7c09249ac5237` / `verification-c0101cc.md`.
+- Phase 3 slice 12 - Energy guard path boundary
+  (`energy-guard-path-boundary.v1`): Nexus and both existing Lepidoptera
+  purchases carry exact identity, cycle-bound authorization and real-delta
+  amount confirmation. `d550fb5b7199f78047b7ac809b197a7eedd31683` /
+  `4452a29` / `verification-d550fb5.md`.
 
-Standing verdict after slice 11: four of ten retained legacy paths carry a
+Standing verdict after slice 12: five of ten retained legacy paths carry a
 proven path boundary; complete M6 execution paths remain `0` of `10`; the
 WAIT precondition remains `FAIL` with `ADVISOR_ONLY` authority; whole-cycle
 ownership eligibility remains `false`.
 
-Current work package: Phase 3 slice 12 - Energy guard path boundary. Extend
-the path-boundary discipline to every existing reversible `ENERGY_GUARD` buy
-(Nexus and the pre-/post-Nexus Lepidoptera branches): exact proposal identity,
-cycle-bound authorization, fail-closed command amount and explicit
-execute/block/not-applicable accounting. Exclude ability auto-cast, strategy
-changes, ETA conversions, safety-default changes and whole-cycle ownership.
+Current work package: none selected. Slice 12 is closed; select the next
+retained legacy path only as a narrow, source-grounded boundary slice.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
