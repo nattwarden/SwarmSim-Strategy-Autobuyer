@@ -156,3 +156,64 @@ Approve, revise, or reject:
 
 Only after approval does implementation begin, and only with the SA1/live
 evidence run produced alongside the change and verified at an exact SHA.
+
+## 9. Implementation-time measurement — the §3 contract is REFRAMED (2026-07-18)
+
+Before writing scoring code, the crux from §7 was measured directly on a live
+save in a real Engine-execute cycle (`getCurrent().domainOutcomes`):
+
+```
+activeTarget    = "Expansion"
+activeMilestone = "Buy Expansion now; it is the strongest larva-engine upgrade."
+LARVA_ENGINE:  action=expansion  etaBefore=0  progressDelta=100  comparability=UNRANKED
+ARMY_TERRITORY: UNSUPPORTED (no proposal)   MEAT/ENERGY: BLOCKED
+```
+
+Decisive result: **the Engine action is a direct completion, not a
+production-acceleration.** `etaBefore = 0` (the Expansion is affordable now) and
+the honest metric is `progressDelta = 100`. In every state where the Engine
+guard executes, the Expansion/Hatchery is by definition affordable (otherwise
+the guard HOLDs), so `etaBefore` is always `0`. Injecting a
+`milestone-eta-seconds` value for a target whose ETA is `0` would be exactly the
+fabrication R1/R3/R5 forbid. **Therefore the §3 "emit an ETA improvement"
+contract is withdrawn — it is not honestly implementable for this domain.**
+
+### 9.1 Corrected, non-fabricating design
+
+The measurement shows Engine already emits its honest metric (`progressDelta =
+100`). It is UNRANKED only because (a) the cycle's selected comparison basis is
+hard-defaulted to `milestone-eta-seconds`, and (b) the Engine row's
+`metricTarget` is `null`, so it cannot target-align even on the right basis. The
+honest fix is therefore two small, non-fabricating parts:
+
+1. **Basis follows the active target's decision type.** When the active target
+   is a directly-buyable completion step (the selected action is affordable now,
+   `etaBefore = 0`, and its honest metric is a same-unit completion delta), the
+   cycle selects `same-unit-milestone-progress-delta` as the comparison basis;
+   when the active target is a future gate being accumulated toward, it selects
+   `milestone-eta-seconds` (today's default). This makes completion domains rank
+   on the basis they already honestly emit, and acceleration domains rank on
+   theirs — no value is invented.
+2. **Completion domains carry an aligned `metricTarget`.** The Engine row must
+   set `metricTarget` to the active target it completes, so slice 2's target
+   alignment can pass. (Measurement showed it is currently `null`.)
+
+This preserves every slice 1–4 guarantee: missing values stay UNRANKED, one
+basis per cycle, exact target/metric/horizon identity. It does not fabricate an
+ETA; it selects the honest basis for the decision actually being made.
+
+### 9.2 Revised decision requested
+
+The original §3/§8 contract (add an ETA to Engine) is not honestly
+implementable and is withdrawn. Approve, revise, or reject the corrected design
+in §9.1 instead:
+
+1. select the comparison basis from the active target's decision type
+   (completion → progress-delta; future gate → eta-seconds);
+2. give completion domains an aligned `metricTarget`;
+3. same mandatory SA1/live evidence gate (§5), same ranking-only /
+   no-ownership-change invariants (§4);
+4. still Larva/Engine first.
+
+This remains design-only until the corrected §9.1 direction is approved; the
+approved-but-refuted §3 contract will not be implemented.
