@@ -120,17 +120,33 @@ Completed slices (implementation SHA / evidence SHA / evidence file):
   `autoCastCloneLarvae` exception boundary are unchanged; M6 coverage stays
   `NONE`. `23fdf2a52ec58bcd3b230cbec9b2ab81bcf52aac` /
   `83a46c3` / `verification-23fdf2a.md`.
+- Phase 3 slice 14 - Clone Buffer guard path boundary
+  (`clone-buffer-guard-path-boundary.v1`): both retained ledger rows -
+  `CLONE_BUFFER` and its budget-exempt `CLONE_BUFFER_HARD_LOCK_RECOVERY`
+  branch, which share `executeCloneGuardAction`/`runCloneBufferPlanner` - emit
+  a boundary for the one real command, the hard-lock cocoon recovery buy, with
+  canonical identity, cycle-bound authorization (per-row `pathId` threaded
+  through both callsites) and a fail-closed identity/amount check bounding the
+  command to the authorized amount. Because the recovery amount is a
+  large-magnitude unit count whose delta carries `Decimal` precision noise,
+  `EXECUTED` confirmation is a real positive `real-unit-count-delta`, not
+  exact-string equality. Live boundary proof reports `PROVEN` `EXECUTED` for
+  both rows (within budget, and at zero remaining budget). Mode/target
+  resolution, protection ratios, the recovery buy amount and the budget-exempt
+  recovery behavior are unchanged; M6 coverage stays `NONE`.
+  `e2569dec0fcf2dd81d79e7a33f98aea216c3f1ad` /
+  `c5e2c97` / `verification-e2569de.md`.
 
-Standing verdict after slice 13: six of ten retained legacy paths carry a
-proven path boundary; complete M6 execution paths remain `0` of `10`; the
+Standing verdict after slice 14: eight of ten retained legacy paths carry a
+proven path boundary (`CLONE_BUFFER` and `CLONE_BUFFER_HARD_LOCK_RECOVERY`
+both landed in slice 14); complete M6 execution paths remain `0` of `10`; the
 WAIT precondition remains `FAIL` with `ADVISOR_ONLY` authority; whole-cycle
 ownership eligibility remains `false`.
 
-Current work package: none selected. Slice 13 is closed; select the next
+Current work package: none selected. Slice 14 is closed; select the next
 retained legacy path only as a narrow, source-grounded boundary slice. The
-recommended next path is `CLONE_BUFFER` (with its
-`CLONE_BUFFER_HARD_LOCK_RECOVERY` recovery branch), followed by
-`MEAT_UNLOCK_PLANNER` and `FINAL_CLONE_PREP` after separate scope analysis.
+remaining unbounded paths are `MEAT_UNLOCK_PLANNER` and `FINAL_CLONE_PREP`,
+each to be taken only after separate scope analysis.
 
 `NO_GO_GLOBAL_EXECUTION_OWNERSHIP` remains active. Post-Nexus Energy and other
 unaligned safe actions remain legacy-owned; `m6DecisionOwnsMainCycle` stays
