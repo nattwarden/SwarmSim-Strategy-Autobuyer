@@ -806,17 +806,47 @@ Stop condition: the repository tells the truth about its own architecture -
   either no scaffolding, or scaffolding that the build actually uses.
 ```
 
-### RH-6 - Evidence weight retention decision (R8) - blocked on user
+### RH-6 - Prune routine evidence matrices (R8) - user decided: PRUNE (2026-07-19)
+
+The user explicitly authorized pruning on 2026-07-19. This package enforces
+anti-stagnation rule 8 retroactively on `docs/test-data/strategy-audit-1/`.
 
 ```text
-Product capability: none.
+Product capability: none (infrastructure exception).
 Player-visible change: none.
-Domains included: docs/test-data/strategy-audit-1/ (~37 MB) retention.
-Domains explicitly excluded: formal acceptance evidence tied to closed
-  milestones (retention contract exists; stays).
-Stop condition: the user decides keep / prune / move to release assets.
-  No agent deletes evidence without that explicit decision.
+Domains included: deletions inside docs/test-data/strategy-audit-1/ only.
+Domains explicitly excluded: every other docs/test-data/ path (pinned saves,
+  clone-ramp, 9.4.0-clean-room verification evidence, versioned scenario
+  fixtures); history rewriting of any kind.
+Current milestone and horizons: n/a (maintenance).
+Advisor, shadow, or execution authority: n/a.
+Hard safety boundaries: KEEP any file that is (a) referenced by path from any
+  script in scripts/ (note: strategy-audit live runners restore Playwright
+  storageState from docs/test-data/strategy-audit-1/**/live/), (b) referenced
+  from AGENTS.md, the status board, a foundation doc, a verification evidence
+  file, or a release note, or (c) a README/schema/manifest that documents the
+  retained set. DELETE only routine raw per-case sweep outputs (matrix
+  JSON/CSV/Markdown run artifacts) with no such reference. When in doubt,
+  keep and list in the handoff. Git history is the archive; no archive tree,
+  no history rewrite, no force push.
+Focused acceptance states: a reference scan (grep of every deleted path over
+  scripts/, docs/, AGENTS.md, package.json) proving zero surviving
+  references; npm run verify green after deletion; the SA1 runners
+  (strategy:audit:matrix:sa1:single) still start correctly against retained
+  storageState fixtures.
+Files expected to change: deletions under docs/test-data/strategy-audit-1/;
+  one short retention note (what was kept and why) appended to
+  docs/test-data/strategy-audit-1/README.md or created if absent.
+Evidence generators and allowlisted paths: none.
+Stop condition: only unreferenced routine matrices are gone, the retained
+  set is documented, and repository growth from routine sweeps is stopped
+  going forward (future sweeps write to untracked paths or are pruned at
+  closure per rule 8). Pack-size does not shrink retroactively without
+  history rewriting, which stays forbidden - the win is forward-looking.
 ```
+
+May run in parallel with any other RH package (its file set is disjoint from
+RH-1..RH-5).
 
 ### Track exit review
 

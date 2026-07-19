@@ -52,8 +52,9 @@ Remediation is the **Repository health hardening track (RH-1 .. RH-6)** in
 this is now the active work package. Wave 1 (RH-1 CI fix, RH-2 script
 retirement, RH-3 dead-function removal) may run as three parallel agents in
 separate worktrees; RH-4 (hermetic harness) follows RH-2; RH-5 (dev-src
-decision) follows RH-3; RH-6 (evidence retention, ~37 MB
-`docs/test-data/strategy-audit-1/`) is blocked on an explicit user decision.
+decision) follows RH-3; RH-6 (prune routine sweep matrices in
+`docs/test-data/strategy-audit-1/`, ~37 MB) was unblocked by an explicit user
+PRUNE decision on 2026-07-19 and may run in parallel with any package.
 Coordination, contracts, and stop conditions are in the runbook track section;
 no package changes strategy, safety defaults, or player-visible behavior.
 
@@ -601,7 +602,8 @@ Active work package (2026-07-19): the **Repository health hardening track
 track section in the runbook. It is maintenance-only (no strategy, safety, or
 player-visible change) and is designed for parallel agents: Wave 1 = RH-1 +
 RH-2 + RH-3 concurrently, then RH-4 after RH-2, then RH-5 after RH-3; RH-6
-awaits a user retention decision. The previously stated direction (live
+(prune, user-authorized 2026-07-19) may run in parallel with any package. The
+previously stated direction (live
 observation of the accepted baseline) resumes after the track closes, unless
 a player-reported issue arrives first.
 
@@ -715,10 +717,11 @@ this file. Durable facts belong in the owning documents, not in this log.
 - Result: findings R1-R9 recorded; remediation planned as the RH track with
   parallelization waves and per-package contracts. The audit also corrected
   the runbook's stale M8 "Immediate next action" pointer (R9).
-- Remaining blocker: RH-6 needs a user retention decision for
-  `docs/test-data/strategy-audit-1/`.
-- Exact next action: hand RH-1, RH-2, RH-3 to parallel agents (one worktree
-  each) per the runbook's RH wave rules.
+- Remaining blocker: none. RH-6 was initially blocked on a user retention
+  decision; the user authorized PRUNE later the same day (contract updated in
+  the runbook).
+- Exact next action: hand RH-1, RH-2, RH-3 (and optionally RH-6) to parallel
+  agents (one worktree each) per the runbook's RH wave rules.
 
 ### 2026-07-18 - Clean-room slices 8-10 closed by Claude (Fable 5)
 
