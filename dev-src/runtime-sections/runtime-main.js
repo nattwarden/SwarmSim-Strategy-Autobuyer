@@ -118,6 +118,7 @@
     { pathId: "CRITICAL_PRODUCTION_UPGRADES", sourceCall: "handleCriticalProductionUpgrades", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "critical-upgrade-path-boundary.v1" },
     { pathId: "ENERGY_GUARD", sourceCall: "executeEnergyGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["ENERGY_PRODUCTION"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "energy-guard-path-boundary.v1" },
     { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-ramp-guard-path-boundary.v1" },
+    { pathId: "HOUSE_OF_MIRRORS", sourceCall: "executeHouseOfMirrorsCastAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: ["ENERGY_ABILITIES"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "house-of-mirrors-cast-path-boundary.v1" },
     { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-buffer-guard-path-boundary.v1" },
     { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", actionClass: "RECOVERY", currentOwner: "LEGACY_SMART", m6Coverage: "NONE", m6Domains: [], cycleApplicabilityEvidence: "MISSING", boundaryContract: "clone-buffer-guard-path-boundary.v1" },
     { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", actionClass: "MAIN", currentOwner: "LEGACY_SMART", m6Coverage: "PARTIAL", m6Domains: ["MEAT"], cycleApplicabilityEvidence: "MISSING", boundaryContract: "meat-unlock-planner-path-boundary.v1" },
@@ -185,6 +186,20 @@
     // All other abilities (House of Mirrors, rush abilities, Swarmwarp) stay
     // advisor-only regardless of this flag.
     autoCastCloneLarvae: true,
+    // Opt-in (default off): when the Clone Larvae bank is at/above cap, keep
+    // doing full-cap casts every cycle (instead of the default single "release
+    // at cap" cast) for as long as the Nexus/Energy reserve permits. Each cast
+    // adds a constant ~cap of larvae for a fixed energy cost, so while the bank
+    // sits above cap the one-shot default leaves that repeatable gain unused.
+    // The existing energy-reserve gate is the natural stop; defaults stay safe.
+    cloneRampContinuousCastAtCap: false,
+    // Opt-in (default off): let the bot auto-cast House of Mirrors (the army-
+    // doubling ability, resolved to the real `clonearmy` upgrade) once its
+    // readiness gate passes - relevant territory army present, energy above the
+    // Nexus/Energy reserve, and a meaningful territory/Expansion payoff. Every
+    // other ability except the Clone Ramp exception stays advisor-only; this is
+    // the one deliberate, user-authorized House of Mirrors execution opt-in.
+    autoCastHouseOfMirrors: false,
 
     territoryRoiMode: true,
     territoryMinEtaImprovementSeconds: 2,
@@ -331,6 +346,8 @@
       clonePrepCooldownSeconds: 60,
       autoCastAbilities: false,
       autoCastCloneLarvae: true,
+      cloneRampContinuousCastAtCap: false,
+      autoCastHouseOfMirrors: false,
       territoryRoiMode: true,
       territoryMinEtaImprovementSeconds: 2,
       territoryMinEtaImprovementRatio: 0.001,
@@ -841,6 +858,8 @@
     c.offlineMode = !!c.offlineMode;
     c.nightbugStorageMode = !!c.nightbugStorageMode;
     c.autoCastCloneLarvae = c.autoCastCloneLarvae !== false;
+    c.cloneRampContinuousCastAtCap = c.cloneRampContinuousCastAtCap === true;
+    c.autoCastHouseOfMirrors = c.autoCastHouseOfMirrors === true;
     c.abilityPlanner = !!c.abilityPlanner;
     c.ascensionPlanner = !!c.ascensionPlanner;
     c.cloneCocoonTargetPercent = clampNumber(c.cloneCocoonTargetPercent, 0, 200, DEFAULT_CONFIG.cloneCocoonTargetPercent);
@@ -1606,7 +1625,7 @@ function getDisplayName(item) {
     const resolved = [];
     const errors = [];
 
-    const homAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const homAbility = resolveMirrorAbility(game);
     const homVisible = !!homAbility?.isVisible?.();
     const homCost = formatSwarmNumber(getCostForResource(homAbility, "energy"));
     const territoryVelocity = decimalFrom(getVelocity(game, "territory"));
@@ -2875,6 +2894,8 @@ function getDisplayName(item) {
       twinUpgradeMaxLostProductionBankRatioPerHour: config.twinUpgradeMaxLostProductionBankRatioPerHour,
       twinRecoveryBufferMultiplier: config.twinRecoveryBufferMultiplier,
       manageCloneLarvaeCocoons: config.manageCloneLarvaeCocoons,
+      cloneRampContinuousCastAtCap: config.cloneRampContinuousCastAtCap,
+      autoCastHouseOfMirrors: config.autoCastHouseOfMirrors,
       cloneCocoonTargetPercent: config.cloneCocoonTargetPercent,
       cloneCocoonChunkPercent: config.cloneCocoonChunkPercent,
       clonePrepCooldownSeconds: config.clonePrepCooldownSeconds,
@@ -4257,7 +4278,15 @@ function getDisplayName(item) {
 
   function unitCountByArmyPrepLabel(game, label) {
     const tierOverride = getScenarioArmyTierCountOverride(label);
-    if (Number.isFinite(Number(tierOverride))) {
+    // Legacy guard treats a null override (live, non-scenario mode) as finite
+    // because Number(null) === 0, so it short-circuits to 0 and never counts the
+    // real army. That is why live army recognition always read "missing". The
+    // House of Mirrors opt-in fixes it (only use the override when it is a real
+    // number); default stays byte-identical so fixtures/laboratory are unchanged.
+    const overrideUsable = config.autoCastHouseOfMirrors
+      ? (tierOverride != null && Number.isFinite(Number(tierOverride)))
+      : Number.isFinite(Number(tierOverride));
+    if (overrideUsable) {
       return decimalFrom(Number(tierOverride));
     }
 
@@ -4272,7 +4301,7 @@ function getDisplayName(item) {
   }
 
   function getHouseOfMirrorsArmyState(game) {
-    const mirrors = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const mirrors = resolveMirrorAbility(game);
     const visible = !!mirrors?.isVisible?.();
     const missing = [];
     let armyValue = newDecimal(0);
@@ -4325,7 +4354,7 @@ function getDisplayName(item) {
   function assessHouseOfMirrorsReadiness(game, engine, smartFocus, selectedMainAction) {
     const minMeaningfulBenefit = Number(config.energySupportMinMeaningfulBenefit || 0);
     const energy = decimalFrom(getCurrentResource(game, "energy"));
-    const mirrorAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const mirrorAbility = resolveMirrorAbility(game);
 
     const mirrorVisible = isItemVisibleWithScenarioOverride(mirrorAbility);
     const mirrorCost = mirrorVisible ? decimalFrom(getCostForResource(mirrorAbility, "energy")) : newDecimal(0);
@@ -7054,7 +7083,7 @@ function getDisplayName(item) {
     const larvaPerSecond = decimalFrom(getVelocity(game, "larva"));
     const larvaBank = decimalFrom(getCurrentResource(game, "larva"));
     const cloneAbility = getGameUpgrade(game, "clonelarvae");
-    const mirrorAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const mirrorAbility = resolveMirrorAbility(game);
     const moth = getGameUnit(game, "moth");
 
     const cloneVisible = isItemVisibleWithScenarioOverride(cloneAbility);
@@ -8918,7 +8947,7 @@ function getDisplayName(item) {
           : "no",
       },
       abilityCosts: {
-        houseOfMirrorsEnergy: formatSwarmNumber(getCostForResource(getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp"), "energy")),
+        houseOfMirrorsEnergy: formatSwarmNumber(getCostForResource(resolveMirrorAbility(game), "energy")),
         cloneLarvaeEnergy: formatSwarmNumber(getCostForResource(getGameUpgrade(game, "clonelarvae"), "energy")),
       },
       expansionEtaSeconds: Number.isFinite(engine?.expansionEta) ? Number(engine.expansionEta) : null,
@@ -9263,7 +9292,7 @@ function getDisplayName(item) {
             cloneLarvaeCocoonVelocity: formatSwarmNumber(getVelocity(game, "cocoon")),
             cloneLarvaeRuntimePreview: payload.energySupportCloneLarvaeGain || "n/a",
             houseOfMirrorsAvailability: payload.energySupportMirrorCandidate !== "none" ? "yes" : "no",
-            houseOfMirrorsEnergyCost: formatSwarmNumber(getCostForResource(getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp"), "energy")),
+            houseOfMirrorsEnergyCost: formatSwarmNumber(getCostForResource(resolveMirrorAbility(game), "energy")),
             houseOfMirrorsAffectedUnitIds: (setupResolution.observability.aliasToCanonicalRuntimeId || [])
               .filter((row) => row.inHouseOfMirrorsPreferredSet === "yes")
               .map((row) => row.canonicalRuntimeUnitId)
@@ -10147,7 +10176,7 @@ function getDisplayName(item) {
   }
 
   function getLaboratoryHouseOfMirrorsAbility(game) {
-    return getGameUpgrade(game, "clonearmy") || getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    return getGameUpgrade(game, "clonearmy") || resolveMirrorAbility(game);
   }
 
   function getLaboratoryCloneAbility(game) {
@@ -12603,6 +12632,18 @@ function getDisplayName(item) {
     return safe(`Hämta upgrade ${name}`, () => game.upgrade(name));
   }
 
+  // Resolve the "House of Mirrors" ability. Default keeps the legacy resolution
+  // untouched so every fixture and the laboratory sim are byte-identical. The
+  // House of Mirrors opt-in prefers the real army-doubling `clonearmy` upgrade
+  // (the legacy path resolved to `swarmwarp`, which does not double the army),
+  // matching the laboratory's own known-correct ordering.
+  function resolveMirrorAbility(game) {
+    if (config.autoCastHouseOfMirrors) {
+      return getGameUpgrade(game, "clonearmy") || getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    }
+    return getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+  }
+
   function getCostList(item) {
     if (!item) return [];
 
@@ -14357,6 +14398,7 @@ function getDisplayName(item) {
   // handed straight to normal Meat progression on the very next cycle rather
   // than being locked away as cocoons it no longer needs to protect.
   const CLONE_RAMP_GUARD_PATH_BOUNDARY_SCHEMA_VERSION = "clone-ramp-guard-path-boundary.v1";
+  const HOUSE_OF_MIRRORS_CAST_PATH_BOUNDARY_SCHEMA_VERSION = "house-of-mirrors-cast-path-boundary.v1";
 
   function runCloneRampPlanner(game, commands, protectedResources, cycleIdentity = null) {
     // Path-boundary observability for the narrow Clone Ramp exception. Each real
@@ -14476,7 +14518,13 @@ function getDisplayName(item) {
       return notApplicable("Clone Larvae cast would violate the Nexus/Energy reserve");
     }
 
-    if (readyForFinalCast && cloneRampReleasedAtCap) {
+    // Default (one-shot) behavior: after the single full-cap cast, release the
+    // budget back to Meat progression until the bank falls below the threshold.
+    // Opt-in cloneRampContinuousCastAtCap skips this stop so the planner keeps
+    // doing full-cap casts every cycle while the bank stays at/above cap - the
+    // Nexus/Energy reserve gate above is the natural stop, so this cannot drain
+    // energy below the protected reserve.
+    if (readyForFinalCast && cloneRampReleasedAtCap && !config.cloneRampContinuousCastAtCap) {
       recordCloneRampState({
         ...baseFields,
         cloneRampPhase: "POST_CLONE_RELEASE",
@@ -14488,7 +14536,9 @@ function getDisplayName(item) {
 
     const phase = readyForFinalCast ? "FINAL_CAST" : "CAST_TO_GROW_BANK";
     const reason = readyForFinalCast
-      ? `Clone Ramp ready: bank ${trimNumber(percentBefore)}% of cap; casting once for the full ${formatSwarmNumber(capBefore)} output, then releasing to Meat progression`
+      ? (config.cloneRampContinuousCastAtCap
+        ? `Clone Ramp continuous cast: bank ${trimNumber(percentBefore)}% of cap; casting the full ${formatSwarmNumber(capBefore)} output again this cycle (repeats at/above cap until the Energy reserve stops it)`
+        : `Clone Ramp ready: bank ${trimNumber(percentBefore)}% of cap; casting once for the full ${formatSwarmNumber(capBefore)} output, then releasing to Meat progression`)
       : `Clone Ramp growing bank: ${trimNumber(percentBefore)}% of cap (${formatSwarmNumber(bankBefore)} / ${formatSwarmNumber(capBefore)}); casting once and banking the result before the next cast`;
 
     recordAdvisor(readyForFinalCast ? "BUY" : "BUY", "Clone Larvae", reason);
@@ -15907,7 +15957,7 @@ function getDisplayName(item) {
       });
     }
 
-    const mirrors = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const mirrors = resolveMirrorAbility(game);
     if (isItemVisibleWithScenarioOverride(mirrors)) {
       const mirrorArmyState = getHouseOfMirrorsArmyState(game);
       const missing = mirrorArmyState.missing;
@@ -16579,6 +16629,16 @@ function getDisplayName(item) {
     return direct.visible ? direct.missing : [];
   }
 
+  // A tier token is a roman numeral (i..x) or a small arabic tier number. The
+  // House of Mirrors preferred set is written at tier "V", but a live player
+  // progresses the same army family to VI/VII/... via ascension. Treat the tier
+  // token as optional so the existing army is recognized regardless of its tier
+  // (the family token - stinger / mosquito / spider - is still required). Without
+  // this, a tier-VI army reads as "preferred units missing" and blocks the cast.
+  function isArmyTierToken(token) {
+    return /^(?:[ivx]+|\d{1,2})$/.test(token);
+  }
+
   function unitMatchesArmyPrepLabel(unit, label) {
     const labelKey = normalizeLabelKey(label);
     if (!labelKey) return false;
@@ -16588,12 +16648,20 @@ function getDisplayName(item) {
     const aliases = [labelKey];
     if (/culicimorph/.test(labelKey)) aliases.push(labelKey.replace(/culicimorph/g, "mosquito"));
     if (/arachnomorph/.test(labelKey)) aliases.push(labelKey.replace(/arachnomorph/g, "spider"));
-    if (/\bv\b/.test(labelKey)) aliases.push(labelKey.replace(/\bv\b/g, "5"));
+    // Default (flag off): exact-tier matching, unchanged - keeps every fixture and
+    // the laboratory effective-count sim identical. Only the House of Mirrors
+    // opt-in makes matching tier-tolerant.
+    if (!config.autoCastHouseOfMirrors && /\bv\b/.test(labelKey)) aliases.push(labelKey.replace(/\bv\b/g, "5"));
 
     return aliases.some((entry) => {
       const tokens = normalizeLabelKey(entry).split(/\s+/).filter(Boolean);
-      if (!tokens.length) return false;
-      return tokens.every((token) => textTokens.has(token));
+      // Opt-in: require only the family (non-tier) tokens so any tier of the same
+      // army family counts as present. Default: require every token (exact tier).
+      const requiredTokens = config.autoCastHouseOfMirrors
+        ? tokens.filter((token) => !isArmyTierToken(token))
+        : tokens;
+      if (!requiredTokens.length) return false;
+      return requiredTokens.every((token) => textTokens.has(token));
     });
   }
 
@@ -20549,6 +20617,113 @@ function getDisplayName(item) {
     return runCloneRampPlanner(game, commands, protectedResources, cycleIdentity);
   }
 
+  // Opt-in House of Mirrors cast (config.autoCastHouseOfMirrors). Bounded to one
+  // cast per runOnce() cycle through the same single-amount buyUpgrade path as
+  // every other ability, gated by the shared assessHouseOfMirrorsReadiness gate
+  // chain (relevant army present, energy, meaningful payoff, helps target) plus
+  // the Nexus/Energy reserve. Default off - when off this path is always
+  // not-applicable and nothing casts. Carries path-boundary observability like
+  // the Clone Ramp exception.
+  function runHouseOfMirrorsCastPlanner(game, commands, engine, smartFocus, selectedMainAction, cycleIdentity = null) {
+    const boundary = {
+      schemaVersion: HOUSE_OF_MIRRORS_CAST_PATH_BOUNDARY_SCHEMA_VERSION,
+      pathId: "HOUSE_OF_MIRRORS",
+      decisionCycleId: String(cycleIdentity?.decisionCycleId || "unknown"),
+      snapshotId: String(cycleIdentity?.snapshotId || "unknown"),
+      activeTarget: String(cycleIdentity?.activeTarget || "unknown"),
+      notApplicableReason: null,
+      heldCandidates: [],
+      proposals: [],
+      accounting: { proposalCount: 0, executedCount: 0, blockedSafeModeCount: 0, commandFailedCount: 0, contractViolationCount: 0 },
+    };
+
+    function notApplicable(reason) {
+      boundary.notApplicableReason = reason;
+      return { actionTaken: false, bought: 0, pathBoundary: boundary };
+    }
+
+    if (!config.autoCastHouseOfMirrors) {
+      return notApplicable("House of Mirrors auto-cast is disabled (autoCastHouseOfMirrors off)");
+    }
+
+    const ability = resolveMirrorAbility(game);
+    if (!ability || !isItemVisibleWithScenarioOverride(ability) || !ability?.isBuyable?.()) {
+      return notApplicable("House of Mirrors is not castable yet (locked, on cooldown, or not visible)");
+    }
+
+    const readiness = assessHouseOfMirrorsReadiness(game, engine, smartFocus, selectedMainAction);
+    if (!readiness.ready) {
+      return notApplicable(`House of Mirrors not ready: ${readiness.blockedReason}`);
+    }
+
+    // Nexus/Energy reserve: never let the cast drop energy below the protected
+    // reserve, matching the Clone Ramp exception's safety bound.
+    const currentEnergy = decimalFrom(getCurrentResource(game, "energy"));
+    const energyCost = decimalFrom(getCostForResource(ability, "energy"));
+    const energyVelocity = decimalFrom(getVelocity(game, "energy"));
+    const reserveRequired = energyVelocity.times(Math.max(0, Number(config.postNexusEnergyReserveSeconds || 0)));
+    if (currentEnergy.minus(energyCost).lessThan(reserveRequired)) {
+      return notApplicable("House of Mirrors cast would violate the Nexus/Energy reserve; holding");
+    }
+
+    const proposal = {
+      lane: "Ability", candidate: "House of Mirrors", executionKey: "house-of-mirrors-cast",
+      executionId: String(ability?.name || "clonearmy"), executionKind: "upgrade", executionVariant: "base",
+      boundedAmount: normalizeBoundedAmountToken(newDecimal(1)),
+      metricTarget: "territory army double", metricId: "house-of-mirrors-cast", metricUnit: "count", metricBasis: "territory-army-total",
+      rankingAuthority: "PATH_BOUNDARY_OBSERVABILITY_ONLY", outcome: "PENDING", outcomeReason: "", amountContract: null,
+    };
+    proposal.canonicalProposalId = buildCanonicalProposalId(proposal);
+    proposal.authorizationId = buildDecisionAuthorizationId({ canonicalProposalId: proposal.canonicalProposalId, decisionCycleId: boundary.decisionCycleId, snapshotId: boundary.snapshotId, activeTarget: boundary.activeTarget });
+    boundary.proposals.push(proposal);
+    boundary.accounting.proposalCount = boundary.proposals.length;
+
+    const reason = `House of Mirrors doubles the territory army (value ${formatSwarmNumber(readiness.mirrorArmyValueRaw)}); energy ${formatSwarmNumber(currentEnergy)} >= cost ${formatSwarmNumber(energyCost)}; reserve preserved`;
+
+    if (config.advisorOnly || !config.autoBuySafeDecisions) {
+      recordMessage(`Advisor: WOULD CAST House of Mirrors — ${reason}`);
+      proposal.outcome = "BLOCKED_SAFE_MODE";
+      proposal.outcomeReason = config.advisorOnly ? "advisorOnly is enabled" : "autoBuySafeDecisions is disabled";
+      boundary.accounting.blockedSafeModeCount++;
+      return { actionTaken: true, bought: 0, summary: "Would cast House of Mirrors", pathBoundary: boundary };
+    }
+
+    const castCommandAmount = newDecimal(1);
+    if (String(ability?.name || "") !== proposal.executionId || normalizeBoundedAmountToken(castCommandAmount) !== proposal.boundedAmount) {
+      proposal.outcome = "CONTRACT_VIOLATION";
+      proposal.outcomeReason = "House of Mirrors cast identity or amount differs from authorization";
+      boundary.accounting.contractViolationCount++;
+      return { actionTaken: true, bought: 0, summary: "House of Mirrors cast blocked", pathBoundary: boundary };
+    }
+
+    const castDeltaOut = {};
+    const didCast = safe("House of Mirrors cast", () => buyUpgradeAmount(commands, ability, castCommandAmount, "House of Mirrors", castDeltaOut));
+    if (!didCast) {
+      proposal.outcome = "COMMAND_FAILED";
+      proposal.outcomeReason = "House of Mirrors cast attempt did not register";
+      boundary.accounting.commandFailedCount++;
+      return { actionTaken: false, bought: 0, summary: "House of Mirrors cast failed", pathBoundary: boundary };
+    }
+
+    proposal.outcome = "EXECUTED";
+    proposal.outcomeReason = "House of Mirrors army-double cast";
+    proposal.amountContract = {
+      authorizedRequestedAmount: proposal.boundedAmount,
+      commandRequestedAmount: normalizeBoundedAmountToken(castCommandAmount),
+      confirmedPurchasedAmount: normalizeBoundedAmountToken(castDeltaOut.value),
+      confirmationBasis: "real-upgrade-count-delta",
+    };
+    boundary.accounting.executedCount++;
+
+    recordAdvisor("BUY", "House of Mirrors", reason);
+    recordMainAction("House of Mirrors", "House of Mirrors", reason, "1", castDeltaOut.value);
+    return { actionTaken: true, bought: 1, summary: "House of Mirrors cast", pathBoundary: boundary };
+  }
+
+  function executeHouseOfMirrorsCastAction({ game, commands, engine, smartFocus, selectedMainAction, cycleIdentity = null }) {
+    return runHouseOfMirrorsCastPlanner(game, commands, engine, smartFocus, selectedMainAction, cycleIdentity);
+  }
+
   function buildEnergyProductionOpportunityMetrics(game, spentEnergyValue, nexusProtectionGate, energyProductionGainPercent = NaN) {
     const currentEnergy = decimalFrom(getCurrentResource(game, "energy"));
     const energyVelocity = decimalFrom(getVelocity(game, "energy"));
@@ -20583,7 +20758,7 @@ function getDisplayName(item) {
     };
 
     const cloneAbility = getGameUpgrade(game, "clonelarvae");
-    const mirrorAbility = getGameUpgrade(game, "houseofmirrors") || getGameUpgrade(game, "swarmwarp");
+    const mirrorAbility = resolveMirrorAbility(game);
     const cloneDelay = abilityDelaySeconds(cloneAbility);
     const mirrorDelay = abilityDelaySeconds(mirrorAbility);
     const reserveRatio = reserveRequired.greaterThan(0) ? decimalToNumber(energyAfter.dividedBy(reserveRequired), NaN) : null;
@@ -22061,6 +22236,25 @@ function getDisplayName(item) {
       recordMainCyclePathDisposition("CLONE_RAMP", "SKIPPED_BUDGET", "main-action budget exhausted before Clone Ramp");
     }
 
+    // main-cycle-coverage: HOUSE_OF_MIRRORS
+    if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
+      const pathProbe = beginMainCyclePathProbe();
+      const houseOfMirrorsAction = executeHouseOfMirrorsCastAction({
+        game, commands, engine, smartFocus, selectedMainAction: preExecutionMainAction,
+        cycleIdentity: {
+          decisionCycleId: String(sixDomainStrategicCoordinatorState?.decisionCycleId || "unknown"),
+          snapshotId: String(sixDomainStrategicCoordinatorState?.snapshotId || "unknown"),
+          activeTarget: String(sixDomainStrategicCoordinatorState?.activeTarget || "unknown"),
+        },
+      });
+      addMainResult("House of Mirrors", houseOfMirrorsAction);
+      recordEvaluatedMainCyclePath("HOUSE_OF_MIRRORS", houseOfMirrorsAction, pathProbe, "House of Mirrors was not applicable.");
+    } else if (m6DecisionOwnsMainCycle) {
+      recordMainCyclePathDisposition("HOUSE_OF_MIRRORS", "SKIPPED_GLOBAL_M6_OWNERSHIP", "global M6 ownership suppressed House of Mirrors");
+    } else {
+      recordMainCyclePathDisposition("HOUSE_OF_MIRRORS", "SKIPPED_BUDGET", "main-action budget exhausted before House of Mirrors");
+    }
+
     // main-cycle-coverage: CLONE_BUFFER
     if (!m6DecisionOwnsMainCycle && canDoMoreMainActions()) {
       const pathProbe = beginMainCyclePathProbe();
@@ -22654,6 +22848,199 @@ function getDisplayName(item) {
     }
   }
 
+  // BOOK-00 unified single-window UI. Re-parents the AngularJS game and the four
+  // bot panels into one flex shell: game on the left (scoped dark theme), the
+  // Council-anchored bot column on the right as a single flattened scroll surface.
+  // UI-only — no strategy/behavior/safety change. Idempotent + retries until the
+  // game view (body > .container) has rendered.
+  function mountUnifiedShell(retries = 40) {
+    const gameRoot = document.querySelector("body > .container");
+    if (!gameRoot) {
+      if (retries > 0) setTimeout(() => mountUnifiedShell(retries - 1), 300);
+      return;
+    }
+
+    // Idempotent: if a shell already exists, move its children back to body and
+    // rebuild, so a re-run cannot orphan the game or the panels.
+    const prev = document.getElementById("kbc-appshell");
+    if (prev) {
+      while (prev.firstChild) document.body.appendChild(prev.firstChild);
+      prev.remove();
+    }
+
+    const shell = document.createElement("div");
+    shell.id = "kbc-appshell";
+    const gameRegion = document.createElement("div");
+    gameRegion.id = "kbc-game-region";
+    const botRegion = document.createElement("div");
+    botRegion.id = "kbc-bot-region";
+    shell.appendChild(gameRegion);
+    shell.appendChild(botRegion);
+    document.body.appendChild(shell);
+
+    // Left: the game.
+    gameRegion.appendChild(gameRoot);
+
+    // Right: the bot panels, Council first, then settings, purchase, advisor.
+    [strategyBar, panel, purchasePanel, logPanel].forEach((el) => {
+      if (el) botRegion.appendChild(el);
+    });
+
+    let style = document.getElementById("kbc-appshell-style");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "kbc-appshell-style";
+      document.head.appendChild(style);
+    }
+    style.textContent = `
+    html, body { margin:0 !important; padding:0 !important; height:100% !important; background:#0f1216 !important; }
+    #kbc-appshell {
+      position: fixed; inset: 0; z-index: 999999;
+      display: flex; flex-direction: row; align-items: stretch;
+      background: #0f1216; color: #e6edf3;
+      font-family: Arial, sans-serif;
+      overflow: hidden; /* never let a region spill past the screen edge */
+    }
+    #kbc-game-region {
+      flex: 1 1 auto; min-width: 320px;
+      overflow: auto;
+      background: #12161c;
+      border-right: 1px solid #222a33;
+    }
+    /* Council-anchored right column: one scroll surface for the whole stack. */
+    #kbc-bot-region {
+      flex: 0 0 ${COUNCIL_FIXED_WIDTH}px;
+      width: ${COUNCIL_FIXED_WIDTH}px;
+      overflow-y: auto; overflow-x: hidden;
+      background: #0f1216;
+      /* No horizontal padding: the Council gets the column's full width so it
+         renders at its native width instead of a squeezed one. */
+      padding: 10px 0 40px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    /* Un-fix + flatten every panel: no per-panel window chrome, no inner scroll. */
+    #kbc-bot-region .kbc-strategy-bar,
+    #kbc-bot-region #kbc-swarmbot-panel,
+    #kbc-bot-region #kbc-swarmbot-purchase-panel,
+    #kbc-bot-region #kbc-swarmbot-advisor-panel {
+      position: static !important;
+      left: auto !important; top: auto !important; right: auto !important; bottom: auto !important;
+      width: 100% !important; height: auto !important;
+      min-width: 0 !important; min-height: 0 !important;
+      max-width: none !important; max-height: none !important;
+      overflow: visible !important;
+      /* Do NOT let the flex column shrink a panel below its content: that squeezes
+         the Council box while its overflow:hidden shell keeps full height, so the
+         shell paints on top of the panels below. Keep natural height; the
+         bot-region's overflow-y:auto is the single scroll surface. */
+      flex: 0 0 auto !important;
+      resize: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      margin: 0 !important;
+      z-index: auto !important;
+    }
+    /* Docked mode: no window chrome. The panel title bars + close/drag affordances
+       are meaningless as permanent columns and waste vertical space.
+       This head-hide selector is deliberately more specific than the > div flex
+       rule below (which also matches the head div) so the header stays hidden. */
+    #kbc-bot-region .kbc-strategy-bar > .kbc-strategy-bar-head { display: none !important; }
+    #kbc-bot-region .kbc-title-hint { display: none !important; }
+    #kbc-bot-region .kbc-title { cursor: default !important; }
+    /* Reduce the Council's heavy block-in-block nesting to reclaim space. */
+    #kbc-bot-region .kbc-strategy-bar { padding: 0 !important; }
+    #kbc-bot-region .kbc-council-shell {
+      padding: 14px 18px 16px !important;
+      box-shadow: none !important;
+      border-radius: 10px !important;
+    }
+    #kbc-bot-region .kbc-council-status-rail .kbc-council-summary-tile { padding: 5px 7px !important; }
+    #kbc-bot-region .kbc-council-status-rail,
+    #kbc-bot-region .kbc-council-decision,
+    #kbc-bot-region .kbc-council-chronicle-preview { padding: 7px !important; }
+    /* Move the Council Chamber / Matrix Diagnostics view-switch out of the prime
+       top slot to the bottom of the Council. The strategy bar rebuilds its
+       innerHTML each cycle, so this uses flex order (survives re-render). */
+    #kbc-bot-region .kbc-strategy-bar > div { display: flex !important; flex-direction: column !important; }
+    #kbc-bot-region .kbc-council-surface-tabs {
+      order: 90 !important;
+      margin-top: 10px !important;
+      padding-top: 10px !important;
+      border-top: 1px solid #222a33 !important;
+    }
+    /* Faint divider between the flattened panels so the stack still reads as
+       sections without feeling like separate windows. */
+    #kbc-bot-region > #kbc-swarmbot-panel,
+    #kbc-bot-region > #kbc-swarmbot-purchase-panel,
+    #kbc-bot-region > #kbc-swarmbot-advisor-panel {
+      border-top: 1px solid #222a33 !important;
+      padding: 12px 14px 0 !important;
+    }
+    /* Give the game's own container room to breathe in the left region. */
+    #kbc-game-region .container {
+      position: static !important; width: 100% !important; max-width: none !important; margin: 0 !important;
+      padding: 10px 14px !important;
+    }
+    /* Kill phantom scroll: the unit-table pane carries a fixed 250px padding-bottom
+       (swarmsim's headroom for the downward "Buy up to..." dropdowns) plus an
+       empty footer. That dead space forced a scrollbar even though everything was
+       visible. Drop the footer and trim the padding to a modest headroom so the
+       game region is only as tall as its content. */
+    #kbc-game-region .footer { display: none !important; }
+    #kbc-game-region .tab-pane.table-responsive { padding-bottom: 28px !important; }
+    /* Scoped dark theme for the game (swarmsim ships no picker in this build),
+       matching the bot palette so it reads as one window, one theme. */
+    #kbc-game-region, #kbc-game-region p, #kbc-game-region span,
+    #kbc-game-region td, #kbc-game-region th, #kbc-game-region li, #kbc-game-region a { color: #dfe7ef; }
+    #kbc-game-region a { color: #6cb6ff; }
+    #kbc-game-region .navbar-default { background: #12161c !important; border-color: #222a33 !important; box-shadow: none !important; }
+    #kbc-game-region .navbar-brand, #kbc-game-region .page-title { color: #f1f5f9 !important; }
+    #kbc-game-region .navbar-default .navbar-nav > li > a,
+    #kbc-game-region .navbar-default .navbar-text { color: #cfd8e3 !important; }
+    #kbc-game-region .navbar-default .navbar-nav > .active > a { background: #1c2430 !important; color:#fff !important; }
+    #kbc-game-region .alert-info { background: #16202b !important; border-color: #24303d !important; color: #cfe0f2 !important; }
+    #kbc-game-region .nav-tabs { border-bottom-color: #222a33 !important; }
+    #kbc-game-region .nav-tabs > li > a { color: #cfd8e3 !important; border-color: transparent !important; }
+    #kbc-game-region .nav-tabs > li > a:hover { background: #1a222c !important; border-color:#222a33 !important; }
+    #kbc-game-region .nav-tabs > li.active > a,
+    #kbc-game-region .nav-tabs > li.active > a:hover {
+      background: #1c2430 !important; color: #fff !important;
+      border-color: #2a3644 #2a3644 transparent !important;
+    }
+    #kbc-game-region .table, #kbc-game-region table { color: #dfe7ef !important; }
+    #kbc-game-region .table > tbody > tr > td,
+    #kbc-game-region .table > tbody > tr > th,
+    #kbc-game-region td, #kbc-game-region th { border-color: #202932 !important; background: transparent !important; }
+    #kbc-game-region .table-striped > tbody > tr:nth-of-type(odd) { background: #141a21 !important; }
+    #kbc-game-region .table-hover > tbody > tr:hover { background: #1a222c !important; }
+    #kbc-game-region .well, #kbc-game-region .panel { background: #141a21 !important; border-color: #222a33 !important; box-shadow: none !important; }
+    #kbc-game-region .panel-heading { background: #1a222c !important; border-color:#222a33 !important; color:#eef3f8 !important; }
+    #kbc-game-region .dropdown-menu { background: #12161c !important; border-color: #263140 !important; box-shadow: 0 6px 18px rgba(0,0,0,0.5) !important; }
+    #kbc-game-region .dropdown-menu > li > a { color: #cfd8e3 !important; }
+    #kbc-game-region .dropdown-menu > li > a:hover { background: #1c2430 !important; color:#fff !important; }
+    #kbc-game-region .dropdown-menu .divider { background: #263140 !important; }
+    #kbc-game-region .text-muted, #kbc-game-region .small { color: #8a97a6 !important; }
+    #kbc-game-region .btn-default { background: #1c2430 !important; border-color: #2a3644 !important; color: #e6edf3 !important; }
+    #kbc-game-region .btn-default:hover { background: #232d3a !important; }
+    #kbc-game-region .dropdown-toggle[data-kbc-original] { color: #cfd8e3 !important; line-height: 1; }
+    `;
+
+    // Compact the game's top menu: the "More..." dropdown becomes a gear glyph.
+    try {
+      const toggles = Array.from(gameRegion.querySelectorAll(".dropdown-toggle, a.dropdown-toggle"));
+      const moreToggle = toggles.find((t) => /more/i.test(t.textContent || ""));
+      if (moreToggle && !moreToggle.hasAttribute("data-kbc-original")) {
+        moreToggle.setAttribute("data-kbc-original", moreToggle.textContent.trim());
+        moreToggle.textContent = "⚙"; // gear
+        moreToggle.style.fontSize = "18px";
+        moreToggle.style.padding = "6px 10px";
+      }
+    } catch (error) {
+      warn("Kunde inte kompaktera spelmenyn:", error && error.message);
+    }
+  }
+
   function createPanel() {
     const existingPanel = document.getElementById("kbc-swarmbot-panel");
     if (existingPanel) existingPanel.remove();
@@ -23074,12 +23461,21 @@ function getDisplayName(item) {
 
         <label title="Ability-casts är avstängda som standard. Rush-abilities är oftast dåliga här.">
           <input id="kbc-auto-cast-abilities" type="checkbox">
-          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. Castar aldrig House of Mirrors, rush-abilities eller Swarmwarp automatiskt när detta är av. Clone Larvae styrs separat av Clone Ramp nedan.")}
+          Auto-casta abilities (risk / off by default) ${helpIcon("Av som standard. Castar aldrig House of Mirrors, rush-abilities eller Swarmwarp automatiskt när detta är av. Clone Larvae styrs separat av Clone Ramp nedan; House of Mirrors har sin egen opt-in nedan.")}
+        </label>
+
+        <label title="Opt-in: låt boten auto-casta House of Mirrors (dubblar territory-armén). Av som standard.">
+          <input id="kbc-auto-cast-house-of-mirrors" type="checkbox">
+          Auto-casta House of Mirrors (opt-in, off by default) ${helpIcon("Av som standard. På = boten castar House of Mirrors (clonearmy) när armén finns, energin räcker över Nexus/Energi-reserven och det lönar sig. Varje cast dubblar hela territory-armén. En cast per körning; reserven är den naturliga bromsen.")}
         </label>
 
         <label title="Clone Ramp: den enda ability som får auto-castas, och bara Clone Larvae. Bounded till en cast per körning, banking i cocoons mellan casts, stannar vid full cap.">
           <input id="kbc-auto-cast-clone-larvae" type="checkbox">
           Clone Ramp: auto-casta Clone Larvae (on by default) ${helpIcon("På som standard i Smart Mode. Rampen castar Clone Larvae högst en gång per körning, bankar de nya larverna i cocoons, och lämnar tillbaka action-budgeten till Meat-planern efter en full-cap-cast. Alla andra abilities förblir advisor-only oavsett detta läge.")}
+        </label>
+        <label title="Opt-in: när banken är på/över cap, fortsätt casta Clone Larvae varje körning istället för att stanna efter en. Energi-reserven är den naturliga bromsen.">
+          <input id="kbc-continuous-clone-cast" type="checkbox">
+          Clone Ramp: fortsätt casta över cap (opt-in, off by default) ${helpIcon("Av som standard. På = så länge Clone Larvae-banken ligger på/över cap gör rampen en full-cap-cast varje körning (varje cast ger ~cap larver för fast energikostnad), tills Nexus/Energi-reserven stoppar den. Kräver att Clone Ramp ovan är på.")}
         </label>
       </div>
 
@@ -24461,6 +24857,10 @@ function getDisplayName(item) {
 
     bindPanel();
     refreshPanel();
+
+    // BOOK-00: dock the game + the four bot panels into one unified single-window
+    // shell (one window, one theme, one scroll). UI-only; no behavior change.
+    mountUnifiedShell();
   }
 
   function bindPanel() {
@@ -24945,8 +25345,20 @@ function getDisplayName(item) {
       refreshPanel();
     });
 
+    $("#kbc-continuous-clone-cast").addEventListener("change", (e) => {
+      config.cloneRampContinuousCastAtCap = e.target.checked;
+      saveConfig();
+      refreshPanel();
+    });
+
     $("#kbc-auto-cast-abilities").addEventListener("change", (e) => {
       config.autoCastAbilities = e.target.checked;
+      saveConfig();
+      refreshPanel();
+    });
+
+    $("#kbc-auto-cast-house-of-mirrors").addEventListener("change", (e) => {
+      config.autoCastHouseOfMirrors = e.target.checked;
       saveConfig();
       refreshPanel();
     });
@@ -25223,7 +25635,9 @@ function getDisplayName(item) {
     $("#kbc-clone-cocoon-chunk").value = config.cloneCocoonChunkPercent;
     $("#kbc-clone-prep-cooldown").value = config.clonePrepCooldownSeconds;
     $("#kbc-auto-cast-clone-larvae").checked = !!config.autoCastCloneLarvae;
+    $("#kbc-continuous-clone-cast").checked = !!config.cloneRampContinuousCastAtCap;
     $("#kbc-auto-cast-abilities").checked = !!config.autoCastAbilities;
+    $("#kbc-auto-cast-house-of-mirrors").checked = !!config.autoCastHouseOfMirrors;
     $("#kbc-seconds").value = config.runEverySeconds;
     $("#kbc-order").value = config.purchaseOrder;
     $("#kbc-unit-strategy").value = config.unitStrategy;

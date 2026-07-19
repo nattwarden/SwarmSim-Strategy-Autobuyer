@@ -112,8 +112,10 @@ These must not change unless explicitly requested:
 - `autoAscend` defaults to false
 - `energySupportBrokerAllowAutoCast` defaults to false
 - `autoCastCloneLarvae` defaults to true (explicit, user-authorized exception,
-  see below) - every other ability stays advisor-only
-- no House of Mirrors auto-cast by default
+  see below) - every other ability except the House of Mirrors opt-in stays
+  advisor-only
+- `autoCastHouseOfMirrors` defaults to false (explicit, user-authorized opt-in,
+  see below); House of Mirrors stays advisor-only unless the player enables it
 - no Nightbug/Bat auto-buy by default
 - Nexus and Energy protection remain enabled
 - default Smart planners do not use blind aggressive buyMax behavior
@@ -137,12 +139,44 @@ in `dev-src/runtime-sections/runtime-main.js`), which:
 - performs exactly one "full cap" cast once bank reaches
   `CLONE_RAMP_FULL_CAP_THRESHOLD_PERCENT` (99.9%) of cap, then releases the
   action budget back to normal Meat progression until bank drops below that
-  threshold again.
+  threshold again - **unless** the opt-in `cloneRampContinuousCastAtCap`
+  (default `false`) is enabled.
 
-House of Mirrors, rush abilities, Swarmwarp, Ascension, and Mutagen remain
-fully advisor-only regardless of this flag; `autoCastAbilities` still
-gates every ability except this one narrow case. Do not widen this exception
-to any other ability without an equally explicit, separate user request.
+`cloneRampContinuousCastAtCap` (default `false`, explicit opt-in) changes only
+the "release at cap" step: when enabled and the bank sits at/above cap, the
+planner keeps issuing the same bounded single-cast full-cap cast every cycle
+instead of releasing after one. It changes nothing else - the same
+visibility/buyable check, the same bounded `newDecimal(1)` command path, and
+the same Nexus/Energy reserve gate all still apply, and that reserve gate is the
+natural stop (casts halt before energy would fall below the protected reserve).
+Each cast adds a constant ~cap of larvae for a fixed energy cost, so above cap
+the one-shot default leaves that repeatable gain unused; this flag is the
+user-authorized way to capture it. The default remains the one-shot behavior.
+
+Rush abilities, Swarmwarp, Ascension, and Mutagen remain fully advisor-only
+regardless of these flags; `autoCastAbilities` still gates every ability except
+the Clone Ramp exception and the House of Mirrors opt-in below. Do not widen
+these exceptions to any other ability without an equally explicit, separate user
+request.
+
+### Opt-in: House of Mirrors (`autoCastHouseOfMirrors`, default false)
+
+`autoCastHouseOfMirrors` (default `false`) is an explicit, user-authorized opt-in
+that lets the bot auto-cast House of Mirrors (the army-doubling ability). It is
+default-off and advisor-only unless the player enables it; when off, behavior and
+every fixture/laboratory output are byte-identical to before. When on it changes
+only three things, all scoped to House of Mirrors:
+
+- resolves the ability to the real army-doubling `clonearmy` upgrade (the legacy
+  live path resolved to `swarmwarp`, which does not double the army);
+- recognizes the territory army tier-tolerantly (the preferred set is written at
+  tier "V" but a live player runs the same family up to VI/VII via ascension) and
+  counts the real live army (the legacy count short-circuited to 0 off-scenario);
+- casts House of Mirrors at most once per `runOnce()` cycle through the same
+  bounded single-amount `buyUpgrade` path as every other ability, only when the
+  shared `assessHouseOfMirrorsReadiness` gate passes (relevant army, energy,
+  meaningful territory/Expansion payoff, helps target) and the cast keeps energy
+  at or above the Nexus/Energy reserve. The reserve gate is the natural stop.
 
 These are hard boundaries, not a directive to under-optimize reversible normal purchases.
 
@@ -153,6 +187,8 @@ source of truth if they ever diverge — fix the divergence, do not guess):
 ```js
 autoCastAbilities: false
 autoCastCloneLarvae: true
+cloneRampContinuousCastAtCap: false
+autoCastHouseOfMirrors: false
 autoAscend: false
 saveEnergyForNexus: true
 nexusTarget: 5

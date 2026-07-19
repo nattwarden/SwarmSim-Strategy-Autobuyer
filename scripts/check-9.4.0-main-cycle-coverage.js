@@ -13,6 +13,7 @@ const EXPECTED_PATHS = [
   { pathId: "CRITICAL_PRODUCTION_UPGRADES", sourceCall: "handleCriticalProductionUpgrades", m6Coverage: "NONE" },
   { pathId: "ENERGY_GUARD", sourceCall: "executeEnergyGuardAction", m6Coverage: "PARTIAL" },
   { pathId: "CLONE_RAMP", sourceCall: "executeCloneRampGuardAction", m6Coverage: "NONE" },
+  { pathId: "HOUSE_OF_MIRRORS", sourceCall: "executeHouseOfMirrorsCastAction", m6Coverage: "NONE" },
   { pathId: "CLONE_BUFFER", sourceCall: "executeCloneGuardAction", m6Coverage: "NONE" },
   { pathId: "CLONE_BUFFER_HARD_LOCK_RECOVERY", sourceCall: "executeCloneGuardAction", m6Coverage: "NONE" },
   { pathId: "MEAT_UNLOCK_PLANNER", sourceCall: "runUnlockPlanner", m6Coverage: "PARTIAL" },
