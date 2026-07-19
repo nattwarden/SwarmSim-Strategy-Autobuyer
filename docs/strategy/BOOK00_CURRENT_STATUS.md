@@ -3,7 +3,27 @@
 Status: Active handoff board. Update this file at every completed work package,
 blocked handoff, milestone transition, and accepted verification result.
 
-Last reviewed: 2026-07-18
+Last reviewed: 2026-07-19
+
+## 9.4.0 release (2026-07-19)
+
+Version bumped `9.3.6` → `9.4.0` across all enforced surfaces (package.json,
+package-lock.json, userscript `@version` + `AUTOBUYER_VERSION`, dev-src
+`AUTOBUYER_VERSION`); `check:version:surfaces` and `build:check` green. Shipped
+on `main` (fast-forwarded from `codex/9.4.0-clean-room`) in commit `b052fac`:
+
+- **Unified single-window UI** — game + the four bot panels docked into one flex
+  shell (`mountUnifiedShell`); UI-only.
+- **`cloneRampContinuousCastAtCap`** (opt-in, default off) — Clone Larvae keeps
+  full-cap casting while the bank is at/above cap; energy reserve is the stop.
+- **`autoCastHouseOfMirrors`** (opt-in, default off) — auto-cast House of Mirrors
+  (doubles the territory army), fixing three flag-gated recognition bugs and
+  adding a `HOUSE_OF_MIRRORS` main-cycle path (`house-of-mirrors-cast-path-boundary.v1`).
+
+Both opt-ins are advisor-only by default; defaults + every fixture stay
+byte-identical. `npm run verify` is green except the long-standing
+`check:live-purchase-acceptance` Scenario B assertion (the intentional
+`m6DecisionOwnsMainCycle = false` NO_GO gate), which predates this work.
 
 ## 9.4.0 clean-room recovery (2026-07-16)
 
