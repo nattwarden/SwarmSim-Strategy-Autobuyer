@@ -635,6 +635,196 @@ Escalate when: supported cast/ascend candidates cannot be compared on a shared
 milestone basis, default-safety boundaries conflict with proposed behavior, or
 execution introduces irreversible-risk ambiguity.
 
+## Repository health hardening track (RH)
+
+Source: `REPOSITORY_AUDIT_REVIEW_2026-07-19.md` (findings R1-R9, audited at
+`fcfe1432e47e7aec8bfef7ac47a874138d91d057`, 9.4.0).
+
+This is a bounded maintenance track under the same infrastructure exception as
+Milestone 0: it is not product capability, so it is capped at the six work
+packages below and must not expand into a general platform rewrite. Runtime
+strategy, safety defaults, and player-visible behavior must be byte-identical
+throughout except where a package explicitly says otherwise (none do).
+
+Track owner (project lead): the coordinating agent that produced the audit.
+Parallel execution rules: the agent coordination rules of this runbook apply
+unchanged - one agent per work package, one dedicated branch/worktree per
+package, no two packages that touch the same files may run concurrently.
+
+### Parallelization waves
+
+- **Wave 1 (parallel):** RH-1, RH-2, RH-3. Disjoint file sets
+  (workflow file / scripts+package.json / runtime-main.js+built userscript).
+  Merge order after completion: RH-1, then RH-2, then RH-3 (rebase each on the
+  previous merge; conflicts are expected to be zero).
+- **Wave 2 (after RH-2 lands):** RH-4. Touches many `scripts/*.js` files, so
+  it must not overlap RH-2's deletions.
+- **Wave 3 (after RH-3 lands):** RH-5. Touches `runtime-main.js` and the build
+  config, so it must not overlap RH-3.
+- **User decision required before start:** RH-6.
+
+Model note: RH-1, RH-2, and RH-3 are mechanical; a cheaper model (Sonnet, or
+Haiku for RH-1) is sufficient. RH-4 and RH-5 need normal engineering judgment
+(Sonnet or stronger). Escalate to a strong model only if RH-5 uncovers
+behavior-parity ambiguity.
+
+### RH-1 - Make CI verify actually runnable (R2)
+
+```text
+Product capability: none (infrastructure exception).
+Player-visible change: none.
+Domains included: .github/workflows/verify.yml only.
+Domains explicitly excluded: verify-chain content, scripts, runtime.
+Current milestone and horizons: n/a (maintenance).
+Advisor, shadow, or execution authority: n/a.
+Hard safety boundaries: no runtime or verifier source changes.
+Focused acceptance states: a green Actions run on a PR branch, or a
+  documented red run whose failure is a real check failure (not
+  MODULE_NOT_FOUND / missing browser).
+Files expected to change: .github/workflows/verify.yml.
+Evidence generators and allowlisted paths: none.
+Stop condition: workflow installs dependencies (npm ci) and Chromium
+  (npx playwright install chromium --with-deps) before npm run verify;
+  do not restructure the verify chain itself (that is RH-4).
+```
+
+Known caveat to record in the PR: until RH-4, CI remains dependent on the
+live `swarmsim.com` site and may be flaky for that reason alone.
+
+### RH-2 - Retire dead scripts and package.json entries (R4)
+
+```text
+Product capability: none (infrastructure exception).
+Player-visible change: none.
+Domains included: scripts/ deletions, package.json script entries.
+Domains explicitly excluded: any script referenced by the verify chain, the
+  runtime, the build pipeline, or AGENTS.md-required validation.
+Current milestone and horizons: n/a (maintenance).
+Advisor, shadow, or execution authority: n/a.
+Hard safety boundaries: npm run build, npm run verify, and
+  node scripts/validate-repo-guardrails.js must pass unchanged after removal.
+Focused acceptance states: verify green before and after; a grep proving no
+  reference to any deleted filename remains in package.json, scripts/,
+  .github/, AGENTS.md, or docs/ outside historical release notes.
+Files expected to change: deletions of the 5 unreferenced scripts, the 14
+  retired check-X.Y.Z-version-surfaces.js files, the 5
+  run-0.11.x-deterministic-scenarios.js runners plus their per-version
+  check-0.11.x-*.js companions if and only if nothing else references them;
+  removal of the corresponding package.json entries.
+Evidence generators and allowlisted paths: none.
+Stop condition: every deleted file is provably unreferenced; anything with a
+  surviving reference is left in place and listed in the handoff instead.
+```
+
+Git history is the archive; no `scripts/archive/` tree may be created.
+
+### RH-3 - Remove dead runtime functions (R1)
+
+```text
+Product capability: none (infrastructure exception).
+Player-visible change: none (byte-identical behavior).
+Domains included: the 12 functions listed in
+  REPOSITORY_AUDIT_REVIEW_2026-07-19.md R1, in
+  dev-src/runtime-sections/runtime-main.js, plus the rebuilt userscript.
+Domains explicitly excluded: any other runtime change, any refactor, any
+  formatting churn around the deletions.
+Current milestone and horizons: n/a (maintenance).
+Advisor, shadow, or execution authority: n/a.
+Hard safety boundaries: DEFAULT_CONFIG untouched; all hard safety defaults
+  untouched; no verifier expectation may be edited to force a pass.
+Focused acceptance states: re-run the audit's occurrence scan to prove each
+  deleted name has zero remaining references; npm run build && npm run verify
+  green; version surfaces unchanged (no version bump for a pure deletion
+  unless the user requests a release).
+Files expected to change: dev-src/runtime-sections/runtime-main.js,
+  src/SwarmSim-Strategy-Autobuyer.user.js (rebuilt).
+Evidence generators and allowlisted paths: none.
+Stop condition: exactly the 12 audited functions removed; if any turns out to
+  be referenced after all (dynamic dispatch), leave it and record why.
+```
+
+### RH-4 - Shared hermetic verifier harness (R3, R7 partially)
+
+```text
+Product capability: none (infrastructure exception).
+Player-visible change: none.
+Domains included: a shared scripts/lib/ harness (launch once, reuse one
+  Chromium instance/page across checks), and a locally served pinned game
+  build (swarmsim/swarm @ 06b4f404aa324a0b454348508cfa63d5c0f1ff54, the
+  commit already pinned in the runtime) replacing live-site navigation in
+  verify-chain checks.
+Domains explicitly excluded: check semantics (every assertion keeps its exact
+  meaning), the strategy-audit live runners (strategy:audit:live stays live
+  by design), safety defaults.
+Current milestone and horizons: n/a (maintenance).
+Advisor, shadow, or execution authority: n/a.
+Hard safety boundaries: no check may be weakened or deleted to make the
+  harness work; a check that cannot run against the pinned build stays on
+  the live site and is listed in the handoff.
+Focused acceptance states: npm run verify green offline (network disabled)
+  except for explicitly listed live-only checks; total verify wall-clock time
+  recorded before and after.
+Files expected to change: scripts/lib/* (new), verify-chain scripts'
+  harness boilerplate, package.json verify entry, possibly a small
+  serve-pinned-game helper script.
+Evidence generators and allowlisted paths: none beyond the timing note in
+  the handoff.
+Stop condition: one harness, one browser launch per verify run for the
+  migrated checks, live-site dependency removed from the default chain;
+  do not begin parallelizing checks or rewriting them as a test framework.
+```
+
+This package is the largest; it may be split per the milestone split rule if
+the harness and the pinned-game serving prove to be two independently
+verifiable outcomes.
+
+### RH-5 - Resolve the dev-src scaffolding contradiction (R5, prepares R6)
+
+```text
+Product capability: none (infrastructure exception).
+Player-visible change: none (byte-identical built userscript required).
+Domains included: EITHER delete dev-src/guards/, dev-src/overseer/,
+  dev-src/contracts/, and the three adapter-*.js files (and update
+  docs/process/MODULARIZATION_PLAN.md and AGENTS.md references), OR wire a
+  first real extraction: split one section out of runtime-main.js into a
+  second parts entry in scripts/canonical-build.config.json with a
+  byte-identical build. The choice is the track owner's call after RH-3.
+Domains explicitly excluded: extracting more than one section; any behavior
+  change; touching lane strategy.
+Current milestone and horizons: n/a (maintenance).
+Advisor, shadow, or execution authority: n/a.
+Hard safety boundaries: build:check must prove the assembled userscript is
+  byte-identical before and after (except pure section reordering is NOT
+  allowed - the assembly must reproduce the same bytes).
+Focused acceptance states: npm run build:check green; npm run verify green;
+  R7 string-assertion verifiers still pass (their asserted substrings must
+  survive the split or be updated in the same narrow change).
+Files expected to change: dev-src tree, scripts/canonical-build.config.json,
+  docs/process/MODULARIZATION_PLAN.md, AGENTS.md (index/boundaries).
+Evidence generators and allowlisted paths: none.
+Stop condition: the repository tells the truth about its own architecture -
+  either no scaffolding, or scaffolding that the build actually uses.
+```
+
+### RH-6 - Evidence weight retention decision (R8) - blocked on user
+
+```text
+Product capability: none.
+Player-visible change: none.
+Domains included: docs/test-data/strategy-audit-1/ (~37 MB) retention.
+Domains explicitly excluded: formal acceptance evidence tied to closed
+  milestones (retention contract exists; stays).
+Stop condition: the user decides keep / prune / move to release assets.
+  No agent deletes evidence without that explicit decision.
+```
+
+### Track exit review
+
+The track is closed when RH-1 through RH-5 are merged (RH-6 may close as
+"user chose keep"), `npm run verify` is green locally and in CI, and a
+one-paragraph result per package is distilled into this section, replacing
+the package detail above.
+
 ## Milestone exit review
 
 At the end of every milestone, answer only these questions:
@@ -651,6 +841,7 @@ If question 1 or 2 has no concrete answer, do not declare the milestone done.
 
 ## Immediate next action
 
-Read `BOOK00_CURRENT_STATUS.md`, execute the active M8 Chrome replay and
-fallback-validation sequence, then complete focused plus full verification
-without widening authority or changing hard safety defaults.
+Read `BOOK00_CURRENT_STATUS.md` for the active work package. As of 2026-07-19
+that is the Repository health hardening track (RH) above: Wave 1 packages
+RH-1, RH-2, and RH-3 may start in parallel, one agent and one worktree per
+package, without widening authority or changing hard safety defaults.

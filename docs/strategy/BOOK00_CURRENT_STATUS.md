@@ -35,6 +35,28 @@ is gated off, and the legacy-cycle acceptance (authority = false) stays in
 the new `HOUSE_OF_MIRRORS` path was missing from the `critical-upgrade`,
 `smart-unit`, and `smart-upgrade` boundary-contract maps — now added.
 
+## Repository health audit and hardening track (2026-07-19)
+
+A read-only repository-health audit was performed on 2026-07-19 against
+`fcfe1432e47e7aec8bfef7ac47a874138d91d057` (9.4.0). Findings R1-R9 and their
+evidence live in
+[REPOSITORY_AUDIT_REVIEW_2026-07-19.md](REPOSITORY_AUDIT_REVIEW_2026-07-19.md).
+Headline: the runtime itself is healthy (only ~358 dead lines of 26 224; all
+config keys used; build parity exact), but the CI workflow cannot pass as
+written (no `npm ci`/Playwright install), the verify chain depends on the live
+`swarmsim.com` site (~30 separate Chromium launches), ~24 retired scripts
+remain, and the `dev-src` modularization scaffolding is unwired.
+
+Remediation is the **Repository health hardening track (RH-1 .. RH-6)** in
+[BOOK00_PRODUCT_DELIVERY_RUNBOOK.md](BOOK00_PRODUCT_DELIVERY_RUNBOOK.md) -
+this is now the active work package. Wave 1 (RH-1 CI fix, RH-2 script
+retirement, RH-3 dead-function removal) may run as three parallel agents in
+separate worktrees; RH-4 (hermetic harness) follows RH-2; RH-5 (dev-src
+decision) follows RH-3; RH-6 (evidence retention, ~37 MB
+`docs/test-data/strategy-audit-1/`) is blocked on an explicit user decision.
+Coordination, contracts, and stop conditions are in the runbook track section;
+no package changes strategy, safety defaults, or player-visible behavior.
+
 ## 9.4.0 clean-room recovery (2026-07-16)
 
 The rejected `feature/9.4.0-global-execution-ownership` series remains research
@@ -574,9 +596,14 @@ separate entry in the distilled handoff index below: the SA1 9.0.0-vs-9.1.0 comp
 `blockerCategories` replace regex-over-text in the stall-breaker decision
 gate), and F7 (`DEFAULT_CONFIG.unitStrategy` now matches the Smart preset).
 
-No work package is currently in flight. The next direction is live
-observation of the accepted baseline rather than a new coded milestone; see
-"Immediate next actions" below.
+Active work package (2026-07-19): the **Repository health hardening track
+(RH-1 .. RH-6)** - see the 2026-07-19 section at the top of this file and the
+track section in the runbook. It is maintenance-only (no strategy, safety, or
+player-visible change) and is designed for parallel agents: Wave 1 = RH-1 +
+RH-2 + RH-3 concurrently, then RH-4 after RH-2, then RH-5 after RH-3; RH-6
+awaits a user retention decision. The previously stated direction (live
+observation of the accepted baseline) resumes after the track closes, unless
+a player-reported issue arrives first.
 
 ## Immediate next actions
 
@@ -586,12 +613,16 @@ entries in the distilled handoff index below for each). The audited baseline was
 `2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (9.1.0); current `main` is ahead
 of that with the closures above.
 
-No specific milestone is queued next. The next direction is live
-observation: run the accepted 9.1.0 baseline against real/live-like play
-(SA1 sweep matrix, or an actual reported save) and let the next strategy
-problem be selected from what that evidence actually shows, rather than
-starting Milestone 10/11 speculatively. If a concrete player-reported issue
-or a new verified finding emerges, treat that as the next work package.
+The queued work is the Repository health hardening track (2026-07-19; see
+"Current work package"). Wave 1 packages RH-1 (CI fix), RH-2 (script
+retirement), and RH-3 (dead-function removal) can be handed to three parallel
+agents immediately; each package's full contract, acceptance states, and stop
+condition are in the runbook's RH section. After the track closes, the next
+direction remains live observation: run the accepted baseline against
+real/live-like play (SA1 sweep matrix, or an actual reported save) and let
+the next strategy problem be selected from what that evidence actually shows,
+rather than starting Milestone 10/11 speculatively. If a concrete
+player-reported issue emerges, it preempts the track's later waves.
 
 Hard constraints (still active):
 
@@ -672,6 +703,23 @@ At most three recent distilled handoffs are retained here; older entries are
 distilled into the index below and their full text lives in Git history of
 this file. Durable facts belong in the owning documents, not in this log.
 
+### 2026-07-19 - Repository health audit + RH track opened by Claude (Fable 5)
+
+- Worktree/branch: `C:/Users/info/Documents/SwarmSim-9.4.0-clean-room`,
+  `codex/9.4.0-clean-room`.
+- Implementation SHA or uncommitted scope: audit performed read-only at
+  `fcfe1432e47e7aec8bfef7ac47a874138d91d057`; documentation-only changes
+  (this file, the runbook RH track, BOOK-00 marker,
+  `REPOSITORY_AUDIT_REVIEW_2026-07-19.md`) pending commit.
+- Product capability changed: none (audit + planning only; runtime untouched).
+- Result: findings R1-R9 recorded; remediation planned as the RH track with
+  parallelization waves and per-package contracts. The audit also corrected
+  the runbook's stale M8 "Immediate next action" pointer (R9).
+- Remaining blocker: RH-6 needs a user retention decision for
+  `docs/test-data/strategy-audit-1/`.
+- Exact next action: hand RH-1, RH-2, RH-3 to parallel agents (one worktree
+  each) per the runbook's RH wave rules.
+
 ### 2026-07-18 - Clean-room slices 8-10 closed by Claude (Fable 5)
 
 - Worktree/branch: `C:/Users/info/Documents/SwarmSim-9.4.0-clean-room`,
@@ -704,23 +752,17 @@ this file. Durable facts belong in the owning documents, not in this log.
   and the unlock-planner threshold path); both call the same
   `buyUpgradeAmount(..., newDecimal(1), ...)` primitive.
 
-### 2026-07-15 - Clone Ramp 9.3.0 (bounded Clone Larvae auto-cast)
-
-- The narrow, user-authorized exception and its exact invariants are
-  documented in `AGENTS.md` (Hard safety defaults); acceptance lives in
-  `scripts/check-book00-clone-ramp-acceptance.js` with the pinned save in
-  `docs/test-data/clone-ramp/`.
-- Adjacent pre-existing bug fixed: the legacy Clone Buffer Planner's
-  auto-detected `POST_CLONE_LOCK` treated any positive `bank()` (a live
-  larva+cocoon total, not a debt signal) as "just cloned" and drained
-  protected larva; the heuristic no longer fires when
-  `autoCastCloneLarvae` is on. An explicit manual
-  `cloneBufferMode: "post-clone-lock"` override is unaffected.
-- A pre-existing `check:book00:territory-saturation` failure against live
-  state was verified to reproduce at the pre-Clone-Ramp baseline (`29c6da6`)
-  and was left unfixed per the narrow-change rule (later resolved on main).
-
 ### Distilled handoff index (full text in Git history)
+
+- 2026-07-15: Clone Ramp 9.3.0 (bounded Clone Larvae auto-cast) - the
+  exception's invariants live in `AGENTS.md` (Hard safety defaults),
+  acceptance in `scripts/check-book00-clone-ramp-acceptance.js` with the
+  pinned save in `docs/test-data/clone-ramp/`; the adjacent Clone Buffer
+  `POST_CLONE_LOCK` false-positive was fixed (heuristic disabled while
+  `autoCastCloneLarvae` is on; manual override unaffected); a pre-existing
+  `check:book00:territory-saturation` live failure was reproduced at the
+  pre-Clone-Ramp baseline and left per the narrow-change rule (later
+  resolved on main).
 
 - 2026-07-14: F7 closed (`DEFAULT_CONFIG.unitStrategy` -> `"balanced"`,
   matching the Smart preset); F3 closed (stall-breaker gate reads structured

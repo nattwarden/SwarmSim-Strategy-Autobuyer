@@ -1,6 +1,6 @@
 # Book 00 - Vision, Goals, and Dreams
 
-> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-18` | Revision: `d550fb5b7199f78047b7ac809b197a7eedd31683` | Result: `manual early-game evidence, save states, UI map, and active-play principles added; documentation changes uncommitted`
+> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-19` | Revision: `fcfe1432e47e7aec8bfef7ac47a874138d91d057` | Result: `2026-07-19 repo-health audit recorded (R1-R9) and RH hardening track opened as active work package; documentation changes uncommitted`
 
 Status: Strategic north star for SwarmSim Strategy Autobuyer.
 
