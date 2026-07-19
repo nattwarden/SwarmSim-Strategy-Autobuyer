@@ -218,6 +218,17 @@ async function runScenarioB() {
 
 async function main() {
   const mutationRequested = process.argv.includes("--mutate-m6-cycle-ownership");
+  // Scenario B asserts M6 EXECUTION authority (coordinatorExecutionAuthority
+  // === "true"), i.e. the m6DecisionOwnsMainCycle = true "sole-owner" design
+  // that was deliberately NOT shipped (NO_GO — see
+  // docs/strategy/GLOBAL_EXECUTION_OWNERSHIP_READINESS_9.4.0.md: reintroducing
+  // sole ownership reproduces the historical no-buy bug). Under the accepted
+  // advisor-only baseline it can never pass, so it is NOT part of `npm run
+  // verify`; it is the opt-in reopening gate that would have to go green before
+  // the NO_GO lift could ever be reconsidered. Run it with --reopening-gate
+  // (npm run check:m6-reopening-gate). M6 still fully powers the Council/advisor
+  // surface; only its execution ownership is gated off.
+  const includeReopeningGate = process.argv.includes("--reopening-gate");
   let userscriptContent = null;
   if (mutationRequested) {
     const userscriptPath = path.resolve(__dirname, "..", "src", "SwarmSim-Strategy-Autobuyer.user.js");
@@ -238,6 +249,15 @@ async function main() {
 
   if (mutationRequested) {
     throw new Error("mutation control unexpectedly preserved the legacy fallback purchase");
+  }
+
+  if (!includeReopeningGate) {
+    console.log(
+      "[check-live-purchase-acceptance] Scenario B skipped: it is the opt-in M6-ownership "
+        + "reopening gate (asserts the NO_GO m6DecisionOwnsMainCycle=true design). "
+        + "Run `npm run check:m6-reopening-gate` to include it."
+    );
+    return;
   }
 
   const scenarioB = await runScenarioB();

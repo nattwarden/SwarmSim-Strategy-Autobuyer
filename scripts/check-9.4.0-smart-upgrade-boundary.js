@@ -12,6 +12,7 @@ const DECLARED_BOUNDARY_CONTRACTS = {
   LARVA_ENGINE_GUARD: "larva-engine-guard-path-boundary.v1",
   ENERGY_GUARD: "energy-guard-path-boundary.v1",
   CLONE_RAMP: "clone-ramp-guard-path-boundary.v1",
+  HOUSE_OF_MIRRORS: "house-of-mirrors-cast-path-boundary.v1",
   CLONE_BUFFER: "clone-buffer-guard-path-boundary.v1",
   CLONE_BUFFER_HARD_LOCK_RECOVERY: "clone-buffer-guard-path-boundary.v1",
   MEAT_UNLOCK_PLANNER: "meat-unlock-planner-path-boundary.v1",

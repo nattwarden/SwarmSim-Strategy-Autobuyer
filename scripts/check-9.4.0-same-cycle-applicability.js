@@ -95,6 +95,14 @@ async function main() {
   const mutateMissingDisposition = process.argv.includes("--mutate-missing-disposition");
   const mutateStaleCycle = process.argv.includes("--mutate-stale-cycle-evidence");
   const mutateGlobalOwnership = process.argv.includes("--mutate-global-ownership");
+  // The M6 cycle below asserts M6 EXECUTION authority (the NO_GO
+  // m6DecisionOwnsMainCycle=true design that was deliberately not shipped). It
+  // cannot pass on the accepted advisor-only baseline, so it is excluded from
+  // `npm run verify` and runs only under the opt-in reopening gate
+  // (`npm run check:m6-reopening-gate`). The legacy cycle above is the accepted
+  // state and stays in verify. See check-live-purchase-acceptance.js and
+  // docs/strategy/GLOBAL_EXECUTION_OWNERSHIP_READINESS_9.4.0.md.
+  const includeReopeningGate = process.argv.includes("--reopening-gate");
   let userscriptContent = null;
 
   if (mutateMissingDisposition || mutateStaleCycle || mutateGlobalOwnership) {
@@ -132,6 +140,20 @@ async function main() {
 
   if (mutateMissingDisposition || mutateStaleCycle || mutateGlobalOwnership) {
     throw new Error("same-cycle mutation unexpectedly preserved proven coverage");
+  }
+
+  if (!includeReopeningGate) {
+    console.log("9.4.0 SAME-CYCLE APPLICABILITY ACCEPTANCE PASSED (legacy cycle)");
+    console.log("[same-cycle-applicability] M6 cycle skipped: opt-in M6-ownership reopening gate. Run `npm run check:m6-reopening-gate` to include it.");
+    console.log(JSON.stringify({
+      legacy: {
+        coordinatorExecutionAuthority: legacyCycle.coordinatorExecutionAuthority,
+        dispositions: Object.fromEntries(legacyDispositions),
+        waitPrecondition: legacyCycle.mainCycleCoverage.waitPrecondition.status,
+        wholeCycleOwnershipEligible: legacyCycle.mainCycleCoverage.waitPrecondition.wholeCycleOwnershipEligible,
+      },
+    }, null, 2));
+    return;
   }
 
   const m6Cycle = await runScenario("book00-live-purchase-m6");

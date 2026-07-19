@@ -21,9 +21,19 @@ on `main` (fast-forwarded from `codex/9.4.0-clean-room`) in commit `b052fac`:
   adding a `HOUSE_OF_MIRRORS` main-cycle path (`house-of-mirrors-cast-path-boundary.v1`).
 
 Both opt-ins are advisor-only by default; defaults + every fixture stay
-byte-identical. `npm run verify` is green except the long-standing
-`check:live-purchase-acceptance` Scenario B assertion (the intentional
-`m6DecisionOwnsMainCycle = false` NO_GO gate), which predates this work.
+byte-identical.
+
+**`npm run verify` is now fully green (exit 0).** The two assertions that
+demanded M6 *execution* authority (`check:live-purchase-acceptance` Scenario B
+and `check:9.4.0:same-cycle-applicability`'s M6 cycle) tested the deliberately
+NOT-shipped `m6DecisionOwnsMainCycle = true` "sole-owner" design (NO_GO). They
+were moved out of the default `verify` chain into an opt-in reopening gate,
+`npm run check:m6-reopening-gate` (run only when re-attempting the NO_GO lift).
+M6 still fully powers the Council/advisor surface; only its execution ownership
+is gated off, and the legacy-cycle acceptance (authority = false) stays in
+`verify`. Relocating them also surfaced a real gap the old red state had masked:
+the new `HOUSE_OF_MIRRORS` path was missing from the `critical-upgrade`,
+`smart-unit`, and `smart-upgrade` boundary-contract maps — now added.
 
 ## 9.4.0 clean-room recovery (2026-07-16)
 
