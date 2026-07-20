@@ -1,6 +1,17 @@
-# Modularization Plan (Phase 1 start)
+# Modularization Plan (retired scaffolding; approach on hold)
 
-Status: Started 2026-07-09, Phase 4 done (practical split active)
+Status: On hold as of 2026-07-19. The per-lane `dev-src/` scaffolding this plan
+introduced (`guards/`, `overseer/`, `contracts/`, `adapter-*.js`) was never
+wired into the build or imported by any code, so it was deleted as dead code
+(RH-5, audit finding R5). The runtime remains one source file,
+`dev-src/runtime-sections/runtime-main.js`, assembled into the single
+userscript. This document is kept only as a design reference for any *future*
+extraction: the build already supports multiple source `parts` in
+`scripts/canonical-build.config.json`, so a real split would add a build part,
+not re-create standalone skeleton modules. The historical phase notes below
+describe that abandoned skeleton, not current structure.
+
+Original status line: Started 2026-07-09, Phase 4 done (practical split active)
 
 Goal:
 

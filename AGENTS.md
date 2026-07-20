@@ -84,7 +84,7 @@ Before changing code, read:
 
 `AI.md` has been merged into this file and deleted; every unique rule it carried now lives here. Historical prompts and release notes referencing it describe the repository as it was at their timestamps. For mechanics claims, also read the relevant evidence book in `docs/BOOK-01` through `docs/BOOK-07`.
 
-For modularization tasks, also read `docs/process/MODULARIZATION_PLAN.md` and relevant `dev-src/` modules.
+For any future modularization, read `docs/process/MODULARIZATION_PLAN.md`. The runtime source is a single file, `dev-src/runtime-sections/runtime-main.js`, assembled into the userscript by the build; the earlier per-lane `dev-src/` scaffolding was retired unused (see below).
 
 Search by function, constant, schema, and test name. Do not rely on line numbers from an older commit.
 
@@ -255,9 +255,10 @@ userscript and keep behavior parity unless explicitly changing strategy:
 - energy execution: `executeEnergyGuardAction(...)`
 - clone execution: `executeCloneGuardAction(...)`
 
-Use `dev-src/contracts/lane-proposal.js` for lane module boundaries when
-modularizing; extract one lane at a time with Inspector/export observability
-parity.
+These boundaries live in the canonical userscript / `runtime-main.js` and are
+the real lane seams. (The former unwired `dev-src/guards/`, `dev-src/overseer/`,
+`dev-src/contracts/`, and `adapter-*.js` scaffolding was removed on 2026-07-19
+as dead code — it was imported by nothing and not part of the build.)
 
 ## Strategy research fast path
 
