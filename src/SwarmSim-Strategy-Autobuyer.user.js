@@ -2067,27 +2067,6 @@ function getDisplayName(item) {
     return row;
   }
 
-  function addItemLaneCandidate(lane, decision, item, reason, extra = {}) {
-    return addLaneCandidate({
-      lane,
-      decision,
-      candidate: getDisplayName(item),
-      reason,
-      score: extra.score ?? unitCostScore(item),
-      wouldBuyAmount: extra.wouldBuyAmount || extra.amount || "",
-      blockers: extra.blockers || [],
-      blockerCategories: extra.blockerCategories || [],
-      observations: extra.observations || [],
-      etaBefore: extra.etaBefore || "",
-      etaAfter: extra.etaAfter || "",
-      payback: extra.payback || "",
-      reserveAfter: extra.reserveAfter || "",
-      target: extra.target || "",
-      resource: extra.resource || "",
-      raw: extra.raw || null,
-    });
-  }
-
   function classifyCandidateBlockers(candidate, explicitCategories = []) {
     const blockerText = (candidate.blockers || []).join(" ").toLowerCase();
     const reasonText = String(candidate.reason || "").toLowerCase();
@@ -3920,286 +3899,6 @@ function getDisplayName(item) {
       futurePlanners: "0.11.0 adds Energy Support Broker + Council momentum clarity in advisor-first mode while preserving Parent Refill, Twin meaningful gate, clone safety, and no auto-cast defaults.",
       recommendedSmart: `Recommended Smart = Smart mode + safe auto-buy, focus ${PRESETS.smart.focusTab}, ${trimNumber(PRESETS.smart.smartUnitBuyPercent * 100)}% Smart chunk, methodical territory prep on, Nexus protection on, auto-cast off, auto-ascend off.`,
     };
-  }
-
-  function strategyInspectorRowsHtml() {
-    if (!config.strategyInspector) {
-      return `<div class="kbc-inspector-row">Strategy Inspector är avstängd.</div>`;
-    }
-
-    if (!strategyInspector) {
-      return `<div class="kbc-inspector-row">Strategy Inspector väntar på första Smart-körningen.</div>`;
-    }
-
-    const rows = [
-      ["Time", strategyInspector.time],
-      ["Phase", strategyInspector.phase],
-      ["Goal", strategyInspector.goal],
-      ["Decision", strategyInspector.decision],
-      ["Overseer decision", strategyInspector.overseerDecision || strategyInspector.laneCoordinatorDecision || "none"],
-      ["Main selected", strategyInspector.overseerMainSelected || "none"],
-      ["Companion selected", strategyInspector.overseerSideSelected || "none"],
-      ["Actions used", strategyInspector.overseerActionsUsed || `${strategyInspector.mainActions || 0}/?`],
-      ["Why selected", strategyInspector.overseerWhySelected || "none"],
-      ["Purchase evaluator", strategyInspector.purchaseEvaluatorMode || "off"],
-      ["Economic winner", strategyInspector.purchaseEvaluatorWinner || "none"],
-      ["Economic score", strategyInspector.purchaseEvaluatorWinnerScore ?? "n/a"],
-      ["Economic confidence", strategyInspector.purchaseEvaluatorWinnerConfidence || "none"],
-      ["Agrees with Council", strategyInspector.purchaseEvaluatorAgreesWithCouncil ? "yes" : "no"],
-      ["Economic margin", strategyInspector.purchaseEvaluatorScoreMargin ?? "n/a"],
-      ["Evaluator hold", strategyInspector.purchaseEvaluatorWhyNotExecuting || "none"],
-      ["Whole-economy mode", `${strategyInspector.wholeEconomyShadowMode || "shadow-advisor-only"} (${strategyInspector.wholeEconomyExecutionAuthority || "advisor-only"})`],
-      ["Best whole-economy opportunity", strategyInspector.wholeEconomyBestOpportunity || "none"],
-      ["Whole-economy action", strategyInspector.wholeEconomyBestAction || "none"],
-      ["Whole-economy target", strategyInspector.wholeEconomyBestTarget || "none"],
-      ["Whole-economy conflicts", strategyInspector.wholeEconomyResourceConflicts || "none"],
-      ["Top opportunity cost", strategyInspector.wholeEconomyTopOpportunityCost || "none"],
-      ["Why others wait", strategyInspector.wholeEconomyWhyOthersWait || "none"],
-      ["Decision switch signal", strategyInspector.wholeEconomySwitchSignal || "none"],
-      ["Advisor-only reason", strategyInspector.wholeEconomyAdvisorOnlyReason || "none"],
-      ["Energy shadow candidate", `${strategyInspector.wholeEconomyEnergyDecision || "OBSERVE"} ${strategyInspector.wholeEconomyEnergyCandidate || "none"}`],
-      ["Energy Nexus gate", strategyInspector.wholeEconomyEnergyNexusGate || "unknown"],
-      ["Energy reserve", `${strategyInspector.wholeEconomyEnergyReserveAfter ?? "n/a"} after / ${strategyInspector.wholeEconomyEnergyReserveRequired ?? "n/a"} required`],
-      ["Energy reserve recovery", strategyInspector.wholeEconomyEnergyReserveRecoverySeconds !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyReserveRecoverySeconds)) ? formatDuration(Number(strategyInspector.wholeEconomyEnergyReserveRecoverySeconds)) : "n/a"],
-      ["Energy cap headroom", `${strategyInspector.wholeEconomyEnergyCapHeadroomAfter ?? "n/a"} (${strategyInspector.wholeEconomyEnergySecondsToCapAfter !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergySecondsToCapAfter)) ? `${formatDuration(Number(strategyInspector.wholeEconomyEnergySecondsToCapAfter))} to cap` : "cap timing unavailable"})`],
-      ["Energy cap waste avoided", strategyInspector.wholeEconomyEnergyCapWasteAvoidedAmount ?? "n/a"],
-      ["Energy ability delay", `Clone ${strategyInspector.wholeEconomyEnergyCloneDelaySeconds !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyCloneDelaySeconds)) ? formatDuration(Number(strategyInspector.wholeEconomyEnergyCloneDelaySeconds)) : "n/a"}; Mirrors ${strategyInspector.wholeEconomyEnergyMirrorDelaySeconds !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyMirrorDelaySeconds)) ? formatDuration(Number(strategyInspector.wholeEconomyEnergyMirrorDelaySeconds)) : "n/a"}`],
-      ["Energy production gain", strategyInspector.wholeEconomyEnergyProductionGainPercent !== null && Number.isFinite(Number(strategyInspector.wholeEconomyEnergyProductionGainPercent)) ? `+${trimNumber(Number(strategyInspector.wholeEconomyEnergyProductionGainPercent))}%` : "n/a"],
-      ["Energy switch signal", strategyInspector.wholeEconomyEnergySwitchSignal || "none"],
-      ["Coordinator contract", strategyInspector.coordinatorExecutionSchema || "none"],
-      ["Coordinator authority", `${strategyInspector.coordinatorExecutionAuthority || "false"} (${strategyInspector.coordinatorAuthoritySource || "none"})`],
-      ["Coordinator selected", `${strategyInspector.coordinatorSelectedDomain || "none"} · ${strategyInspector.coordinatorSelectedLane || "none"}: ${strategyInspector.coordinatorSelectedCandidate || "none"}`],
-      ["Coordinator execution key", strategyInspector.coordinatorSelectedExecutionKey || "none"],
-      ["Coordinator execution identity", `${strategyInspector.coordinatorSelectedExecutionKind || "none"}:${strategyInspector.coordinatorSelectedExecutionId || "none"}:${strategyInspector.coordinatorSelectedExecutionVariant || "base"}`],
-      ["Coordinator fingerprint", `${strategyInspector.coordinatorSelectedFingerprint || "none"} -> ${strategyInspector.coordinatorExecutedFingerprint || "none"}`],
-      ["Coordinator amount", strategyInspector.coordinatorSelectedAmount || "0"],
-      ["Coordinator reason", strategyInspector.coordinatorSelectedReason || "none"],
-      ["Coordinator confidence", strategyInspector.coordinatorExecutionConfidence || "low"],
-      ["Coordinator margin", strategyInspector.coordinatorExecutionScoreMargin ?? "n/a"],
-      ["Coordinator gates passed", strategyInspector.coordinatorGatesPassed || "none"],
-      ["Coordinator gates failed", strategyInspector.coordinatorGatesFailed || "none"],
-      ["Coordinator revalidation", strategyInspector.coordinatorRevalidationStatus || "not-run"],
-      ["Coordinator fallback", strategyInspector.coordinatorFallbackReason || "none"],
-      ["Fallback planner takeover", strategyInspector.coordinatorFallbackPlanner || "none"],
-      ["Fallback planner reason", strategyInspector.coordinatorFallbackPlannerReason || "none"],
-      ["Coordinator budget", strategyInspector.coordinatorActionBudget || "0"],
-      ["Bot executed", strategyInspector.coordinatorExecuted || "no"],
-      ["Execution result", strategyInspector.coordinatorExecutionResult || "none"],
-      ["Execution matched decision", strategyInspector.coordinatorMatchedExecution || "no"],
-      ["Why no companion", strategyInspector.overseerWhyNoSide || "none"],
-      ["Blocked by hard guard", strategyInspector.overseerBlockedByHardGuard || "none"],
-      ["Main", strategyInspector.mainDecision || strategyInspector.decision],
-      ["Companion", strategyInspector.companionDecision || "none"],
-      ["Side-task", strategyInspector.sideDecision || "none"],
-      ["Status", strategyInspector.compactStatus || "n/a"],
-      ["Reason", strategyInspector.reason],
-      ["Main reason", strategyInspector.mainReason || "none"],
-      ["Companion reason", strategyInspector.sideReason || "none"],
-      ["Best allowed", strategyInspector.bestAllowedAction || "none"],
-      ["Best allowed main", strategyInspector.bestAllowedMainAction || "none"],
-      ["Best allowed side", strategyInspector.bestAllowedSideAction || "none"],
-      ["Best rejected", strategyInspector.bestRejectedAction || "none"],
-      ["Best rejected strategic", strategyInspector.bestRejectedStrategicAction || "none"],
-      ["Rejected because", strategyInspector.rejectedBecause || "none"],
-      ["Closest main", strategyInspector.closestMainLaneToBuying ? `${strategyInspector.closestMainLaneToBuying.lane}: ${strategyInspector.closestMainLaneToBuying.candidate}` : "none"],
-      ["Closest rejected", strategyInspector.closestRejectedToBuying ? `${strategyInspector.closestRejectedToBuying.lane}: ${strategyInspector.closestRejectedToBuying.candidate}` : "none"],
-      ["Closest lane", strategyInspector.closestLaneToBuying ? `${strategyInspector.closestLaneToBuying.lane}: ${strategyInspector.closestLaneToBuying.candidate}` : "none"],
-      ["Blocked by", strategyInspector.blockedBySummary || "none"],
-      ["Next likely buy", strategyInspector.nextLikelyBuy || "unknown"],
-      ["Why waiting", strategyInspector.whyWaiting],
-      ["Protected", strategyInspector.protectedResources],
-      ["Waiting on", strategyInspector.waits],
-      ["Focus", strategyInspector.smartFocus],
-      ["Nexus", strategyInspector.nexus],
-      ["Lepidoptera", strategyInspector.lepidoptera],
-      ["Post-Nexus energy candidate", strategyInspector.postNexusEnergyCandidate || "none"],
-      ["Post-Nexus energy decision", strategyInspector.postNexusEnergyDecision || "OBSERVE"],
-      ["Post-Nexus energy reason", strategyInspector.postNexusEnergyReason || "none"],
-      ["Post-Nexus energy amount", strategyInspector.postNexusEnergyAmount || "0"],
-      ["Post-Nexus energy boost", `${strategyInspector.postNexusEnergyBoostBefore || "n/a"} -> ${strategyInspector.postNexusEnergyBoostAfter || "n/a"} (${strategyInspector.postNexusEnergyBoostGain || "n/a"})`],
-      ["Post-Nexus energy reserve", strategyInspector.postNexusEnergyReserve || "0"],
-      ["Post-Nexus energy blocked by", strategyInspector.postNexusEnergyBlockedBy || "none"],
-      ["Energy support best use", `${strategyInspector.energySupportBestUse || "none"} (${strategyInspector.energySupportBestUseDecision || "HOLD"})`],
-      ["Energy support reason", strategyInspector.energySupportBestUseReason || "none"],
-      ["Energy support blocked by", strategyInspector.energySupportBestUseBlockedBy || "none"],
-      ["Ability timing", `${strategyInspector.abilityTimingRecommendation || "SAVE"}: ${strategyInspector.abilityTimingRecommendedAction || "Save Energy"}`],
-      ["Ability timing reason", strategyInspector.abilityTimingReason || "none"],
-      ["Ability timing reconsider", strategyInspector.abilityTimingReconsiderCondition || "none"],
-      ["Ability timing authority", strategyInspector.abilityTimingExecutionAuthority || "advisor-only"],
-      ["Clone support", `${strategyInspector.energySupportCloneDecision || "HOLD"} ${strategyInspector.energySupportCloneCandidate || "none"}`],
-      ["Mirror support", `${strategyInspector.energySupportMirrorDecision || "HOLD"} ${strategyInspector.energySupportMirrorCandidate || "none"}`],
-      ["Parent Step payback", `${strategyInspector.parentStepModelPayback}s model estimate (limit ${strategyInspector.parentStepModelPaybackLimit}s, ratio ${strategyInspector.parentStepModelPaybackRatio}); bypassed: ${strategyInspector.parentStepPaybackBypassed}`],
-      ["Lepidoptera support role", `${strategyInspector.energySupportLepidopteraRole || "wait"} (${strategyInspector.energySupportLepidopteraDecision || "WAIT"})`],
-      ["Long-term strategic focus", strategyInspector.momentumPrimaryFocus || "Methodical progression"],
-      ["Current executed primary lane", strategyInspector.councilWinningLane || "none"],
-      ["Current executed primary action", strategyInspector.councilWinningCandidate || "none"],
-      ["Momentum primary advisor", strategyInspector.momentumPrimaryAdvisor || "none"],
-      ["Momentum best step", `${strategyInspector.momentumBestStep || "Wait"} (${strategyInspector.momentumBestStepDecision || "WAIT"})`],
-      ["Momentum why waiting is best", strategyInspector.momentumWhyWaitingIsBest || "none"],
-      ["Actions", strategyInspector.actions],
-      ["Coordinator", strategyInspector.laneCoordinatorDecision || "none"],
-      ["Selected lanes", strategyInspector.laneCoordinatorSelectedSummary || "none"],
-      ["Changed", strategyInspector.summaries],
-      ["Strategic target", strategyInspector.meatFallbackStrategicTarget || "none"],
-      ["Blocked strategic", strategyInspector.meatFallbackBlockedCandidate || "none"],
-      ["Meat fallback", strategyInspector.meatFallbackCandidate || "none"],
-      ["Fallback reason", strategyInspector.meatFallbackReason || "none"],
-      ["Stall breaker", strategyInspector.stallBreakerActive ? `active (${strategyInspector.recentMainHoldRuns || 0} holds)` : `off (${strategyInspector.recentMainHoldRuns || 0} holds)`],
-      ["Top meat blocked by", strategyInspector.topMeatBlockedBy || "none"],
-      ["Active action unit", strategyInspector.meatActionUnitName || "none"],
-      ["Payback bypass", strategyInspector.meatActionUnitPaybackBypassTriggered ? "yes" : "no"],
-      ["Action reserve ratio", strategyInspector.meatActionUnitReserveRatio || "n/a"],
-      ["Action payback", strategyInspector.meatActionUnitPayback || "n/a"],
-      ["Action bypass reason", strategyInspector.meatActionUnitPaybackBypassReason || "none"],
-      ["Target-aware upgrade", strategyInspector.targetAwareUpgradeCandidate || "none"],
-      ["Target-aware decision", strategyInspector.targetAwareUpgradeDecision || "none"],
-      ["Target-aware reason", strategyInspector.targetAwareUpgradeReason || "none"],
-      ["Target-aware type", strategyInspector.targetAwareUpgradeType || "none"],
-      ["Target-aware supports action", strategyInspector.targetAwareUpgradeSupportsActionUnit || "no"],
-      ["Target-aware reserve", strategyInspector.targetAwareUpgradeReserveRatio || "n/a"],
-      ["Target-aware cost", strategyInspector.targetAwareUpgradeCostResource || "none"],
-      ["Unlock candidate", strategyInspector.unlockPlannerCandidate || "none"],
-      ["Unlock decision", strategyInspector.unlockPlannerDecision || "none"],
-      ["Unlock reason", strategyInspector.unlockPlannerReason || "none"],
-      ["Unlock target", strategyInspector.unlockPlannerTarget || "none"],
-      ["Unlocks", strategyInspector.unlockPlannerUnlocks || "none"],
-      ["Unlock reserve", strategyInspector.unlockPlannerReserveRatio || "n/a"],
-      ["Unlock bypass", strategyInspector.unlockPlannerPaybackBypassed ? "yes" : "no"],
-      ["Parent step candidate", strategyInspector.parentStepCandidate || "none"],
-      ["Parent step decision", strategyInspector.parentStepDecision || "none"],
-      ["Parent step reason", strategyInspector.parentStepReason || "none"],
-      ["Parent step target", strategyInspector.parentStepTarget || "none"],
-      ["Parent step action", strategyInspector.parentStepActionUnit || "none"],
-      ["Parent step cost", strategyInspector.parentStepCostResource || "none"],
-      ["Parent step reserve", strategyInspector.parentStepReserveRatio || "n/a"],
-      ["Parent step bypass", strategyInspector.parentStepPaybackBypassed ? "yes" : "no"],
-      ["Parent supports action", strategyInspector.parentStepSupportsActionUnit || "no"],
-      ["Parent consumed action", strategyInspector.parentStepConsumedActionUnit || "no"],
-      ["Parent consumed unit", strategyInspector.parentStepConsumedUnit || "none"],
-      ["Refill candidate", strategyInspector.actionUnitRefillCandidate || "none"],
-      ["Refill decision", strategyInspector.actionUnitRefillDecision || "OBSERVE"],
-      ["Refill reason", strategyInspector.actionUnitRefillReason || "none"],
-      ["Refill blocked by", strategyInspector.actionUnitRefillBlockedBy || "none"],
-      ["Refill reserve", strategyInspector.actionUnitRefillReserveRatio || "n/a"],
-      ["Refill payback", strategyInspector.actionUnitRefillPayback || "n/a"],
-      ["Refill bypass", strategyInspector.actionUnitRefillPaybackBypassed || "no"],
-      ["Parent-step chain budget remaining", strategyInspector.parentStepChainBudgetRemaining || "0"],
-      ["Global main-action budget used", String(strategyInspector.globalMainActionBudgetUsed ?? 0)],
-      ["Global main-action budget remaining", String(strategyInspector.globalMainActionBudgetRemaining ?? 0)],
-      ["Follow-up selected", strategyInspector.followUpActionSelected || "no"],
-      ["Why no follow-up", strategyInspector.whyNoFollowUpAction || "none"],
-      ["Anti-pingpong active", strategyInspector.antiPingpongGuardActive || "no"],
-      ["Anti-pingpong allows refill", strategyInspector.antiPingpongGuardAllowedRefill || "no"],
-      ["Coordinator remaining-budget reason", strategyInspector.coordinatorRemainingBudgetReason || "none"],
-      ["Twin unlock candidate", strategyInspector.twinUnlockCandidate || "none"],
-      ["Twin unlock decision", strategyInspector.twinUnlockDecision || "none"],
-      ["Twin unlock reason", strategyInspector.twinUnlockReason || "none"],
-      ["Twin unlock target", strategyInspector.twinUnlockTarget || "none"],
-      ["Twin upgrade", strategyInspector.twinUnlockUpgrade || "none"],
-      ["Twin cost resource", strategyInspector.twinUnlockCostResource || "none"],
-      ["Twin threshold", `${strategyInspector.twinUnlockCurrent || "0"} / ${strategyInspector.twinUnlockRequired || "0"} (missing ${strategyInspector.twinUnlockMissing || "0"})`],
-      ["Twin ratio", strategyInspector.twinUnlockRatio || "n/a"],
-      ["Twin near-threshold", strategyInspector.twinUnlockNearThresholdRatio || "n/a"],
-      ["Twin prep candidate", strategyInspector.twinUnlockPrepCandidate || "none"],
-      ["Twin prep chunk", strategyInspector.twinUnlockPrepChunk || "0"],
-      ["Twin prep decision", strategyInspector.twinUnlockPrepDecision || "none"],
-      ["Twin reserve", strategyInspector.twinUnlockReserveRatio || "n/a"],
-      ["Twin bypass", strategyInspector.twinUnlockPaybackBypassed ? "yes" : "no"],
-      ["Twin rebuild ratio", strategyInspector.twinUnlockPostUpgradeRebuildRatio || "n/a"],
-      ["Twin rebuild safe", strategyInspector.twinUnlockRebuildSafe || "no"],
-      ["Twin opportunity bypass", strategyInspector.twinUnlockOpportunityCostBypass || "no"],
-      ["Twin opportunity reason", strategyInspector.twinUnlockOpportunityCostReason || "not evaluated"],
-      ["Twin lost prod /s", strategyInspector.twinUnlockLostProductionPerSecond || "n/a"],
-      ["Twin lost prod /h", strategyInspector.twinUnlockLostProductionPerHour || "n/a"],
-      ["Twin lost prod bank ratio /h", strategyInspector.twinUnlockLostProductionBankRatioPerHour || "n/a"],
-      ["Twin lost prod bank ratio limit", strategyInspector.twinUnlockLostProductionBankRatioLimit || "n/a"],
-      ["Twin BUY despite rebuild unsafe", strategyInspector.twinUnlockUpgradeBuyAllowedDespiteRebuildUnsafe || "no"],
-      ["Twin prep meaningful", strategyInspector.twinUnlockPrepMeaningful || "no"],
-      ["Twin prep gain", strategyInspector.twinUnlockPrepProgressGainPercent || "n/a"],
-      ["Twin prep meaningful gate", strategyInspector.twinUnlockPrepProgressGainRequiredPercent || "n/a"],
-      ["Twin prep near threshold", strategyInspector.twinUnlockPrepNearThreshold || "no"],
-      ["Twin prep reaches threshold", strategyInspector.twinUnlockPrepReachesThreshold || "no"],
-      ["Twin prep gain meaningful", strategyInspector.twinUnlockPrepGainMeaningful || "no"],
-      ["Twin prep meaningful reason", strategyInspector.twinUnlockPrepMeaningfulReason || "none"],
-      ["Twin prep deferred reason", strategyInspector.twinUnlockPrepDeferredReason || "none"],
-      ["Twin deferred by parent", strategyInspector.twinUnlockDeferredByParentStep || "no"],
-      ["Parent preferred over twin", strategyInspector.twinUnlockParentStepPreferred || "no"],
-      ["Why parent-step won", strategyInspector.twinUnlockWhyParentStepWon || "none"],
-      ["Why twin prep did not win", strategyInspector.twinUnlockWhyPrepDidNotWin || "none"],
-      ["Parent/refill preserved", strategyInspector.parentStepRefillPreserved || "n/a"],
-      ["Clone buffer mode", strategyInspector.cloneBufferMode || "none"],
-      ["Clone buffer", `${strategyInspector.cloneBufferCurrent || "0"} / ${strategyInspector.cloneBufferTarget || "0"} (${strategyInspector.cloneBufferPercent || "n/a"})`],
-      ["Clone debt", strategyInspector.cloneBufferDebt || "0"],
-      ["Spendable larvae", strategyInspector.cloneBufferSpendableLarvae || "0"],
-      ["Protected larvae", strategyInspector.cloneBufferLarvaeProtected || "0"],
-      ["Clone target source", strategyInspector.cloneBufferTargetSource || "none"],
-      ["Clone hard lock", strategyInspector.cloneBufferHardLockActive || "no"],
-      ["Clone recovery complete", strategyInspector.cloneBufferRecoveryComplete || "no"],
-      ["Clone completion threshold", strategyInspector.cloneBufferCompletionThreshold || "n/a"],
-      ["Clone buffer reason", strategyInspector.cloneBufferReason || "none"],
-      ["Clone Ramp phase", strategyInspector.cloneRampPhase || "IDLE"],
-      ["Clone Ramp bank/cap", `${strategyInspector.cloneRampBankBefore || "0"} / ${strategyInspector.cloneRampCapBefore || "0"} (${trimNumber(strategyInspector.cloneRampBankPercentOfCap || 0)}%)`],
-      ["Clone Ramp cast executed", strategyInspector.cloneRampCastExecuted || "no"],
-      ["Clone Ramp cast output", strategyInspector.cloneRampCastOutputAmount || "0"],
-      ["Clone Ramp banked as cocoons", strategyInspector.cloneRampBankedAmount || "0"],
-      ["Clone Ramp loose larvae released", strategyInspector.cloneRampLooseLarvaeReleased || "0"],
-      ["Clone Ramp energy cost", strategyInspector.cloneRampEnergyCost || "0"],
-      ["Clone Ramp reason", strategyInspector.cloneRampReason || "none"],
-      ["Clone Ramp blocked by", strategyInspector.cloneRampBlockedBy || "none"],
-      ["Clone Ramp next action", strategyInspector.cloneRampNextAction || "none"],
-      ["Ability prep", `${strategyInspector.abilityPrepDecision || "none"} ${strategyInspector.abilityPrepCandidate || "none"}`],
-      ["Ability prep reason", strategyInspector.abilityPrepReason || "none"],
-      ["Ability prep type", strategyInspector.abilityPrepType || "none"],
-      ["Ability prep energy", strategyInspector.abilityPrepEnergyAvailable || "n/a"],
-      ["Requires army prep", strategyInspector.abilityPrepRequiresArmyPrep || "no"],
-      ["Requires clone buffer", strategyInspector.abilityPrepRequiresCloneBuffer || "no"],
-      ["House of Mirrors value", strategyInspector.houseOfMirrorsArmyValue || "n/a"],
-      ["House of Mirrors missing", strategyInspector.houseOfMirrorsMissingUnits || "none"],
-      ["Territory starvation", String(strategyInspector.territoryStarvationCount ?? 0)],
-      ["Last territory action age", String(strategyInspector.lastTerritoryActionAge ?? 0)],
-      ["Territory prep candidate", strategyInspector.territoryPrepCandidate || "none"],
-      ["Territory prep decision", strategyInspector.territoryPrepDecision || "none"],
-      ["Territory prep reason", strategyInspector.territoryPrepReason || "none"],
-      ["Territory prep unit", strategyInspector.territoryPrepUnit || "none"],
-      ["Territory prep amount", strategyInspector.territoryPrepAmount || "0"],
-      ["Territory ETA before", strategyInspector.territoryPrepExpansionEtaBefore || "n/a"],
-      ["Territory ETA after", strategyInspector.territoryPrepExpansionEtaAfter || "n/a"],
-      ["Territory army seed", strategyInspector.territoryPrepArmySeed || "no"],
-      ["Territory scanned fighting units", String(strategyInspector.territoryPrepScannedFightingUnits ?? 0)],
-      ["Territory visible fighting units", String(strategyInspector.territoryPrepVisibleFightingUnits ?? 0)],
-      ["Territory buyable fighting units", String(strategyInspector.territoryPrepBuyableFightingUnits ?? 0)],
-      ["Territory HoM matches", String(strategyInspector.territoryPrepMissingMatchedCount ?? 0)],
-      ["Army seed candidate", strategyInspector.expansionArmySeedCandidate || "none"],
-      ["Army seed decision", strategyInspector.expansionArmySeedDecision || "OBSERVE"],
-      ["Army seed reason", strategyInspector.expansionArmySeedReason || "none"],
-      ["Army seed unit", strategyInspector.expansionArmySeedUnit || "none"],
-      ["Army seed amount", strategyInspector.expansionArmySeedAmount || "0"],
-      ["Army seed ETA before", strategyInspector.expansionArmySeedEtaBefore || "n/a"],
-      ["Army seed ETA after", strategyInspector.expansionArmySeedEtaAfter || "n/a"],
-      ["Army seed ETA gain", `${strategyInspector.expansionArmySeedEtaGainSeconds || "0"}s (${strategyInspector.expansionArmySeedEtaGainPercent || "0%"})`],
-      ["Army seed territory/sec", `${strategyInspector.expansionArmySeedTerritoryPerSecondBefore || "0"} -> ${strategyInspector.expansionArmySeedTerritoryPerSecondAfter || "0"}`],
-      ["Army seed blocked by", strategyInspector.expansionArmySeedBlockedBy || "none"],
-      ["Army seed inside save-window", strategyInspector.expansionArmySeedInsideSaveWindow || "no"],
-      ["Army seed best rejected", strategyInspector.expansionArmySeedBestRejectedUnit || "none"],
-      ["Army seed reject reason", strategyInspector.expansionArmySeedBestRejectedReason || "none"],
-      ["Army prep missing units", strategyInspector.armyPrepMissingUnits || "none"],
-      ["Why territory did not buy", strategyInspector.territoryDidNotBuyReason || "none"],
-      ["Council speaker", strategyInspector.activeCouncilSpeaker || "none"],
-      ["Council winning lane", strategyInspector.councilWinningLane || "none"],
-      ["Council winning candidate", strategyInspector.councilWinningCandidate || "none"],
-      ["Settings now", strategyInspector.settings.join(" · ")],
-      ["Recommended", strategyInspector.recommendedSmart],
-      ["Future", strategyInspector.futurePlanners],
-    ];
-
-    return rows
-      .map(([key, value]) => `
-        <div class="kbc-inspector-row">
-          <span class="kbc-inspector-key">${escapeHtml(key)}</span>
-          <span class="kbc-inspector-value">${escapeHtml(value)}</span>
-        </div>
-      `)
-      .join("");
   }
 
   function getWhyWaitingSummary(game, engine, protectedResources, mainActions, sideActions, summaries) {
@@ -11112,27 +10811,6 @@ function getDisplayName(item) {
     return null;
   }
 
-  function laboratoryValidateActionDefinition(action) {
-    const warnings = [];
-    if (!action || typeof action !== "object") {
-      return { ok: false, error: "action is missing", warnings };
-    }
-    if (![LABORATORY_PHASE1_ACTION_SCHEMA_VERSION, LABORATORY_PHASE2_ACTION_SCHEMA_VERSION].includes(action.schemaVersion)) {
-      return { ok: false, error: `unexpected action schemaVersion ${action.schemaVersion || "missing"}`, warnings };
-    }
-    const normalized = laboratoryActionDefinition(action.actionId);
-    if (!normalized) {
-      return { ok: false, error: `unsupported actionId ${String(action.actionId || "")}`, warnings };
-    }
-    if (laboratoryStringOrNull(action.requestedAtSeconds) !== "0") {
-      return { ok: false, error: "requestedAtSeconds must be 0", warnings };
-    }
-    if (Number(action.castCount) !== normalized.castCount) {
-      return { ok: false, error: `castCount must be ${normalized.castCount} for ${normalized.actionId}`, warnings };
-    }
-    return { ok: true, warnings, normalized };
-  }
-
   function laboratoryTerritoryArmyMap(snapshot) {
     const rows = snapshot?.army?.houseOfMirrorsAffectedUnits || [];
     const map = {};
@@ -13561,12 +13239,6 @@ function getDisplayName(item) {
     }
   }
 
-  function getNextNexusEnergyCost(game) {
-    const upgrade = getNextNexusUpgrade(game);
-    if (!upgrade) return newDecimal(0);
-    return getCostForResource(upgrade, "energy");
-  }
-
   function scoreLepidopteraInvestment(game, num) {
     const moth = getGameUnit(game, "moth");
     const nextNexus = getNextNexusUpgrade(game);
@@ -15932,19 +15604,6 @@ function getDisplayName(item) {
     };
   }
 
-  function unitCountByNameLike(game, query) {
-    const q = String(query || "").toLowerCase();
-    if (!q) return newDecimal(0);
-
-    let total = newDecimal(0);
-    for (const unit of game.unitlist?.() || []) {
-      const text = `${unit?.name || ""} ${getDisplayName(unit)}`.toLowerCase();
-      if (!text.includes(q)) continue;
-      total = total.plus(decimalFrom(unit?.count?.() || 0));
-    }
-    return total;
-  }
-
   function runAbilityPrepPlanner(game) {
     const energy = getCurrentResource(game, "energy");
     let lastState = null;
@@ -16690,17 +16349,6 @@ function getDisplayName(item) {
       if (!requiredTokens.length) return false;
       return requiredTokens.every((token) => textTokens.has(token));
     });
-  }
-
-  function getTerritoryPrepBuyNum(unit, forceSingle = false) {
-    const max = safe(`Territory prep max ${unit?.name}`, () => unit?.maxCostMet?.(config.unitBuyPercent)) || newDecimal(0);
-    if (!isPositive(max)) return newDecimal(0);
-    if (forceSingle) return newDecimal(1);
-
-    const percent = clampNumber(config.territoryPrepChunkPercent, 0.1, 25, DEFAULT_CONFIG.territoryPrepChunkPercent);
-    const chunk = decimalFrom(max).times(percent).dividedBy(100).floor();
-    if (isPositive(chunk)) return chunk;
-    return newDecimal(1);
   }
 
   function getExpansionArmySeedBuyNum(unit) {
@@ -17474,10 +17122,6 @@ function getDisplayName(item) {
     return { best, candidates, focus };
   }
 
-  function pickSmartUnitCandidate(game, engine, protectedResources) {
-    return collectSmartUnitCandidates(game, engine, protectedResources).best;
-  }
-
   function shortBlockReason(block) {
     if (!block) return "unknown";
     if (block.type === "payback") return "payback";
@@ -18065,18 +17709,6 @@ function getDisplayName(item) {
   function getStrategicActionRank(strategicPlan) {
     const actionUnit = getStrategicActionUnit(strategicPlan);
     return actionUnit ? getMeatChainRank(actionUnit) : -1;
-  }
-
-  function isStrategicActionUnit(unit, strategicPlan) {
-    return isSameGameItem(unit, getStrategicActionUnit(strategicPlan));
-  }
-
-  function canBypassPaybackForStrategicAction(candidate, block, strategicPlan, protectedResources) {
-    return assessStrategicActionPaybackBypass(candidate?.unit, block, strategicPlan, protectedResources).allowed;
-  }
-
-  function strategicActionPaybackBypassReason(unit, block, strategicPlan, protectedResources) {
-    return assessStrategicActionPaybackBypass(unit, block, strategicPlan, protectedResources).reason;
   }
 
   function isTwinUpgrade(upgrade) {
