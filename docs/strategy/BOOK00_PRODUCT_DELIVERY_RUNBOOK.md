@@ -663,10 +663,10 @@ package, no two packages that touch the same files may run concurrently.
   config, so it must not overlap RH-3.
 - **User decision required before start:** RH-6.
 
-Model note: RH-1, RH-2, and RH-3 are mechanical; a cheaper model (Sonnet, or
-Haiku for RH-1) is sufficient. RH-4 and RH-5 need normal engineering judgment
-(Sonnet or stronger). Escalate to a strong model only if RH-5 uncovers
-behavior-parity ambiguity.
+Model note: RH-1, RH-2, RH-3, and RH-5 are mechanical (RH-5 is now delete-only
+per the 2026-07-19 user decision - no extraction); a cheaper model (Sonnet, or
+Haiku for RH-1) is sufficient. RH-4 (shared harness) needs normal engineering
+judgment (Sonnet or stronger).
 
 ### RH-1 - Make CI verify actually runnable (R2)
 
@@ -778,32 +778,50 @@ This package is the largest; it may be split per the milestone split rule if
 the harness and the pinned-game serving prove to be two independently
 verifiable outcomes.
 
-### RH-5 - Resolve the dev-src scaffolding contradiction (R5, prepares R6)
+### RH-5 - Delete the dead dev-src scaffolding (R5)
+
+User decision (2026-07-19): junk removal only. Do NOT extract any section
+out of runtime-main.js and do NOT add a new build part. The single assembled
+userscript must remain the only thing Tampermonkey needs, exactly as today.
+This narrows RH-5 to the delete-only path; the extraction option is dropped.
 
 ```text
 Product capability: none (infrastructure exception).
 Player-visible change: none (byte-identical built userscript required).
-Domains included: EITHER delete dev-src/guards/, dev-src/overseer/,
-  dev-src/contracts/, and the three adapter-*.js files (and update
-  docs/process/MODULARIZATION_PLAN.md and AGENTS.md references), OR wire a
-  first real extraction: split one section out of runtime-main.js into a
-  second parts entry in scripts/canonical-build.config.json with a
-  byte-identical build. The choice is the track owner's call after RH-3.
-Domains explicitly excluded: extracting more than one section; any behavior
-  change; touching lane strategy.
+Domains included: delete the unwired scaffolding that is imported by nothing
+  and is not in scripts/canonical-build.config.json - dev-src/guards/ (5
+  files), dev-src/overseer/, dev-src/contracts/, and the three
+  dev-src/runtime-sections/adapter-*.js files; then update any now-stale
+  references in docs/process/MODULARIZATION_PLAN.md and AGENTS.md so the docs
+  stop describing scaffolding that no longer exists.
+Domains explicitly excluded: ANY extraction or restructuring of
+  runtime-main.js; adding or changing build parts; touching
+  canonical-build.config.json's parts array; any behavior change; touching
+  lane strategy. The build model stays: metadata + runtime-main.js -> one
+  userscript.
 Current milestone and horizons: n/a (maintenance).
 Advisor, shadow, or execution authority: n/a.
-Hard safety boundaries: build:check must prove the assembled userscript is
-  byte-identical before and after (except pure section reordering is NOT
-  allowed - the assembly must reproduce the same bytes).
-Focused acceptance states: npm run build:check green; npm run verify green;
-  R7 string-assertion verifiers still pass (their asserted substrings must
-  survive the split or be updated in the same narrow change).
-Files expected to change: dev-src tree, scripts/canonical-build.config.json,
-  docs/process/MODULARIZATION_PLAN.md, AGENTS.md (index/boundaries).
+Hard safety boundaries: before deleting each dev-src file, prove it is
+  imported/referenced by nothing that survives (grep its path across
+  scripts/, package.json, canonical-build.config.json, AGENTS.md, and active
+  docs; references from historical release notes / MODULARIZATION_PLAN prose
+  do not block deletion but must be de-referenced in the same change). If any
+  file turns out to be wired in, keep it and report. The assembled
+  src/SwarmSim-Strategy-Autobuyer.user.js MUST be byte-identical before and
+  after (a pure dev-src deletion cannot change it at all).
+Focused acceptance states: npm run build:check green (proves the userscript
+  Tampermonkey loads is unchanged and still valid); npm run verify green;
+  node scripts/validate-repo-guardrails.js green; a grep proving no deleted
+  dev-src path survives in scripts/, package.json, the build config, or
+  active docs.
+Files expected to change: deletions under dev-src/ (guards/, overseer/,
+  contracts/, adapter-*.js); docs/process/MODULARIZATION_PLAN.md and AGENTS.md
+  reference cleanup only. NOT runtime-main.js, NOT the userscript, NOT the
+  build config parts.
 Evidence generators and allowlisted paths: none.
-Stop condition: the repository tells the truth about its own architecture -
-  either no scaffolding, or scaffolding that the build actually uses.
+Stop condition: the dead, unwired dev-src scaffolding is gone and the docs no
+  longer claim it exists; the build still produces the identical single
+  Tampermonkey userscript. No extraction performed.
 ```
 
 ### RH-6 - Prune routine evidence matrices (R8) - user decided: PRUNE (2026-07-19)
