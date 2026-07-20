@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const userscript = fs.readFileSync(path.join(ROOT, "src", "SwarmSim-Strategy-Autobuyer.user.js"), "utf8");
@@ -18,7 +18,7 @@ async function main() {
     assert(userscript.includes(expected), `missing M4 contract surface: ${expected}`);
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await getBrowser({ headless: true });
   try {
     const page = await browser.newPage();
     await page.goto("https://www.swarmsim.com/#/tab/energy", { waitUntil: "domcontentloaded", timeout: 60000 });

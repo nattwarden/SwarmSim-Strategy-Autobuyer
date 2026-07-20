@@ -3,7 +3,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const USERSCRIPT_PATH = path.join(ROOT, "src", "SwarmSim-Strategy-Autobuyer.user.js");
@@ -25,7 +25,7 @@ async function main() {
     userscript = userscript.replace(needle, "confirmedPurchasedAmount = observedTotalCountDelta;");
   }
 
-  const browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const browser = await getBrowser({ headless: true, channel: "chrome" });
   try {
     const page = await browser.newPage();
     await page.goto("https://www.swarmsim.com/", { waitUntil: "domcontentloaded", timeout: 120000 });

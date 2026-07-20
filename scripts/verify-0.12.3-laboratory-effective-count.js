@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const root = path.resolve(__dirname, "..");
 const userscriptPath = path.join(root, "src", "SwarmSim-Strategy-Autobuyer.user.js");
@@ -321,7 +321,7 @@ async function main() {
 
   assertCondition(errors, !userscript.includes("buildMeaningfulLiveFixtureSnapshot"), "Verifier architecture still references post-capture synthetic army rewrite helper.");
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await getBrowser({ headless: true });
   const lab = await launchLabPage(browser);
 
   const highFixture = {

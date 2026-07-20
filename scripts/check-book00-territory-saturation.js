@@ -25,7 +25,7 @@
 const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const root = path.resolve(__dirname, "..");
 const userscript = fs.readFileSync(path.join(root, "src", "SwarmSim-Strategy-Autobuyer.user.js"), "utf8");
@@ -49,7 +49,7 @@ function readPinnedSave() {
 }
 
 async function openSave() {
-  const browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const browser = await getBrowser({ headless: true, channel: "chrome" });
   const page = await browser.newPage();
   await page.goto("https://www.swarmsim.com/", { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.evaluate(() => localStorage.clear());
@@ -143,7 +143,7 @@ async function checkExtremeStateIsSaturated() {
 // can be proven deterministically, without depending on that timing.
 // See window.kbcSwarmBot.territorySaturationDiagnostics.
 async function checkClassifierStates() {
-  const browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const browser = await getBrowser({ headless: true, channel: "chrome" });
   try {
     const page = await browser.newPage();
     await page.goto("https://www.swarmsim.com/", { waitUntil: "domcontentloaded", timeout: 90000 });

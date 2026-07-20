@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const root = path.resolve(__dirname, "..");
 const userscriptPath = path.join(root, "src", "SwarmSim-Strategy-Autobuyer.user.js");
@@ -23,7 +23,7 @@ async function main() {
     assert(userscript.includes(expected), `missing pinned Phase 2A source-math surface: ${expected}`);
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await getBrowser({ headless: true });
   try {
     const page = await browser.newPage();
     await page.goto("https://www.swarmsim.com/#/tab/energy", { waitUntil: "domcontentloaded", timeout: 60000 });

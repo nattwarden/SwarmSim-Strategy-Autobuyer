@@ -3,7 +3,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -19,7 +19,7 @@ async function main() {
     assert(!exclusivityGate.test(userscript), "M2 double-count mutation did not apply");
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await getBrowser({ headless: true });
   try {
     const page = await browser.newPage();
     await page.goto("https://www.swarmsim.com/", { waitUntil: "domcontentloaded", timeout: 60000 });
