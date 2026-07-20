@@ -47,16 +47,21 @@ written (no `npm ci`/Playwright install), the verify chain depends on the live
 `swarmsim.com` site (~30 separate Chromium launches), ~24 retired scripts
 remain, and the `dev-src` modularization scaffolding is unwired.
 
-Remediation is the **Repository health hardening track (RH-1 .. RH-6)** in
-[BOOK00_PRODUCT_DELIVERY_RUNBOOK.md](BOOK00_PRODUCT_DELIVERY_RUNBOOK.md) -
-this is now the active work package. Wave 1 (RH-1 CI fix, RH-2 script
-retirement, RH-3 dead-function removal) may run as three parallel agents in
-separate worktrees; RH-4 (hermetic harness) follows RH-2; RH-5 (dev-src
-decision) follows RH-3; RH-6 (prune routine sweep matrices in
-`docs/test-data/strategy-audit-1/`, ~37 MB) was unblocked by an explicit user
-PRUNE decision on 2026-07-19 and may run in parallel with any package.
-Coordination, contracts, and stop conditions are in the runbook track section;
-no package changes strategy, safety defaults, or player-visible behavior.
+**The track is CLOSED as of 2026-07-19.** All six packages (RH-1 CI fix, RH-2
+script retirement, RH-3 dead-function removal, RH-4 shared verify harness, RH-5
+dead-scaffolding deletion, RH-6 evidence prune) landed on
+`codex/9.4.0-clean-room` with `npm run verify` green at each merge; distilled
+per-package results are in the runbook's RH section. No package changed strategy,
+safety defaults, or player-visible behavior. Two of the six (RH-3 and RH-4) were
+finished by the coordinator after their background agents stopped with the work
+committed-ready but not committed; both were reviewed before merge.
+
+One open follow-up remains, unscheduled: **RH-4 Outcome 2** - serve the pinned
+`swarmsim/swarm@06b4f404` game build locally so `npm run verify` is fully
+offline/hermetic. Today it still navigates to live swarmsim.com (RH-4 only
+reduced the launch count). Pick up only if live-site flakiness becomes a real
+problem. Also noted: the stale `storageState`-from-`strategy-audit-1/**/live/`
+doc claim (no such fixtures exist) should be corrected wherever it appears.
 
 ## 9.4.0 clean-room recovery (2026-07-16)
 
@@ -597,15 +602,12 @@ separate entry in the distilled handoff index below: the SA1 9.0.0-vs-9.1.0 comp
 `blockerCategories` replace regex-over-text in the stall-breaker decision
 gate), and F7 (`DEFAULT_CONFIG.unitStrategy` now matches the Smart preset).
 
-Active work package (2026-07-19): the **Repository health hardening track
-(RH-1 .. RH-6)** - see the 2026-07-19 section at the top of this file and the
-track section in the runbook. It is maintenance-only (no strategy, safety, or
-player-visible change) and is designed for parallel agents: Wave 1 = RH-1 +
-RH-2 + RH-3 concurrently, then RH-4 after RH-2, then RH-5 after RH-3; RH-6
-(prune, user-authorized 2026-07-19) may run in parallel with any package. The
-previously stated direction (live
-observation of the accepted baseline) resumes after the track closes, unless
-a player-reported issue arrives first.
+No work package is currently in flight. The **Repository health hardening track
+(RH-1 .. RH-6) closed on 2026-07-19** - see the 2026-07-19 section at the top of
+this file and the distilled results in the runbook's RH section. The next
+direction is the previously stated one: live observation of the accepted
+baseline, unless a player-reported issue arrives first. One unscheduled
+follow-up remains from the track (RH-4 Outcome 2: hermetic local game server).
 
 ## Immediate next actions
 
@@ -615,16 +617,14 @@ entries in the distilled handoff index below for each). The audited baseline was
 `2eef0248a2d3ce8a01265ccbc537b2b97ff01c69` (9.1.0); current `main` is ahead
 of that with the closures above.
 
-The queued work is the Repository health hardening track (2026-07-19; see
-"Current work package"). Wave 1 packages RH-1 (CI fix), RH-2 (script
-retirement), and RH-3 (dead-function removal) can be handed to three parallel
-agents immediately; each package's full contract, acceptance states, and stop
-condition are in the runbook's RH section. After the track closes, the next
-direction remains live observation: run the accepted baseline against
-real/live-like play (SA1 sweep matrix, or an actual reported save) and let
-the next strategy problem be selected from what that evidence actually shows,
-rather than starting Milestone 10/11 speculatively. If a concrete
-player-reported issue emerges, it preempts the track's later waves.
+The Repository health hardening track closed on 2026-07-19 (all six packages
+merged; see the section at the top of this file). The next direction is live
+observation: run the accepted baseline against real/live-like play (SA1 sweep
+matrix, or an actual reported save) and let the next strategy problem be
+selected from what that evidence actually shows, rather than starting Milestone
+10/11 speculatively. If a concrete player-reported issue emerges, treat that as
+the next work package. Unscheduled follow-up available if wanted: RH-4 Outcome 2
+(serve the pinned game build locally for fully offline verify).
 
 Hard constraints (still active):
 
@@ -705,7 +705,7 @@ At most three recent distilled handoffs are retained here; older entries are
 distilled into the index below and their full text lives in Git history of
 this file. Durable facts belong in the owning documents, not in this log.
 
-### 2026-07-19 - Repository health audit + RH track opened by Claude (Fable 5)
+### 2026-07-19 - Repository health audit + full RH track closed by Claude (Fable 5)
 
 - Worktree/branch: `C:/Users/info/Documents/SwarmSim-9.4.0-clean-room`,
   `codex/9.4.0-clean-room`.
@@ -713,15 +713,22 @@ this file. Durable facts belong in the owning documents, not in this log.
   `fcfe1432e47e7aec8bfef7ac47a874138d91d057`; documentation-only changes
   (this file, the runbook RH track, BOOK-00 marker,
   `REPOSITORY_AUDIT_REVIEW_2026-07-19.md`) pending commit.
-- Product capability changed: none (audit + planning only; runtime untouched).
-- Result: findings R1-R9 recorded; remediation planned as the RH track with
-  parallelization waves and per-package contracts. The audit also corrected
-  the runbook's stale M8 "Immediate next action" pointer (R9).
-- Remaining blocker: none. RH-6 was initially blocked on a user retention
-  decision; the user authorized PRUNE later the same day (contract updated in
-  the runbook).
-- Exact next action: hand RH-1, RH-2, RH-3 (and optionally RH-6) to parallel
-  agents (one worktree each) per the runbook's RH wave rules.
+- Product capability changed: none (maintenance track; runtime strategy,
+  safety defaults, and player-visible behavior byte-identical).
+- Result: audit R1-R9 recorded, then the whole RH track (RH-1..RH-6) executed
+  and CLOSED the same day. RH-1/RH-2/RH-6 done by parallel subagents;
+  RH-3/RH-4 finished by the coordinator after their agents stopped with work
+  uncommitted; RH-5 done inline. Merges on `codex/9.4.0-clean-room` up to
+  `e3fb299`, `npm run verify` green (exit 0) at each. Distilled per-package
+  results in the runbook RH section.
+- Notable: audit-scan false positives caught during execution -
+  `check-0.14.1-version-surfaces` is still used (kept), and
+  `scenarioCountOverride`/`scenarioHarnessNoOp` are live named function
+  expressions (kept). Stale `storageState` doc claim flagged (RH-6).
+- Remaining open item: RH-4 Outcome 2 (hermetic local game server),
+  unscheduled.
+- Exact next action: none queued; live observation of the accepted baseline
+  is the next direction unless a player-reported issue arrives.
 
 ### 2026-07-18 - Clean-room slices 8-10 closed by Claude (Fable 5)
 

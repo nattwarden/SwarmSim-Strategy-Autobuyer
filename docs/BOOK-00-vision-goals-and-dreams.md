@@ -1,6 +1,6 @@
 # Book 00 - Vision, Goals, and Dreams
 
-> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-19` | Revision: `fcfe1432e47e7aec8bfef7ac47a874138d91d057` | Result: `2026-07-19 repo-health audit recorded (R1-R9) and RH hardening track opened as active work package; documentation changes uncommitted`
+> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-19` | Revision: `e3fb299eb87c0b29421795435928fb78e3518a6b` | Result: `repo-health RH track (R1-R9) fully executed and closed - CI fix, dead scripts/functions/scaffolding removed, shared verify harness, evidence pruned; verify green; this doc-closure commit pending`
 
 Status: Strategic north star for SwarmSim Strategy Autobuyer.
 

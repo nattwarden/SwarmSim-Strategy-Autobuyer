@@ -635,21 +635,43 @@ Escalate when: supported cast/ascend candidates cannot be compared on a shared
 milestone basis, default-safety boundaries conflict with proposed behavior, or
 execution introduces irreversible-risk ambiguity.
 
-## Repository health hardening track (RH)
+## Repository health hardening track (RH) - CLOSED 2026-07-19
 
 Source: `REPOSITORY_AUDIT_REVIEW_2026-07-19.md` (findings R1-R9, audited at
-`fcfe1432e47e7aec8bfef7ac47a874138d91d057`, 9.4.0).
+`fcfe1432e47e7aec8bfef7ac47a874138d91d057`, 9.4.0). Bounded maintenance track,
+no strategy/safety/player-visible change. All six packages landed on
+`codex/9.4.0-clean-room`; `npm run verify` green (exit 0) at each merge.
 
-This is a bounded maintenance track under the same infrastructure exception as
-Milestone 0: it is not product capability, so it is capped at the six work
-packages below and must not expand into a general platform rewrite. Runtime
-strategy, safety defaults, and player-visible behavior must be byte-identical
-throughout except where a package explicitly says otherwise (none do).
+Distilled results (full contracts kept below as historical reference; per-commit
+detail in Git):
 
-Track owner (project lead): the coordinating agent that produced the audit.
-Parallel execution rules: the agent coordination rules of this runbook apply
-unchanged - one agent per work package, one dedicated branch/worktree per
-package, no two packages that touch the same files may run concurrently.
+- **RH-1 (CI, R2)** - `verify.yml` now runs `npm ci` +
+  `npx playwright install chromium --with-deps` before `npm run verify`. Real
+  Actions confirmation lands on the next PR/main push.
+- **RH-2 (script sprawl, R4)** - deleted 32 retired/unreferenced scripts and 27
+  `package.json` entries; kept `check-0.14.1-version-surfaces` (still used by the
+  strategy-intelligence automation) and `check-version-surfaces.js`.
+- **RH-3 (dead runtime code, R1)** - removed 10 zero-reference functions (~736
+  lines incl. rebuilt userscript); 2 audit candidates correctly retained as live
+  named function expressions.
+- **RH-4 (verify hermeticity, R3 partial)** - `scripts/lib/` shared browser
+  harness: one Chromium `launchServer` per signature, 24 checks `connect` to it,
+  `verify:chain` byte-identical, safe per-script fallback. **Open follow-up:**
+  Outcome 2 (serve pinned `swarmsim/swarm@06b4f404` locally for fully offline
+  verify) was NOT delivered - checks still hit live swarmsim.com.
+- **RH-5 (dead scaffolding, R5)** - deleted the unwired `dev-src/` skeleton
+  (~295 lines), de-referenced docs; delete-only, userscript byte-identical.
+- **RH-6 (evidence weight, R8)** - pruned 614 routine SA1 artifacts (~35 MB) per
+  the user PRUNE decision; retention README left; conclusions already distilled.
+
+Incidental correction (RH-6): the status board's claim that live acceptance runs
+restore Playwright `storageState` from `strategy-audit-1/**/live/` is stale - no
+such fixtures or code exist.
+
+The only remaining open item is RH-4 Outcome 2 (hermetic local game server);
+unscheduled, pick up only if live-site flakiness becomes a real problem.
+
+The detailed package contracts below are retained as historical reference only.
 
 ### Parallelization waves
 
