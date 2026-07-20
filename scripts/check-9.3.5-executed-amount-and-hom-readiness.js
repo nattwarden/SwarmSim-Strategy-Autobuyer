@@ -54,7 +54,7 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const RUNTIME_PATH = path.join(ROOT, "dev-src", "runtime-sections", "runtime-main.js");
@@ -399,7 +399,7 @@ function buildInMemoryUserscript() {
 
 async function withPage(userscript, fn) {
   const save = fs.readFileSync(SAVE_PATH, "utf8").trim();
-  const browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const browser = await getBrowser({ headless: true, channel: "chrome" });
   const page = await browser.newPage();
   try {
     await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: 90000 });

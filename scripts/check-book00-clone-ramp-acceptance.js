@@ -39,7 +39,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const USERSCRIPT_PATH = path.join(ROOT, "src", "SwarmSim-Strategy-Autobuyer.user.js");
@@ -63,7 +63,7 @@ async function runCycles() {
   const save = fs.readFileSync(SAVE_PATH, "utf8").trim();
   const userscript = fs.readFileSync(USERSCRIPT_PATH, "utf8");
 
-  const browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const browser = await getBrowser({ headless: true, channel: "chrome" });
   const page = await browser.newPage();
 
   try {

@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const USERSCRIPT_PATH = path.join(ROOT, "src", "SwarmSim-Strategy-Autobuyer.user.js");
@@ -27,7 +27,7 @@ async function main() {
     assert(userscript.includes(expected), `missing M6 runtime surface: ${expected}`);
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await getBrowser({ headless: true });
   try {
     const page = await browser.newPage();
     await page.goto("https://www.swarmsim.com/", { waitUntil: "domcontentloaded", timeout: 60000 });

@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const runtime = fs.readFileSync(path.join(ROOT, "dev-src/runtime-sections/runtime-main.js"), "utf8");
@@ -160,7 +160,7 @@ async function main() {
     if (!states.some((state) => state.fixtureId === id)) failures.push(`missing state fixture ${id}`);
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await getBrowser({ headless: true });
   const page = await browser.newPage();
   const cases = [
     { name: "desktop-100", width: 1366, height: 768, stageColumns: 3, laneColumns: 4 },

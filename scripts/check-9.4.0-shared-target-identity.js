@@ -4,7 +4,7 @@
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const USERSCRIPT_PATH = path.join(ROOT, "src", "SwarmSim-Strategy-Autobuyer.user.js");
@@ -28,7 +28,7 @@ async function main() {
     assert(matches === 2, `mutation control expected two shared-target bindings, got ${matches}`);
     userscript = userscript.split(needle).join("activeTarget: smartFocus || \"current strategic target\",");
   }
-  const browser = await chromium.launch({ headless: true, channel: "chrome" });
+  const browser = await getBrowser({ headless: true, channel: "chrome" });
   const page = await browser.newPage();
 
   try {

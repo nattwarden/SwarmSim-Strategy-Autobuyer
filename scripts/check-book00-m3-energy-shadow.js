@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const userscript = fs.readFileSync(path.join(ROOT, "src", "SwarmSim-Strategy-Autobuyer.user.js"), "utf8");
@@ -14,7 +14,7 @@ async function main() {
   assert(userscript.includes('executionKey === "energy"'), "canonical coordinator does not dispatch the Energy execution key");
   assert(userscript.includes("buildEnergyProductionProposal(game)"), "exact Energy execution does not rebuild the production proposal at the buy boundary");
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await getBrowser({ headless: true });
   try {
     const page = await browser.newPage();
     await page.goto("https://www.swarmsim.com/", { waitUntil: "domcontentloaded", timeout: 60000 });

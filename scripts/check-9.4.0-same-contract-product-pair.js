@@ -4,7 +4,7 @@
 const fs = require("fs");
 const crypto = require("crypto");
 const path = require("path");
-const { chromium } = require("playwright");
+const { getBrowser } = require("./lib/browser-harness");
 
 const PINNED_SAVE_SHA256 = "58933a235c0a442e8f6bfcafd5f01a9f97fa2a61a410507692f5d19437a9f5ec";
 
@@ -33,7 +33,7 @@ async function main() {
     assert(!userscript.includes(scenarioAffordabilityGate), "scenario affordability mutation did not apply");
   }
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await getBrowser({ headless: true });
   try {
     const page = await browser.newPage();
     await page.goto("https://www.swarmsim.com/", { waitUntil: "domcontentloaded", timeout: 60000 });
