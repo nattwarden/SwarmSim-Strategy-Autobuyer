@@ -159,3 +159,29 @@ import applies the game's offline-production catch-up, so it is not an exact
 frozen economic branch without elapsed-time control. It is not an active
 verifier fixture and must not replace a pinned fixture or be imported into a
 player's normal save.
+
+## manual-play-first-nexus-baseline-2026-07-21.txt
+
+Fixture identity:
+
+- SHA-256: `3f5138065ceaf84c83a28d5965a5b4e53113dea32686553ab00bdba6f321bd90`
+- format prefix: `MS4xLjE3|`
+- source class: **not script-free.** Derived from
+  `manual-play-twin-nests-v-baseline-2026-07-18.txt` re-imported into the in-app
+  browser, then advanced by a single engine-driven `nexus1` purchase
+  (`game._upgrades.byName.nexus1.buy()`) to capture the first Energy/Nexus
+  state. Lineage is otherwise the same player run.
+- progression scope: first Nexus built — 1 Nexus, energy ~2,001 (from the
+  `+2,000` `nexus1` build burst), 10,000 Greater Queens with Faster Greater
+  Queens I, Hatchery 18, Expansion 31; `nexus2` visible, `premutagen`/`mutagen`
+  still locked (pre-Ascension).
+
+This is the pinned branch point for energy-phase and first-Ascension tactic
+tests documented in BOOK-07 (the ascend-cost-decay finding). The meat bank is
+offline-catch-up inflated by native import, which is precisely why `nexus1` is
+affordable here even though the live run never banked past the 333.33B Nexus
+gate; treat any timing/ETA read from it as a test artifact and compare only
+action deltas and rates. Round-trip import restores 10,000 Greater Queens and
+1 Nexus cleanly on production `v1.1.17`. It is not an active verifier fixture
+and must not replace a pinned fixture or be imported into a player's normal
+save.

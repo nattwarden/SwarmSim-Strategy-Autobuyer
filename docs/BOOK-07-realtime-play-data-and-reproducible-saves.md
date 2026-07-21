@@ -96,6 +96,24 @@ branches fairly?
   Queens reconstruction path, the next Greater-Queen investment, or the
   Locust-versus-Roach Territory choice
 
+`manual-play-first-nexus-baseline-2026-07-21`
+
+- fixture: `docs/test-data/player-saves/manual-play-first-nexus-baseline-2026-07-21.txt`
+- SHA-256: `3f5138065ceaf84c83a28d5965a5b4e53113dea32686553ab00bdba6f321bd90`
+- source: `manual-play-twin-nests-v-baseline-2026-07-18` re-imported into the
+  in-app browser, then advanced by a single engine-driven `nexus1` purchase
+  (not script-free); the meat bank is offline-catch-up inflated by the native
+  import, so it crosses the 333.33B Nexus gate that the live run never banked
+- scope: first entry into the Energy/Nexus layer — 1 Nexus, energy ~2,001
+  (+2,000 build burst), 10,000 Greater Queens with Faster GQ I, Hatchery 18,
+  Expansion 31; `nexus2` visible, `premutagen`/`mutagen` still pre-Ascension
+- intended use: the reproducible branch point for energy-phase and
+  first-Ascension tactic tests (Nexus-ladder climb, energy-spend efficiency,
+  ability-versus-Nexus allocation); import immediately before each branch and
+  compare action deltas and rates, never absolute banks
+- verification: round-trip import restores 10,000 Greater Queens and 1 Nexus
+  cleanly on production `v1.1.17`
+
 ## UI map for manual play
 
 Observed on production Swarm Simulator `v1.1.17` on 2026-07-18. Labels that
@@ -264,6 +282,256 @@ artifact, not a live-play decision. (Secondary, still open: the autobuyer
 gates the whole Energy phase on `nexus1.isVisible()` alone, so a genuine
 pre-Ascension meat-bank spike past 333.33B would also trip it; hardening that
 gate is tracked as a separate strategy question, not a game-data fact.)
+
+## Energy ability map (game data + live casts, 2026-07-21)
+
+Source: production Swarm Simulator `v1.1.17`. Ability cost/effect definitions
+were read from the live game engine (`angular.injector().get("game")`); the
+delta measurements are from single controlled casts on a mature save
+(Ascension 11, 5 Nexus, ~422K energy) loaded in the in-app browser. Delta
+*ratios* (e.g. "7200 x velocity") are internal to one tick and are therefore
+robust to the native-import offline-catch-up inflation noted elsewhere in this
+book; absolute banks are not.
+
+### Energy economy
+
+- All six abilities are repeatable upgrades with a fixed energy cost
+  (`factor = 1`) and require the `nexus` unit to exist.
+- Energy is produced only by Nexus units at `0.1/s` each (base), plus a
+  one-time burst when each Nexus tier is built. At the observed 5-Nexus state
+  the live regen was `1.9/s` (Ascension/`mutantnexus` scaling above the `0.5`
+  base).
+- **Energy has a hard cap.** Observed live: `energy = 421,946`, `cap = 427,633`
+  (98.7% full). Above the cap all further Nexus production is wasted, so near
+  the cap the correct play is to spend energy down. `mutantnexus` raises both
+  Nexus energy production and the energy `capMult`.
+- Nexus build tiers (one-time, add `+1` Nexus and an energy burst):
+  `nexus1` 3.333e12 meat (+2000 e); `nexus2` 3.333e15 meat + 625 e (+4000 e);
+  `nexus3` 3.333e18 meat + 2500 e + 3.333e6 larva (+6000 e); `nexus4` 3.333e21
+  meat + 10,000 e + 3.333e7 larva (+8000 e); `nexus5` 3.333e24 meat + 36,000 e
+  + 3.333e9 larva (+10,000 e). (`nexus1` becomes *visible* at meat >= 333.33B
+  per the unlock-threshold section above; its *cost* is 3.333T meat.)
+
+### Ability cost, effect, and measured value
+
+| Ability (id) | Energy | Effect (engine definition) | Live cast result at observed state |
+|---|---|---|---|
+| Meat Rush (`meatrush`) | 1600 | +7200 s of meat velocity + flat 1e11 meat | -1600 e; +1.3717e194 meat = exactly `7200 x meatVel`; **+152% of the meat bank** |
+| Larva Rush (`larvarush`) | 1600 | +2400 s of larva velocity + flat 1e5 larva | -1600 e; exactly `2400 x larvaVel`; only **+0.0093% of bank** (larva oversupplied) |
+| Territory Rush (`territoryrush`) | 1600 | +7200 s of territory velocity + flat 1e9 territory | -1600 e; exactly `7200 x terrVel`; only **+1.2e-7% of bank** (territory oversupplied) |
+| Swarm Warp (`swarmwarp`) | 2000 | `skipTime` 900 s + energy velocity -900 (denies energy gain during the warp) | -2000 e; territory exactly +900 s, meat +948 s (compounds downstream), **and producer counts advanced: drones +10.3%, queens +6.2%** |
+| House of Mirrors (`clonearmy`) | 2500 | `compoundUnit x2` on every army unit (swarmling..goon, 11 units) | -2500 e; every army unit **x2 (+100%)** -> territory/s **x2 (+100%)** |
+| Clone Larvae (`clonelarvae`) | 12000 | `compoundUnit` larva (val 2, cocoon cap 1e5), scaled by `power.clonelarvae` | -12000 e; +2.51e27 larva = **+16.7% of bank** (~4.33e6 s ~ 50 days of larva production; observed `power.clonelarvae = 43.27`) |
+
+### Strategic reading
+
+- A **Rush** adds `power x baseSeconds x current velocity` of one resource. Its
+  value is therefore that amount **relative to how much of the resource you
+  actually need**. The same 1600 energy delivered `+152%` of the meat bank but
+  `+1.2e-7%` of the territory bank in one state. A rush is worth an energy cast
+  only when its resource is the *current binding gate*; when the bank already
+  dwarfs production it is wasted energy.
+- **Swarm Warp is the only ability that advances producer populations**, so its
+  gains compound (more drones/queens -> more future production) instead of being
+  a one-time resource dump. It is the default broad-economy energy sink when no
+  single resource sharply gates progress.
+- **Territory Rush and Larva Rush are near-useless in a mature, oversupplied
+  state.** Larva Rush still matters early, when larva gates manual unit
+  purchases, Hatcheries, and Expansions.
+- **House of Mirrors** is niche: it doubles territory/s only when the army *is*
+  the territory engine and territory is the gate; it does nothing for empty army
+  rows. It has **no** mutagen power hook, so its effect is always a flat `x2`.
+- **Clone Larvae** is the premium larva wall-breaker at 12000 energy = 7.5 Meat
+  Rushes; justify it against that alternative and only when larva is a genuine
+  hard wall with an energy surplus.
+- Mutagen upgrades scale these: `mutantrush` -> `power.{larva,meat,territory}rush`;
+  `mutantswarmwarp` -> `power.swarmwarp`; `mutantclone` -> `power.clonelarvae`;
+  `mutantnexus` -> Nexus energy production and energy `capMult`.
+
+### Script implication (open question, not yet a verified rule)
+
+Energy-phase logic should (a) respect the energy cap and spend before overflow,
+(b) score each ability by its effect toward the **current** bottleneck resource
+per unit of energy, (c) default to Swarm Warp for broad pushes, and (d) not cast
+a rush for an oversupplied resource. This extends, and must be validated
+against, the existing advisor-only Energy-abilities lane; it is recorded here as
+a measured basis for that work, not as an accepted planner change.
+
+## First-Ascension energy gate and ascend-cost decay (game data + live climb, 2026-07-21)
+
+Source: production Swarm Simulator `v1.1.17`, engine read via
+`angular.injector().get("game")`, driven from the pinned pre-Ascension baseline
+`manual-play-first-nexus-baseline-2026-07-21` (see the reproducible-seed list).
+As with the energy-ability map, the *formula* and *delta ratios* below are
+internal to one tick and are robust to the native-import offline-catch-up
+inflation; absolute banks and any wall-clock ETA are not.
+
+### The gate is energy, and spending energy lowers the cost
+
+The first Ascension is **not** gated by accumulating a visible `premutagen`
+resource (the `premutagen`/`mutagen` UI only unlocks at `ascension >= 1`). It is
+gated by the **energy bank** meeting a decaying `ascendCost`:
+
+```
+ascendCostPercent = min(1, energy / ascendCost)
+ascendCost        = 5e6 * 1.12^(ascensions) / 2^(energySpent / (5e4 * mutagen.stat("ascendCost",1)))
+```
+
+- `ascendCost` starts at **5,000,000** energy on a fresh run (`ascensions = 0`,
+  `mutagen` stat `= 1`, so the halving divisor is `50,000`).
+- **Every energy unit spent — on Nexus tiers *and* on abilities — accrues to
+  `ascendEnergySpent`**, and each `50,000` cumulative energy spent halves
+  `ascendCost`. Verified live: after buying Nexus 2 and Nexus 3 (energy costs
+  `625 + 2,500 = 3,125`), `ascendEnergySpent = 3,125` and `ascendCost` fell
+  `5,000,000 -> 4,788,017`, matching `5e6 / 2^(3125/50000)` exactly.
+- `ascend()` then converts `premutagen -> mutagen` and increments `ascension`.
+
+So the route to the first Ascension is a loop, not a single purchase: raise the
+energy **cap and regen** by building Nexus tiers, fill energy, **spend** it to
+grind `ascendCost` down, and repeat until the (reduced) `ascendCost` is at or
+below a full energy bank. Reaching `ascendCost ~ 427K` (the 5-Nexus cap noted in
+the energy-ability map) requires spending on the order of `177,000` cumulative
+energy (`log2(5e6 / 427K) ~ 3.55` halvings x `50,000`).
+
+### Nexus-ladder climb from one bank (measured)
+
+From the baseline (1 Nexus, energy ~2,064, meat and larva in large surplus), a
+single burst-funded climb reaches **Nexus 3 and then stalls**:
+
+| Tier | Energy before | Energy after | Net | Note |
+|---|---|---|---|---|
+| Nexus 2 | 2,064 | 5,439 | +3,375 | cost 625 e, burst +4,000 e |
+| Nexus 3 | 5,439 | 8,939 | +3,500 | cost 2,500 e + 3.33M larva, burst +6,000 e |
+| Nexus 4 | 8,939 | — | — | **wall**: costs 10,000 e; bank is 8,939 (short ~1,061) |
+
+- The starting bank funds exactly Nexus 1 -> 3 because tiers 2-3 return more
+  energy in their build burst than they cost; the bank actually *grows*
+  (2,064 -> 8,939). **Nexus 4 is the first hard energy wall** (its 10,000-energy
+  cost exceeds what the chain leaves).
+- Nexus 3 unlocks **`nightbug`** (the first mutation unit; `requires nexus>=3`),
+  raises the energy cap `10,000 -> 30,000`, and raises regen to `0.3/s`
+  (base regen scales at `~0.1/s` per Nexus). `moth` needs Nexus 4, `bat` Nexus 5.
+- `nightbug` is buyable at `10 energy + 1 larva` each but has no `premutagen`
+  production rate; the mutation units feed the ascension layer through their
+  engine `effect`, not a visible per-second premutagen velocity.
+
+### Nexus-spend dominates ability casts for reaching Ascension (verified A/B, 2026-07-21)
+
+Two branches were run from immediate re-imports of the pinned
+`manual-play-first-nexus-baseline-2026-07-21` state, each spending the starting
+energy differently and measuring the `ascendCost` decay and side effects:
+
+| Measure | Branch A: cast `larvarush` | Branch B: buy Nexus 2 + 3 |
+|---|---|---|
+| Energy charged to `ascendEnergySpent` | 1,600 | 3,125 |
+| `ascendCost` | 5,000,000 -> 4,890,318 (-109,682) | 5,000,000 -> 4,788,017 (-211,983) |
+| Decay **per energy spent** | ~68.6 | ~67.8 |
+| Energy bank after | 2,157 -> 557 (net -1,600) | 2,166 -> 9,041 (net **+6,875**) |
+| Energy cap | 10,000 (unchanged) | 10,000 -> **30,000** |
+| Regen | 0.1/s (unchanged) | 0.1 -> **0.3/s** |
+| Side effect | +1.98M larva (oversupplied, wasted) | unlocked `nightbug`, reached Nexus 3 |
+
+**Result: spending energy on the Nexus ladder strictly dominates casting
+abilities when the goal is the first Ascension.** The `ascendCost` decay per
+energy spent is effectively identical in both branches (~68), confirming the
+halving depends only on cumulative `ascendEnergySpent`, not on what the energy
+buys. But a Nexus purchase carries a compounding triple advantage an ability
+cast lacks:
+
+1. **Self-funding** — the build burst (`+10,000` across tiers 2-3) exceeds the
+   `3,125` spent, so the energy bank *grows* (2,166 -> 9,041) while an ability
+   cast drains it (2,157 -> 557).
+2. **Higher ceiling** — the cap rises `10,000 -> 30,000`, so a larger qualifying
+   bank can be held.
+3. **Faster refill** — regen rises `0.1 -> 0.3/s` (`~0.1/s` per Nexus).
+
+Therefore the verified tactic toward the first Ascension is: **spend all energy
+on the Nexus ladder (2 -> 3 -> 4 -> 5) first; cast an ability only when a
+resource it boosts is the genuine current bottleneck** (larva and territory are
+not, in this mature economy). This is now an accepted basis for the
+energy/ascension-phase planner lane, subject only to the standing rule that
+absolute wall-clock ETAs from an offline-inflated import remain test artifacts.
+
+## Clean Nexus-5 ability baseline and the first-Ascension outcome (game data + live, 2026-07-21)
+
+Driven from the pinned first-Nexus baseline, fast-forwarding only the energy and
+larva accumulation needed to build the Nexus ladder (a test-artifact shortcut of
+regen time; the delta ratios measured below are tick-internal and unaffected).
+This reaches **Nexus 5, ascension 0, all mutant powers = 1** — the clean,
+unboosted counterpart to the mature-save energy-ability map above.
+
+### The mutation units feed energy, not premutagen
+
+`nightbug`, `moth`, and `bat` unlock at Nexus 3/4/5 and each cost only energy +
+larva (`10 e + 1 larva`, `10 e + 1 larva`, `100 e + 1 larva`). Their engine
+`effect` is an asymptotic stat on the **energy economy**, not on premutagen:
+
+- `nightbug` -> energy `capMult` (asymptotic toward `x6`)
+- `moth` -> `nexus` `prod` (raises Nexus energy production/regen, toward `x2`)
+- `bat` -> energy `power` (toward `x1.6`)
+
+(This corrects an earlier false lead: a raw string scan flagged these units as
+"affecting premutagen" only because each `effect` object carries the whole
+serialized game state, which contains every unit name. The extracted effect
+targets are energy stats.)
+
+### Clean ability performance at Nexus 5 (power = 1)
+
+Each ability was measured from an immediate re-import of the same clean Nexus-5
+state, so the casts are independent:
+
+| Ability | Energy | Clean effect (power = 1) | % of bank in this economy |
+|---|---|---|---|
+| Meat Rush | 1,600 | `7,200 x meatVel` (flat 1e11 negligible) | +12.5% meat |
+| Territory Rush | 1,600 | `7,200 x terrVel` (flat 1e9 negligible) | +3.1% territory |
+| Larva Rush | 1,600 | `2,400 x larvaVel + 1e5` | +0.12% (oversupplied) |
+| House of Mirrors | 2,500 | army **x2** -> territory/s **x2** (no power hook) | — |
+| Swarm Warp | 2,000 | skip 900 s: drones +1.18%, queens +0.78%, +900 s territory/meat | — |
+| Clone Larvae | 12,000 | **+100,000 s of larva velocity** (cocoon cap 1e5) | +4.70% larva |
+
+Headline: **Clone Larvae collapses without the mutagen boost.** Clean it adds
+exactly `100,000 s` (~27.8 h) of larva; on the mature save (`power.clonelarvae =
+43.27`) the same cast delivered +16.7% of a far larger bank. Clean it is only
++4.70% for 12,000 energy (= 7.5 Meat Rushes), so **Clone Larvae is a
+post-Ascension / mutagen-scaled ability, not a pre-Ascension tool.** Rush ratios
+and the House-of-Mirrors `x2` are power-independent (identical clean vs boosted);
+Swarm Warp's producer advance is smaller here (+1.18% vs +10.3% on the mature
+save) because it tracks the economy's growth rate, not the fixed 900 s skip.
+
+### The first Ascension grants zero mutagen (verified live)
+
+The full `ascend()` logic: `mutagen += premutagen.count()`, `premutagen := 0`,
+`ascension += 1`, then every non-`mutagen`-tab unit and upgrade resets to its
+init value. Crucially, **`premutagen` has no producer, no cost, and no effecter
+in the engine unit graph — even after `ascension = 1`** — so it is `0` at ascend
+time and stays `0`.
+
+A first ascension was therefore driven and executed live from the clean Nexus-5
+state (energy spent to pull `ascendCost` down to `64,232`, then `energy 65,516`
+crossed it):
+
+| Before | After |
+|---|---|
+| ascension 0, mutagen 0, premutagen 0 | **ascension 1**, **mutagen 0**, premutagen 0 |
+| — | premutagen now *visible* (layer unlocked) |
+| — | economy reset (nexus 0, GQ 0, meat 35, energy 0) |
+| next `ascendCost` = 5,000,000 | next `ascendCost` = **5,600,000** (`5e6 x 1.12^1`) |
+
+So the first Ascension is **not** a mutagen harvest. Its function is to unlock
+the mutation layer (make `premutagen` active) and reset the run with
+`ascension = 1`, which raises the next `ascendCost` by the confirmed `1.12^n`
+factor. This validates measuring the clean pre-Ascension state *before*
+ascending: the ascension itself yields nothing.
+
+### Open question: how is mutagen ever earned?
+
+If `premutagen` is never produced, no ascension can grant mutagen — yet the
+mature Ascension-11 save also showed `mutagen = 0` while holding maxed mutant
+units (e.g. `mutantclone ~ 3e24`). That implies mutagen is either a transient
+resource spent immediately on acquisition, or earned through a path outside the
+unit production graph (the visible-but-unproduced `crystal`, or the
+`mtxEnergy`/microtransaction hooks, are the leading suspects). This is left as a
+question requiring dedicated save-format/engine research, not a guess.
 
 ## Active-play principles and open save-format research
 

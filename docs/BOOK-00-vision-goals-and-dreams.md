@@ -1,6 +1,6 @@
 # Book 00 - Vision, Goals, and Dreams
 
-> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-19` | Revision: `e3fb299eb87c0b29421795435928fb78e3518a6b` | Result: `repo-health RH track (R1-R9) fully executed and closed - CI fix, dead scripts/functions/scaffolding removed, shared verify harness, evidence pruned; verify green; this doc-closure commit pending`
+> Books system: `books.v1` | Last full audit: `2026-07-18` | Last maintenance: `2026-07-21` | Revision: `7fc158fa7227e27dadbb9aca475be21809e00cc1` | Result: `Maintain: extended BOOK-07 with the first-Ascension energy gate + ascend-cost-decay finding, the verified Nexus-spend-dominates A/B, the clean Nexus-5 ability baseline (mutation units feed energy not premutagen; Clone Larvae collapses unboosted), and the verified first-Ascension-grants-0-mutagen outcome with the open "how is mutagen earned" question; pinned manual-play-first-nexus-baseline-2026-07-21 (registered in seed list + README); all these plus the prior energy-ability-map edit remain uncommitted at recorded revision`
 
 Status: Strategic north star for SwarmSim Strategy Autobuyer.
 
