@@ -1023,6 +1023,20 @@ defaults or normal authority.
 
 #### LC-7 - Phase, Ascension, stochastic, and offline experiments
 
+Status: **offline/elapsed experiment implemented; exact-SHA evidence pending
+(2026-07-24)**. `runOfflineHorizonExperiment` (schema
+`swarmsim-lab.offline-horizon.v1`) is green on
+`npm run check:laboratory:offline-horizon` over the hash-pinned LD-09 natural
+Nexus-5 save. It projects the save across 5m/1h/1d/long-return offline horizons
+with the tick+reify primitive, repeats over samples to report an uncertainty band
+(sample count, min/max, spread), tags natural/injected provenance without
+synthesizing natural timing or merging provenances, and proves no production
+Ascension/auto-cast (autoAscend/autoCastAbilities stay false). LD-09 offline larva
+grows monotonically over a week (5m 7.65e10 -> 1w 4.51e11). First-Ascension
+branches, post-reset recovery, the Nexus 1->5 seed benchmark, and genuine game-RNG
+cohorts need Ascension execution support and LD-08/LD-13/LD-14/LD-17 and remain
+bounded follow-ups. See `SWARMSIM_LABORATORY_PHASE_1.md` and the status board.
+
 Outcome: Laboratory can orchestrate complete phase benchmarks, sampled random
 events, first Ascension, post-reset recovery, and elapsed-time returns.
 

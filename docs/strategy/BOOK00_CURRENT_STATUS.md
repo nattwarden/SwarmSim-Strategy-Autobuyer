@@ -7,12 +7,29 @@ Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **LC-1..LC-6 all ACCEPTED via exact-SHA evidence**; the milestone
-continues with LC-7 (phase, Ascension, stochastic, and offline experiments -
-the final LC slice). LC-1..LC-6 are each committed and verified through the full
-exact-SHA evidence cycle. The full implementation contract is in
+Status: **LC-1..LC-6 ACCEPTED; LC-7 (final slice) implemented (exact-SHA evidence
+pending)**. LC-1..LC-6 are each committed and verified through the full exact-SHA
+evidence cycle. LC-7's offline/elapsed experiment with sampled uncertainty is
+implemented and locally green on its focused check and the pure guardrail/build
+checks; its formal exact-SHA evidence cycle is the next step, after which the LC
+program's seven slices are all accepted. The full implementation contract is in
 `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
+
+LC-7 progress note (2026-07-24, intermediate): `runOfflineHorizonExperiment`
+(schema `swarmsim-lab.offline-horizon.v1`) projects a source save across elapsed
+offline horizons (5m/1h/1d/long-return) using the tick+reify primitive and repeats
+it over samples so the wall-clock micro-drift becomes a measured uncertainty band
+(sample count, min/max, spread) with an explicit natural/injected provenance tag
+that never synthesizes natural timing and never merges provenances. On LD-09 the
+offline larva return grows monotonically over a full week (5m 7.65e10 -> 1w
+4.51e11), the spread is < 1e-4%, restores are identical with source non-mutation,
+and autoAscend/autoCastAbilities stay false (nothing executed in production).
+First-Ascension branches, post-reset recovery, the Nexus 1->5 seed benchmark, and
+genuine game-RNG cohorts need Ascension execution support and LD-08/LD-13/LD-14/
+LD-17 and remain bounded follow-ups. Do not mark LC-7 complete until its
+implementation commit, full exact-SHA verification, generated evidence, and
+separate evidence commit meet `GIT_VERIFICATION_PROTOCOL.md`.
 
 LC-6 exact-SHA acceptance (2026-07-24):
 

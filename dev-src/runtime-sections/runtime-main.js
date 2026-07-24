@@ -622,6 +622,7 @@
   let lastLaboratoryCrossLaneTournament = null;
   let lastLaboratoryPackageTournament = null;
   let lastLaboratoryEnergyTournament = null;
+  let lastLaboratoryOfflineHorizonExperiment = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -10734,6 +10735,7 @@ function getDisplayName(item) {
   const LABORATORY_CROSS_LANE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.cross-lane-tournament.v1";
   const LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.package-tournament.v2";
   const LABORATORY_ENERGY_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.energy-tournament.v1";
+  const LABORATORY_OFFLINE_HORIZON_SCHEMA_VERSION = "swarmsim-lab.offline-horizon.v1";
   const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
@@ -13329,6 +13331,134 @@ function getDisplayName(item) {
       });
       lastLaboratoryEnergyTournament = tournament;
       return { ok: true, tournament, validity: laboratoryValidateEnergyTournament(tournament) };
+    } finally {
+      config.enabled = priorEnabled;
+    }
+  }
+
+  // LC-7 phase/offline/stochastic experiment orchestrator. Projects a source
+  // save across elapsed offline horizons (5m/1h/1d/long-return) using the working
+  // tick+reify primitive, and repeats the projection over several samples so the
+  // live-site wall-clock micro-drift becomes a measured uncertainty band (sample
+  // count, min/max, spread) rather than a hidden approximation. Results carry an
+  // explicit natural/injected provenance tag and are never merged across
+  // provenance. It executes nothing in production - no Ascension, no auto-cast -
+  // and proves the production auto-cast/Ascension authority is unchanged. First
+  // Ascension branches, post-reset recovery, Nexus 1->5 seed benchmarks, and
+  // genuine game-RNG award cohorts need Ascension mechanics and the LD-08/LD-13/
+  // LD-14/LD-17 data and are declared follow-ups.
+  function laboratoryValidateOfflineHorizonExperiment(experiment) {
+    const errors = [];
+    if (experiment?.schemaVersion !== LABORATORY_OFFLINE_HORIZON_SCHEMA_VERSION) errors.push("unexpected offline-horizon schema");
+    if (!Array.isArray(experiment?.horizonStats) || !experiment.horizonStats.length) errors.push("no horizon statistics recorded");
+    if (!(Number(experiment?.sampleCount) >= 1)) errors.push("no samples recorded");
+    if (experiment?.provenance !== "natural" && experiment?.provenance !== "injected") errors.push("missing natural/injected provenance");
+    if (!experiment?.siblingIsolation?.allRestoredIdenticalToSource) errors.push("a sample restore diverged from source");
+    if (!experiment?.siblingIsolation?.sourceRawStateUnchanged) errors.push("source raw state changed after the experiment");
+    if (!experiment?.advisorOnlyAuthority?.unchanged) errors.push("production auto-cast/Ascension authority changed during the experiment");
+    return { ok: errors.length === 0, errors };
+  }
+
+  async function runLaboratoryOfflineHorizonExperiment(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const sourceSave = options.sourceSave;
+    if (typeof sourceSave !== "string" || !sourceSave) {
+      return { ok: false, error: "runOfflineHorizonExperiment requires a sourceSave string." };
+    }
+    const game = getGame();
+    const phaseTarget = String(options.phaseTarget || "elapsed-offline-return");
+    const provenance = options.provenance === "injected" ? "injected" : "natural";
+    const horizonsSeconds = (Array.isArray(options.horizonsSeconds) && options.horizonsSeconds.length
+      ? options.horizonsSeconds
+      : [300, 3600, 86400, 604800]).map(Number).filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+    const sampleCount = Math.max(1, Math.min(8, Math.floor(Number(options.sampleCount) || 3)));
+
+    const priorEnabled = config.enabled;
+    const autoCastBefore = laboratoryCaptureAutoCastAuthority();
+    config.enabled = false;
+    try {
+      const baseline = await laboratoryRestoreBranchSource(game, sourceSave);
+      if (!baseline.ok) return { ok: false, error: "source restore failed", detail: baseline };
+      const sourceRawStateHash = baseline.rawStateHash;
+
+      const samples = [];
+      let allRestoredIdentical = true;
+      for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+        const restored = await laboratoryRestoreBranchSource(game, sourceSave);
+        if (!restored.ok || restored.rawStateHash !== sourceRawStateHash) allRestoredIdentical = false;
+        const points = [];
+        let elapsed = 0;
+        for (const horizonSeconds of horizonsSeconds) {
+          let advancedSeconds = 0;
+          if (horizonSeconds > elapsed) {
+            advancedSeconds = laboratoryAdvanceHorizon(game, horizonSeconds - elapsed).advancedSeconds;
+            elapsed = horizonSeconds;
+          }
+          points.push({ horizonSeconds, advancedSeconds, larva: laboratorySafeResourceString(getCurrentResource(game, "larva")) });
+        }
+        samples.push({ sampleIndex, points });
+      }
+
+      // Per-horizon uncertainty band across the samples.
+      const horizonStats = horizonsSeconds.map((horizonSeconds) => {
+        const values = samples.map((sample) => decimalFrom((sample.points.find((p) => p.horizonSeconds === horizonSeconds) || {}).larva || "0"));
+        let sum = decimalFrom(0);
+        let min = values[0];
+        let max = values[0];
+        for (const value of values) {
+          sum = sum.plus(value);
+          if (value.lessThan(min)) min = value;
+          if (value.greaterThan(max)) max = value;
+        }
+        const mean = values.length ? sum.dividedBy(values.length) : decimalFrom(0);
+        const spreadPercent = mean.greaterThan(0)
+          ? decimalToNumber(max.minus(min).dividedBy(mean), 0) * 100
+          : 0;
+        return {
+          horizonSeconds,
+          sampleCount: values.length,
+          meanLarva: laboratorySafeResourceString(mean),
+          minLarva: laboratorySafeResourceString(min),
+          maxLarva: laboratorySafeResourceString(max),
+          spreadPercent,
+        };
+      });
+
+      const restoreAfter = await laboratoryRestoreBranchSource(game, sourceSave);
+      const sourceRawStateUnchanged = restoreAfter.ok && restoreAfter.rawStateHash === sourceRawStateHash;
+      const autoCastAfter = laboratoryCaptureAutoCastAuthority();
+      const authorityUnchanged = laboratoryCanonicalJson(autoCastBefore) === laboratoryCanonicalJson(autoCastAfter);
+
+      const experiment = laboratoryDeepFreeze({
+        schemaVersion: LABORATORY_OFFLINE_HORIZON_SCHEMA_VERSION,
+        experimentId: String(options.experimentId || "LC7-OFFLINE-HORIZON"),
+        capturedAt: String(options.captureTimestamp || new Date().toISOString()),
+        phaseTarget,
+        provenance,
+        // Natural and injected results are never merged: this experiment carries a
+        // single provenance tag, and a natural source's timing is never synthesized.
+        naturalTimingSynthesized: false,
+        timingModel: "live-site-tick-reify-horizons",
+        uncertaintyModel: "multi-sample-wall-clock-drift-band",
+        horizonsSeconds,
+        sampleCount,
+        source: { rawStateHash: sourceRawStateHash },
+        samples,
+        horizonStats,
+        advisorOnlyAuthority: { before: autoCastBefore, after: autoCastAfter, unchanged: authorityUnchanged },
+        siblingIsolation: {
+          allRestoredIdenticalToSource: allRestoredIdentical,
+          sourceRawStateUnchanged,
+        },
+        knownLimitations: [
+          "the sampled uncertainty band reflects live-site wall-clock micro-drift in the tick+reify projection, not genuine game-RNG award cohorts (LD-17); real stochastic-event sampling with RNG provenance is a follow-up",
+          "first-Ascension branches (Ascend now/later, one-last-gate), first post-reset return-to-Nexus-5 time, and the Nexus 1->5 seed benchmark need Ascension execution support and the LD-08/LD-13/LD-14 data, and are declared follow-ups",
+          "long horizons can saturate at the cocoon/larva cap; a cap-aware return metric is a follow-up",
+        ],
+      });
+      lastLaboratoryOfflineHorizonExperiment = experiment;
+      return { ok: true, experiment, validity: laboratoryValidateOfflineHorizonExperiment(experiment) };
     } finally {
       config.enabled = priorEnabled;
     }
@@ -27106,6 +27236,15 @@ function getDisplayName(item) {
         validateEnergyTournament(tournament) {
           return laboratoryValidateEnergyTournament(tournament);
         },
+        async runOfflineHorizonExperiment(options = {}) {
+          return runLaboratoryOfflineHorizonExperiment(options);
+        },
+        getLastOfflineHorizonExperiment() {
+          return laboratoryCloneResult(lastLaboratoryOfflineHorizonExperiment);
+        },
+        validateOfflineHorizonExperiment(experiment) {
+          return laboratoryValidateOfflineHorizonExperiment(experiment);
+        },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
         },
@@ -27121,6 +27260,7 @@ function getDisplayName(item) {
           lastLaboratoryCrossLaneTournament = null;
           lastLaboratoryPackageTournament = null;
           lastLaboratoryEnergyTournament = null;
+          lastLaboratoryOfflineHorizonExperiment = null;
           return { ok: true };
         },
         createObservationSummary(result) {

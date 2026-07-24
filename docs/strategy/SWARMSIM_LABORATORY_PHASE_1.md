@@ -307,6 +307,55 @@ Clone `99.8/99.9/100%` cap levels, Mirror-now-vs-seed-then-Mirror, Crystal
 exact/full/hold, and the full pre-vs-post-Nexus-5 split need the LD-08/LD-11/
 LD-12/LD-13 data and are declared follow-ups.
 
+### LC-7 phase, Ascension, stochastic, and offline experiments (2026-07-24)
+
+LC-7 is the final LC slice. It orchestrates elapsed-time offline returns with a
+sampled uncertainty band. The development-only API exposes
+`laboratory.runOfflineHorizonExperiment({ sourceSave, horizonsSeconds, sampleCount, provenance })`,
+`laboratory.getLastOfflineHorizonExperiment()`, and
+`laboratory.validateOfflineHorizonExperiment(...)`; the result schema is
+`swarmsim-lab.offline-horizon.v1`.
+
+The experiment projects a source save across elapsed offline horizons
+(`5m/1h/1d/long-return`) using the tick+reify horizon primitive, and repeats the
+projection over several samples so the live-site wall-clock micro-drift becomes a
+measured **uncertainty band** (sample count, min/max, spread percent per horizon)
+rather than a hidden approximation. Every result carries an explicit
+**natural/injected provenance tag** and never synthesizes a natural source's
+timing; a single result never merges provenances. It executes nothing in
+production and proves the production auto-cast/Ascension authority is unchanged.
+
+Verified by `npm run check:laboratory:offline-horizon` on the hash-pinned LD-09
+balanced natural Nexus-5 save over `[300, 3600, 86400, 604800]s` with three
+samples: the offline larva return grows monotonically with elapsed time
+(`5m 7.65e10 -> 1h 7.86e10 -> 1d 1.30e11 -> 1w 4.51e11`), proving tick+reify works
+over long horizons; the uncertainty band is tiny (spread < `1e-4%`); all sample
+restores are identical with source non-mutation; the provenance is `natural` and
+not synthesized; and `autoAscend`/`autoCastAbilities` stay `false`.
+`npm run verify:laboratory:offline-horizon` is the declared evidence generator.
+
+Honest bounds (`timingModel: live-site-tick-reify-horizons`,
+`uncertaintyModel: multi-sample-wall-clock-drift-band`): the sampled uncertainty
+reflects live-site wall-clock micro-drift, not genuine game-RNG award cohorts
+(LD-17), so real stochastic-event sampling with RNG provenance is a follow-up.
+First-Ascension branches (Ascend now/later, one-last-gate), the first post-reset
+return-to-Nexus-5 time, and the Nexus 1->5 seed benchmark need Ascension execution
+support and the LD-08/LD-13/LD-14 data, and are declared follow-ups. Long horizons
+can saturate at the cocoon/larva cap; a cap-aware return metric is a follow-up.
+
+### LC program status
+
+LC-1 through LC-7 are all implemented and accepted via the exact-SHA protocol.
+Laboratory now covers, on the live site: read-only decision capture (LC-1),
+disposable cloned-save branch execution (LC-2), the Engine one-click tournament
+with an independent oracle (LC-3), the cross-lane one-click tournament (LC-4), the
+declarative package runner with working horizons (LC-5), the energy/ability/Clone
+tournament with the advisor-only safety boundary (LC-6), and the offline/elapsed
+experiment with sampled uncertainty and provenance (LC-7). The remaining bounded
+follow-ups are data (LD-08/LD-11/LD-12/LD-13/LD-14/LD-16/LD-17) and Ascension
+execution support; fully hermetic timing still wants the local build (RH-4
+Outcome 2), though horizons no longer depend on it.
+
 ## 0.12.3 narrow contract update
 
 0.12.3 adds a narrow live-capture hardening patch for House of Mirrors and ability
