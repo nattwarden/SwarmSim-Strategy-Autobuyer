@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "swarmsim-lab.ascension-experiment.v1",
+  "experimentId": "LC7-LD09-ASCENSION",
+  "capturedAt": "2026-07-23T00:00:00.000Z",
+  "phaseTarget": "first-ascension-and-recovery",
+  "provenance": "natural",
+  "naturalTimingSynthesized": false,
+  "timingModel": "live-site-real-settle-plus-tick-reify-recovery",
+  "settleMillis": 5000,
+  "recoveryHorizonsSeconds": [
+    300,
+    3600
+  ],
+  "source": {
+    "rawStateHash": "sha256:dd5a125a5044b37a63bd72af9a6edfbc3ce1c564f938b17978e6940d96c695c1"
+  },
+  "ascendNow": {
+    "restoredIdenticalToSource": true,
+    "settled": {
+      "premutagen": "8888",
+      "energy": "80556.121087568681318"
+    },
+    "ascension": {
+      "ascended": true,
+      "status": "ascended",
+      "before": {
+        "premutagen": "8888",
+        "mutagen": "0",
+        "nexus": "5"
+      },
+      "after": {
+        "premutagen": "0",
+        "mutagen": "8888",
+        "nexus": "0"
+      },
+      "mutagenGained": "8888",
+      "economyReset": true
+    },
+    "postResetRecovery": [
+      {
+        "horizonSeconds": 300,
+        "advancedSeconds": 300,
+        "larva": "266978.4736"
+      },
+      {
+        "horizonSeconds": 3600,
+        "advancedSeconds": 3300,
+        "larva": "3203318.4736"
+      }
+    ]
+  },
+  "holdNoAscend": {
+    "restoredIdenticalToSource": true,
+    "settled": {
+      "premutagen": "8888",
+      "energy": "80560.606153721731167"
+    },
+    "horizons": [
+      {
+        "horizonSeconds": 300,
+        "advancedSeconds": 300,
+        "larva": "209780194.43017946546"
+      },
+      {
+        "horizonSeconds": 3600,
+        "advancedSeconds": 3300,
+        "larva": "2458080114.6889781794"
+      }
+    ]
+  },
+  "crossResetRankingDeferred": true,
+  "advisorOnlyAuthority": {
+    "before": {
+      "autoCastAbilities": false,
+      "autoCastCloneLarvae": true,
+      "autoCastHouseOfMirrors": false,
+      "autoAscend": false
+    },
+    "after": {
+      "autoCastAbilities": false,
+      "autoCastCloneLarvae": true,
+      "autoCastHouseOfMirrors": false,
+      "autoAscend": false
+    },
+    "unchanged": true
+  },
+  "siblingIsolation": {
+    "restoresIdenticalToSource": true,
+    "sourceRawStateUnchanged": true
+  },
+  "knownLimitations": [
+    "premutagen accrues only from the real game loop, so ascend-now uses a bounded real settle; a longer ascend-later premutagen-growth comparison needs premutagen projection and is a follow-up",
+    "post-reset recovery is a bounded larva trajectory, not the full first return-to-Nexus-5 time, which needs the production planner replaying the reset economy (a follow-up)",
+    "ascend-vs-hold is not collapsed into one score: comparing across the reset needs a mutagen-value metric (LD-13/LD-14 data), which is a declared follow-up"
+  ]
+}
