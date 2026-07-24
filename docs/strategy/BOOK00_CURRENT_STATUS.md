@@ -7,28 +7,33 @@ Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **LC-1 ACCEPTED; LC-2 backend ACCEPTED; LC-3 Engine tournament
-implemented (exact-SHA evidence pending)**. LC-1 read-only capture and the LC-2
-branch backend are committed and verified through the full exact-SHA evidence
-cycle. LC-3's Engine one-click tournament and independent evaluator is
-implemented and locally green on its focused check and the pure guardrail/build
-checks; its formal exact-SHA evidence cycle is the next step. The full
+Status: **LC-1, LC-2, and LC-3 all ACCEPTED via exact-SHA evidence**; the
+milestone continues with LC-4 (cross-lane bounded one-click tournament). LC-1
+read-only capture, the LC-2 branch backend, and the LC-3 Engine tournament are
+each committed and verified through the full exact-SHA evidence cycle. The full
 implementation contract is in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
 
-LC-3 progress note (2026-07-24, intermediate): `runEngineTournament` (schema
-`swarmsim-lab.engine-tournament.v1`) runs disposable Engine/HOLD branches and
-ranks them by Laboratory's own larva-rate metric - never the production winner
-score - then observes the production Engine lane choice and reports agreement.
-On the hash-pinned LD-01 save the Laboratory metric ranks BUY_HATCHERY first
-while the fixed-order planner picks BUY_EXPANSION; the instantaneous larva-rate
-metric under-credits Expansion's indirect loop, so this flags the needed
-time-to-gate horizon projection rather than claiming production is wrong. Verified
-by `npm run check:laboratory:engine-tournament`. The horizon projection, the
-180s/600s save-window matrix, and a guaranteed winner-change boundary need
-LD-08/LD-09 (not yet captured) and are a bounded follow-up. Do not mark LC-3
-complete until its implementation commit, full exact-SHA verification, generated
-evidence, and separate evidence commit meet `GIT_VERIFICATION_PROTOCOL.md`.
+LC-3 exact-SHA acceptance (2026-07-24):
+
+- Implementation SHA: `12db48a7436b9ae9139def142f4ac02dabfc1183`
+  (tree `702947766e55d23c0f9c6b2d6a3811e166513750`), branch `codex/9.4.0-clean-room`.
+- Evidence SHA: `228c253` (separate evidence commit, allowlisted paths only).
+- Verification mode A; `npm run verify` (full required chain + guardrails)
+  passed exit 0 against the implementation SHA.
+- `runEngineTournament` (schema `swarmsim-lab.engine-tournament.v1`) ranks
+  disposable Engine/HOLD branches by Laboratory's own larva-rate metric - never
+  the production winner score - and compares the independent winner against the
+  observed production Engine lane choice. On LD-01 the Laboratory metric picks
+  BUY_HATCHERY while the fixed-order planner picks BUY_EXPANSION; the
+  instantaneous larva-rate metric under-credits Expansion's indirect loop, so
+  this flags the needed time-to-gate horizon projection, not a production error.
+- Evidence: `docs/live-logs/browser-test-lc3-engine-tournament.{json,md}` and
+  `docs/test-data/laboratory-lc3/example-engine-tournament.json`.
+
+Remaining LC-3 follow-up (bounded, not blocking): a time-to-gate horizon
+projection, the 180s/600s save-window matrix, and a guaranteed Hatchery/Expansion
+winner-change boundary, all of which need the LD-08/LD-09 Nexus-boundary saves.
 
 LC-2 exact-SHA acceptance (2026-07-24):
 

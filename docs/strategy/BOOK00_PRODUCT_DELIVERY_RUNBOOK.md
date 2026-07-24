@@ -890,17 +890,17 @@ and do not claim fully hermetic timing.
 
 #### LC-3 - Engine one-click tournament and target evaluator
 
-Status: **evaluator + tournament implemented; exact-SHA evidence pending
-(2026-07-24)**. `runEngineTournament` (schema
-`swarmsim-lab.engine-tournament.v1`) is green on
-`npm run check:laboratory:engine-tournament` over the hash-pinned LD-01 save. It
-ranks Engine/HOLD candidates by Laboratory's own larva-rate metric (never the
-production score) and compares the independent winner against the observed
-production Engine choice (LD-01: Laboratory picks BUY_HATCHERY, fixed order picks
-BUY_EXPANSION). Instantaneous larva-rate is the first metric; the time-to-gate
-horizon projection, the 180s/600s save-window matrix, and a guaranteed
-winner-change boundary need LD-08/LD-09 and remain a bounded follow-up. See
-`SWARMSIM_LABORATORY_PHASE_1.md` and the status board.
+Status: **ACCEPTED via exact-SHA evidence (2026-07-24)**. Implementation SHA
+`12db48a7436b9ae9139def142f4ac02dabfc1183`; evidence SHA `228c253` on
+`codex/9.4.0-clean-room`; full `npm run verify` passed exit 0 against the
+implementation SHA. `runEngineTournament` (schema
+`swarmsim-lab.engine-tournament.v1`) ranks Engine/HOLD candidates by Laboratory's
+own larva-rate metric (never the production score) and compares the independent
+winner against the observed production Engine choice (LD-01: Laboratory picks
+BUY_HATCHERY, fixed order picks BUY_EXPANSION). Instantaneous larva-rate is the
+first metric; the time-to-gate horizon projection, the 180s/600s save-window
+matrix, and a guaranteed winner-change boundary need LD-08/LD-09 and remain a
+bounded follow-up. See `SWARMSIM_LABORATORY_PHASE_1.md` and the status board.
 
 Outcome: Hatchery, Expansion, achievement-based larva upgrade, and HOLD share
 one next-target metric and produce an independent winner.
