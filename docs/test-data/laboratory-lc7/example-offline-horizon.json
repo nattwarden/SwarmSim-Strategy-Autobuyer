@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "swarmsim-lab.offline-horizon.v1",
+  "experimentId": "LC7-LD09",
+  "capturedAt": "2026-07-23T00:00:00.000Z",
+  "phaseTarget": "elapsed-offline-return",
+  "provenance": "natural",
+  "naturalTimingSynthesized": false,
+  "timingModel": "live-site-tick-reify-horizons",
+  "uncertaintyModel": "multi-sample-wall-clock-drift-band",
+  "horizonsSeconds": [
+    300,
+    3600,
+    86400,
+    604800
+  ],
+  "sampleCount": 3,
+  "source": {
+    "rawStateHash": "sha256:dd5a125a5044b37a63bd72af9a6edfbc3ce1c564f938b17978e6940d96c695c1"
+  },
+  "samples": [
+    {
+      "sampleIndex": 0,
+      "points": [
+        {
+          "horizonSeconds": 300,
+          "advancedSeconds": 300,
+          "larva": "76699520425.613222271"
+        },
+        {
+          "horizonSeconds": 3600,
+          "advancedSeconds": 3300,
+          "larva": "78743429444.030312011"
+        },
+        {
+          "horizonSeconds": 86400,
+          "advancedSeconds": 82800,
+          "larva": "130026964815.22274549"
+        },
+        {
+          "horizonSeconds": 604800,
+          "advancedSeconds": 518400,
+          "larva": "451106490617.47102463"
+        }
+      ]
+    },
+    {
+      "sampleIndex": 1,
+      "points": [
+        {
+          "horizonSeconds": 300,
+          "advancedSeconds": 300,
+          "larva": "76699538387.237929573"
+        },
+        {
+          "horizonSeconds": 3600,
+          "advancedSeconds": 3300,
+          "larva": "78743447405.655019313"
+        },
+        {
+          "horizonSeconds": 86400,
+          "advancedSeconds": 82800,
+          "larva": "130026982776.84745279"
+        },
+        {
+          "horizonSeconds": 604800,
+          "advancedSeconds": 518400,
+          "larva": "451106508579.09573193"
+        }
+      ]
+    },
+    {
+      "sampleIndex": 2,
+      "points": [
+        {
+          "horizonSeconds": 300,
+          "advancedSeconds": 300,
+          "larva": "76699553252.030790788"
+        },
+        {
+          "horizonSeconds": 3600,
+          "advancedSeconds": 3300,
+          "larva": "78743462270.447880528"
+        },
+        {
+          "horizonSeconds": 86400,
+          "advancedSeconds": 82800,
+          "larva": "130026997641.640314"
+        },
+        {
+          "horizonSeconds": 604800,
+          "advancedSeconds": 518400,
+          "larva": "451106523443.88859314"
+        }
+      ]
+    }
+  ],
+  "horizonStats": [
+    {
+      "horizonSeconds": 300,
+      "sampleCount": 3,
+      "meanLarva": "76699537354.960647543",
+      "minLarva": "76699520425.613222271",
+      "maxLarva": "76699553252.030790788",
+      "spreadPercent": 0.00004279871652497511
+    },
+    {
+      "horizonSeconds": 3600,
+      "sampleCount": 3,
+      "meanLarva": "78743446373.377737283",
+      "minLarva": "78743429444.030312011",
+      "maxLarva": "78743462270.447880528",
+      "spreadPercent": 0.000041687809056342296
+    },
+    {
+      "horizonSeconds": 86400,
+      "sampleCount": 3,
+      "meanLarva": "130026981744.57017076",
+      "minLarva": "130026964815.22274549",
+      "maxLarva": "130026997641.640314",
+      "spreadPercent": 0.0000252458506135253
+    },
+    {
+      "horizonSeconds": 604800,
+      "sampleCount": 3,
+      "meanLarva": "451106507546.8184499",
+      "minLarva": "451106490617.47102463",
+      "maxLarva": "451106523443.88859314",
+      "spreadPercent": 0.0000072768663318613475
+    }
+  ],
+  "advisorOnlyAuthority": {
+    "before": {
+      "autoCastAbilities": false,
+      "autoCastCloneLarvae": true,
+      "autoCastHouseOfMirrors": false,
+      "autoAscend": false
+    },
+    "after": {
+      "autoCastAbilities": false,
+      "autoCastCloneLarvae": true,
+      "autoCastHouseOfMirrors": false,
+      "autoAscend": false
+    },
+    "unchanged": true
+  },
+  "siblingIsolation": {
+    "allRestoredIdenticalToSource": true,
+    "sourceRawStateUnchanged": true
+  },
+  "knownLimitations": [
+    "the sampled uncertainty band reflects live-site wall-clock micro-drift in the tick+reify projection, not genuine game-RNG award cohorts (LD-17); real stochastic-event sampling with RNG provenance is a follow-up",
+    "first-Ascension branches (Ascend now/later, one-last-gate), first post-reset return-to-Nexus-5 time, and the Nexus 1->5 seed benchmark need Ascension execution support and the LD-08/LD-13/LD-14 data, and are declared follow-ups",
+    "long horizons can saturate at the cocoon/larva cap; a cap-aware return metric is a follow-up"
+  ]
+}
