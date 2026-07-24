@@ -8,11 +8,26 @@ Last reviewed: 2026-07-24
 ## Active milestone - Laboratory Complete Decision Coverage
 
 Status: **LC-1..LC-7 all ACCEPTED via exact-SHA evidence - the LC program's seven
-slices are complete.** Every slice is committed and verified through the full
-exact-SHA evidence cycle. The full implementation contract is in
+slices are complete; first-Ascension execution (an LC-7 follow-up) is now also
+delivered.** Every slice is committed and verified through the full exact-SHA
+evidence cycle. The full implementation contract is in
 `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`. What remains is bounded
-follow-up work (data capture and Ascension execution support), not core slices.
+follow-up work (mostly data capture), not core slices.
+
+First-Ascension execution follow-up (2026-07-24, exact-SHA evidence pending):
+`runAscensionExperiment` (schema `swarmsim-lab.ascension-experiment.v1`) executes
+a real first Ascension in a disposable sandbox - `game.ascend()` converts the
+accrued natural premutagen to permanent mutagen and resets the economy - measures
+post-reset recovery, and contrasts a hold-no-ascend branch, without declaring a
+cross-reset winner (a mutagen-value metric is a follow-up). Premutagen reifies only
+from the real game loop, so the settle briefly drives the bot with all auto-cast
+and Ascension off (no purchases) and restores config; autoAscend is never enabled.
+Verified on LD-09: premutagen 8888 -> mutagen 8888, nexus 5 -> 0, source raw state
+unchanged, autoAscend/autoCastAbilities stay false. The ascend-later
+premutagen-growth comparison, full first return-to-Nexus-5 time, and the
+cross-reset mutagen-value metric need LD-13/LD-14 and remain follow-ups. Its own
+exact-SHA evidence cycle is the next step.
 
 LC-7 exact-SHA acceptance (2026-07-24):
 

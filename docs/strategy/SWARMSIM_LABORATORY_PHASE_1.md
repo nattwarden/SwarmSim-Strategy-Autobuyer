@@ -343,6 +343,45 @@ return-to-Nexus-5 time, and the Nexus 1->5 seed benchmark need Ascension executi
 support and the LD-08/LD-13/LD-14 data, and are declared follow-ups. Long horizons
 can saturate at the cocoon/larva cap; a cap-aware return metric is a follow-up.
 
+### LC-7 first-Ascension execution (2026-07-24)
+
+Extends LC-7 with real first-Ascension execution in a disposable sandbox. The
+development-only API exposes
+`laboratory.runAscensionExperiment({ sourceSave, settleMillis, recoveryHorizonsSeconds, provenance })`,
+`laboratory.getLastAscensionExperiment()`, and
+`laboratory.validateAscensionExperiment(...)`; the result schema is
+`swarmsim-lab.ascension-experiment.v1`.
+
+Mechanics learned and used: the game's `game.ascend()` converts the accrued
+natural premutagen into permanent mutagen and resets the economy. Premutagen only
+reifies when the game clock is driven over real time, and in headless the game's
+own loop does not run - the bot drives it - so the sandbox settles by briefly
+running the bot with **every auto-cast and Ascension OFF** (it makes no purchases
+at this saturated Nexus-5 state, only reifies the pending premutagen) and then
+restores config exactly. `game.tick`/`reify` does not generate premutagen and is
+never used to synthesize it. autoAscend is never enabled, so nothing is executed
+in production.
+
+The `ASCEND_NOW` branch settles, executes the Ascension, and measures the
+post-reset recovery trajectory; the `HOLD_NO_ASCEND` branch keeps the Nexus-5
+economy and its retained premutagen. Because Ascension trades the whole Nexus-5
+economy for permanent mutagen, the two branches span a reset boundary, so **no
+single winner is declared** - a mutagen-value metric across the reset is a
+declared follow-up, honouring the "never collapse different phase targets into one
+unexplained score" boundary.
+
+Verified by `npm run check:laboratory:ascension` on the hash-pinned LD-09 natural
+Nexus-5 save: premutagen accrued naturally to `8888` during the settle and was
+converted to `8888` mutagen; the economy reset (nexus `5 -> 0`); post-reset
+recovery was measured; the source raw state was unchanged after the sandbox reset;
+and `autoAscend`/`autoCastAbilities` stayed `false` throughout.
+`npm run verify:laboratory:ascension` is the declared evidence generator.
+
+Honest bounds: ascend-now uses a bounded real settle, so a longer ascend-later
+premutagen-growth comparison, the full first return-to-Nexus-5 time (which needs
+the planner replaying the reset economy), and the cross-reset mutagen-value metric
+need the LD-13/LD-14 data and are declared follow-ups.
+
 ### LC program status
 
 LC-1 through LC-7 are all implemented and accepted via the exact-SHA protocol.

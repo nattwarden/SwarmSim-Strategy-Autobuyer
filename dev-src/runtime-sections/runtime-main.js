@@ -623,6 +623,7 @@
   let lastLaboratoryPackageTournament = null;
   let lastLaboratoryEnergyTournament = null;
   let lastLaboratoryOfflineHorizonExperiment = null;
+  let lastLaboratoryAscensionExperiment = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -10736,6 +10737,7 @@ function getDisplayName(item) {
   const LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.package-tournament.v2";
   const LABORATORY_ENERGY_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.energy-tournament.v1";
   const LABORATORY_OFFLINE_HORIZON_SCHEMA_VERSION = "swarmsim-lab.offline-horizon.v1";
+  const LABORATORY_ASCENSION_EXPERIMENT_SCHEMA_VERSION = "swarmsim-lab.ascension-experiment.v1";
   const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
@@ -13459,6 +13461,191 @@ function getDisplayName(item) {
       });
       lastLaboratoryOfflineHorizonExperiment = experiment;
       return { ok: true, experiment, validity: laboratoryValidateOfflineHorizonExperiment(experiment) };
+    } finally {
+      config.enabled = priorEnabled;
+    }
+  }
+
+  // LC-7 first-Ascension execution experiment. Executes a real first Ascension in
+  // a disposable sandbox (game.ascend converts the accrued natural premutagen to
+  // permanent mutagen and resets the economy), then measures the post-reset
+  // recovery trajectory, and contrasts it with a hold-no-ascend branch that keeps
+  // the Nexus-5 economy. Premutagen accrues only from the real game loop, so the
+  // sandbox settles for real time before ascending and never synthesizes it. The
+  // experiment executes nothing in production - autoAscend stays false - and
+  // proves the source save is unchanged after the sandbox reset.
+  function laboratoryExecuteAscend(game) {
+    const before = {
+      premutagen: laboratorySafeResourceString(getCurrentResource(game, "premutagen")),
+      mutagen: laboratorySafeResourceString(getCurrentResource(game, "mutagen")),
+      nexus: laboratorySafeResourceString(getCurrentResource(game, "nexus")),
+    };
+    if (typeof game.ascend !== "function") return { ascended: false, status: "ascend-unavailable", before };
+    const ret = safe("LC7 ascend", () => game.ascend());
+    const after = {
+      premutagen: laboratorySafeResourceString(getCurrentResource(game, "premutagen")),
+      mutagen: laboratorySafeResourceString(getCurrentResource(game, "mutagen")),
+      nexus: laboratorySafeResourceString(getCurrentResource(game, "nexus")),
+    };
+    const mutagenGained = laboratorySafeResourceString(decimalFrom(after.mutagen).minus(decimalFrom(before.mutagen)));
+    const economyReset = decimalFrom(after.nexus).lessThan(decimalFrom(before.nexus));
+    return {
+      ascended: ret !== null && (economyReset || decimalFrom(mutagenGained).greaterThan(0)),
+      status: ret === null ? "ascend-failed" : "ascended",
+      before,
+      after,
+      mutagenGained,
+      economyReset,
+    };
+  }
+
+  function laboratoryValidateAscensionExperiment(experiment) {
+    const errors = [];
+    if (experiment?.schemaVersion !== LABORATORY_ASCENSION_EXPERIMENT_SCHEMA_VERSION) errors.push("unexpected ascension-experiment schema");
+    if (!experiment?.ascendNow?.ascension) errors.push("no Ascension executed");
+    if (experiment?.provenance !== "natural" && experiment?.provenance !== "injected") errors.push("missing natural/injected provenance");
+    if (!experiment?.siblingIsolation?.sourceRawStateUnchanged) errors.push("source raw state changed after the experiment");
+    if (!experiment?.advisorOnlyAuthority?.unchanged) errors.push("production Ascension/auto-cast authority changed during the experiment");
+    return { ok: errors.length === 0, errors };
+  }
+
+  async function runLaboratoryAscensionExperiment(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const sourceSave = options.sourceSave;
+    if (typeof sourceSave !== "string" || !sourceSave) {
+      return { ok: false, error: "runAscensionExperiment requires a sourceSave string." };
+    }
+    const game = getGame();
+    const provenance = options.provenance === "injected" ? "injected" : "natural";
+    // Premutagen accrues only from the real game loop, so a real settle wait is
+    // required (game.tick/reify does not generate it). Bounded to keep the
+    // experiment quick.
+    const settleMillis = Math.max(0, Math.min(15000, Math.floor(Number(options.settleMillis) || 4000)));
+    const recoveryHorizonsSeconds = (Array.isArray(options.recoveryHorizonsSeconds) && options.recoveryHorizonsSeconds.length
+      ? options.recoveryHorizonsSeconds
+      : [300, 3600]).map(Number).filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+
+    const priorEnabled = config.enabled;
+    const autoCastBefore = laboratoryCaptureAutoCastAuthority();
+    config.enabled = false;
+    try {
+      const baseline = await laboratoryRestoreBranchSource(game, sourceSave);
+      if (!baseline.ok) return { ok: false, error: "source restore failed", detail: baseline };
+      const sourceRawStateHash = baseline.rawStateHash;
+
+      // The save's pending natural premutagen only reifies when the game clock is
+      // driven over real time, and in headless the game's own loop does not run -
+      // the bot drives it. So the settle briefly runs the bot with every auto-cast
+      // and Ascension OFF (it makes no purchases at this saturated state, only
+      // reifies), then restores config exactly. It never enables autoAscend or any
+      // auto-cast, so production authority is net-unchanged and premutagen is
+      // accrued, never synthesized.
+      const settle = async () => {
+        if (settleMillis <= 0) return;
+        const saved = {
+          enabled: config.enabled,
+          advisorOnly: config.advisorOnly,
+          autoAscend: config.autoAscend,
+          autoCastAbilities: config.autoCastAbilities,
+          autoCastCloneLarvae: config.autoCastCloneLarvae,
+        };
+        config.enabled = true;
+        config.advisorOnly = false;
+        config.autoAscend = false;
+        config.autoCastAbilities = false;
+        config.autoCastCloneLarvae = false;
+        try {
+          await new Promise((resolve) => setTimeout(resolve, settleMillis));
+        } finally {
+          config.enabled = saved.enabled;
+          config.advisorOnly = saved.advisorOnly;
+          config.autoAscend = saved.autoAscend;
+          config.autoCastAbilities = saved.autoCastAbilities;
+          config.autoCastCloneLarvae = saved.autoCastCloneLarvae;
+        }
+      };
+      const measureRecovery = () => {
+        const horizons = [];
+        let elapsed = 0;
+        for (const horizonSeconds of recoveryHorizonsSeconds) {
+          let advancedSeconds = 0;
+          if (horizonSeconds > elapsed) {
+            advancedSeconds = laboratoryAdvanceHorizon(game, horizonSeconds - elapsed).advancedSeconds;
+            elapsed = horizonSeconds;
+          }
+          horizons.push({ horizonSeconds, advancedSeconds, larva: laboratorySafeResourceString(getCurrentResource(game, "larva")) });
+        }
+        return horizons;
+      };
+
+      // Branch ASCEND_NOW: settle so the natural premutagen accrues, execute the
+      // Ascension in this sandbox, then measure post-reset recovery.
+      const restoreNow = await laboratoryRestoreBranchSource(game, sourceSave);
+      await settle();
+      const settledNow = {
+        premutagen: laboratorySafeResourceString(getCurrentResource(game, "premutagen")),
+        energy: laboratorySafeResourceString(getCurrentResource(game, "energy")),
+      };
+      const ascension = laboratoryExecuteAscend(game);
+      const postResetRecovery = measureRecovery();
+      const ascendNow = {
+        restoredIdenticalToSource: restoreNow.ok && restoreNow.rawStateHash === sourceRawStateHash,
+        settled: settledNow,
+        ascension,
+        postResetRecovery,
+      };
+
+      // Branch HOLD_NO_ASCEND: settle the same way but do not ascend; keep the
+      // Nexus-5 economy and its retained premutagen, measured over the horizons.
+      const restoreHold = await laboratoryRestoreBranchSource(game, sourceSave);
+      await settle();
+      const settledHold = {
+        premutagen: laboratorySafeResourceString(getCurrentResource(game, "premutagen")),
+        energy: laboratorySafeResourceString(getCurrentResource(game, "energy")),
+      };
+      const holdHorizons = measureRecovery();
+      const holdNoAscend = {
+        restoredIdenticalToSource: restoreHold.ok && restoreHold.rawStateHash === sourceRawStateHash,
+        settled: settledHold,
+        horizons: holdHorizons,
+      };
+
+      const restoreAfter = await laboratoryRestoreBranchSource(game, sourceSave);
+      const sourceRawStateUnchanged = restoreAfter.ok && restoreAfter.rawStateHash === sourceRawStateHash;
+      const autoCastAfter = laboratoryCaptureAutoCastAuthority();
+      const authorityUnchanged = laboratoryCanonicalJson(autoCastBefore) === laboratoryCanonicalJson(autoCastAfter);
+
+      const experiment = laboratoryDeepFreeze({
+        schemaVersion: LABORATORY_ASCENSION_EXPERIMENT_SCHEMA_VERSION,
+        experimentId: String(options.experimentId || "LC7-ASCENSION"),
+        capturedAt: String(options.captureTimestamp || new Date().toISOString()),
+        phaseTarget: String(options.phaseTarget || "first-ascension-and-recovery"),
+        provenance,
+        naturalTimingSynthesized: false,
+        timingModel: "live-site-real-settle-plus-tick-reify-recovery",
+        settleMillis,
+        recoveryHorizonsSeconds,
+        source: { rawStateHash: sourceRawStateHash },
+        ascendNow,
+        holdNoAscend,
+        // Ascend-now and hold-no-ascend span a reset boundary (Ascension trades the
+        // whole Nexus-5 economy for permanent mutagen), so no single winner is
+        // declared: a mutagen-value metric across the reset is a declared follow-up.
+        crossResetRankingDeferred: true,
+        advisorOnlyAuthority: { before: autoCastBefore, after: autoCastAfter, unchanged: authorityUnchanged },
+        siblingIsolation: {
+          restoresIdenticalToSource: ascendNow.restoredIdenticalToSource && holdNoAscend.restoredIdenticalToSource,
+          sourceRawStateUnchanged,
+        },
+        knownLimitations: [
+          "premutagen accrues only from the real game loop, so ascend-now uses a bounded real settle; a longer ascend-later premutagen-growth comparison needs premutagen projection and is a follow-up",
+          "post-reset recovery is a bounded larva trajectory, not the full first return-to-Nexus-5 time, which needs the production planner replaying the reset economy (a follow-up)",
+          "ascend-vs-hold is not collapsed into one score: comparing across the reset needs a mutagen-value metric (LD-13/LD-14 data), which is a declared follow-up",
+        ],
+      });
+      lastLaboratoryAscensionExperiment = experiment;
+      return { ok: true, experiment, validity: laboratoryValidateAscensionExperiment(experiment) };
     } finally {
       config.enabled = priorEnabled;
     }
@@ -27245,6 +27432,15 @@ function getDisplayName(item) {
         validateOfflineHorizonExperiment(experiment) {
           return laboratoryValidateOfflineHorizonExperiment(experiment);
         },
+        async runAscensionExperiment(options = {}) {
+          return runLaboratoryAscensionExperiment(options);
+        },
+        getLastAscensionExperiment() {
+          return laboratoryCloneResult(lastLaboratoryAscensionExperiment);
+        },
+        validateAscensionExperiment(experiment) {
+          return laboratoryValidateAscensionExperiment(experiment);
+        },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
         },
@@ -27261,6 +27457,7 @@ function getDisplayName(item) {
           lastLaboratoryPackageTournament = null;
           lastLaboratoryEnergyTournament = null;
           lastLaboratoryOfflineHorizonExperiment = null;
+          lastLaboratoryAscensionExperiment = null;
           return { ok: true };
         },
         createObservationSummary(result) {

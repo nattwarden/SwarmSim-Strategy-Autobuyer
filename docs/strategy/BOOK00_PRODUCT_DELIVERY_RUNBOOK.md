@@ -1028,7 +1028,13 @@ complete.** Implementation SHA `e4e0adbe78ce39c8a51e2342a03adf4b6529bf58`; evide
 SHA `3aa800b` on `codex/9.4.0-clean-room`; full `npm run verify` passed exit 0
 against the implementation SHA. `runOfflineHorizonExperiment` (schema
 `swarmsim-lab.offline-horizon.v1`) is verified on the hash-pinned LD-09 natural
-Nexus-5 save. It projects the save across 5m/1h/1d/long-return offline horizons
+Nexus-5 save. A first-Ascension execution follow-up
+(`runAscensionExperiment`, schema `swarmsim-lab.ascension-experiment.v1`,
+`check:laboratory:ascension`) is also implemented: it executes `game.ascend()` in
+a disposable sandbox (premutagen 8888 -> mutagen 8888, nexus 5 -> 0), measures
+post-reset recovery, keeps autoAscend false, and proves source non-mutation;
+exact-SHA evidence pending. Ascend-later growth, full return-to-Nexus-5 time, and
+a cross-reset mutagen-value metric need LD-13/LD-14. It projects the save across 5m/1h/1d/long-return offline horizons
 with the tick+reify primitive, repeats over samples to report an uncertainty band
 (sample count, min/max, spread), tags natural/injected provenance without
 synthesizing natural timing or merging provenances, and proves no production
