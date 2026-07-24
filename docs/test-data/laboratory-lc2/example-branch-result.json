@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "swarmsim-lab.branch-result.v1",
+  "experimentId": "LC2-RICH",
+  "capturedAt": "2026-07-23T00:00:00.000Z",
+  "isolationModel": "sequential-single-instance",
+  "timingModel": "live-site-nonhermetic-raw-state",
+  "source": {
+    "rawStateHash": "sha256:85b065452d946b7e621fc31ae3c4bb51e080d3521b6047b8938bd324ee6c67d3"
+  },
+  "branches": [
+    {
+      "branchId": "sib-a",
+      "restoredRawStateHash": "sha256:85b065452d946b7e621fc31ae3c4bb51e080d3521b6047b8938bd324ee6c67d3",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "hatchery",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "10",
+        "afterCount": "11",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "sandboxMutated": true
+    },
+    {
+      "branchId": "sib-b",
+      "restoredRawStateHash": "sha256:85b065452d946b7e621fc31ae3c4bb51e080d3521b6047b8938bd324ee6c67d3",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "hatchery",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "10",
+        "afterCount": "11",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "sandboxMutated": true
+    },
+    {
+      "branchId": "illegal",
+      "restoredRawStateHash": "sha256:85b065452d946b7e621fc31ae3c4bb51e080d3521b6047b8938bd324ee6c67d3",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "__no_such_upgrade__",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "0",
+        "observedAmount": "0",
+        "beforeCount": null,
+        "afterCount": null,
+        "executed": false,
+        "amountsAgree": false,
+        "status": "target-unresolved"
+      },
+      "sandboxMutated": false
+    }
+  ],
+  "siblingIsolation": {
+    "allRestoredIdenticalToSource": true,
+    "sourceRawStateUnchanged": true
+  }
+}
