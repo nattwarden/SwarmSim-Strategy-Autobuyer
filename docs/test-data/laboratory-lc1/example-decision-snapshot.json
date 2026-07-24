@@ -1,0 +1,2334 @@
+{
+  "schemaVersion": "swarmsim-lab.decision-snapshot.v1",
+  "kind": "read-only-decision-snapshot",
+  "decisionSnapshotId": "LC1-DETERMINISTIC",
+  "decisionSnapshotHash": "sha256:3be3eb6561c8c4c855c08bac8d291d34e1cbb6053558bbaf2f065d8cb76f9838",
+  "decisionSnapshotHashScope": "deterministic-decision-payload-v1",
+  "source": {
+    "scriptVersion": "9.4.0",
+    "captureMode": "deterministic-scenario",
+    "scenarioId": "LC1-DETERMINISTIC-FIXTURE",
+    "stateSnapshotId": "LC1-DETERMINISTIC-STATE",
+    "stateSnapshotHash": "sha256:97057db18e3e3a873de179619061b50547face10411e646fdc39e1e8912ccde3",
+    "sourceStateFingerprint": null,
+    "capturedAt": "2026-07-23T00:00:00.000Z"
+  },
+  "stateSnapshot": {
+    "schemaVersion": "swarmsim-lab.snapshot.v1",
+    "kind": "deterministic-simulation-snapshot",
+    "snapshotId": "LC1-DETERMINISTIC-STATE",
+    "snapshotHash": "sha256:97057db18e3e3a873de179619061b50547face10411e646fdc39e1e8912ccde3",
+    "snapshotHashScope": "deterministic-payload-v1",
+    "source": {
+      "scriptVersion": "9.4.0",
+      "frozenBaselineVersion": "0.11.7",
+      "verifiedRuntimeCommit": "1ee631901cd04a1d97ddb0bcee5efa2499481ecc",
+      "baselineRepositoryCommit": "ea999526994c75899b6b1a478e7146f046417803",
+      "currentCommit": null,
+      "scenarioHarnessVersion": "9.4.0",
+      "scenarioId": "LC1-DETERMINISTIC-FIXTURE",
+      "captureMode": "deterministic-scenario",
+      "scenarioHash": "sha256:27d2e3c9ed17a64102fadf71ad892d07a8e13c4b1af0582c125a5ec8e6906514",
+      "gameBuild": "swarm-angular-runtime",
+      "capturedAt": "2026-07-23T00:00:00.000Z",
+      "activePhase": "Pre-Nexus meat/territory setup",
+      "activeMilestone": "Meat-chain target: drone; current action: drone.",
+      "currentPlannerTarget": null,
+      "relevantConfig": null,
+      "sourceStateFingerprint": null
+    },
+    "simulation": {
+      "mode": "deterministic-simulation",
+      "interventionTimeSeconds": "0",
+      "horizonsSeconds": [
+        "60",
+        "300"
+      ],
+      "postActionPolicy": "passive-only",
+      "normalAutobuyerEnabled": false,
+      "liveSaveMutable": false
+    },
+    "resources": {
+      "energy": {
+        "amount": "25000",
+        "perSecond": "0",
+        "cap": "0"
+      },
+      "larvae": {
+        "amount": "1000000",
+        "perSecond": "0"
+      },
+      "cocoons": {
+        "amount": "100",
+        "perSecond": "0"
+      },
+      "territory": {
+        "amount": "100000",
+        "perSecond": "0"
+      },
+      "meat": {
+        "perSecond": "0",
+        "rateProjection": {
+          "basis": "factorial-polynomial-derivative",
+          "coefficients": [
+            "35"
+          ],
+          "maxDegree": 0,
+          "valueAtZero": "0",
+          "validation": "source-verified"
+        },
+        "amount": "35"
+      }
+    },
+    "army": {
+      "houseOfMirrorsAffectedUnits": [
+        {
+          "unitId": "swarmling",
+          "canonicalRuntimeUnitId": "swarmling",
+          "scenarioCanonicalKey": "unit swarmling",
+          "label": "swarmling",
+          "runtimeUnitName": "swarmling",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "swarmling",
+          "resolvedRuntimeUnitName": "swarmling",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "swarmling",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "0.07",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "stinger",
+          "canonicalRuntimeUnitId": "stinger",
+          "scenarioCanonicalKey": "unit stinger",
+          "label": "stinger",
+          "runtimeUnitName": "stinger",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "stinger",
+          "resolvedRuntimeUnitName": "stinger",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "stinger",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "3.15",
+          "totalTerritoryPerSecondFromRuntime": "22.05",
+          "productionParity": false,
+          "territoryPerSecondContribution": null,
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "spider",
+          "canonicalRuntimeUnitId": "spider",
+          "scenarioCanonicalKey": "unit spider",
+          "label": "arachnomorph",
+          "runtimeUnitName": "spider",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "arachnomorph",
+          "resolvedRuntimeUnitName": "spider",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "arachnomorph",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "141.75",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "mosquito",
+          "canonicalRuntimeUnitId": "mosquito",
+          "scenarioCanonicalKey": "unit mosquito",
+          "label": "culicimorph",
+          "runtimeUnitName": "mosquito",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "culicimorph",
+          "resolvedRuntimeUnitName": "mosquito",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "culicimorph",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "6378.75",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "locust",
+          "canonicalRuntimeUnitId": "locust",
+          "scenarioCanonicalKey": "unit locust",
+          "label": "locust",
+          "runtimeUnitName": "locust",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "locust",
+          "resolvedRuntimeUnitName": "locust",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "locust",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "287043.75",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "roach",
+          "canonicalRuntimeUnitId": "roach",
+          "scenarioCanonicalKey": "unit roach",
+          "label": "roach",
+          "runtimeUnitName": "roach",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "roach",
+          "resolvedRuntimeUnitName": "roach",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "roach",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "12916968.75",
+          "totalTerritoryPerSecondFromRuntime": "142086656.25",
+          "productionParity": false,
+          "territoryPerSecondContribution": null,
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "giantspider",
+          "canonicalRuntimeUnitId": "giantspider",
+          "scenarioCanonicalKey": "unit giantspider",
+          "label": "giant arachnomorph",
+          "runtimeUnitName": "giantspider",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "giant arachnomorph",
+          "resolvedRuntimeUnitName": "giantspider",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "giant arachnomorph",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "581263593.8",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "centipede",
+          "canonicalRuntimeUnitId": "centipede",
+          "scenarioCanonicalKey": "unit centipede",
+          "label": "chilopodomorph",
+          "runtimeUnitName": "centipede",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "chilopodomorph",
+          "resolvedRuntimeUnitName": "centipede",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "chilopodomorph",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "26156861719",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "wasp",
+          "canonicalRuntimeUnitId": "wasp",
+          "scenarioCanonicalKey": "unit wasp",
+          "label": "wasp",
+          "runtimeUnitName": "wasp",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "wasp",
+          "resolvedRuntimeUnitName": "wasp",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "wasp",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "1177058777344",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "devourer",
+          "canonicalRuntimeUnitId": "devourer",
+          "scenarioCanonicalKey": "unit devourer",
+          "label": "devourer",
+          "runtimeUnitName": "devourer",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "devourer",
+          "resolvedRuntimeUnitName": "devourer",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "devourer",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "52967644980469",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        },
+        {
+          "unitId": "goon",
+          "canonicalRuntimeUnitId": "goon",
+          "scenarioCanonicalKey": "unit goon",
+          "label": "goon",
+          "runtimeUnitName": "goon",
+          "runtimeSuffix": null,
+          "runtimeDisplayLabel": "goon",
+          "resolvedRuntimeUnitName": "goon",
+          "resolvedRuntimeSuffix": null,
+          "resolvedRuntimeDisplayLabel": "goon",
+          "count": "0",
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "effectiveTerritoryPerSecondPerUnit": "2383540000000000",
+          "totalTerritoryPerSecondFromRuntime": "0",
+          "productionParity": true,
+          "territoryPerSecondContribution": "0",
+          "affectedByHouseOfMirrors": true
+        }
+      ],
+      "affectedTerritoryPerSecondTotal": "0",
+      "unaffectedTerritoryPerSecond": "0",
+      "houseOfMirrorsResolution": {
+        "source": "runtime-effect-definition",
+        "expectedUnitCount": 11,
+        "resolvedUnitIds": [
+          "swarmling",
+          "stinger",
+          "spider",
+          "mosquito",
+          "locust",
+          "roach",
+          "giantspider",
+          "centipede",
+          "wasp",
+          "devourer",
+          "goon"
+        ],
+        "resolvedUnitCount": 11,
+        "unresolvedUnitIds": [
+          "stinger",
+          "roach"
+        ],
+        "positiveCountUnitIds": [],
+        "runtimeEffectUnitIds": [
+          "swarmling",
+          "stinger",
+          "spider",
+          "mosquito",
+          "locust",
+          "roach",
+          "giantspider",
+          "centipede",
+          "wasp",
+          "devourer",
+          "goon"
+        ],
+        "runtimeEffectByUnitId": {
+          "swarmling": {
+            "unitId": "swarmling",
+            "effectIndex": 0
+          },
+          "stinger": {
+            "unitId": "stinger",
+            "effectIndex": 1
+          },
+          "spider": {
+            "unitId": "spider",
+            "effectIndex": 2
+          },
+          "mosquito": {
+            "unitId": "mosquito",
+            "effectIndex": 3
+          },
+          "locust": {
+            "unitId": "locust",
+            "effectIndex": 4
+          },
+          "roach": {
+            "unitId": "roach",
+            "effectIndex": 5
+          },
+          "giantspider": {
+            "unitId": "giantspider",
+            "effectIndex": 6
+          },
+          "centipede": {
+            "unitId": "centipede",
+            "effectIndex": 7
+          },
+          "wasp": {
+            "unitId": "wasp",
+            "effectIndex": 8
+          },
+          "devourer": {
+            "unitId": "devourer",
+            "effectIndex": 9
+          },
+          "goon": {
+            "unitId": "goon",
+            "effectIndex": 10
+          }
+        },
+        "fallbackUnitIds": [
+          "swarmling",
+          "stinger",
+          "spider",
+          "mosquito",
+          "locust",
+          "roach",
+          "giantspider",
+          "centipede",
+          "wasp",
+          "devourer",
+          "goon"
+        ],
+        "setMatchesExpected": true
+      },
+      "effectiveCountDiagnostics": [
+        {
+          "unitId": "swarmling",
+          "effectIndex": 0,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        },
+        {
+          "unitId": "stinger",
+          "effectIndex": 1,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "7",
+          "resolvedUnitCount": "7",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "7"
+        },
+        {
+          "unitId": "spider",
+          "effectIndex": 2,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        },
+        {
+          "unitId": "mosquito",
+          "effectIndex": 3,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        },
+        {
+          "unitId": "locust",
+          "effectIndex": 4,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        },
+        {
+          "unitId": "roach",
+          "effectIndex": 5,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "11",
+          "resolvedUnitCount": "11",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "11"
+        },
+        {
+          "unitId": "giantspider",
+          "effectIndex": 6,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        },
+        {
+          "unitId": "centipede",
+          "effectIndex": 7,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        },
+        {
+          "unitId": "wasp",
+          "effectIndex": 8,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        },
+        {
+          "unitId": "devourer",
+          "effectIndex": 9,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        },
+        {
+          "unitId": "goon",
+          "effectIndex": 10,
+          "countSource": "scenario-override",
+          "resolutionStatus": "resolved",
+          "scenarioOverrideApplied": true,
+          "identityParity": true,
+          "countParity": true,
+          "count": "0",
+          "effectUnitCount": "0",
+          "resolvedUnitCount": "0",
+          "effectUnitRawCount": "0",
+          "resolvedUnitRawCount": "0",
+          "effectOutput": "0"
+        }
+      ]
+    },
+    "expansion": {
+      "currentLevel": "0",
+      "nextCost": "10",
+      "territoryRemaining": "0",
+      "etaSeconds": null,
+      "laboratoryComputedEtaSeconds": "0",
+      "etaComparison": "runtime-differs-or-scenario-overridden"
+    },
+    "abilities": {
+      "cloneLarvae": {
+        "gameAbilityId": "clonelarvae",
+        "available": false,
+        "unlocked": true,
+        "visible": false,
+        "affordable": true,
+        "unavailableReason": "Clone Larvae is not visible.",
+        "unavailableReasonCode": "NOT_VISIBLE",
+        "energyCurrent": "25000",
+        "energyCost": "12000",
+        "energyDeficit": "0",
+        "formulaInputs": {
+          "larvaeBank": "1000000",
+          "cocoonBank": "100",
+          "combinedBank": "1000100",
+          "larvaePerSecond": "0",
+          "cocoonsPerSecond": "0",
+          "combinedVelocity": "0",
+          "capSeconds": "100000",
+          "abilityPower": "1",
+          "sourceVerifiedOutput": "0"
+        },
+        "runtimePreviewOutput": null
+      },
+      "houseOfMirrors": {
+        "gameAbilityId": "clonearmy",
+        "available": false,
+        "unlocked": true,
+        "visible": false,
+        "affordable": true,
+        "unavailableReason": "House of Mirrors is not visible.",
+        "unavailableReasonCode": "NOT_VISIBLE",
+        "energyCurrent": "25000",
+        "energyCost": "2500",
+        "energyDeficit": "0",
+        "affectedUnitIds": [
+          "swarmling",
+          "stinger",
+          "spider",
+          "mosquito",
+          "locust",
+          "roach",
+          "giantspider",
+          "centipede",
+          "wasp",
+          "devourer",
+          "goon"
+        ],
+        "affectedTerritoryPerSecondBefore": "0",
+        "unaffectedTerritoryPerSecond": "0",
+        "sourceVerifiedTerritoryPerSecondAfter": "0",
+        "runtimePreviewTerritoryPerSecondAfter": null
+      },
+      "larvarush": {
+        "gameAbilityId": "larvarush",
+        "actionId": "LARVA_RUSH",
+        "targetResource": "larvae",
+        "available": false,
+        "unlocked": true,
+        "visible": false,
+        "affordable": true,
+        "unavailableReason": "Larva Rush is not visible.",
+        "unavailableReasonCode": "NOT_VISIBLE",
+        "energyCurrent": "25000",
+        "energyCost": "1600",
+        "energyDeficit": "0",
+        "formulaInputs": {
+          "targetVelocity": "0",
+          "velocitySeconds": "2400",
+          "velocityPower": "1",
+          "velocityOutput": "0",
+          "flatAddition": "100000",
+          "flatPower": "1",
+          "flatOutput": "100000",
+          "sourceVerifiedOutput": "100000"
+        },
+        "runtimePreviewOutput": null
+      },
+      "meatrush": {
+        "gameAbilityId": "meatrush",
+        "actionId": "MEAT_RUSH",
+        "targetResource": "meat",
+        "available": false,
+        "unlocked": true,
+        "visible": false,
+        "affordable": true,
+        "unavailableReason": "Meat Rush is not visible.",
+        "unavailableReasonCode": "NOT_VISIBLE",
+        "energyCurrent": "25000",
+        "energyCost": "1600",
+        "energyDeficit": "0",
+        "formulaInputs": {
+          "targetVelocity": "0",
+          "velocitySeconds": "7200",
+          "velocityPower": "1",
+          "velocityOutput": "0",
+          "flatAddition": "100000000000",
+          "flatPower": "1",
+          "flatOutput": "100000000000",
+          "sourceVerifiedOutput": "100000000000"
+        },
+        "runtimePreviewOutput": null
+      },
+      "territoryrush": {
+        "gameAbilityId": "territoryrush",
+        "actionId": "TERRITORY_RUSH",
+        "targetResource": "territory",
+        "available": false,
+        "unlocked": true,
+        "visible": false,
+        "affordable": true,
+        "unavailableReason": "Territory Rush is not visible.",
+        "unavailableReasonCode": "NOT_VISIBLE",
+        "energyCurrent": "25000",
+        "energyCost": "1600",
+        "energyDeficit": "0",
+        "formulaInputs": {
+          "targetVelocity": "0",
+          "velocitySeconds": "7200",
+          "velocityPower": "1",
+          "velocityOutput": "0",
+          "flatAddition": "1000000000",
+          "flatPower": "1",
+          "flatOutput": "1000000000",
+          "sourceVerifiedOutput": "1000000000"
+        },
+        "runtimePreviewOutput": null
+      }
+    },
+    "safety": {
+      "resource": "energy",
+      "requiredReserve": "0",
+      "headroomBefore": "25000",
+      "ruleId": "post-nexus-energy-reserve",
+      "reserveSource": "scenario-harness"
+    },
+    "context": {
+      "nexusCount": "5",
+      "lepidopteraCount": "0",
+      "activePhase": "Pre-Nexus meat/territory setup",
+      "activeMilestone": "Meat-chain target: drone; current action: drone.",
+      "activeTarget": null
+    },
+    "formulaProvenance": {
+      "formulaSetId": "swarmsim-runtime-formulas",
+      "status": "mismatch",
+      "sourceRepository": "https://github.com/swarmsim/swarm",
+      "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+      "externalReferenceOnly": true,
+      "runtimeDependency": false,
+      "ratesCapturedFromRuntime": true,
+      "uncertainFields": [
+        "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+        "House of Mirrors affected unit stinger has impossible zero-count production parity and is marked unresolved.",
+        "House of Mirrors affected unit roach has impossible zero-count production parity and is marked unresolved.",
+        "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+        "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+      ],
+      "warnings": [
+        "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+        "House of Mirrors affected unit stinger has impossible zero-count production parity and is marked unresolved.",
+        "House of Mirrors affected unit roach has impossible zero-count production parity and is marked unresolved.",
+        "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+        "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+      ],
+      "formulas": {
+        "energy": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "nexus prod -> energy; Unit._getCap/capValue/velocity",
+          "valueSource": "runtime-derived",
+          "verificationStatus": "runtime-derived"
+        },
+        "larvae": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "invisiblehatchery prod -> larva; Unit.velocity",
+          "valueSource": "runtime-derived",
+          "verificationStatus": "runtime-derived"
+        },
+        "cocoons": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "Unit.velocity",
+          "valueSource": "runtime-derived",
+          "verificationStatus": "runtime-derived"
+        },
+        "cloneLarvae": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee; tables/src/unittype/data.ts",
+          "functionOrEffectType": "ability clonelarvae; effect type compoundUnit; power.clonelarvae",
+          "valueSource": "runtime-derived when direct preview is available, otherwise Laboratory recompute from source-verified runtime inputs",
+          "verificationStatus": "source-verified"
+        },
+        "houseOfMirrors": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/upgrade/data.ts; tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "ability clonearmy; compoundUnit effects; Unit.eachProduction/totalProduction",
+          "valueSource": "Laboratory recompute from runtime-derived counts and effective territory/unit",
+          "verificationStatus": "incomplete"
+        },
+        "rushAbilities": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee",
+          "functionOrEffectType": "abilities larvarush/meatrush/territoryrush; addUnitByVelocity; addUnit",
+          "valueSource": "Laboratory recompute from pinned constants and runtime-derived velocity/effect power",
+          "verificationStatus": "source-verified"
+        },
+        "territoryPerSecond": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "Unit.eachProduction, Unit.totalProduction, Unit.velocity",
+          "valueSource": "runtime-derived",
+          "verificationStatus": "runtime-derived"
+        },
+        "meatProducerCoefficients": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "ProducerPath, ProducerPaths.getCoefficientsNow, factorial polynomial derivative",
+          "valueSource": "runtime-derived coefficients",
+          "verificationStatus": "runtime-derived"
+        },
+        "expansionEta": {
+          "sourceRepository": "https://github.com/swarmsim/swarm",
+          "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+          "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+          "functionOrEffectType": "upgrade expansion cost progression; Unit.estimateSecsUntilEarned/bisection",
+          "valueSource": "runtime-derived ETA plus Laboratory consistency check",
+          "verificationStatus": "runtime-derived"
+        }
+      }
+    },
+    "validity": {
+      "status": "formula-mismatch",
+      "warnings": [
+        "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+        "House of Mirrors affected unit stinger has impossible zero-count production parity and is marked unresolved.",
+        "House of Mirrors affected unit roach has impossible zero-count production parity and is marked unresolved.",
+        "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+        "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+      ]
+    }
+  },
+  "decision": {
+    "phase": "Pre-Nexus meat/territory setup",
+    "activeMilestone": "Meat-chain target: drone; current action: drone.",
+    "activeTarget": "UNMODELED",
+    "declaredHorizon": {
+      "id": "UNMODELED",
+      "seconds": "UNMODELED",
+      "source": "strategyInspector"
+    },
+    "runtimeVerdict": {
+      "status": "OBSERVED",
+      "decision": "ADVISE BUY",
+      "mainDecision": "BUY",
+      "sideDecision": "none",
+      "reason": "Meat BUY drone: meat-chain safe chunk: 1 drone",
+      "selectedMain": {
+        "lane": "Meat",
+        "decision": "BUY",
+        "candidate": "drone",
+        "reason": "goal planner for drone: build bottleneck resource (meat); amount 1",
+        "blockers": [],
+        "blockerCategories": [],
+        "observations": [],
+        "score": 110,
+        "closenessScore": 2006501,
+        "etaBefore": "",
+        "etaAfter": "",
+        "payback": "",
+        "reserveAfter": "",
+        "wouldBuyAmount": "1",
+        "target": "meat goal planner",
+        "resource": "meat-chain producer",
+        "raw": null,
+        "meatFallback": false,
+        "fallbackRankDrop": null,
+        "strategicTarget": "",
+        "blockedStrategicCandidate": "",
+        "topMeatBlockedBy": ""
+      },
+      "selectedSide": null,
+      "selectedRejected": {
+        "lane": "Territory",
+        "decision": "HOLD",
+        "candidate": "Army seed",
+        "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+        "blockers": [
+          "expansion not relevant yet"
+        ],
+        "blockerCategories": [
+          "energy-plan"
+        ],
+        "observations": [],
+        "score": 0,
+        "closenessScore": 7000,
+        "etaBefore": "",
+        "etaAfter": "",
+        "payback": "",
+        "reserveAfter": "",
+        "wouldBuyAmount": "",
+        "target": "Expansion",
+        "resource": "territory",
+        "raw": null,
+        "meatFallback": false,
+        "fallbackRankDrop": null,
+        "strategicTarget": "",
+        "blockedStrategicCandidate": "",
+        "topMeatBlockedBy": ""
+      }
+    },
+    "actionBudget": {
+      "maxMainActions": 4,
+      "used": 1,
+      "remaining": 3,
+      "executedMainActions": [],
+      "source": "strategyInspector"
+    }
+  },
+  "candidateManifest": {
+    "schemaVersion": "swarmsim-lab.candidate-manifest.v1",
+    "kind": "read-only-runtime-candidate-manifest",
+    "candidates": [
+      {
+        "candidateId": "lane-1-territory-hold",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Territory",
+        "disposition": "HOLD",
+        "identity": "Army seed",
+        "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+        "blockers": [
+          "expansion not relevant yet"
+        ],
+        "blockerCategories": [
+          "energy-plan"
+        ],
+        "observations": [],
+        "target": "Expansion",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": null,
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "UNMODELED"
+        },
+        "cost": {
+          "resource": {
+            "value": "territory",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": null,
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "UNMODELED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {},
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-2-engine-hold",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Engine",
+        "disposition": "HOLD",
+        "identity": "Expansion",
+        "reason": "Expansion not buyable yet; 0% ready, ETA unknown ETA",
+        "blockers": [],
+        "blockerCategories": [
+          "eta-stall-signal"
+        ],
+        "observations": [
+          "future-expansion-target"
+        ],
+        "target": "Expansion",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": null,
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "UNMODELED"
+        },
+        "cost": {
+          "resource": {
+            "value": "territory",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": "unknown ETA",
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "OBSERVED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {
+          "progressPercent": 0
+        },
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-3-engine-hold",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Engine",
+        "disposition": "HOLD",
+        "identity": "Hatchery",
+        "reason": "Hatchery not buyable yet; 12% ready, ETA unknown ETA",
+        "blockers": [],
+        "blockerCategories": [
+          "eta-stall-signal"
+        ],
+        "observations": [
+          "future-hatchery-target"
+        ],
+        "target": "Hatchery",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": null,
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "UNMODELED"
+        },
+        "cost": {
+          "resource": {
+            "value": "meat",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": "unknown ETA",
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "OBSERVED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {
+          "progressPercent": 11.666666666666666
+        },
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-4-energy-observe",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Energy",
+        "disposition": "OBSERVE",
+        "identity": "Nexus",
+        "reason": "locked/unavailable until Energy/Nexus is visible",
+        "blockers": [
+          "locked/unavailable"
+        ],
+        "blockerCategories": [
+          "energy-plan"
+        ],
+        "observations": [],
+        "target": "Nexus 1",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": null,
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "UNMODELED"
+        },
+        "cost": {
+          "resource": {
+            "value": "energy",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": null,
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "UNMODELED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {},
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-5-meat-observe",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Meat",
+        "disposition": "OBSERVE",
+        "identity": "drone",
+        "reason": "goal drone; path drone; bottleneck meat; action drone",
+        "blockers": [],
+        "blockerCategories": [],
+        "observations": [],
+        "target": "drone",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": null,
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "UNMODELED"
+        },
+        "cost": {
+          "resource": {
+            "value": "meat",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": null,
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "UNMODELED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {},
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-6-meat-buy",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Meat",
+        "disposition": "BUY",
+        "identity": "drone",
+        "reason": "goal planner for drone: build bottleneck resource (meat); amount 1",
+        "blockers": [],
+        "blockerCategories": [],
+        "observations": [],
+        "target": "meat goal planner",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": "1",
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "OBSERVED"
+        },
+        "cost": {
+          "resource": {
+            "value": "meat-chain producer",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": null,
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "UNMODELED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {},
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-7-territory-hold",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Territory",
+        "disposition": "HOLD",
+        "identity": "Army seed",
+        "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+        "blockers": [
+          "expansion not relevant yet"
+        ],
+        "blockerCategories": [
+          "energy-plan"
+        ],
+        "observations": [],
+        "target": "Expansion",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": null,
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "UNMODELED"
+        },
+        "cost": {
+          "resource": {
+            "value": "territory",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": null,
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "UNMODELED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {},
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-8-meat-observe",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Meat",
+        "disposition": "OBSERVE",
+        "identity": "drone",
+        "reason": "meat-chain safe chunk: 1 drone",
+        "blockers": [],
+        "blockerCategories": [],
+        "observations": [],
+        "target": "meat-chain progression",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": "1",
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "OBSERVED"
+        },
+        "cost": {
+          "resource": {
+            "value": "meat",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": null,
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "UNMODELED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {},
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-9-meat-buy",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Meat",
+        "disposition": "BUY",
+        "identity": "drone",
+        "reason": "meat-chain safe chunk: 1 drone",
+        "blockers": [],
+        "blockerCategories": [],
+        "observations": [],
+        "target": "meat-chain progression",
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": "1",
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "OBSERVED"
+        },
+        "cost": {
+          "resource": {
+            "value": "meat",
+            "source": "laneCandidates.resource",
+            "status": "OBSERVED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": null,
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "UNMODELED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {
+          "recentMainHoldRuns": 0,
+          "fallbackRankDrop": 0,
+          "meatActionUnitPaybackBypassTriggered": 0
+        },
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      },
+      {
+        "candidateId": "lane-10-clone prep-observe",
+        "kind": "RUNTIME_LANE_CANDIDATE",
+        "lane": "Clone Prep",
+        "disposition": "OBSERVE",
+        "identity": "Cocoons",
+        "reason": "Cocooning upgrade not owned",
+        "blockers": [],
+        "blockerCategories": [],
+        "observations": [],
+        "target": null,
+        "strategicTarget": null,
+        "blockedStrategicCandidate": null,
+        "topMeatBlockedBy": null,
+        "requestedAmount": {
+          "value": null,
+          "source": "laneCandidates.wouldBuyAmount",
+          "status": "UNMODELED"
+        },
+        "cost": {
+          "resource": {
+            "value": null,
+            "source": "laneCandidates.resource",
+            "status": "UNMODELED"
+          },
+          "amount": {
+            "value": null,
+            "source": "laneCandidates.raw.costAmount",
+            "status": "UNMODELED"
+          }
+        },
+        "reserve": {
+          "after": {
+            "value": null,
+            "source": "laneCandidates.reserveAfter/raw.reserveAfter",
+            "status": "UNMODELED"
+          },
+          "required": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRequired",
+            "status": "UNMODELED"
+          },
+          "ratio": {
+            "value": null,
+            "source": "laneCandidates.raw.reserveRatio",
+            "status": "UNMODELED"
+          }
+        },
+        "timing": {
+          "etaBefore": {
+            "value": null,
+            "source": "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds",
+            "status": "UNMODELED"
+          },
+          "etaAfter": {
+            "value": null,
+            "source": "laneCandidates.etaAfter/raw.etaAfterSeconds",
+            "status": "UNMODELED"
+          },
+          "payback": {
+            "value": null,
+            "source": "laneCandidates.payback/raw.paybackSeconds",
+            "status": "UNMODELED"
+          }
+        },
+        "runtimeMetrics": {},
+        "runtimeObservabilityProvenance": {
+          "source": "laneCandidates/summarizeLaneCandidates",
+          "formulaStatus": "UNMODELED",
+          "metricBasis": null,
+          "metricId": null,
+          "metricTarget": null,
+          "metricUnit": null
+        }
+      }
+    ],
+    "selected": {
+      "main": {
+        "lane": "Meat",
+        "decision": "BUY",
+        "candidate": "drone",
+        "reason": "goal planner for drone: build bottleneck resource (meat); amount 1",
+        "blockers": [],
+        "blockerCategories": [],
+        "observations": [],
+        "score": 110,
+        "closenessScore": 2006501,
+        "etaBefore": "",
+        "etaAfter": "",
+        "payback": "",
+        "reserveAfter": "",
+        "wouldBuyAmount": "1",
+        "target": "meat goal planner",
+        "resource": "meat-chain producer",
+        "raw": null,
+        "meatFallback": false,
+        "fallbackRankDrop": null,
+        "strategicTarget": "",
+        "blockedStrategicCandidate": "",
+        "topMeatBlockedBy": ""
+      },
+      "side": null,
+      "rejected": {
+        "lane": "Territory",
+        "decision": "HOLD",
+        "candidate": "Army seed",
+        "reason": "Army seed HOLD: waiting for post-Nexus or a relevant Expansion target.",
+        "blockers": [
+          "expansion not relevant yet"
+        ],
+        "blockerCategories": [
+          "energy-plan"
+        ],
+        "observations": [],
+        "score": 0,
+        "closenessScore": 7000,
+        "etaBefore": "",
+        "etaAfter": "",
+        "payback": "",
+        "reserveAfter": "",
+        "wouldBuyAmount": "",
+        "target": "Expansion",
+        "resource": "territory",
+        "raw": null,
+        "meatFallback": false,
+        "fallbackRankDrop": null,
+        "strategicTarget": "",
+        "blockedStrategicCandidate": "",
+        "topMeatBlockedBy": ""
+      }
+    },
+    "pathCoverage": [
+      {
+        "pathId": "LARVA_ENGINE_GUARD",
+        "sourceCall": "executeEngineGuardAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "EVALUATED_BLOCKED",
+        "reason": "Expansion not buyable yet; 0% ready, ETA unknown ETA",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "CRITICAL_PRODUCTION_UPGRADES",
+        "sourceCall": "handleCriticalProductionUpgrades",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "No critical production upgrade was applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "ENERGY_GUARD",
+        "sourceCall": "executeEnergyGuardAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "EVALUATED_BLOCKED",
+        "reason": "Energy/Nexus locked",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "CLONE_RAMP",
+        "sourceCall": "executeCloneRampGuardAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "Clone Ramp was not applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "HOUSE_OF_MIRRORS",
+        "sourceCall": "executeHouseOfMirrorsCastAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "House of Mirrors was not applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "MISSING"
+      },
+      {
+        "pathId": "CLONE_BUFFER",
+        "sourceCall": "executeCloneGuardAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "Clone Buffer was not applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "CLONE_BUFFER_HARD_LOCK_RECOVERY",
+        "sourceCall": "executeCloneGuardAction",
+        "executionClass": "RECOVERY",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "normal Clone Buffer path was evaluated with main-action budget available",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "MISSING"
+      },
+      {
+        "pathId": "MEAT_UNLOCK_PLANNER",
+        "sourceCall": "runUnlockPlanner",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "Meat unlock planner had no applicable action.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "SMART_UPGRADES",
+        "sourceCall": "buySmartUpgrades",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "No generic Smart upgrade was applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "SMART_UNITS",
+        "sourceCall": "buySmartUnits",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "EVALUATED_ACTIONABLE",
+        "reason": "goal drone; path drone; bottleneck meat; action drone",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "FINAL_CLONE_PREP",
+        "sourceCall": "manageCloneCocoons",
+        "executionClass": "SIDE",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "Cocooning upgrade not owned",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      }
+    ],
+    "coverageGaps": [
+      {
+        "pathId": "LARVA_ENGINE_GUARD",
+        "sourceCall": "executeEngineGuardAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "EVALUATED_BLOCKED",
+        "reason": "Expansion not buyable yet; 0% ready, ETA unknown ETA",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "CRITICAL_PRODUCTION_UPGRADES",
+        "sourceCall": "handleCriticalProductionUpgrades",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "No critical production upgrade was applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "ENERGY_GUARD",
+        "sourceCall": "executeEnergyGuardAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "EVALUATED_BLOCKED",
+        "reason": "Energy/Nexus locked",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "CLONE_RAMP",
+        "sourceCall": "executeCloneRampGuardAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "Clone Ramp was not applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "HOUSE_OF_MIRRORS",
+        "sourceCall": "executeHouseOfMirrorsCastAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "House of Mirrors was not applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "MISSING"
+      },
+      {
+        "pathId": "CLONE_BUFFER",
+        "sourceCall": "executeCloneGuardAction",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "Clone Buffer was not applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "CLONE_BUFFER_HARD_LOCK_RECOVERY",
+        "sourceCall": "executeCloneGuardAction",
+        "executionClass": "RECOVERY",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "normal Clone Buffer path was evaluated with main-action budget available",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "MISSING"
+      },
+      {
+        "pathId": "MEAT_UNLOCK_PLANNER",
+        "sourceCall": "runUnlockPlanner",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "Meat unlock planner had no applicable action.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "SMART_UPGRADES",
+        "sourceCall": "buySmartUpgrades",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "No generic Smart upgrade was applicable.",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "SMART_UNITS",
+        "sourceCall": "buySmartUnits",
+        "executionClass": "MAIN",
+        "status": "OBSERVED",
+        "observedDisposition": "EVALUATED_ACTIONABLE",
+        "reason": "goal drone; path drone; bottleneck meat; action drone",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      },
+      {
+        "pathId": "FINAL_CLONE_PREP",
+        "sourceCall": "manageCloneCocoons",
+        "executionClass": "SIDE",
+        "status": "OBSERVED",
+        "observedDisposition": "NOT_APPLICABLE",
+        "reason": "Cocooning upgrade not owned",
+        "candidateIdentity": "UNMODELED",
+        "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        "candidateDecisions": [],
+        "pathBoundaryEvidence": "PROVEN"
+      }
+    ]
+  },
+  "army": {
+    "schemaVersion": "swarmsim-lab.visible-army-roster.v1",
+    "roster": [
+      {
+        "rosterUnitId": "roach#39",
+        "runtimeUnitName": "roach",
+        "runtimeSuffix": "",
+        "label": "roach",
+        "tab": "territory",
+        "visible": true,
+        "buyable": false,
+        "count": "11",
+        "territoryPerSecondPerUnit": "12916968.75",
+        "territoryPerSecondFromRuntime": "142086656.25",
+        "houseOfMirrorsFamily": true
+      },
+      {
+        "rosterUnitId": "stinger#35",
+        "runtimeUnitName": "stinger",
+        "runtimeSuffix": "",
+        "label": "stinger",
+        "tab": "territory",
+        "visible": true,
+        "buyable": false,
+        "count": "7",
+        "territoryPerSecondPerUnit": "3.15",
+        "territoryPerSecondFromRuntime": "22.05",
+        "houseOfMirrorsFamily": true
+      },
+      {
+        "rosterUnitId": "swarmling#34",
+        "runtimeUnitName": "swarmling",
+        "runtimeSuffix": "",
+        "label": "swarmling",
+        "tab": "territory",
+        "visible": true,
+        "buyable": false,
+        "count": "0",
+        "territoryPerSecondPerUnit": "0.07",
+        "territoryPerSecondFromRuntime": "0",
+        "houseOfMirrorsFamily": true
+      }
+    ],
+    "visibleFamilyCount": 3,
+    "zeroCountFamilyIds": [
+      "swarmling#34"
+    ],
+    "source": "live game.unitlist() visible Territory/army families"
+  },
+  "formulaProvenance": {
+    "formulaSetId": "swarmsim-runtime-formulas",
+    "status": "mismatch",
+    "sourceRepository": "https://github.com/swarmsim/swarm",
+    "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+    "externalReferenceOnly": true,
+    "runtimeDependency": false,
+    "ratesCapturedFromRuntime": true,
+    "uncertainFields": [
+      "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+      "House of Mirrors affected unit stinger has impossible zero-count production parity and is marked unresolved.",
+      "House of Mirrors affected unit roach has impossible zero-count production parity and is marked unresolved.",
+      "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+      "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+    ],
+    "warnings": [
+      "Runtime Git SHA is unavailable in Tampermonkey; source.currentCommit is null by design.",
+      "House of Mirrors affected unit stinger has impossible zero-count production parity and is marked unresolved.",
+      "House of Mirrors affected unit roach has impossible zero-count production parity and is marked unresolved.",
+      "Clone Larvae direct runtime preview is not used with scenario overrides; source-verified Laboratory inputs are captured instead.",
+      "House of Mirrors direct runtime territory/sec preview is unavailable; source-verified affected-unit inputs are captured instead."
+    ],
+    "formulas": {
+      "energy": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "nexus prod -> energy; Unit._getCap/capValue/velocity",
+        "valueSource": "runtime-derived",
+        "verificationStatus": "runtime-derived"
+      },
+      "larvae": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "invisiblehatchery prod -> larva; Unit.velocity",
+        "valueSource": "runtime-derived",
+        "verificationStatus": "runtime-derived"
+      },
+      "cocoons": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "Unit.velocity",
+        "valueSource": "runtime-derived",
+        "verificationStatus": "runtime-derived"
+      },
+      "cloneLarvae": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee; tables/src/unittype/data.ts",
+        "functionOrEffectType": "ability clonelarvae; effect type compoundUnit; power.clonelarvae",
+        "valueSource": "runtime-derived when direct preview is available, otherwise Laboratory recompute from source-verified runtime inputs",
+        "verificationStatus": "source-verified"
+      },
+      "houseOfMirrors": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/upgrade/data.ts; tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "ability clonearmy; compoundUnit effects; Unit.eachProduction/totalProduction",
+        "valueSource": "Laboratory recompute from runtime-derived counts and effective territory/unit",
+        "verificationStatus": "incomplete"
+      },
+      "rushAbilities": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/effect.coffee",
+        "functionOrEffectType": "abilities larvarush/meatrush/territoryrush; addUnitByVelocity; addUnit",
+        "valueSource": "Laboratory recompute from pinned constants and runtime-derived velocity/effect power",
+        "verificationStatus": "source-verified"
+      },
+      "territoryPerSecond": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/unittype/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "Unit.eachProduction, Unit.totalProduction, Unit.velocity",
+        "valueSource": "runtime-derived",
+        "verificationStatus": "runtime-derived"
+      },
+      "meatProducerCoefficients": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "ProducerPath, ProducerPaths.getCoefficientsNow, factorial polynomial derivative",
+        "valueSource": "runtime-derived coefficients",
+        "verificationStatus": "runtime-derived"
+      },
+      "expansionEta": {
+        "sourceRepository": "https://github.com/swarmsim/swarm",
+        "sourceCommit": "06b4f404aa324a0b454348508cfa63d5c0f1ff54",
+        "sourceFile": "tables/src/upgrade/data.ts; swarmsim-coffee/app/scripts/services/unit.coffee",
+        "functionOrEffectType": "upgrade expansion cost progression; Unit.estimateSecsUntilEarned/bisection",
+        "valueSource": "runtime-derived ETA plus Laboratory consistency check",
+        "verificationStatus": "runtime-derived"
+      }
+    }
+  },
+  "coverageGaps": [
+    {
+      "pathId": "LARVA_ENGINE_GUARD",
+      "sourceCall": "executeEngineGuardAction",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "EVALUATED_BLOCKED",
+      "reason": "Expansion not buyable yet; 0% ready, ETA unknown ETA",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    },
+    {
+      "pathId": "CRITICAL_PRODUCTION_UPGRADES",
+      "sourceCall": "handleCriticalProductionUpgrades",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "NOT_APPLICABLE",
+      "reason": "No critical production upgrade was applicable.",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    },
+    {
+      "pathId": "ENERGY_GUARD",
+      "sourceCall": "executeEnergyGuardAction",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "EVALUATED_BLOCKED",
+      "reason": "Energy/Nexus locked",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    },
+    {
+      "pathId": "CLONE_RAMP",
+      "sourceCall": "executeCloneRampGuardAction",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "NOT_APPLICABLE",
+      "reason": "Clone Ramp was not applicable.",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    },
+    {
+      "pathId": "HOUSE_OF_MIRRORS",
+      "sourceCall": "executeHouseOfMirrorsCastAction",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "NOT_APPLICABLE",
+      "reason": "House of Mirrors was not applicable.",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "MISSING"
+    },
+    {
+      "pathId": "CLONE_BUFFER",
+      "sourceCall": "executeCloneGuardAction",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "NOT_APPLICABLE",
+      "reason": "Clone Buffer was not applicable.",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    },
+    {
+      "pathId": "CLONE_BUFFER_HARD_LOCK_RECOVERY",
+      "sourceCall": "executeCloneGuardAction",
+      "executionClass": "RECOVERY",
+      "status": "OBSERVED",
+      "observedDisposition": "NOT_APPLICABLE",
+      "reason": "normal Clone Buffer path was evaluated with main-action budget available",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "MISSING"
+    },
+    {
+      "pathId": "MEAT_UNLOCK_PLANNER",
+      "sourceCall": "runUnlockPlanner",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "NOT_APPLICABLE",
+      "reason": "Meat unlock planner had no applicable action.",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    },
+    {
+      "pathId": "SMART_UPGRADES",
+      "sourceCall": "buySmartUpgrades",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "NOT_APPLICABLE",
+      "reason": "No generic Smart upgrade was applicable.",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    },
+    {
+      "pathId": "SMART_UNITS",
+      "sourceCall": "buySmartUnits",
+      "executionClass": "MAIN",
+      "status": "OBSERVED",
+      "observedDisposition": "EVALUATED_ACTIONABLE",
+      "reason": "goal drone; path drone; bottleneck meat; action drone",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    },
+    {
+      "pathId": "FINAL_CLONE_PREP",
+      "sourceCall": "manageCloneCocoons",
+      "executionClass": "SIDE",
+      "status": "OBSERVED",
+      "observedDisposition": "NOT_APPLICABLE",
+      "reason": "Cocooning upgrade not owned",
+      "candidateIdentity": "UNMODELED",
+      "candidateIdentityReason": "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+      "candidateDecisions": [],
+      "pathBoundaryEvidence": "PROVEN"
+    }
+  ],
+  "nonMutation": {
+    "sourceStateFingerprint": null,
+    "captureOnly": true,
+    "productionAuthority": "none"
+  }
+}
