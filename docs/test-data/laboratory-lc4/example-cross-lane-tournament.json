@@ -1,0 +1,745 @@
+{
+  "schemaVersion": "swarmsim-lab.cross-lane-tournament.v1",
+  "experimentId": "LC4-LD05",
+  "capturedAt": "2026-07-23T00:00:00.000Z",
+  "phaseTarget": "larva-bridge-throughput",
+  "timingModel": "live-site-nonhermetic-raw-state",
+  "metricModel": "instantaneous-larva-rate-delta",
+  "oracleIndependence": "winner ranked by Laboratory larva-rate metric; production winner score never consulted",
+  "lanesCovered": [
+    "Territory",
+    "Engine",
+    "Energy",
+    "Meat",
+    "Upgrade",
+    "Twin",
+    "Clone Prep"
+  ],
+  "enumeratedCount": 27,
+  "executedCount": 24,
+  "unresolvedCount": 2,
+  "source": {
+    "rawStateHash": "sha256:85b065452d946b7e621fc31ae3c4bb51e080d3521b6047b8938bd324ee6c67d3"
+  },
+  "candidates": [
+    {
+      "candidateId": "HOLD",
+      "lane": "Hold",
+      "candidate": "HOLD",
+      "productionDecision": "HOLD",
+      "resolved": null,
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "hold",
+        "status": "hold",
+        "executed": false
+      },
+      "executed": false,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Territory:swarmling",
+      "lane": "Territory",
+      "candidate": "swarmling",
+      "productionDecision": "HOLD",
+      "resolved": "unit:swarmling",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "swarmling",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "4",
+        "observedAmount": "4",
+        "beforeCount": "444",
+        "afterCount": "448",
+        "executed": true,
+        "amountsAgree": false,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0.28",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Engine:Expansion",
+      "lane": "Engine",
+      "candidate": "Expansion",
+      "productionDecision": "BUY",
+      "resolved": "upgrade:expansion",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "expansion",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "16",
+        "afterCount": "17",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "7.157635370578499091",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Engine:Hatchery",
+      "lane": "Engine",
+      "candidate": "Hatchery",
+      "productionDecision": "BUY",
+      "resolved": "upgrade:hatchery",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "hatchery",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "10",
+        "afterCount": "11",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "6.506941245980453719",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Energy:construct nexus",
+      "lane": "Energy",
+      "candidate": "construct nexus",
+      "productionDecision": "BUY",
+      "resolved": "upgrade:nexus1",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "nexus1",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "1.208018398113312113",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Meat:nest",
+      "lane": "Meat",
+      "candidate": "nest",
+      "productionDecision": "BUY",
+      "resolved": "unit:nest",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "nest",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "99",
+        "afterCount": "100",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Energy:Energy spending",
+      "lane": "Energy",
+      "candidate": "Energy spending",
+      "productionDecision": "HOLD",
+      "resolved": null,
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unknown",
+        "status": "enumerated-unresolved",
+        "executed": false
+      },
+      "executed": false,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Upgrade:faster queens",
+      "lane": "Upgrade",
+      "candidate": "faster queens",
+      "productionDecision": "OBSERVE",
+      "resolved": "upgrade:queenprod",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "queenprod",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "2",
+        "afterCount": "3",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Twin:twin drones",
+      "lane": "Twin",
+      "candidate": "twin drones",
+      "productionDecision": "OBSERVE",
+      "resolved": "upgrade:dronetwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "dronetwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "5",
+        "afterCount": "6",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Upgrade:faster drones",
+      "lane": "Upgrade",
+      "candidate": "faster drones",
+      "productionDecision": "BUY",
+      "resolved": "upgrade:droneprod",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "droneprod",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "3",
+        "afterCount": "4",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "5511881108201240"
+      }
+    },
+    {
+      "candidateId": "Twin:twin swarmlings",
+      "lane": "Twin",
+      "candidate": "twin swarmlings",
+      "productionDecision": "HOLD",
+      "resolved": "upgrade:swarmlingtwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "swarmlingtwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "2",
+        "afterCount": "3",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Twin:twin stingers",
+      "lane": "Twin",
+      "candidate": "twin stingers",
+      "productionDecision": "HOLD",
+      "resolved": "upgrade:stingertwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "stingertwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "1",
+        "afterCount": "2",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Twin:twin arachnomorphs",
+      "lane": "Twin",
+      "candidate": "twin arachnomorphs",
+      "productionDecision": "HOLD",
+      "resolved": "upgrade:spidertwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "spidertwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Twin:twin culicimorphs",
+      "lane": "Twin",
+      "candidate": "twin culicimorphs",
+      "productionDecision": "HOLD",
+      "resolved": "upgrade:mosquitotwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "mosquitotwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "3",
+        "afterCount": "4",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Twin:twin locusts",
+      "lane": "Twin",
+      "candidate": "twin locusts",
+      "productionDecision": "HOLD",
+      "resolved": "upgrade:locusttwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "locusttwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Twin:twin roaches",
+      "lane": "Twin",
+      "candidate": "twin roaches",
+      "productionDecision": "HOLD",
+      "resolved": "upgrade:roachtwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "roachtwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Twin:twin giant arachnomorphs",
+      "lane": "Twin",
+      "candidate": "twin giant arachnomorphs",
+      "productionDecision": "HOLD",
+      "resolved": "upgrade:giantspidertwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "giantspidertwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Twin:twin chilopodomorphs",
+      "lane": "Twin",
+      "candidate": "twin chilopodomorphs",
+      "productionDecision": "HOLD",
+      "resolved": "upgrade:centipedetwin",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "centipedetwin",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Meat:queen",
+      "lane": "Meat",
+      "candidate": "queen",
+      "productionDecision": "OBSERVE",
+      "resolved": "unit:queen",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "queen",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "4",
+        "observedAmount": "4",
+        "beforeCount": "319875149.053",
+        "afterCount": "319875153.053",
+        "executed": true,
+        "amountsAgree": false,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "-800"
+      }
+    },
+    {
+      "candidateId": "Meat:drone",
+      "lane": "Meat",
+      "candidate": "drone",
+      "productionDecision": "OBSERVE",
+      "resolved": "unit:drone",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "drone",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "32",
+        "observedAmount": "32",
+        "beforeCount": "689024539301367.18087",
+        "afterCount": "689024539301399.18087",
+        "executed": true,
+        "amountsAgree": false,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "256"
+      }
+    },
+    {
+      "candidateId": "Territory:stinger",
+      "lane": "Territory",
+      "candidate": "stinger",
+      "productionDecision": "HOLD",
+      "resolved": "unit:stinger",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "stinger",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "2",
+        "observedAmount": "2",
+        "beforeCount": "1600",
+        "afterCount": "1602",
+        "executed": true,
+        "amountsAgree": false,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "6.3",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Territory:arachnomorph",
+      "lane": "Territory",
+      "candidate": "arachnomorph",
+      "productionDecision": "HOLD",
+      "resolved": "unit:spider",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "spider",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "141.75",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Territory:culicimorph",
+      "lane": "Territory",
+      "candidate": "culicimorph",
+      "productionDecision": "HOLD",
+      "resolved": "unit:mosquito",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "mosquito",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "8",
+        "observedAmount": "8",
+        "beforeCount": "4",
+        "afterCount": "12",
+        "executed": true,
+        "amountsAgree": false,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "51030",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Territory:locust",
+      "lane": "Territory",
+      "candidate": "locust",
+      "productionDecision": "HOLD",
+      "resolved": "unit:locust",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "locust",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "287043.75",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Territory:roach",
+      "lane": "Territory",
+      "candidate": "roach",
+      "productionDecision": "HOLD",
+      "resolved": "unit:roach",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "roach",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "12916968.75",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Territory:giant arachnomorph",
+      "lane": "Territory",
+      "candidate": "giant arachnomorph",
+      "productionDecision": "HOLD",
+      "resolved": "unit:giantspider",
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unit",
+        "targetId": "giantspider",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "0",
+        "afterCount": "1",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "executed": true,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "581263593.8",
+        "meatRateDelta": "0"
+      }
+    },
+    {
+      "candidateId": "Clone Prep:Cocoons",
+      "lane": "Clone Prep",
+      "candidate": "Cocoons",
+      "productionDecision": "OBSERVE",
+      "resolved": null,
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "unknown",
+        "status": "enumerated-unresolved",
+        "executed": false
+      },
+      "executed": false,
+      "metric": {
+        "larvaRateDelta": "0",
+        "territoryRateDelta": "0",
+        "meatRateDelta": "0"
+      }
+    }
+  ],
+  "laboratoryWinner": "Engine:Expansion",
+  "productionFirstBuy": "Engine:Expansion",
+  "winnerAgreesWithProductionFirstBuy": true,
+  "territoryOverMeatCrossover": "open",
+  "siblingIsolation": {
+    "allRestoredIdenticalToSource": true,
+    "sourceRawStateUnchanged": true,
+    "sharedLarvaeNotDoubleSpent": true
+  },
+  "knownLimitations": [
+    "the shared instantaneous larva-rate metric under-credits non-larva lanes (Territory/Energy); a per-target time-to-gate horizon projection is a declared follow-up",
+    "enumeration reflects the production candidate surface for this one state; the one/two/four-action budget matrix and the Territory-over-Meat crossover need LD-12 and are deferred",
+    "candidates whose display name did not resolve to a live unit/upgrade are recorded as enumerated-unresolved, never hidden"
+  ]
+}
