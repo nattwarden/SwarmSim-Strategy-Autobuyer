@@ -770,7 +770,7 @@ versioned save.
 | LD-02 | First Nest sacrifice | `manual-play-first-nest-threshold-2026-07-18.txt` | DT-07, DT-08, DT-09 |
 | LD-03 | Expansion bridge | Existing Expansion 10 and Expansion 12 saves | DT-02, DT-10, DT-11, DT-20 |
 | LD-04 | Twin Queen reserve boundaries | Existing Twin Queens II and Twin Queen III/Nest 1200 saves | DT-07, DT-08, DT-22 |
-| LD-05 | Late-early multi-lane economy | `manual-play-active-chain-pre-ascension-2026-07-18.txt` | DT-04 through DT-10 |
+| LD-05 | Late-early multi-lane economy | `manual-play-active-chain-pre-ascension-2026-07-18.txt` (sha256 `c53f5394…a860b95c`); **verified in LC-1** read-only decision capture, evidence `0ca579a`, source-state and run-history non-mutation proven | DT-04 through DT-10 |
 | LD-06 | Greater Queen/Twin Nest/Faster chain | Existing Twin Nests V and larva-buffer saves; the tracked Faster-GQ file is quarantined (`undefined`, not a save), so reacquire it under a new immutable path or derive an explicitly labelled replacement from a valid ancestor | DT-06 through DT-09, DT-15 |
 | LD-07 | Nexus 1 Energy entry | `manual-play-first-nexus-baseline-2026-07-21.txt`; timing metrics remain restricted by its inflated Meat bank | DT-01, DT-13, DT-17 |
 | LD-08 | Nexus 2, 3, and 4 boundaries | **Missing:** derive three exact scenarios from one registered lineage with only documented Nexus/Energy boundary inputs | DT-01, DT-13, DT-20 |
@@ -821,10 +821,19 @@ No runtime code is changed.
 
 #### LC-1 - Decision snapshot and candidate manifest
 
+Status: **ACCEPTED (2026-07-24)**. Implementation SHA
+`0f473fbd07bc3ad66b9a9e532a346d0a6fd227fa`; evidence SHA
+`0ca579ac758afdab2e9fad0aca14f1b868269a70` on `codex/9.4.0-clean-room`. Full
+`npm run verify` passed exit 0 against the implementation SHA. See the status
+board for the full acceptance record.
+
 Outcome: one read-only capture exposes the target, horizon, runtime verdict,
 all lane candidates/rejections, exact amounts, constraints, roster, and gaps.
 
-Focused data: LD-00 plus one existing real save from LD-05.
+Focused data: LD-00 plus one existing real save from LD-05. Both are now
+verified: LD-00 as the deterministic fixture (stable hash `3be3eb65…`) and
+LD-05 as the hash-pinned retained real save, each captured read-only with
+source-state and run-history non-mutation.
 
 Focused verification:
 
