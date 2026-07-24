@@ -1,0 +1,188 @@
+{
+  "schemaVersion": "swarmsim-lab.package-tournament.v1",
+  "experimentId": "LC5-LD02",
+  "capturedAt": "2026-07-23T00:00:00.000Z",
+  "phaseTarget": "larva-throughput-with-reconstruction",
+  "timingModel": "live-site-nonhermetic-active-only",
+  "metricModel": "active-larva-rate-post-package",
+  "horizonModel": "active-only: live-site game.skipTime is a no-op, so passive/offline horizons are not measured",
+  "oracleIndependence": "winner ranked by Laboratory active larva-rate metric; production winner score never consulted",
+  "requestedHorizonsSeconds": [
+    0,
+    300,
+    3600
+  ],
+  "reserveMultiplier": 1.25,
+  "source": {
+    "rawStateHash": "sha256:7469cddbde5c1b4250b3889638628a8f38e54517c5fa811090c0734e045a6212"
+  },
+  "packages": [
+    {
+      "packageId": "HOLD",
+      "restoredIdenticalToSource": true,
+      "stepCount": 0,
+      "steps": [],
+      "completed": true,
+      "invalidatedAt": null,
+      "invalidationReason": null,
+      "active": {
+        "larva": "4815462.880883092",
+        "larvaRate": "8.857805"
+      }
+    },
+    {
+      "packageId": "engine-hatchery-expansion",
+      "restoredIdenticalToSource": true,
+      "stepCount": 2,
+      "steps": [
+        {
+          "stepId": "build-hatchery",
+          "action": "build",
+          "command": {
+            "kind": "upgrade",
+            "targetId": "hatchery",
+            "requestedAmount": "1",
+            "commandAmount": "1",
+            "confirmedAmount": "1",
+            "observedAmount": "1",
+            "beforeCount": "4",
+            "afterCount": "5",
+            "executed": true,
+            "amountsAgree": true,
+            "status": "executed"
+          }
+        },
+        {
+          "stepId": "build-expansion",
+          "action": "build",
+          "command": {
+            "kind": "upgrade",
+            "targetId": "expansion",
+            "requestedAmount": "1",
+            "commandAmount": "1",
+            "confirmedAmount": "1",
+            "observedAmount": "1",
+            "beforeCount": "6",
+            "afterCount": "7",
+            "executed": true,
+            "amountsAgree": true,
+            "status": "executed"
+          }
+        }
+      ],
+      "completed": true,
+      "invalidatedAt": null,
+      "invalidationReason": null,
+      "active": {
+        "larva": "4815462.916314312",
+        "larvaRate": "11.6923026"
+      }
+    },
+    {
+      "packageId": "queen-nest-sacrifice-rebuild",
+      "restoredIdenticalToSource": true,
+      "stepCount": 3,
+      "steps": [
+        {
+          "stepId": "build-queen",
+          "action": "build",
+          "command": {
+            "kind": "unit",
+            "targetId": "queen",
+            "requestedAmount": "1",
+            "commandAmount": "1",
+            "confirmedAmount": "1",
+            "observedAmount": "1",
+            "beforeCount": "1000",
+            "afterCount": "1001",
+            "executed": true,
+            "amountsAgree": true,
+            "status": "executed"
+          }
+        },
+        {
+          "stepId": "sacrifice-nest",
+          "action": "sacrifice",
+          "command": {
+            "kind": "unit",
+            "targetId": "nest",
+            "requestedAmount": "1",
+            "commandAmount": "1",
+            "confirmedAmount": "1",
+            "observedAmount": "1",
+            "beforeCount": "0",
+            "afterCount": "1",
+            "executed": true,
+            "amountsAgree": true,
+            "status": "executed"
+          }
+        },
+        {
+          "stepId": "rebuild-queen",
+          "action": "rebuild",
+          "command": {
+            "kind": "unit",
+            "targetId": "queen",
+            "requestedAmount": "1",
+            "commandAmount": "1",
+            "confirmedAmount": "1",
+            "observedAmount": "1",
+            "beforeCount": "1",
+            "afterCount": "2",
+            "executed": true,
+            "amountsAgree": true,
+            "status": "executed"
+          }
+        }
+      ],
+      "completed": true,
+      "invalidatedAt": null,
+      "invalidationReason": null,
+      "active": {
+        "larva": "4815460.252910902",
+        "larvaRate": "8.857805"
+      }
+    },
+    {
+      "packageId": "invalid-stop",
+      "restoredIdenticalToSource": true,
+      "stepCount": 1,
+      "steps": [
+        {
+          "stepId": "build-nonexistent",
+          "action": "build",
+          "command": {
+            "kind": "upgrade",
+            "targetId": "__no_such_upgrade__",
+            "requestedAmount": "1",
+            "commandAmount": "1",
+            "confirmedAmount": "0",
+            "observedAmount": "0",
+            "beforeCount": null,
+            "afterCount": null,
+            "executed": false,
+            "amountsAgree": false,
+            "status": "target-unresolved"
+          }
+        }
+      ],
+      "completed": false,
+      "invalidatedAt": "build-nonexistent",
+      "invalidationReason": "target-unresolved",
+      "active": {
+        "larva": "4815463.633796517",
+        "larvaRate": "8.857805"
+      }
+    }
+  ],
+  "laboratoryWinner": "engine-hatchery-expansion",
+  "siblingIsolation": {
+    "allRestoredIdenticalToSource": true,
+    "sourceRawStateUnchanged": true
+  },
+  "knownLimitations": [
+    "live-site game.skipTime does not advance the game clock, so only the active horizon is measured; the active/5m/1h/offline reconstruction spread (LD-15) needs the local build (RH-4 Outcome 2) or working clock control",
+    "the full 0x/1.25x/1.5x/2x reserve-policy matrix is a declared follow-up; reserveMultiplier is recorded but not yet swept",
+    "the active larva-rate metric shows post-package throughput but not the time-integrated reconstruction payoff, which needs working horizons"
+  ]
+}

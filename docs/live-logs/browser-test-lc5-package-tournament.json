@@ -1,0 +1,59 @@
+{
+  "verdict": "LABORATORY LC-5 PACKAGE TOURNAMENT VERIFIED",
+  "implementationCommit": "2dd52c62c310c858ae08582071264483b9700c7c",
+  "metricModel": "active-larva-rate-post-package",
+  "timingModel": "live-site-nonhermetic-active-only",
+  "horizonModel": "active-only: live-site game.skipTime is a no-op, so passive/offline horizons are not measured",
+  "phaseTarget": "larva-throughput-with-reconstruction",
+  "requestedHorizonsSeconds": [
+    0,
+    300,
+    3600
+  ],
+  "reserveMultiplier": 1.25,
+  "ld02Save": {
+    "path": "docs/test-data/player-saves/manual-play-first-nest-threshold-2026-07-18.txt",
+    "sha256": "a86d8524e351fd3034ff4fe89e10644713a40f87a69e00ca55b19bf5d5076cbd"
+  },
+  "sourceRawStateUnchanged": true,
+  "allRestoredIdentical": true,
+  "laboratoryWinner": "engine-hatchery-expansion",
+  "packages": [
+    {
+      "packageId": "HOLD",
+      "stepCount": 0,
+      "completed": true,
+      "invalidatedAt": null,
+      "invalidationReason": null,
+      "activeLarvaRate": "8.857805",
+      "activeLarva": "4815462.880883092"
+    },
+    {
+      "packageId": "engine-hatchery-expansion",
+      "stepCount": 2,
+      "completed": true,
+      "invalidatedAt": null,
+      "invalidationReason": null,
+      "activeLarvaRate": "11.6923026",
+      "activeLarva": "4815462.916314312"
+    },
+    {
+      "packageId": "queen-nest-sacrifice-rebuild",
+      "stepCount": 3,
+      "completed": true,
+      "invalidatedAt": null,
+      "invalidationReason": null,
+      "activeLarvaRate": "8.857805",
+      "activeLarva": "4815460.252910902"
+    },
+    {
+      "packageId": "invalid-stop",
+      "stepCount": 1,
+      "completed": false,
+      "invalidatedAt": "build-nonexistent",
+      "invalidationReason": "target-unresolved",
+      "activeLarvaRate": "8.857805",
+      "activeLarva": "4815463.633796517"
+    }
+  ]
+}
