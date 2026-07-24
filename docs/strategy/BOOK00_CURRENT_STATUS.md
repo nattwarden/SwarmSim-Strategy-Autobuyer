@@ -41,8 +41,11 @@ available for the LC-3/LC-4 time-to-gate follow-ups. RH-4 Outcome 2 (a hermetic
 offline local build) remains a separate, larger infrastructure item that removes
 the live-site dependency but is **not** required to unblock horizons; the
 remaining time follow-ups (reserve-policy matrix, LD-15 offline set, LD-08/LD-12
-data) no longer depend on it. The LC-5 v2 horizon upgrade's own exact-SHA
-re-verification is the next step.
+data) no longer depend on it. The LC-5 v2 horizon upgrade is itself ACCEPTED via
+exact-SHA evidence: implementation SHA
+`3a1dda4e7ae24b28ded25309a55d88422c404c92` (tree
+`384f33cb36c035033c8c424ec93d70d45c45ac28`), evidence SHA `41bcf69`, full
+`npm run verify` exit 0 against the implementation SHA.
 
 LC-4 exact-SHA acceptance (2026-07-24):
 

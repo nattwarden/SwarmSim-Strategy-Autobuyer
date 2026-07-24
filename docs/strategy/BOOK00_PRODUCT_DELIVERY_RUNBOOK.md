@@ -953,8 +953,9 @@ for LC-5.
 
 #### LC-5 - Package and reserve-policy runner
 
-Status: **ACCEPTED (v1) then upgraded to v2 horizons (exact-SHA re-verification
-pending, 2026-07-24)**. `runPackageTournament` executes a bounded declarative step
+Status: **ACCEPTED, upgraded to v2 horizons via exact-SHA evidence (2026-07-24)**.
+v2 implementation SHA `3a1dda4e7ae24b28ded25309a55d88422c404c92`; evidence SHA
+`41bcf69`; full `npm run verify` exit 0. `runPackageTournament` executes a bounded declarative step
 schema (build -> sacrifice -> unlock -> rebuild) and HOLD in isolated branches,
 stops and records on step invalidation (no loops), and ranks by Laboratory's own
 larva-at-horizon metric. Key finding: `game.skipTime` is a no-op on the live site,
