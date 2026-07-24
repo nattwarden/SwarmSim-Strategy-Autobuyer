@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "swarmsim-lab.engine-tournament.v1",
+  "experimentId": "LC3-LD01",
+  "capturedAt": "2026-07-23T00:00:00.000Z",
+  "phaseTarget": "larva-engine-throughput",
+  "timingModel": "live-site-nonhermetic-raw-state",
+  "metricModel": "instantaneous-larva-rate-delta",
+  "oracleIndependence": "winner ranked by Laboratory larva-rate metric; production winner score never consulted",
+  "source": {
+    "rawStateHash": "sha256:002bcfda1c35adbffdde1f5d990cb4d84ae14f085a06c69c888f5a543c041b69"
+  },
+  "candidates": [
+    {
+      "candidateId": "HOLD",
+      "applicable": true,
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "hold",
+        "status": "hold",
+        "executed": false,
+        "requestedAmount": "0",
+        "amountsAgree": true
+      },
+      "metric": {
+        "larvaRateBefore": "8.857805",
+        "larvaRateAfter": "8.857805",
+        "larvaRateDelta": "0",
+        "larvaGainPercent": 0,
+        "expansionEtaSeconds": 0,
+        "hatcheryEtaSeconds": 0
+      }
+    },
+    {
+      "candidateId": "BUY_EXPANSION",
+      "applicable": true,
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "expansion",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "6",
+        "afterCount": "7",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "metric": {
+        "larvaRateBefore": "8.857805",
+        "larvaRateAfter": "9.7435855",
+        "larvaRateDelta": "0.8857805",
+        "larvaGainPercent": 10,
+        "expansionEtaSeconds": 0,
+        "hatcheryEtaSeconds": 0
+      }
+    },
+    {
+      "candidateId": "BUY_HATCHERY",
+      "applicable": true,
+      "restoredIdenticalToSource": true,
+      "command": {
+        "kind": "upgrade",
+        "targetId": "hatchery",
+        "requestedAmount": "1",
+        "commandAmount": "1",
+        "confirmedAmount": "1",
+        "observedAmount": "1",
+        "beforeCount": "4",
+        "afterCount": "5",
+        "executed": true,
+        "amountsAgree": true,
+        "status": "executed"
+      },
+      "metric": {
+        "larvaRateBefore": "8.857805",
+        "larvaRateAfter": "10.629366",
+        "larvaRateDelta": "1.771561",
+        "larvaGainPercent": 20,
+        "expansionEtaSeconds": 0,
+        "hatcheryEtaSeconds": 0
+      }
+    }
+  ],
+  "laboratoryWinner": "BUY_HATCHERY",
+  "winnerMarginPercent": 9.090909090909092,
+  "runtimeChoice": {
+    "engineChoice": "BUY_EXPANSION",
+    "status": "observed",
+    "raw": "Engine:Expansion:BUY"
+  },
+  "winnerAgreesWithRuntime": false,
+  "siblingIsolation": {
+    "allRestoredIdenticalToSource": true,
+    "sourceRawStateUnchanged": true
+  },
+  "knownLimitations": [
+    "instantaneous larva-rate under-credits Expansion's indirect territory-drone-larva loop; a time-to-gate horizon projection is a declared follow-up",
+    "the 180s/600s save-window matrix and a guaranteed Hatchery/Expansion winner-change boundary need LD-08/LD-09, which are not yet captured"
+  ]
+}
