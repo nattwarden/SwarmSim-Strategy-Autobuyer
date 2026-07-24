@@ -18,6 +18,41 @@ that payload is not present in the repository. Do not import or consume the
 tracked path. Recovery requires a new immutable fixture path with valid export,
 hash, provenance, and lineage; do not overwrite the quarantined evidence.
 
+## derived-first-ascension-from-ld09-2026-07-24.txt (LD-14, derived)
+
+Fixture identity:
+
+- SHA-256: `516067dc7defc70804d28e3920745c795d498e04d8885f7c2ff5382af7f8e491`
+- format prefix: `MS4xLjE3|`
+- source class: **derived, not independently played**. Produced by importing the
+  natural LD-09 save, driving the game clock so its pending natural premutagen
+  reified to `8888`, executing one real in-game `game.ascend()`, and exporting the
+  resulting post-reset state. No values were fabricated or injected.
+- lineage: `manual-play-natural-nexus5-2026-07-24.txt` (LD-09, natural Nexus 5)
+  plus exactly one real Ascension. Retains the pre-reset lineage as required for
+  LD-14.
+
+Import verified 2026-07-24 against production `https://www.swarmsim.com/` via
+`game.importSave` in a disposable headless-Chrome session, with this observed
+post-import snapshot:
+
+- nexus: `0` (reset by the Ascension)
+- mutagen: `8888` (the permanent reward from the converted premutagen)
+- premutagen: `0`
+- meat: `~25` (fresh post-reset economy)
+
+Provenance boundary: this is a **derived** fixture and must never be merged with
+independently natural saves (LD-09) or with injected states in one result. It is a
+real Ascension outcome of a natural save, suitable as the LD-14 first-post-reset
+starting point.
+
+Known bounded gap: the fresh post-reset economy has no producers, so its recovery
+(return to Nexus 5) requires the planner rebuilding producers over real time
+(bot-replay), which `game.tick`/`reify` does not do. A full first
+return-to-Nexus-5 benchmark therefore remains a follow-up. LD-13 (the first-
+appearance premutagen, before any spending or Ascension) still needs a real
+independently-played capture and is not derivable.
+
 ## manual-play-natural-nexus5-2026-07-24.txt (LD-09)
 
 Fixture identity:

@@ -779,7 +779,7 @@ versioned save.
 | LD-11 | Energy threshold matrix | Derived from LD-09 at exact below/at/above `1.6k`, `2k`, `2.5k`, and `12k`; explicitly artificial Energy boundaries | DT-12 through DT-17 |
 | LD-12 | Full Army/Mirror crossover | **Missing retained branch:** natural Nexus-5 state before a material Mirror/Army choice, with complete roster and Twins | DT-10, DT-11, DT-12 |
 | LD-13 | First real premutagen | **Missing natural save:** capture immediately when the first premutagen appears, before spending or Ascension | DT-18, DT-20 |
-| LD-14 | First post-Ascension recovery | **Missing paired save:** capture immediately after the first natural Ascension, retaining pre-reset lineage | DT-01, DT-19, DT-20 |
+| LD-14 | First post-Ascension recovery | `derived-first-ascension-from-ld09-2026-07-24.txt` (sha256 `516067dc…`), **derived** from LD-09 by one real `game.ascend()` (nexus 0, mutagen 8888), pre-reset lineage retained; must not be merged with natural/injected. Provenance in `docs/test-data/player-saves/README.md`. Full return-to-Nexus-5 needs bot-replay (follow-up) | DT-01, DT-19, DT-20 |
 | LD-15 | Offline/elapsed horizons | Derived frozen-time scenarios from LD-01, LD-05, LD-09, and LD-14 at 5m, 1h, 1d, and a long-return horizon | DT-08, DT-21 |
 | LD-16 | Decimal, Twin, exact-target, and stale-button edges | Generated synthetic boundary fixtures with source-verified costs and real command acceptance | DT-05, DT-22 |
 | LD-17 | Random award cohorts | Repeated disposable Hatchery/Expansion branches with recorded RNG/time provenance where available | DT-16, DT-18, DT-20 |
