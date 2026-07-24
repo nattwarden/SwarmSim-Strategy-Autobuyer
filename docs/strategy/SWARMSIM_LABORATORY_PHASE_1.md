@@ -224,7 +224,7 @@ development-only API exposes
 `laboratory.runPackageTournament({ sourceSave, packages, horizonsSeconds, reserveMultiplier })`,
 `laboratory.getLastPackageTournament()`, and
 `laboratory.validatePackageTournament(...)`; the result schema is
-`swarmsim-lab.package-tournament.v1`.
+`swarmsim-lab.package-tournament.v2`.
 
 A package is a strictly **declarative ordered step schema** (build -> sacrifice ->
 unlock -> rebuild); each step is a bounded buy. The runner executes the steps of a
@@ -233,26 +233,38 @@ intermediate state invalidates a step - the target is unresolvable or not buyabl
 at that point - it **stops and records the invalidation** rather than looping or
 improvising a general-purpose script. Because every package branch restores the
 identical raw source state, shared larvae cannot be double-spent across packages.
-The winner is ranked by Laboratory's own active larva-rate metric, never the
-production score.
+It then measures downstream production across elapsed horizons and ranks by
+Laboratory's own larva-at-final-horizon metric, never the production score.
+
+**Working elapsed-horizon primitive (2026-07-24).** `game.skipTime` is a no-op on
+the live site - it does not advance the game clock - but ticking the clock to a
+future instant and reifying does: `laboratory.advanceHorizon(seconds)` (and the
+internal `laboratoryAdvanceHorizon`) call `game.tick(now + seconds)` then
+`game.reify()`, which advances time exactly and applies production. Direct
+assignment to `game.now` does not reify, so `tick(...)` is required. This restores
+the active/5m/1h horizon dimension on the live site and is the reusable primitive
+for the LC-3/LC-4 time-to-gate follow-ups. It is comparative and near-deterministic
+to the usual live-site wall-clock micro-drift, not bit-hermetic.
 
 Verified by `npm run check:laboratory:package-tournament` on the hash-pinned LD-02
-first-Nest-sacrifice save with three packages plus HOLD: a two-step
-Hatchery+Expansion package and a three-step queen -> nest-sacrifice -> rebuild
-package both completed their bounded steps; an intentionally invalid package
-stopped at its first step (`target-unresolved`) and did not win; all branch
-restores were identical with source non-mutation; and the two-step Engine package
-won on active larva rate (`11.69` vs HOLD `8.86`).
+first-Nest-sacrifice save with three packages plus HOLD across horizons
+`[0, 300, 3600]s`: the `advanceHorizon` primitive advanced exactly 3600s and
+applied production; the two-step Hatchery+Expansion package and the three-step
+queen -> nest-sacrifice -> rebuild package both completed their bounded steps; an
+intentionally invalid package stopped at its first step (`target-unresolved`) and
+did not win; all branch restores were identical with source non-mutation. The
+Engine package wins on larva at the 1h horizon (`4.86e6` vs HOLD `4.85e6`) while
+being level with HOLD at the active horizon - exactly the reconstruction/downstream
+payoff the active-only metric could not see.
 `npm run verify:laboratory:package-tournament` is the declared evidence generator.
 
-Honest bounds (`metricModel: active-larva-rate-post-package`,
-`timingModel: live-site-nonhermetic-active-only`): **live-site `game.skipTime` is
-a no-op** - it does not advance the game clock - so only the active horizon is
-measured. The active/5m/1h/offline reconstruction spread (which is where the
-sacrifice-then-rebuild payoff appears; at the active horizon that package nets
-zero larva-rate change) and the full 0x/1.25x/1.5x/2x reserve-policy matrix are
-declared follow-ups that need the local game build (RH-4 Outcome 2) or working
-clock control, plus the LD-15 frozen-time and LD-12 data.
+Honest bounds (`metricModel: larva-at-horizon-with-reconstruction`,
+`timingModel: live-site-tick-reify-horizons`): horizons inherit the live-site
+wall-clock micro-drift, so absolute larva is comparative back-to-back, not a
+bit-hermetic timing benchmark (fully hermetic timing still wants the local build).
+The full 0x/1.25x/1.5x/2x reserve-policy matrix, a cap-aware throughput metric for
+capped economies, and the LD-15 frozen-time offline horizon set remain declared
+follow-ups.
 
 ## 0.12.3 narrow contract update
 

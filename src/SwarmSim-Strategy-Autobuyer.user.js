@@ -10758,7 +10758,7 @@ function getDisplayName(item) {
   const LABORATORY_BRANCH_RESULT_SCHEMA_VERSION = "swarmsim-lab.branch-result.v1";
   const LABORATORY_ENGINE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.engine-tournament.v1";
   const LABORATORY_CROSS_LANE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.cross-lane-tournament.v1";
-  const LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.package-tournament.v1";
+  const LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.package-tournament.v2";
   const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
@@ -13073,11 +13073,30 @@ function getDisplayName(item) {
     };
   }
 
+  // Working elapsed-horizon primitive. game.skipTime is a no-op on the live site,
+  // but ticking the game clock to a future instant and reifying advances it
+  // exactly and applies production deterministically to the same wall-clock
+  // micro-drift as every other live-site capture. Direct assignment to game.now
+  // does not reify, so tick(...) is required.
+  function laboratoryAdvanceHorizon(game, seconds) {
+    const target = Number(seconds);
+    if (!(target > 0)) return { ok: true, advancedSeconds: 0 };
+    if (!game?.now || typeof game.now.getTime !== "function" || typeof game.tick !== "function") {
+      return { ok: false, advancedSeconds: 0, reason: "no controllable game clock" };
+    }
+    const before = game.now.getTime();
+    safe("LC horizon tick", () => game.tick(new Date(before + Math.round(target * 1000))));
+    safe("LC horizon reify", () => game.reify && game.reify());
+    const advancedSeconds = (game.now.getTime() - before) / 1000;
+    return { ok: advancedSeconds > 0, advancedSeconds };
+  }
+
   function laboratoryValidatePackageTournament(tournament) {
     const errors = [];
     if (tournament?.schemaVersion !== LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION) errors.push("unexpected package-tournament schema");
     if (!Array.isArray(tournament?.packages) || tournament.packages.length < 2) errors.push("package tournament needs HOLD plus at least one package");
-    if (tournament?.metricModel !== "active-larva-rate-post-package") errors.push("unexpected package-tournament metric model");
+    if (tournament?.metricModel !== "larva-at-horizon-with-reconstruction") errors.push("unexpected package-tournament metric model");
+    if (!Array.isArray(tournament?.horizonsSeconds) || !tournament.horizonsSeconds.length) errors.push("no horizons measured");
     if (!tournament?.laboratoryWinner) errors.push("no independent Laboratory winner selected");
     if (!tournament?.siblingIsolation?.allRestoredIdenticalToSource) errors.push("a package branch restore diverged from source");
     if (!tournament?.siblingIsolation?.sourceRawStateUnchanged) errors.push("source raw state changed after the tournament");
@@ -13124,12 +13143,20 @@ function getDisplayName(item) {
         const restored = await laboratoryRestoreBranchSource(game, sourceSave);
         const restoredIdenticalToSource = restored.ok && restored.rawStateHash === sourceRawStateHash;
         const run = laboratoryRunPackageSteps(game, spec.steps);
-        // Active-horizon downstream throughput. On the live site game.skipTime is
-        // a no-op (the clock does not advance), so the passive 5m/1h/offline
-        // horizons are not measured here; only the active larva production rate,
-        // which already discriminates packages (a build raises it, a sacrifice
-        // lowers it until reconstruction). Passive horizons need the local build.
-        const active = laboratoryMeasureHorizonLarva(game);
+        // Downstream production across elapsed horizons via the tick+reify
+        // primitive. This captures reconstruction: right after a sacrifice the
+        // rate is low, and over the horizon the economy rebuilds, so larva at a
+        // later horizon reflects reconstruction plus downstream production.
+        const horizons = [];
+        let elapsed = 0;
+        for (const horizonSeconds of horizonsSeconds) {
+          let advancedSeconds = 0;
+          if (horizonSeconds > elapsed) {
+            advancedSeconds = laboratoryAdvanceHorizon(game, horizonSeconds - elapsed).advancedSeconds;
+            elapsed = horizonSeconds;
+          }
+          horizons.push({ horizonSeconds, advancedSeconds, ...laboratoryMeasureHorizonLarva(game) });
+        }
         results.push(laboratoryDeepFreeze({
           packageId: spec.packageId,
           restoredIdenticalToSource,
@@ -13138,18 +13165,19 @@ function getDisplayName(item) {
           completed: run.completed,
           invalidatedAt: run.invalidatedAt,
           invalidationReason: run.invalidationReason,
-          active,
+          horizons,
         }));
       }
 
-      // Independent winner: highest active larva production rate among packages
-      // that completed, HOLD included. Ranked here from branch measurements,
-      // never from any production score.
-      const activeRate = (entry) => decimalFrom(entry.active?.larvaRate || "0");
+      // Independent winner: most larva at the longest horizon (reconstruction plus
+      // downstream production) among packages that completed, HOLD included.
+      // Ranked here from branch measurements, never from any production score.
+      const finalHorizon = horizonsSeconds[horizonsSeconds.length - 1];
+      const larvaAt = (entry, h) => decimalFrom((entry.horizons.find((row) => row.horizonSeconds === h) || {}).larva || "0");
       const ranked = results
         .filter((entry) => entry.completed)
         .slice()
-        .sort((a, b) => decimalToNumber(activeRate(b).minus(activeRate(a)), 0));
+        .sort((a, b) => decimalToNumber(larvaAt(b, finalHorizon).minus(larvaAt(a, finalHorizon)), 0));
       const winner = ranked[0] || null;
 
       const restoreAfter = await laboratoryRestoreBranchSource(game, sourceSave);
@@ -13160,11 +13188,12 @@ function getDisplayName(item) {
         experimentId: String(options.experimentId || "LC5-PACKAGE-TOURNAMENT"),
         capturedAt: String(options.captureTimestamp || new Date().toISOString()),
         phaseTarget,
-        timingModel: "live-site-nonhermetic-active-only",
-        metricModel: "active-larva-rate-post-package",
-        horizonModel: "active-only: live-site game.skipTime is a no-op, so passive/offline horizons are not measured",
-        oracleIndependence: "winner ranked by Laboratory active larva-rate metric; production winner score never consulted",
-        requestedHorizonsSeconds: horizonsSeconds,
+        timingModel: "live-site-tick-reify-horizons",
+        metricModel: "larva-at-horizon-with-reconstruction",
+        horizonModel: "elapsed horizons advanced by game.tick(future)+reify (game.skipTime is a no-op); comparative, near-deterministic to the usual live-site micro-drift",
+        oracleIndependence: "winner ranked by Laboratory larva-at-horizon metric; production winner score never consulted",
+        horizonsSeconds,
+        finalHorizonSeconds: finalHorizon,
         reserveMultiplier,
         source: { rawStateHash: sourceRawStateHash },
         packages: results,
@@ -13174,9 +13203,9 @@ function getDisplayName(item) {
           sourceRawStateUnchanged,
         },
         knownLimitations: [
-          "live-site game.skipTime does not advance the game clock, so only the active horizon is measured; the active/5m/1h/offline reconstruction spread (LD-15) needs the local build (RH-4 Outcome 2) or working clock control",
           "the full 0x/1.25x/1.5x/2x reserve-policy matrix is a declared follow-up; reserveMultiplier is recorded but not yet swept",
-          "the active larva-rate metric shows post-package throughput but not the time-integrated reconstruction payoff, which needs working horizons",
+          "horizons are advanced by tick+reify and inherit the live-site wall-clock micro-drift, so absolute larva is comparative back-to-back, not a bit-hermetic timing benchmark (fully hermetic timing still wants the local build)",
+          "larva-at-horizon can saturate at the cocoon cap in a capped economy; a cap-aware throughput metric and the LD-15 frozen-time offline horizon set are a follow-up",
         ],
       });
       lastLaboratoryPackageTournament = tournament;
@@ -26940,6 +26969,14 @@ function getDisplayName(item) {
         },
         validatePackageTournament(tournament) {
           return laboratoryValidatePackageTournament(tournament);
+        },
+        // Working elapsed-time primitive for horizon projections (the LC-3/LC-4
+        // time-to-gate follow-ups can reuse this). Advances the live game clock
+        // via tick+reify and returns how many seconds actually elapsed.
+        advanceHorizon(seconds) {
+          const guard = laboratoryRequireLiveGates();
+          if (!guard.ok) return guard;
+          return laboratoryAdvanceHorizon(getGame(), seconds);
         },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);

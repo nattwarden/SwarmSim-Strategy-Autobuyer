@@ -35,8 +35,9 @@ function writeText(filePath, text) {
 async function main() {
   const userscript = fs.readFileSync(USERSCRIPT_PATH, "utf8");
   for (const expected of [
-    'const LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.package-tournament.v1"',
+    'const LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.package-tournament.v2"',
     "function laboratoryRunPackageSteps(game, steps)",
+    "function laboratoryAdvanceHorizon(game, seconds)",
     "function runLaboratoryPackageTournament(options = {})",
     "runPackageTournament(options = {})",
   ]) {
@@ -63,6 +64,16 @@ async function main() {
 
     const report = await page.evaluate(async (saveString) => {
       const bot = window.kbcSwarmBot;
+      // Directly exercise the horizon primitive: it must advance the clock and
+      // apply production (game.skipTime is a no-op; tick+reify is the fix).
+      bot.config.enabled = false;
+      const g = window.angular.element(document.body).injector().get("game");
+      g.importSave(saveString); if (g.reify) g.reify();
+      const larvaBefore = String(g.unit("larva")?.count?.());
+      const adv = bot.laboratory.advanceHorizon(3600);
+      const larvaAfter = String(g.unit("larva")?.count?.());
+      const primitive = { adv, larvaBefore, larvaAfter };
+
       const result = await bot.laboratory.runPackageTournament({
         experimentId: "LC5-LD02",
         captureTimestamp: "2026-07-23T00:00:00.000Z",
@@ -84,25 +95,36 @@ async function main() {
           ] },
         ],
       });
-      return { result };
+      return { result, primitive };
     }, ld02Save);
 
     const t = report.result;
     assert(t?.ok === true, `package tournament failed: ${t?.error || ""}`);
     assert(t.validity?.ok === true, `package tournament invalid: ${(t.validity?.errors || []).join("; ")}`);
     const tour = t.tournament;
-    assert(tour?.schemaVersion === "swarmsim-lab.package-tournament.v1", "unexpected package-tournament schema");
-    assert(tour?.metricModel === "active-larva-rate-post-package", "unexpected metric model");
-    // The passive horizons are honestly not claimed: live-site skipTime is a no-op.
-    assert(typeof tour?.horizonModel === "string" && /skiptime/i.test(tour.horizonModel), "missing honest active-only horizon model");
+    assert(tour?.schemaVersion === "swarmsim-lab.package-tournament.v2", "unexpected package-tournament schema");
+    assert(tour?.metricModel === "larva-at-horizon-with-reconstruction", "unexpected metric model");
+    assert(typeof tour?.horizonModel === "string" && /tick/i.test(tour.horizonModel) && /reify/i.test(tour.horizonModel), "horizon model should describe tick+reify advancement");
+    assert(JSON.stringify(tour?.horizonsSeconds) === JSON.stringify([0, 300, 3600]), `unexpected horizons: ${JSON.stringify(tour?.horizonsSeconds)}`);
+
+    // The horizon primitive advanced the clock by ~1h and applied production
+    // (game.skipTime is a no-op; tick+reify is the working fix).
+    assert(report.primitive?.adv?.ok === true, "advanceHorizon did not advance the clock");
+    assert(report.primitive.adv.advancedSeconds >= 3599, `advanceHorizon advanced too little: ${report.primitive.adv.advancedSeconds}`);
+    assert(Number(report.primitive.larvaAfter) > Number(report.primitive.larvaBefore), "advanceHorizon applied no production");
 
     const byId = Object.fromEntries((tour.packages || []).map((p) => [p.packageId, p]));
     assert(byId.HOLD, "missing HOLD baseline");
     assert(byId["engine-hatchery-expansion"] && byId["queen-nest-sacrifice-rebuild"] && byId["invalid-stop"], "missing expected packages");
 
-    // Every package reports the active larva-rate metric.
+    // Every package measured all three horizons, the clock actually advanced,
+    // and larva grew across the hour - the horizon dimension is live again.
     for (const p of tour.packages) {
-      assert(p.active && typeof p.active.larvaRate === "string", `${p.packageId} missing active larva-rate metric`);
+      assert(Array.isArray(p.horizons) && p.horizons.length === 3, `${p.packageId} did not measure 3 horizons`);
+      const [h0, h300, h3600] = p.horizons;
+      assert(typeof h0.larva === "string", `${p.packageId} horizon missing larva`);
+      assert(h300.advancedSeconds >= 299 && h3600.advancedSeconds >= 3299, `${p.packageId} horizons did not advance the clock (${h300.advancedSeconds}, ${h3600.advancedSeconds})`);
+      assert(Number(h3600.larva) > Number(h0.larva), `${p.packageId} larva did not grow across the 1h horizon`);
     }
 
     // Multi-step declarative package completed all its bounded steps.
@@ -135,8 +157,10 @@ async function main() {
       timingModel: tour.timingModel,
       horizonModel: tour.horizonModel,
       phaseTarget: tour.phaseTarget,
-      requestedHorizonsSeconds: tour.requestedHorizonsSeconds,
+      horizonsSeconds: tour.horizonsSeconds,
+      finalHorizonSeconds: tour.finalHorizonSeconds,
       reserveMultiplier: tour.reserveMultiplier,
+      primitiveAdvancedSeconds: report.primitive?.adv?.advancedSeconds,
       ld02Save: { path: path.relative(ROOT, LD02_SAVE_PATH).replace(/\\/g, "/"), sha256: EXPECTED_LD02_SHA256 },
       sourceRawStateUnchanged: tour.siblingIsolation?.sourceRawStateUnchanged,
       allRestoredIdentical: tour.siblingIsolation?.allRestoredIdenticalToSource,
@@ -147,8 +171,7 @@ async function main() {
         completed: p.completed,
         invalidatedAt: p.invalidatedAt,
         invalidationReason: p.invalidationReason,
-        activeLarvaRate: p.active?.larvaRate,
-        activeLarva: p.active?.larva,
+        larvaByHorizon: (p.horizons || []).map((h) => `${h.horizonSeconds}s=${h.larva}`),
       })),
     };
 
@@ -163,14 +186,15 @@ async function main() {
         `- Metric model: ${evidence.metricModel}`,
         `- Timing model: ${evidence.timingModel}`,
         `- Horizon model: ${evidence.horizonModel}`,
-        `- Requested horizons (s): ${JSON.stringify(evidence.requestedHorizonsSeconds)}; reserve multiplier: ${evidence.reserveMultiplier}`,
+        `- Horizons (s): ${JSON.stringify(evidence.horizonsSeconds)}; reserve multiplier: ${evidence.reserveMultiplier}`,
+        `- Horizon primitive advanced (s): ${evidence.primitiveAdvancedSeconds}`,
         `- Source save (LD-02): ${evidence.ld02Save.path} (sha256 ${evidence.ld02Save.sha256})`,
         `- All branch restores identical / source unchanged: ${evidence.allRestoredIdentical} / ${evidence.sourceRawStateUnchanged}`,
-        `- Laboratory winner (active larva rate): ${evidence.laboratoryWinner}`,
+        `- Laboratory winner (larva at ${evidence.finalHorizonSeconds}s): ${evidence.laboratoryWinner}`,
         "",
-        "| Package | Steps | Completed | Invalidated at | active larva/s | active larva |",
-        "|---|---|---|---|---|---|",
-        ...evidence.packages.map((p) => `| ${p.packageId} | ${p.stepCount} | ${p.completed} | ${p.invalidatedAt || "-"} | ${p.activeLarvaRate} | ${p.activeLarva} |`),
+        "| Package | Steps | Completed | Invalidated at | larva by horizon |",
+        "|---|---|---|---|---|",
+        ...evidence.packages.map((p) => `| ${p.packageId} | ${p.stepCount} | ${p.completed} | ${p.invalidatedAt || "-"} | ${p.larvaByHorizon.join(", ")} |`),
         "",
       ].join("\n"));
     }

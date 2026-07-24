@@ -953,20 +953,20 @@ for LC-5.
 
 #### LC-5 - Package and reserve-policy runner
 
-Status: **ACCEPTED via exact-SHA evidence (2026-07-24)**. Implementation SHA
-`2dd52c62c310c858ae08582071264483b9700c7c`; evidence SHA `ec1ff28` on
-`codex/9.4.0-clean-room`; full `npm run verify` passed exit 0 against the
-implementation SHA. `runPackageTournament` (schema
-`swarmsim-lab.package-tournament.v1`) executes a bounded declarative step schema
-(build -> sacrifice -> unlock -> rebuild) and HOLD in isolated branches, stops and
-records on step invalidation (no loops), and ranks by Laboratory's own active
-larva-rate metric (LD-02: Engine Hatchery+Expansion wins 11.69 vs HOLD 8.86; an
-invalid package stops at target-unresolved). Key finding: **live-site
-`game.skipTime` is a no-op**, so only the active horizon is measured; the
-active/5m/1h/offline reconstruction spread and the 0x/1.25x/1.5x/2x reserve-policy
-matrix need the local build (RH-4 Outcome 2) or working clock control plus
-LD-15/LD-12, and remain a bounded follow-up. See
-`SWARMSIM_LABORATORY_PHASE_1.md` and the status board.
+Status: **ACCEPTED (v1) then upgraded to v2 horizons (exact-SHA re-verification
+pending, 2026-07-24)**. `runPackageTournament` executes a bounded declarative step
+schema (build -> sacrifice -> unlock -> rebuild) and HOLD in isolated branches,
+stops and records on step invalidation (no loops), and ranks by Laboratory's own
+larva-at-horizon metric. Key finding: `game.skipTime` is a no-op on the live site,
+but `game.tick(now + seconds)` + `game.reify()` advances the clock exactly, so the
+horizon dimension is live again via the reusable `laboratory.advanceHorizon`
+primitive (schema bumped to `swarmsim-lab.package-tournament.v2`). LD-02 over
+`[0,300,3600]s`: Engine Hatchery+Expansion wins on larva at 1h (4.86e6 vs HOLD
+4.85e6) while level at the active horizon; an invalid package stops at
+target-unresolved. The 0x/1.25x/1.5x/2x reserve-policy matrix, a cap-aware metric,
+and the LD-15 offline set remain bounded follow-ups; RH-4 Outcome 2 is no longer
+required to unblock horizons. See `SWARMSIM_LABORATORY_PHASE_1.md` and the status
+board.
 
 Outcome: exact build -> sacrifice -> unlock -> rebuild packages and HOLD can be
 compared under active and passive reserve horizons.

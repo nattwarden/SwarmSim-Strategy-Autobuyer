@@ -30,13 +30,19 @@ LC-5 exact-SHA acceptance (2026-07-24):
 - Evidence: `docs/live-logs/browser-test-lc5-package-tournament.{json,md}` and
   `docs/test-data/laboratory-lc5/example-package-tournament.json`.
 
-Key honest finding (blocks the horizon dimension repo-wide): **live-site
-`game.skipTime` is a no-op** - the game clock does not advance - so LC-5 measures
-only the active horizon. The active/5m/1h/offline reconstruction spread, the
-0x/1.25x/1.5x/2x reserve-policy matrix (LC-5), and the time-to-gate horizon
-projections deferred by LC-3/LC-4 all need the local game build (RH-4 Outcome 2)
-or working clock control, plus LD-08/LD-12/LD-15. This makes RH-4 Outcome 2 the
-single highest-leverage unblock for the remaining Laboratory follow-ups.
+Horizon unblock (2026-07-24, supersedes the RH-4 Outcome 2 recommendation):
+while `game.skipTime` is a no-op on the live site, **`game.tick(now + seconds)`
+followed by `game.reify()` advances the clock exactly and applies production**.
+LC-5 was upgraded to schema `swarmsim-lab.package-tournament.v2` using this via a
+reusable `laboratory.advanceHorizon(seconds)` primitive: real `[0, 300, 3600]s`
+horizons now discriminate (Engine wins on larva at 1h `4.86e6` vs HOLD `4.85e6`
+while level at the active horizon - the reconstruction payoff). The primitive is
+available for the LC-3/LC-4 time-to-gate follow-ups. RH-4 Outcome 2 (a hermetic
+offline local build) remains a separate, larger infrastructure item that removes
+the live-site dependency but is **not** required to unblock horizons; the
+remaining time follow-ups (reserve-policy matrix, LD-15 offline set, LD-08/LD-12
+data) no longer depend on it. The LC-5 v2 horizon upgrade's own exact-SHA
+re-verification is the next step.
 
 LC-4 exact-SHA acceptance (2026-07-24):
 
