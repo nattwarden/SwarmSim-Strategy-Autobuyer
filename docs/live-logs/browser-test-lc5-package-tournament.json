@@ -1,16 +1,18 @@
 {
   "verdict": "LABORATORY LC-5 PACKAGE TOURNAMENT VERIFIED",
-  "implementationCommit": "2dd52c62c310c858ae08582071264483b9700c7c",
-  "metricModel": "active-larva-rate-post-package",
-  "timingModel": "live-site-nonhermetic-active-only",
-  "horizonModel": "active-only: live-site game.skipTime is a no-op, so passive/offline horizons are not measured",
+  "implementationCommit": "3a1dda4e7ae24b28ded25309a55d88422c404c92",
+  "metricModel": "larva-at-horizon-with-reconstruction",
+  "timingModel": "live-site-tick-reify-horizons",
+  "horizonModel": "elapsed horizons advanced by game.tick(future)+reify (game.skipTime is a no-op); comparative, near-deterministic to the usual live-site micro-drift",
   "phaseTarget": "larva-throughput-with-reconstruction",
-  "requestedHorizonsSeconds": [
+  "horizonsSeconds": [
     0,
     300,
     3600
   ],
+  "finalHorizonSeconds": 3600,
   "reserveMultiplier": 1.25,
+  "primitiveAdvancedSeconds": 3600,
   "ld02Save": {
     "path": "docs/test-data/player-saves/manual-play-first-nest-threshold-2026-07-18.txt",
     "sha256": "a86d8524e351fd3034ff4fe89e10644713a40f87a69e00ca55b19bf5d5076cbd"
@@ -25,8 +27,11 @@
       "completed": true,
       "invalidatedAt": null,
       "invalidationReason": null,
-      "activeLarvaRate": "8.857805",
-      "activeLarva": "4815462.880883092"
+      "larvaByHorizon": [
+        "0s=4823412.902595472",
+        "300s=4826070.244095472",
+        "3600s=4855301.000595472"
+      ]
     },
     {
       "packageId": "engine-hatchery-expansion",
@@ -34,8 +39,11 @@
       "completed": true,
       "invalidatedAt": null,
       "invalidationReason": null,
-      "activeLarvaRate": "11.6923026",
-      "activeLarva": "4815462.916314312"
+      "larvaByHorizon": [
+        "0s=4823413.026604742",
+        "300s=4826920.717384742",
+        "3600s=4865505.315964742"
+      ]
     },
     {
       "packageId": "queen-nest-sacrifice-rebuild",
@@ -43,8 +51,11 @@
       "completed": true,
       "invalidatedAt": null,
       "invalidationReason": null,
-      "activeLarvaRate": "8.857805",
-      "activeLarva": "4815460.252910902"
+      "larvaByHorizon": [
+        "0s=4823410.416348162",
+        "300s=4826067.757848162",
+        "3600s=4855298.514348162"
+      ]
     },
     {
       "packageId": "invalid-stop",
@@ -52,8 +63,11 @@
       "completed": false,
       "invalidatedAt": "build-nonexistent",
       "invalidationReason": "target-unresolved",
-      "activeLarvaRate": "8.857805",
-      "activeLarva": "4815463.633796517"
+      "larvaByHorizon": [
+        "0s=4823413.859238412",
+        "300s=4826071.200738412",
+        "3600s=4855301.957238412"
+      ]
     }
   ]
 }

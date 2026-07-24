@@ -1,17 +1,18 @@
 {
-  "schemaVersion": "swarmsim-lab.package-tournament.v1",
+  "schemaVersion": "swarmsim-lab.package-tournament.v2",
   "experimentId": "LC5-LD02",
   "capturedAt": "2026-07-23T00:00:00.000Z",
   "phaseTarget": "larva-throughput-with-reconstruction",
-  "timingModel": "live-site-nonhermetic-active-only",
-  "metricModel": "active-larva-rate-post-package",
-  "horizonModel": "active-only: live-site game.skipTime is a no-op, so passive/offline horizons are not measured",
-  "oracleIndependence": "winner ranked by Laboratory active larva-rate metric; production winner score never consulted",
-  "requestedHorizonsSeconds": [
+  "timingModel": "live-site-tick-reify-horizons",
+  "metricModel": "larva-at-horizon-with-reconstruction",
+  "horizonModel": "elapsed horizons advanced by game.tick(future)+reify (game.skipTime is a no-op); comparative, near-deterministic to the usual live-site micro-drift",
+  "oracleIndependence": "winner ranked by Laboratory larva-at-horizon metric; production winner score never consulted",
+  "horizonsSeconds": [
     0,
     300,
     3600
   ],
+  "finalHorizonSeconds": 3600,
   "reserveMultiplier": 1.25,
   "source": {
     "rawStateHash": "sha256:7469cddbde5c1b4250b3889638628a8f38e54517c5fa811090c0734e045a6212"
@@ -25,10 +26,26 @@
       "completed": true,
       "invalidatedAt": null,
       "invalidationReason": null,
-      "active": {
-        "larva": "4815462.880883092",
-        "larvaRate": "8.857805"
-      }
+      "horizons": [
+        {
+          "horizonSeconds": 0,
+          "advancedSeconds": 0,
+          "larva": "4823412.902595472",
+          "larvaRate": "8.857805"
+        },
+        {
+          "horizonSeconds": 300,
+          "advancedSeconds": 300,
+          "larva": "4826070.244095472",
+          "larvaRate": "8.857805"
+        },
+        {
+          "horizonSeconds": 3600,
+          "advancedSeconds": 3300,
+          "larva": "4855301.000595472",
+          "larvaRate": "8.857805"
+        }
+      ]
     },
     {
       "packageId": "engine-hatchery-expansion",
@@ -73,10 +90,26 @@
       "completed": true,
       "invalidatedAt": null,
       "invalidationReason": null,
-      "active": {
-        "larva": "4815462.916314312",
-        "larvaRate": "11.6923026"
-      }
+      "horizons": [
+        {
+          "horizonSeconds": 0,
+          "advancedSeconds": 0,
+          "larva": "4823413.026604742",
+          "larvaRate": "11.6923026"
+        },
+        {
+          "horizonSeconds": 300,
+          "advancedSeconds": 300,
+          "larva": "4826920.717384742",
+          "larvaRate": "11.6923026"
+        },
+        {
+          "horizonSeconds": 3600,
+          "advancedSeconds": 3300,
+          "larva": "4865505.315964742",
+          "larvaRate": "11.6923026"
+        }
+      ]
     },
     {
       "packageId": "queen-nest-sacrifice-rebuild",
@@ -138,10 +171,26 @@
       "completed": true,
       "invalidatedAt": null,
       "invalidationReason": null,
-      "active": {
-        "larva": "4815460.252910902",
-        "larvaRate": "8.857805"
-      }
+      "horizons": [
+        {
+          "horizonSeconds": 0,
+          "advancedSeconds": 0,
+          "larva": "4823410.416348162",
+          "larvaRate": "8.857805"
+        },
+        {
+          "horizonSeconds": 300,
+          "advancedSeconds": 300,
+          "larva": "4826067.757848162",
+          "larvaRate": "8.857805"
+        },
+        {
+          "horizonSeconds": 3600,
+          "advancedSeconds": 3300,
+          "larva": "4855298.514348162",
+          "larvaRate": "8.857805"
+        }
+      ]
     },
     {
       "packageId": "invalid-stop",
@@ -169,10 +218,26 @@
       "completed": false,
       "invalidatedAt": "build-nonexistent",
       "invalidationReason": "target-unresolved",
-      "active": {
-        "larva": "4815463.633796517",
-        "larvaRate": "8.857805"
-      }
+      "horizons": [
+        {
+          "horizonSeconds": 0,
+          "advancedSeconds": 0,
+          "larva": "4823413.859238412",
+          "larvaRate": "8.857805"
+        },
+        {
+          "horizonSeconds": 300,
+          "advancedSeconds": 300,
+          "larva": "4826071.200738412",
+          "larvaRate": "8.857805"
+        },
+        {
+          "horizonSeconds": 3600,
+          "advancedSeconds": 3300,
+          "larva": "4855301.957238412",
+          "larvaRate": "8.857805"
+        }
+      ]
     }
   ],
   "laboratoryWinner": "engine-hatchery-expansion",
@@ -181,8 +246,8 @@
     "sourceRawStateUnchanged": true
   },
   "knownLimitations": [
-    "live-site game.skipTime does not advance the game clock, so only the active horizon is measured; the active/5m/1h/offline reconstruction spread (LD-15) needs the local build (RH-4 Outcome 2) or working clock control",
     "the full 0x/1.25x/1.5x/2x reserve-policy matrix is a declared follow-up; reserveMultiplier is recorded but not yet swept",
-    "the active larva-rate metric shows post-package throughput but not the time-integrated reconstruction payoff, which needs working horizons"
+    "horizons are advanced by tick+reify and inherit the live-site wall-clock micro-drift, so absolute larva is comparative back-to-back, not a bit-hermetic timing benchmark (fully hermetic timing still wants the local build)",
+    "larva-at-horizon can saturate at the cocoon cap in a capped economy; a cap-aware throughput metric and the LD-15 frozen-time offline horizon set are a follow-up"
   ]
 }
