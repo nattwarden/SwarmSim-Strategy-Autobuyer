@@ -619,6 +619,7 @@
   let lastLaboratoryDecisionSnapshot = null;
   let lastLaboratoryBranchResult = null;
   let lastLaboratoryEngineTournament = null;
+  let lastLaboratoryCrossLaneTournament = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -10728,6 +10729,7 @@ function getDisplayName(item) {
   const LABORATORY_CANDIDATE_MANIFEST_SCHEMA_VERSION = "swarmsim-lab.candidate-manifest.v1";
   const LABORATORY_BRANCH_RESULT_SCHEMA_VERSION = "swarmsim-lab.branch-result.v1";
   const LABORATORY_ENGINE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.engine-tournament.v1";
+  const LABORATORY_CROSS_LANE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.cross-lane-tournament.v1";
   const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
@@ -12793,6 +12795,212 @@ function getDisplayName(item) {
       });
       lastLaboratoryEngineTournament = tournament;
       return { ok: true, tournament, validity: laboratoryValidateEngineTournament(tournament) };
+    } finally {
+      config.enabled = priorEnabled;
+    }
+  }
+
+  // LC-4 cross-lane bounded one-click tournament. Extends the LC-3 pattern to
+  // every lane. Candidates are ENUMERATED from the production Strategy Inspector's
+  // own lane candidates - so no lane is omitted, and a candidate the production
+  // planner declined is still evaluated rather than hidden - but the winner is
+  // RANKED by Laboratory's own metric, keeping production ordering bias separate
+  // from Laboratory outcome ranking. Each candidate runs in its own disposable
+  // branch restored from the same source, so shared larvae cannot be
+  // double-spent across candidates. One-click interventions only; no
+  // sacrifice/rebuild sequences (LC-5).
+  function laboratoryLaneNormalizeName(name) {
+    return String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  function laboratoryBuildLaneTargetIndex(game) {
+    const index = {};
+    const add = (key, value) => { if (key && !index[key]) index[key] = value; };
+    for (const unit of (safe("LC4 unitlist", () => game?.unitlist?.()) || [])) {
+      add(laboratoryLaneNormalizeName(unit?.name), { kind: "unit", name: unit.name });
+      add(laboratoryLaneNormalizeName(safe("LC4 unit display", () => getDisplayName(unit))), { kind: "unit", name: unit.name });
+    }
+    for (const upgrade of (safe("LC4 upgradelist", () => game?.upgradelist?.()) || [])) {
+      add(laboratoryLaneNormalizeName(upgrade?.name), { kind: "upgrade", name: upgrade.name });
+      add(laboratoryLaneNormalizeName(safe("LC4 upgrade display", () => getDisplayName(upgrade))), { kind: "upgrade", name: upgrade.name });
+    }
+    return index;
+  }
+
+  function laboratoryMeasureLaneState(game) {
+    return {
+      larvaRate: laboratorySafeResourceString(getVelocity(game, "larva")),
+      territoryRate: laboratorySafeResourceString(getVelocity(game, "territory")),
+      meatRate: laboratorySafeResourceString(getVelocity(game, "meat")),
+    };
+  }
+
+  // Enumerate production's own cross-lane candidate set: restore, run one
+  // advisor-only cycle, read the Strategy Inspector's lane candidates. This is an
+  // observation of the production candidate surface, not a score fed back as the
+  // Laboratory oracle.
+  async function laboratoryEnumerateLaneCandidates(game, sourceSave) {
+    const restored = await laboratoryRestoreBranchSource(game, sourceSave);
+    if (!restored.ok) return { ok: false, lanes: [], candidates: [], productionFirstBuy: null };
+    const prior = { enabled: config.enabled, advisorOnly: config.advisorOnly, inspector: config.strategyInspector };
+    config.enabled = true;
+    config.advisorOnly = true;
+    config.strategyInspector = true;
+    try {
+      safe("LC4 runtime cycle", () => runOnce());
+      const rows = Array.isArray(strategyInspector?.laneCandidates) ? strategyInspector.laneCandidates : [];
+      const candidates = rows.map((entry) => ({
+        lane: String(entry?.lane || "unknown"),
+        candidate: String(entry?.candidate || ""),
+        decision: String(entry?.decision || ""),
+      })).filter((entry) => entry.candidate);
+      const lanes = Array.from(new Set(candidates.map((entry) => entry.lane)));
+      const firstBuy = candidates.find((entry) => /buy/i.test(entry.decision)) || null;
+      return { ok: true, lanes, candidates, productionFirstBuy: firstBuy };
+    } finally {
+      config.enabled = prior.enabled;
+      config.advisorOnly = prior.advisorOnly;
+      config.strategyInspector = prior.inspector;
+    }
+  }
+
+  function laboratoryValidateCrossLaneTournament(tournament) {
+    const errors = [];
+    if (tournament?.schemaVersion !== LABORATORY_CROSS_LANE_TOURNAMENT_SCHEMA_VERSION) errors.push("unexpected cross-lane-tournament schema");
+    if (!Array.isArray(tournament?.candidates) || !tournament.candidates.length) errors.push("no candidates enumerated");
+    if (!Array.isArray(tournament?.lanesCovered) || tournament.lanesCovered.length < 2) errors.push("cross-lane tournament covered fewer than two lanes");
+    if (!tournament?.laboratoryWinner) errors.push("no independent Laboratory winner selected");
+    if (!tournament?.siblingIsolation?.allRestoredIdenticalToSource) errors.push("a candidate restore diverged from source");
+    if (!tournament?.siblingIsolation?.sourceRawStateUnchanged) errors.push("source raw state changed after the tournament");
+    return { ok: errors.length === 0, errors };
+  }
+
+  async function runLaboratoryCrossLaneTournament(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const sourceSave = options.sourceSave;
+    if (typeof sourceSave !== "string" || !sourceSave) {
+      return { ok: false, error: "runCrossLaneTournament requires a sourceSave string." };
+    }
+    const game = getGame();
+    const phaseTarget = String(options.phaseTarget || "larva-bridge-throughput");
+
+    const priorEnabled = config.enabled;
+    config.enabled = false;
+    try {
+      const baseline = await laboratoryRestoreBranchSource(game, sourceSave);
+      if (!baseline.ok) return { ok: false, error: "source restore failed", detail: baseline };
+      const sourceRawStateHash = baseline.rawStateHash;
+
+      const enumeration = await laboratoryEnumerateLaneCandidates(game, sourceSave);
+      // Build the display-name resolver from a fresh restore so ids match the source.
+      await laboratoryRestoreBranchSource(game, sourceSave);
+      const index = laboratoryBuildLaneTargetIndex(game);
+
+      // Distinct enumerated candidates (production emits repeats); every one is
+      // kept and evaluated - none are hidden - plus an explicit HOLD baseline.
+      const distinct = [];
+      const seen = new Set();
+      for (const entry of enumeration.candidates) {
+        const key = laboratoryLaneNormalizeName(entry.candidate);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        distinct.push(entry);
+      }
+
+      const specs = [{ candidateId: "HOLD", lane: "Hold", candidate: "HOLD", decision: "HOLD", resolved: null }];
+      for (const entry of distinct) {
+        const resolved = index[laboratoryLaneNormalizeName(entry.candidate)] || null;
+        specs.push({ candidateId: `${entry.lane}:${entry.candidate}`, lane: entry.lane, candidate: entry.candidate, decision: entry.decision, resolved });
+      }
+
+      const candidates = [];
+      for (const spec of specs) {
+        const restored = await laboratoryRestoreBranchSource(game, sourceSave);
+        const restoredIdenticalToSource = restored.ok && restored.rawStateHash === sourceRawStateHash;
+        const before = laboratoryMeasureLaneState(game);
+        let command;
+        if (spec.candidateId === "HOLD") {
+          command = { kind: "hold", status: "hold", executed: false };
+        } else if (!spec.resolved) {
+          command = { kind: "unknown", status: "enumerated-unresolved", executed: false };
+        } else {
+          command = laboratoryExecuteBranchCommand(game, { kind: spec.resolved.kind, targetId: spec.resolved.name, amount: "1" });
+        }
+        const after = laboratoryMeasureLaneState(game);
+        const larvaDelta = decimalFrom(after.larvaRate).minus(decimalFrom(before.larvaRate));
+        const territoryDelta = decimalFrom(after.territoryRate).minus(decimalFrom(before.territoryRate));
+        const meatDelta = decimalFrom(after.meatRate).minus(decimalFrom(before.meatRate));
+        candidates.push(laboratoryDeepFreeze({
+          candidateId: spec.candidateId,
+          lane: spec.lane,
+          candidate: spec.candidate,
+          productionDecision: spec.decision,
+          resolved: spec.resolved ? `${spec.resolved.kind}:${spec.resolved.name}` : null,
+          restoredIdenticalToSource,
+          command,
+          executed: !!command.executed,
+          metric: {
+            larvaRateDelta: laboratorySafeResourceString(larvaDelta),
+            territoryRateDelta: laboratorySafeResourceString(territoryDelta),
+            meatRateDelta: laboratorySafeResourceString(meatDelta),
+          },
+        }));
+      }
+
+      // Independent winner by Laboratory's declared larva-rate metric among
+      // executed candidates. Ranked here, never from the production score.
+      const ranked = candidates
+        .filter((c) => c.candidateId === "HOLD" || c.executed)
+        .slice()
+        .sort((a, b) => decimalToNumber(decimalFrom(b.metric.larvaRateDelta).minus(decimalFrom(a.metric.larvaRateDelta)), 0));
+      const winner = ranked[0] || null;
+
+      const restoreAfter = await laboratoryRestoreBranchSource(game, sourceSave);
+      const sourceRawStateUnchanged = restoreAfter.ok && restoreAfter.rawStateHash === sourceRawStateHash;
+
+      const executedCount = candidates.filter((c) => c.executed).length;
+      const unresolvedCount = candidates.filter((c) => c.command.status === "enumerated-unresolved").length;
+
+      const tournament = laboratoryDeepFreeze({
+        schemaVersion: LABORATORY_CROSS_LANE_TOURNAMENT_SCHEMA_VERSION,
+        experimentId: String(options.experimentId || "LC4-CROSS-LANE-TOURNAMENT"),
+        capturedAt: String(options.captureTimestamp || new Date().toISOString()),
+        phaseTarget,
+        timingModel: "live-site-nonhermetic-raw-state",
+        metricModel: "instantaneous-larva-rate-delta",
+        oracleIndependence: "winner ranked by Laboratory larva-rate metric; production winner score never consulted",
+        lanesCovered: enumeration.lanes,
+        enumeratedCount: candidates.length,
+        executedCount,
+        unresolvedCount,
+        source: { rawStateHash: sourceRawStateHash },
+        candidates,
+        laboratoryWinner: winner ? winner.candidateId : null,
+        productionFirstBuy: enumeration.productionFirstBuy
+          ? `${enumeration.productionFirstBuy.lane}:${enumeration.productionFirstBuy.candidate}`
+          : null,
+        winnerAgreesWithProductionFirstBuy: winner && enumeration.productionFirstBuy
+          ? winner.candidateId === `${enumeration.productionFirstBuy.lane}:${enumeration.productionFirstBuy.candidate}`
+          : null,
+        // Territory-over-Meat crossover: a single larva-rate metric cannot fairly
+        // adjudicate Territory versus Meat one-clicks (Territory's benefit is
+        // indirect), so this is honestly left open pending a time-to-gate horizon
+        // metric and the LD-12 pre-Mirror data.
+        territoryOverMeatCrossover: "open",
+        siblingIsolation: {
+          allRestoredIdenticalToSource: candidates.every((c) => c.restoredIdenticalToSource),
+          sourceRawStateUnchanged,
+          sharedLarvaeNotDoubleSpent: candidates.every((c) => c.restoredIdenticalToSource),
+        },
+        knownLimitations: [
+          "the shared instantaneous larva-rate metric under-credits non-larva lanes (Territory/Energy); a per-target time-to-gate horizon projection is a declared follow-up",
+          "enumeration reflects the production candidate surface for this one state; the one/two/four-action budget matrix and the Territory-over-Meat crossover need LD-12 and are deferred",
+          "candidates whose display name did not resolve to a live unit/upgrade are recorded as enumerated-unresolved, never hidden",
+        ],
+      });
+      lastLaboratoryCrossLaneTournament = tournament;
+      return { ok: true, tournament, validity: laboratoryValidateCrossLaneTournament(tournament) };
     } finally {
       config.enabled = priorEnabled;
     }
@@ -26535,6 +26743,15 @@ function getDisplayName(item) {
         validateEngineTournament(tournament) {
           return laboratoryValidateEngineTournament(tournament);
         },
+        async runCrossLaneTournament(options = {}) {
+          return runLaboratoryCrossLaneTournament(options);
+        },
+        getLastCrossLaneTournament() {
+          return laboratoryCloneResult(lastLaboratoryCrossLaneTournament);
+        },
+        validateCrossLaneTournament(tournament) {
+          return laboratoryValidateCrossLaneTournament(tournament);
+        },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
         },
@@ -26547,6 +26764,7 @@ function getDisplayName(item) {
           lastLaboratoryDecisionSnapshot = null;
           lastLaboratoryBranchResult = null;
           lastLaboratoryEngineTournament = null;
+          lastLaboratoryCrossLaneTournament = null;
           return { ok: true };
         },
         createObservationSummary(result) {

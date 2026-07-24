@@ -919,6 +919,21 @@ Stop condition: Engine/HOLD only; do not add Meat or Army scoring.
 
 #### LC-4 - Cross-lane bounded one-click tournament
 
+Status: **evaluator + tournament implemented; exact-SHA evidence pending
+(2026-07-24)**. `runCrossLaneTournament` (schema
+`swarmsim-lab.cross-lane-tournament.v1`) is green on
+`npm run check:laboratory:cross-lane-tournament` over the hash-pinned LD-05 real
+save and the LD-09 balanced Nexus-5. It enumerates candidates from the production
+lane-candidate surface (no lane omission; declined candidates still evaluated),
+resolves each via a display-name index, runs each in an isolated disposable branch
+(identical raw-state restore => shared larvae not double-spent), and ranks by
+Laboratory's own larva-rate metric with production ordering recorded separately
+(LD-05: winner Engine:Expansion matches production's first BUY). The shared
+larva-rate metric under-credits non-larva lanes, so the Territory-over-Meat
+crossover is honestly left open; the one/two/four-action budget matrix and that
+crossover need LD-12 and remain a bounded follow-up. See
+`SWARMSIM_LABORATORY_PHASE_1.md` and the status board.
+
 Outcome: all current reversible one-click candidates across Meat, Territory,
 Larvae, Engine, and Energy production can be compared without lane omission.
 

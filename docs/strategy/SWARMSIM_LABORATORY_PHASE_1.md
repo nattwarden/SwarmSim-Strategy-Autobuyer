@@ -180,6 +180,43 @@ projection, the 180s/600s save-window matrix, and a guaranteed Hatchery/Expansio
 winner-change boundary all need the LD-08/LD-09 Nexus-boundary saves, which are
 not yet captured; they are a declared LC-3 follow-up.
 
+### LC-4 cross-lane bounded one-click tournament (2026-07-24)
+
+LC-4 extends the LC-3 pattern to every lane. The development-only API exposes
+`laboratory.runCrossLaneTournament({ sourceSave, phaseTarget })`,
+`laboratory.getLastCrossLaneTournament()`, and
+`laboratory.validateCrossLaneTournament(...)`; the result schema is
+`swarmsim-lab.cross-lane-tournament.v1`.
+
+Candidates are **enumerated from the production Strategy Inspector's own lane
+candidates** - so no lane is omitted, and a candidate the production planner
+declined (HOLD/OBSERVE) is still evaluated rather than hidden. Each distinct
+candidate is resolved to a live unit/upgrade through a `getDisplayName` index and
+run in its own disposable branch restored from the same source; because every
+sibling restores the identical raw source state, shared larvae cannot be
+double-spent across candidates. Candidates whose display name does not resolve are
+recorded as `enumerated-unresolved`, never hidden. The **winner is ranked by
+Laboratory's own larva-rate metric**, keeping production ordering bias separate
+from Laboratory outcome ranking; the production first-BUY choice is recorded
+alongside for comparison.
+
+Verified by `npm run check:laboratory:cross-lane-tournament` on the hash-pinned
+LD-05 real save and the LD-09 balanced natural Nexus-5 save. On LD-05 it
+enumerated 27 candidates across all lanes, executed 24 in isolated branches with
+identical raw-state restores and source non-mutation, and ranked `Engine:Expansion`
+first - matching production's first BUY (a cross-lane agreement, in contrast to
+the LC-3 LD-01 disagreement). `npm run verify:laboratory:cross-lane-tournament`
+is the declared evidence generator.
+
+Honest bounds (`metricModel: instantaneous-larva-rate-delta`,
+`timingModel: live-site-nonhermetic-raw-state`): the shared larva-rate metric
+under-credits non-larva lanes - Territory army buys show large territory-rate
+deltas but zero larva-rate delta - so it cannot fairly adjudicate a
+Territory-versus-Meat one-click. The **Territory-over-Meat crossover is therefore
+honestly left open** (`territoryOverMeatCrossover: "open"`), pending a per-target
+time-to-gate horizon projection. The one/two/four-action budget matrix and that
+crossover need the LD-12 pre-Mirror data and remain a declared follow-up.
+
 ## 0.12.3 narrow contract update
 
 0.12.3 adds a narrow live-capture hardening patch for House of Mirrors and ability
