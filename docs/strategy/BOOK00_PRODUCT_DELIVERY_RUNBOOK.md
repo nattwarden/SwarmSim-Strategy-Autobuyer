@@ -919,17 +919,18 @@ Stop condition: Engine/HOLD only; do not add Meat or Army scoring.
 
 #### LC-4 - Cross-lane bounded one-click tournament
 
-Status: **evaluator + tournament implemented; exact-SHA evidence pending
-(2026-07-24)**. `runCrossLaneTournament` (schema
-`swarmsim-lab.cross-lane-tournament.v1`) is green on
-`npm run check:laboratory:cross-lane-tournament` over the hash-pinned LD-05 real
-save and the LD-09 balanced Nexus-5. It enumerates candidates from the production
-lane-candidate surface (no lane omission; declined candidates still evaluated),
-resolves each via a display-name index, runs each in an isolated disposable branch
-(identical raw-state restore => shared larvae not double-spent), and ranks by
-Laboratory's own larva-rate metric with production ordering recorded separately
-(LD-05: winner Engine:Expansion matches production's first BUY). The shared
-larva-rate metric under-credits non-larva lanes, so the Territory-over-Meat
+Status: **ACCEPTED via exact-SHA evidence (2026-07-24)**. Implementation SHA
+`bfb29df081a9a5861840e8b7dd484f6595263221`; evidence SHA `9b57aeb` on
+`codex/9.4.0-clean-room`; full `npm run verify` passed exit 0 against the
+implementation SHA. `runCrossLaneTournament` (schema
+`swarmsim-lab.cross-lane-tournament.v1`) enumerates candidates from the
+production lane-candidate surface (no lane omission; declined candidates still
+evaluated), resolves each via a display-name index, runs each in an isolated
+disposable branch (identical raw-state restore => shared larvae not
+double-spent), and ranks by Laboratory's own larva-rate metric with production
+ordering recorded separately (LD-05: 27 enumerated, 24 executed, winner
+Engine:Expansion matches production's first BUY; also verified on LD-09). The
+shared larva-rate metric under-credits non-larva lanes, so the Territory-over-Meat
 crossover is honestly left open; the one/two/four-action budget matrix and that
 crossover need LD-12 and remain a bounded follow-up. See
 `SWARMSIM_LABORATORY_PHASE_1.md` and the status board.

@@ -7,28 +7,36 @@ Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **LC-1/LC-2/LC-3 ACCEPTED; LC-4 cross-lane tournament implemented
-(exact-SHA evidence pending)**. LC-1 read-only capture, the LC-2 branch backend,
-and the LC-3 Engine tournament are each committed and verified through the full
-exact-SHA evidence cycle. LC-4's cross-lane bounded one-click tournament is
-implemented and locally green on its focused check and the pure guardrail/build
-checks; its formal exact-SHA evidence cycle is the next step. The full
-implementation contract is in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+Status: **LC-1/LC-2/LC-3/LC-4 all ACCEPTED via exact-SHA evidence**; the
+milestone continues with LC-5 (package and reserve-policy runner). LC-1 read-only
+capture, the LC-2 branch backend, the LC-3 Engine tournament, and the LC-4
+cross-lane tournament are each committed and verified through the full exact-SHA
+evidence cycle. The full implementation contract is in
+`BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
 
-LC-4 progress note (2026-07-24, intermediate): `runCrossLaneTournament` (schema
-`swarmsim-lab.cross-lane-tournament.v1`) enumerates candidates from the
-production Strategy Inspector's own lane candidates (no lane omission; declined
-candidates still evaluated), resolves each via a `getDisplayName` index, runs each
-in an isolated disposable branch (identical raw-state restore => shared larvae not
-double-spent), and ranks by Laboratory's own larva-rate metric with production
-ordering recorded separately. Verified on LD-05 (27 enumerated, 24 executed;
-winner Engine:Expansion matches production's first BUY) and the new LD-09 balanced
-Nexus-5. The shared larva-rate metric under-credits non-larva lanes, so the
-Territory-over-Meat crossover is honestly left open; the action-budget matrix and
-that crossover need LD-12 and remain a bounded follow-up. Do not mark LC-4
-complete until its implementation commit, full exact-SHA verification, generated
-evidence, and separate evidence commit meet `GIT_VERIFICATION_PROTOCOL.md`.
+LC-4 exact-SHA acceptance (2026-07-24):
+
+- Implementation SHA: `bfb29df081a9a5861840e8b7dd484f6595263221`
+  (tree `df399b020496a8d6f9717af0cc56855d8994da51`), branch `codex/9.4.0-clean-room`.
+- Evidence SHA: `9b57aeb` (separate evidence commit, allowlisted paths only).
+- Verification mode A; `npm run verify` (full required chain + guardrails)
+  passed exit 0 against the implementation SHA.
+- `runCrossLaneTournament` (schema `swarmsim-lab.cross-lane-tournament.v1`)
+  enumerates candidates from the production lane-candidate surface (no lane
+  omission; declined candidates still evaluated), resolves each via a
+  `getDisplayName` index, runs each in an isolated disposable branch (identical
+  raw-state restore => shared larvae not double-spent), and ranks by Laboratory's
+  own larva-rate metric with production ordering recorded separately. On LD-05:
+  27 enumerated, 24 executed, winner Engine:Expansion matching production's first
+  BUY; also verified on the LD-09 balanced Nexus-5.
+- Evidence: `docs/live-logs/browser-test-lc4-cross-lane-tournament.{json,md}` and
+  `docs/test-data/laboratory-lc4/example-cross-lane-tournament.json`.
+
+Remaining LC-4 follow-up (bounded, not blocking): the shared larva-rate metric
+under-credits non-larva lanes, so the Territory-over-Meat crossover stays open
+pending a per-target time-to-gate horizon projection; the one/two/four-action
+budget matrix and that crossover also need the LD-12 pre-Mirror save.
 
 LC-3 exact-SHA acceptance (2026-07-24):
 
