@@ -51,9 +51,15 @@ mature high-magnitude control `live-user-save-2026-07-18.txt` (LD-10; territory
 
 Valid metrics: relative lane balance and next-click decision states at a natural
 Nexus 5, and first-Ascension proximity (a real premutagen is present and Energy
-sits near the first-Ascension gate). It is also a candidate seed for LD-12
-(pre-Mirror/Army Nexus 5) and LD-13 (first real premutagen), pending explicit
-confirmation of its army/Mirror state.
+sits near the first-Ascension gate).
+
+Not LD-12 or LD-13 (confirmed 2026-07-24): the army-doubling House of Mirrors
+upgrade (`clonearmy`) already has count `17` and Swarm Warp count `10`, so this
+state is well past a material Mirror/Army choice rather than before one, and its
+premutagen is already `8888` rather than a just-appeared first premutagen. The
+full army roster (swarmling through centipede) is present. LD-12 (pre-Mirror
+Nexus 5) and LD-13 (first-appearance premutagen) still need their own dedicated
+natural captures.
 
 Invalid metrics: absolute wall-clock timing. The exported state is ~1-2 days old
 and reflects offline reconciliation on import; do not treat its absolute rates as
