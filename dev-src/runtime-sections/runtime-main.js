@@ -620,6 +620,7 @@
   let lastLaboratoryBranchResult = null;
   let lastLaboratoryEngineTournament = null;
   let lastLaboratoryCrossLaneTournament = null;
+  let lastLaboratoryPackageTournament = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -10730,6 +10731,7 @@ function getDisplayName(item) {
   const LABORATORY_BRANCH_RESULT_SCHEMA_VERSION = "swarmsim-lab.branch-result.v1";
   const LABORATORY_ENGINE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.engine-tournament.v1";
   const LABORATORY_CROSS_LANE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.cross-lane-tournament.v1";
+  const LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.package-tournament.v1";
   const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
@@ -13001,6 +13003,157 @@ function getDisplayName(item) {
       });
       lastLaboratoryCrossLaneTournament = tournament;
       return { ok: true, tournament, validity: laboratoryValidateCrossLaneTournament(tournament) };
+    } finally {
+      config.enabled = priorEnabled;
+    }
+  }
+
+  // LC-5 package and reserve-policy runner. Executes a bounded DECLARATIVE step
+  // schema (build -> sacrifice -> unlock -> rebuild) and HOLD in disposable
+  // branches, then measures downstream production at elapsed horizons via
+  // game.skipTime, and ranks by Laboratory's own larva-at-horizon metric (never
+  // the production score). The step schema is strictly declarative: if an
+  // intermediate state invalidates a step (its target is unresolvable or not
+  // buyable at that point) the branch STOPS and records the invalidation - it
+  // never loops or improvises a general-purpose script.
+  function laboratoryRunPackageSteps(game, steps) {
+    const stepResults = [];
+    let invalidatedAt = null;
+    let invalidationReason = null;
+    for (let index = 0; index < steps.length; index += 1) {
+      const step = steps[index] || {};
+      const stepId = String(step.stepId || `step-${index + 1}`);
+      const action = String(step.action || "buy");
+      const command = laboratoryExecuteBranchCommand(game, {
+        kind: step.kind === "unit" ? "unit" : "upgrade",
+        targetId: String(step.targetId || ""),
+        amount: step.amount ?? "1",
+      });
+      stepResults.push({ stepId, action, command });
+      if (!command.executed) {
+        invalidatedAt = stepId;
+        invalidationReason = command.status;
+        break;
+      }
+    }
+    return { stepResults, invalidatedAt, invalidationReason, completed: invalidatedAt === null };
+  }
+
+  function laboratoryMeasureHorizonLarva(game) {
+    return {
+      larva: laboratorySafeResourceString(getCurrentResource(game, "larva")),
+      larvaRate: laboratorySafeResourceString(getVelocity(game, "larva")),
+    };
+  }
+
+  function laboratoryValidatePackageTournament(tournament) {
+    const errors = [];
+    if (tournament?.schemaVersion !== LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION) errors.push("unexpected package-tournament schema");
+    if (!Array.isArray(tournament?.packages) || tournament.packages.length < 2) errors.push("package tournament needs HOLD plus at least one package");
+    if (tournament?.metricModel !== "active-larva-rate-post-package") errors.push("unexpected package-tournament metric model");
+    if (!tournament?.laboratoryWinner) errors.push("no independent Laboratory winner selected");
+    if (!tournament?.siblingIsolation?.allRestoredIdenticalToSource) errors.push("a package branch restore diverged from source");
+    if (!tournament?.siblingIsolation?.sourceRawStateUnchanged) errors.push("source raw state changed after the tournament");
+    return { ok: errors.length === 0, errors };
+  }
+
+  async function runLaboratoryPackageTournament(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const sourceSave = options.sourceSave;
+    if (typeof sourceSave !== "string" || !sourceSave) {
+      return { ok: false, error: "runPackageTournament requires a sourceSave string." };
+    }
+    const packages = Array.isArray(options.packages) ? options.packages : [];
+    if (!packages.length) {
+      return { ok: false, error: "runPackageTournament requires at least one package." };
+    }
+    const game = getGame();
+    const phaseTarget = String(options.phaseTarget || "larva-throughput-with-reconstruction");
+    const horizonsSeconds = (Array.isArray(options.horizonsSeconds) && options.horizonsSeconds.length
+      ? options.horizonsSeconds
+      : [0, 300, 3600]).map(Number).filter((n) => Number.isFinite(n) && n >= 0).sort((a, b) => a - b);
+    // Reserve multiplier is recorded as a declared parameter; the full
+    // 0x/1.25x/1.5x/2x reserve-policy matrix is a declared follow-up.
+    const reserveMultiplier = Number.isFinite(Number(options.reserveMultiplier))
+      ? Number(options.reserveMultiplier)
+      : (Number(config.meatChainReserveMultiplier) || 1.25);
+
+    const priorEnabled = config.enabled;
+    config.enabled = false;
+    try {
+      const baseline = await laboratoryRestoreBranchSource(game, sourceSave);
+      if (!baseline.ok) return { ok: false, error: "source restore failed", detail: baseline };
+      const sourceRawStateHash = baseline.rawStateHash;
+
+      const specs = [{ packageId: "HOLD", steps: [] }];
+      for (let index = 0; index < packages.length; index += 1) {
+        const pkg = packages[index] || {};
+        specs.push({ packageId: String(pkg.packageId || `package-${index + 1}`), steps: Array.isArray(pkg.steps) ? pkg.steps : [] });
+      }
+
+      const results = [];
+      for (const spec of specs) {
+        const restored = await laboratoryRestoreBranchSource(game, sourceSave);
+        const restoredIdenticalToSource = restored.ok && restored.rawStateHash === sourceRawStateHash;
+        const run = laboratoryRunPackageSteps(game, spec.steps);
+        // Active-horizon downstream throughput. On the live site game.skipTime is
+        // a no-op (the clock does not advance), so the passive 5m/1h/offline
+        // horizons are not measured here; only the active larva production rate,
+        // which already discriminates packages (a build raises it, a sacrifice
+        // lowers it until reconstruction). Passive horizons need the local build.
+        const active = laboratoryMeasureHorizonLarva(game);
+        results.push(laboratoryDeepFreeze({
+          packageId: spec.packageId,
+          restoredIdenticalToSource,
+          stepCount: spec.steps.length,
+          steps: run.stepResults,
+          completed: run.completed,
+          invalidatedAt: run.invalidatedAt,
+          invalidationReason: run.invalidationReason,
+          active,
+        }));
+      }
+
+      // Independent winner: highest active larva production rate among packages
+      // that completed, HOLD included. Ranked here from branch measurements,
+      // never from any production score.
+      const activeRate = (entry) => decimalFrom(entry.active?.larvaRate || "0");
+      const ranked = results
+        .filter((entry) => entry.completed)
+        .slice()
+        .sort((a, b) => decimalToNumber(activeRate(b).minus(activeRate(a)), 0));
+      const winner = ranked[0] || null;
+
+      const restoreAfter = await laboratoryRestoreBranchSource(game, sourceSave);
+      const sourceRawStateUnchanged = restoreAfter.ok && restoreAfter.rawStateHash === sourceRawStateHash;
+
+      const tournament = laboratoryDeepFreeze({
+        schemaVersion: LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION,
+        experimentId: String(options.experimentId || "LC5-PACKAGE-TOURNAMENT"),
+        capturedAt: String(options.captureTimestamp || new Date().toISOString()),
+        phaseTarget,
+        timingModel: "live-site-nonhermetic-active-only",
+        metricModel: "active-larva-rate-post-package",
+        horizonModel: "active-only: live-site game.skipTime is a no-op, so passive/offline horizons are not measured",
+        oracleIndependence: "winner ranked by Laboratory active larva-rate metric; production winner score never consulted",
+        requestedHorizonsSeconds: horizonsSeconds,
+        reserveMultiplier,
+        source: { rawStateHash: sourceRawStateHash },
+        packages: results,
+        laboratoryWinner: winner ? winner.packageId : null,
+        siblingIsolation: {
+          allRestoredIdenticalToSource: results.every((entry) => entry.restoredIdenticalToSource),
+          sourceRawStateUnchanged,
+        },
+        knownLimitations: [
+          "live-site game.skipTime does not advance the game clock, so only the active horizon is measured; the active/5m/1h/offline reconstruction spread (LD-15) needs the local build (RH-4 Outcome 2) or working clock control",
+          "the full 0x/1.25x/1.5x/2x reserve-policy matrix is a declared follow-up; reserveMultiplier is recorded but not yet swept",
+          "the active larva-rate metric shows post-package throughput but not the time-integrated reconstruction payoff, which needs working horizons",
+        ],
+      });
+      lastLaboratoryPackageTournament = tournament;
+      return { ok: true, tournament, validity: laboratoryValidatePackageTournament(tournament) };
     } finally {
       config.enabled = priorEnabled;
     }
@@ -26752,6 +26905,15 @@ function getDisplayName(item) {
         validateCrossLaneTournament(tournament) {
           return laboratoryValidateCrossLaneTournament(tournament);
         },
+        async runPackageTournament(options = {}) {
+          return runLaboratoryPackageTournament(options);
+        },
+        getLastPackageTournament() {
+          return laboratoryCloneResult(lastLaboratoryPackageTournament);
+        },
+        validatePackageTournament(tournament) {
+          return laboratoryValidatePackageTournament(tournament);
+        },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
         },
@@ -26765,6 +26927,7 @@ function getDisplayName(item) {
           lastLaboratoryBranchResult = null;
           lastLaboratoryEngineTournament = null;
           lastLaboratoryCrossLaneTournament = null;
+          lastLaboratoryPackageTournament = null;
           return { ok: true };
         },
         createObservationSummary(result) {

@@ -7,13 +7,29 @@ Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **LC-1/LC-2/LC-3/LC-4 all ACCEPTED via exact-SHA evidence**; the
-milestone continues with LC-5 (package and reserve-policy runner). LC-1 read-only
-capture, the LC-2 branch backend, the LC-3 Engine tournament, and the LC-4
-cross-lane tournament are each committed and verified through the full exact-SHA
-evidence cycle. The full implementation contract is in
-`BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+Status: **LC-1..LC-4 ACCEPTED; LC-5 package runner implemented (exact-SHA
+evidence pending)**. LC-1 read-only capture, the LC-2 branch backend, the LC-3
+Engine tournament, and the LC-4 cross-lane tournament are each committed and
+verified through the full exact-SHA evidence cycle. LC-5's declarative package
+runner is implemented and locally green on its focused check and the pure
+guardrail/build checks; its formal exact-SHA evidence cycle is the next step. The
+full implementation contract is in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
+
+LC-5 progress note (2026-07-24, intermediate): `runPackageTournament` (schema
+`swarmsim-lab.package-tournament.v1`) runs a bounded declarative step schema
+(build -> sacrifice -> unlock -> rebuild) and HOLD in isolated branches, stops and
+records when an intermediate state invalidates a step (no loops), and ranks by
+Laboratory's own active larva-rate metric. Verified on LD-02: a two-step
+Hatchery+Expansion package and a three-step queen -> nest-sacrifice -> rebuild
+package completed; an invalid package stopped at target-unresolved; Engine won on
+active larva rate (11.69 vs HOLD 8.86). Key honest finding: **live-site
+`game.skipTime` is a no-op**, so only the active horizon is measured - the
+active/5m/1h/offline reconstruction spread and the 0x/1.25x/1.5x/2x reserve matrix
+need the local build (RH-4 Outcome 2) or working clock control and remain a
+bounded follow-up. Do not mark LC-5 complete until its implementation commit, full
+exact-SHA verification, generated evidence, and separate evidence commit meet
+`GIT_VERIFICATION_PROTOCOL.md`.
 
 LC-4 exact-SHA acceptance (2026-07-24):
 

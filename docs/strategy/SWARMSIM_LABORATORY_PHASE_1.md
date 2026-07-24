@@ -217,6 +217,43 @@ honestly left open** (`territoryOverMeatCrossover: "open"`), pending a per-targe
 time-to-gate horizon projection. The one/two/four-action budget matrix and that
 crossover need the LD-12 pre-Mirror data and remain a declared follow-up.
 
+### LC-5 package and reserve-policy runner (2026-07-24)
+
+LC-5 introduces bounded multi-click packages on the LC-2 branch backend. The
+development-only API exposes
+`laboratory.runPackageTournament({ sourceSave, packages, horizonsSeconds, reserveMultiplier })`,
+`laboratory.getLastPackageTournament()`, and
+`laboratory.validatePackageTournament(...)`; the result schema is
+`swarmsim-lab.package-tournament.v1`.
+
+A package is a strictly **declarative ordered step schema** (build -> sacrifice ->
+unlock -> rebuild); each step is a bounded buy. The runner executes the steps of a
+package (and an implicit HOLD) in its own disposable branch and, if an
+intermediate state invalidates a step - the target is unresolvable or not buyable
+at that point - it **stops and records the invalidation** rather than looping or
+improvising a general-purpose script. Because every package branch restores the
+identical raw source state, shared larvae cannot be double-spent across packages.
+The winner is ranked by Laboratory's own active larva-rate metric, never the
+production score.
+
+Verified by `npm run check:laboratory:package-tournament` on the hash-pinned LD-02
+first-Nest-sacrifice save with three packages plus HOLD: a two-step
+Hatchery+Expansion package and a three-step queen -> nest-sacrifice -> rebuild
+package both completed their bounded steps; an intentionally invalid package
+stopped at its first step (`target-unresolved`) and did not win; all branch
+restores were identical with source non-mutation; and the two-step Engine package
+won on active larva rate (`11.69` vs HOLD `8.86`).
+`npm run verify:laboratory:package-tournament` is the declared evidence generator.
+
+Honest bounds (`metricModel: active-larva-rate-post-package`,
+`timingModel: live-site-nonhermetic-active-only`): **live-site `game.skipTime` is
+a no-op** - it does not advance the game clock - so only the active horizon is
+measured. The active/5m/1h/offline reconstruction spread (which is where the
+sacrifice-then-rebuild payoff appears; at the active horizon that package nets
+zero larva-rate change) and the full 0x/1.25x/1.5x/2x reserve-policy matrix are
+declared follow-ups that need the local game build (RH-4 Outcome 2) or working
+clock control, plus the LD-15 frozen-time and LD-12 data.
+
 ## 0.12.3 narrow contract update
 
 0.12.3 adds a narrow live-capture hardening patch for House of Mirrors and ability
