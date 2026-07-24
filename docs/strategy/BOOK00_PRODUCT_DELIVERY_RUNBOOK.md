@@ -855,12 +855,14 @@ Stop condition: capture only. No candidate execution or winner score.
 
 #### LC-2 - Disposable cloned-save branch backend
 
-Status: **backend implemented; exact-SHA evidence pending (2026-07-24)**. The
-`runDisposableBranchExperiment` backend (schema `swarmsim-lab.branch-result.v1`)
-is implemented and green on `npm run check:laboratory:branch-backend` over the
-LD-05 real save and an LD-00 clean-start source. It proves deterministic
-raw-state restore identity, a bounded-command four-value amount contract, and
-source non-mutation. Per the LC-2 implementation caution below, hermetic timing
+Status: **backend ACCEPTED via exact-SHA evidence (2026-07-24)**. Implementation
+SHA `d6fea4007b4eaa99c5bd1a699e19b12909ea25cc`; evidence SHA `c0be999` on
+`codex/9.4.0-clean-room`; full `npm run verify` passed exit 0 against the
+implementation SHA. The `runDisposableBranchExperiment` backend (schema
+`swarmsim-lab.branch-result.v1`) proves deterministic raw-state restore identity,
+a bounded-command four-value amount contract, sandbox mutation, illegal-command
+rejection, and source non-mutation over the LD-05 real save and an LD-00
+clean-start source. Per the LC-2 implementation caution below, hermetic timing
 is **not** claimed on the live site (raw pre-reification state is used); LD-04
 and LD-16 boundary data plus fully hermetic timing (RH-4 Outcome 2) remain a
 bounded follow-up. See `SWARMSIM_LABORATORY_PHASE_1.md` and the status board.
