@@ -987,10 +987,12 @@ scripts or loops.
 
 #### LC-6 - Energy, abilities, Clone, and Crystal allocation
 
-Status: **energy tournament implemented; exact-SHA evidence pending
-(2026-07-24)**. `runEnergyTournament` (schema `swarmsim-lab.energy-tournament.v1`)
-is green on `npm run check:laboratory:energy-tournament` over the hash-pinned
-LD-09 Nexus-5 and LD-07 pre-Nexus-5 saves. It casts/buys each energy-domain
+Status: **ACCEPTED via exact-SHA evidence (2026-07-24)**. Implementation SHA
+`1e42009dd3121c5dd587c42a07f2b05fe45521d1`; evidence SHA `c1ef16b` on
+`codex/9.4.0-clean-room`; full `npm run verify` passed exit 0 against the
+implementation SHA. `runEnergyTournament` (schema
+`swarmsim-lab.energy-tournament.v1`) is verified on the hash-pinned LD-09 Nexus-5
+and LD-07 pre-Nexus-5 saves. It casts/buys each energy-domain
 candidate (construct Nexus, Rushes, Clone Larvae, House of Mirrors, Swarm Warp,
 Lepidoptera) and HOLD in isolated disposable branches, records energy spend
 (matching documented ability costs: Rush 1600, HoM 2500, Swarm Warp 2000, Clone

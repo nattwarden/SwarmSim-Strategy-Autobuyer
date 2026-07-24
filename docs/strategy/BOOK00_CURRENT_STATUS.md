@@ -7,30 +7,38 @@ Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **LC-1..LC-5 ACCEPTED; LC-6 energy tournament implemented (exact-SHA
-evidence pending)**. LC-1..LC-5 are each committed and verified through the full
-exact-SHA evidence cycle. LC-6's energy/ability/Clone/Crystal allocation
-tournament is implemented and locally green on its focused check and the pure
-guardrail/build checks; its formal exact-SHA evidence cycle is the next step. The
-full implementation contract is in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+Status: **LC-1..LC-6 all ACCEPTED via exact-SHA evidence**; the milestone
+continues with LC-7 (phase, Ascension, stochastic, and offline experiments -
+the final LC slice). LC-1..LC-6 are each committed and verified through the full
+exact-SHA evidence cycle. The full implementation contract is in
+`BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
 
-LC-6 progress note (2026-07-24, intermediate): `runEnergyTournament` (schema
-`swarmsim-lab.energy-tournament.v1`) casts/buys each energy-domain candidate
-(construct Nexus, Meat/Territory/Larva Rush, Clone Larvae, House of Mirrors, Swarm
-Warp, Lepidoptera) and HOLD in isolated disposable branches, records energy spend,
-and ranks by Laboratory's own larva-at-horizon metric (tick+reify horizons). On
-LD-09 the observed energy costs match the documented ability costs (Rush 1600, HoM
-2500, Swarm Warp 2000, Clone Larvae 12000) and Clone Larvae wins on larva at 1h.
-Key safety property verified: **advisor-only actions remain non-executable in
-production** - the tournament proves the production auto-cast authority
-(autoCastAbilities/HouseOfMirrors/CloneLarvae/autoAscend) is unchanged before and
-after, so sandbox casts never widen auto-cast defaults. LD-07 (pre-Nexus-5) is
-kept separate. The 1.6k/2k/2.5k/12k threshold matrix, Clone cap levels,
-Mirror-now-vs-seed, Crystal states, and full pre/post-Nexus-5 split need
-LD-08/LD-11/LD-12/LD-13 and remain a bounded follow-up. Do not mark LC-6 complete
-until its implementation commit, full exact-SHA verification, generated evidence,
-and separate evidence commit meet `GIT_VERIFICATION_PROTOCOL.md`.
+LC-6 exact-SHA acceptance (2026-07-24):
+
+- Implementation SHA: `1e42009dd3121c5dd587c42a07f2b05fe45521d1`
+  (tree `db4a067f73c4559370307e842514fe2be86a46d8`), branch `codex/9.4.0-clean-room`.
+- Evidence SHA: `c1ef16b` (separate evidence commit, allowlisted paths only).
+- Verification mode A; `npm run verify` (full required chain + guardrails)
+  passed exit 0 against the implementation SHA.
+- `runEnergyTournament` (schema `swarmsim-lab.energy-tournament.v1`) casts/buys
+  each energy-domain candidate (construct Nexus, Rushes, Clone Larvae, House of
+  Mirrors, Swarm Warp, Lepidoptera) and HOLD in isolated disposable branches,
+  records energy spend, and ranks by Laboratory's own larva-at-horizon metric. On
+  LD-09 the observed energy costs match the documented ability costs (Rush 1600,
+  HoM 2500, Swarm Warp 2000, Clone Larvae 12000) and Clone Larvae wins on larva at
+  1h; LD-07 (pre-Nexus-5) is kept separate.
+- **Advisor-only actions remain non-executable in production**: the tournament
+  captures the production auto-cast authority
+  (autoCastAbilities/HouseOfMirrors/CloneLarvae/autoAscend) before and after and
+  proves it unchanged - sandbox casts never widen auto-cast defaults.
+- Evidence: `docs/live-logs/browser-test-lc6-energy-tournament.{json,md}` and
+  `docs/test-data/laboratory-lc6/example-energy-tournament.json`.
+
+Remaining LC-6 follow-up (bounded, not blocking): the larva-at-horizon metric
+under-credits non-larva abilities; a per-target energy-value metric, the
+1.6k/2k/2.5k/12k threshold matrix, Clone cap levels, Mirror-now-vs-seed, Crystal
+states, and the full pre/post-Nexus-5 split need LD-08/LD-11/LD-12/LD-13.
 
 LC-5 exact-SHA acceptance (2026-07-24):
 
