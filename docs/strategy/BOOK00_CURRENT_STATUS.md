@@ -7,12 +7,28 @@ Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **LC-1 ACCEPTED; LC-2 backend ACCEPTED**; the milestone continues with
-the target/oracle slices (LC-3+). Both LC-1 read-only capture and the LC-2
-disposable cloned-save branch backend are committed and verified through the full
-exact-SHA evidence cycle. The full implementation contract is in
-`BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+Status: **LC-1 ACCEPTED; LC-2 backend ACCEPTED; LC-3 Engine tournament
+implemented (exact-SHA evidence pending)**. LC-1 read-only capture and the LC-2
+branch backend are committed and verified through the full exact-SHA evidence
+cycle. LC-3's Engine one-click tournament and independent evaluator is
+implemented and locally green on its focused check and the pure guardrail/build
+checks; its formal exact-SHA evidence cycle is the next step. The full
+implementation contract is in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
+
+LC-3 progress note (2026-07-24, intermediate): `runEngineTournament` (schema
+`swarmsim-lab.engine-tournament.v1`) runs disposable Engine/HOLD branches and
+ranks them by Laboratory's own larva-rate metric - never the production winner
+score - then observes the production Engine lane choice and reports agreement.
+On the hash-pinned LD-01 save the Laboratory metric ranks BUY_HATCHERY first
+while the fixed-order planner picks BUY_EXPANSION; the instantaneous larva-rate
+metric under-credits Expansion's indirect loop, so this flags the needed
+time-to-gate horizon projection rather than claiming production is wrong. Verified
+by `npm run check:laboratory:engine-tournament`. The horizon projection, the
+180s/600s save-window matrix, and a guaranteed winner-change boundary need
+LD-08/LD-09 (not yet captured) and are a bounded follow-up. Do not mark LC-3
+complete until its implementation commit, full exact-SHA verification, generated
+evidence, and separate evidence commit meet `GIT_VERIFICATION_PROTOCOL.md`.
 
 LC-2 exact-SHA acceptance (2026-07-24):
 

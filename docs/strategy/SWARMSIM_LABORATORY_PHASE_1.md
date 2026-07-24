@@ -142,6 +142,44 @@ Remaining LC-2 data coverage (bounded follow-up, not asserted yet): LD-04 Twin
 Queen reserve boundaries and LD-16 exact-target/decimal/stale-button edges, and
 any fully hermetic timing once the local build lands.
 
+### LC-3 Engine one-click tournament and independent evaluator (2026-07-24)
+
+LC-3 builds the first strategy comparison on top of the LC-2 branch backend. The
+development-only API exposes
+`laboratory.runEngineTournament({ sourceSave, phaseTarget })`,
+`laboratory.getLastEngineTournament()`, and
+`laboratory.validateEngineTournament(...)`; the result schema is
+`swarmsim-lab.engine-tournament.v1`.
+
+For each Engine candidate (`BUY_EXPANSION`, `BUY_HATCHERY`, the optional
+achievement-based larva upgrade) and `HOLD`, the tournament restores the source
+into a disposable branch, measures the larva production rate before and after one
+bounded click, and records the larva-rate delta and percentage gain plus the
+current Expansion/Hatchery ETAs. The **independent winner** is the candidate with
+the largest larva-rate gain, ranked by Laboratory's own metric - the production
+planner's winner score is never consulted, honouring the hard Laboratory boundary
+against a circular oracle. Separately, the tournament observes what the production
+Engine planner actually chooses by reading the Strategy Inspector's Engine lane
+decision after one advisor-only cycle, and reports whether the independent winner
+agrees.
+
+Verified by `npm run check:laboratory:engine-tournament` on the hash-pinned LD-01
+early-Engine save: identical raw-state restore per candidate, source non-mutation,
+an independent winner selected, and the production Engine choice observed and
+compared. On LD-01 the Laboratory metric ranks `BUY_HATCHERY` first (larger
+instantaneous larva-rate gain) while the fixed-order planner picks
+`BUY_EXPANSION` - a genuine, honestly surfaced disagreement.
+`npm run verify:laboratory:engine-tournament` is the declared evidence generator.
+
+Honest bounds (`metricModel: instantaneous-larva-rate-delta`,
+`timingModel: live-site-nonhermetic-raw-state`): the instantaneous larva-rate
+metric under-credits Expansion's indirect territory -> drone -> larva loop, so the
+disagreement above is a flag that a time-to-gate horizon projection is the needed
+refinement, **not** a claim that the production order is wrong. That horizon
+projection, the 180s/600s save-window matrix, and a guaranteed Hatchery/Expansion
+winner-change boundary all need the LD-08/LD-09 Nexus-boundary saves, which are
+not yet captured; they are a declared LC-3 follow-up.
+
 ## 0.12.3 narrow contract update
 
 0.12.3 adds a narrow live-capture hardening patch for House of Mirrors and ability

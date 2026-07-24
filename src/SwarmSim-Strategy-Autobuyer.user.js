@@ -645,6 +645,7 @@
   // normal automation or a substitute for the player save.
   let lastLaboratoryDecisionSnapshot = null;
   let lastLaboratoryBranchResult = null;
+  let lastLaboratoryEngineTournament = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -10753,6 +10754,7 @@ function getDisplayName(item) {
   const LABORATORY_DECISION_SNAPSHOT_SCHEMA_VERSION = "swarmsim-lab.decision-snapshot.v1";
   const LABORATORY_CANDIDATE_MANIFEST_SCHEMA_VERSION = "swarmsim-lab.candidate-manifest.v1";
   const LABORATORY_BRANCH_RESULT_SCHEMA_VERSION = "swarmsim-lab.branch-result.v1";
+  const LABORATORY_ENGINE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.engine-tournament.v1";
   const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
@@ -12643,6 +12645,181 @@ function getDisplayName(item) {
       });
       lastLaboratoryBranchResult = branchResult;
       return { ok: true, branchResult, validity: laboratoryValidateBranchResult(branchResult) };
+    } finally {
+      config.enabled = priorEnabled;
+    }
+  }
+
+  // LC-3 Engine one-click tournament and independent target evaluator. Built on
+  // the LC-2 branch backend: for each Engine candidate (and HOLD) it restores the
+  // source, measures the larva production rate before and after one bounded click,
+  // and ranks candidates by Laboratory's OWN causal target metric - the larva-rate
+  // gain the click produces - never by the production planner's winner score
+  // (a hard Laboratory boundary against a circular oracle). It separately observes
+  // what the production Engine planner actually chooses and reports whether the
+  // independent winner agrees. Engine/HOLD only; no Meat or Army scoring.
+  function laboratoryMeasureEngineState(game) {
+    const engine = safe("LC3 engine analysis", () => analyzeLarvaEngine(game)) || {};
+    return {
+      larvaRate: laboratorySafeResourceString(getVelocity(game, "larva")),
+      territoryRate: laboratorySafeResourceString(getVelocity(game, "territory")),
+      expansionEtaSeconds: Number.isFinite(Number(engine?.expansionEta)) ? Number(engine.expansionEta) : null,
+      hatcheryEtaSeconds: Number.isFinite(Number(engine?.hatcheryEta)) ? Number(engine.hatcheryEta) : null,
+    };
+  }
+
+  // Observation, not scoring: restore the source, run one advisor-only production
+  // cycle, and read the Strategy Inspector's chosen planner action. This reads
+  // what production would do; it never feeds a production score back as the
+  // Laboratory oracle.
+  async function laboratoryObserveRuntimeEngineChoice(game, sourceSave) {
+    const restored = await laboratoryRestoreBranchSource(game, sourceSave);
+    if (!restored.ok) return { engineChoice: null, status: "restore-failed", raw: null };
+    const prior = { enabled: config.enabled, advisorOnly: config.advisorOnly, inspector: config.strategyInspector };
+    config.enabled = true;
+    config.advisorOnly = true;
+    config.strategyInspector = true;
+    try {
+      safe("LC3 runtime cycle", () => runOnce());
+      // Read the production Engine lane's own decision from the Strategy
+      // Inspector - an observation of what production does, not a score fed back
+      // as the Laboratory oracle.
+      const lanes = Array.isArray(strategyInspector?.laneCandidates) ? strategyInspector.laneCandidates : [];
+      const engineLane = lanes.find((entry) => /engine/i.test(String(entry?.lane || "")));
+      const raw = engineLane
+        ? `${engineLane.lane}:${engineLane.candidate}:${engineLane.decision}`
+        : String(strategyInspector?.activePlannerAction || "");
+      let engineChoice = null;
+      if (engineLane && /buy/i.test(String(engineLane.decision || ""))) {
+        if (/expansion/i.test(String(engineLane.candidate || ""))) engineChoice = "BUY_EXPANSION";
+        else if (/hatchery/i.test(String(engineLane.candidate || ""))) engineChoice = "BUY_HATCHERY";
+      } else if (engineLane) {
+        engineChoice = "HOLD";
+      }
+      return { engineChoice, status: engineChoice ? "observed" : "unmapped", raw };
+    } finally {
+      config.enabled = prior.enabled;
+      config.advisorOnly = prior.advisorOnly;
+      config.strategyInspector = prior.inspector;
+    }
+  }
+
+  function laboratoryValidateEngineTournament(tournament) {
+    const errors = [];
+    if (tournament?.schemaVersion !== LABORATORY_ENGINE_TOURNAMENT_SCHEMA_VERSION) errors.push("unexpected engine-tournament schema");
+    if (!Array.isArray(tournament?.candidates) || tournament.candidates.length < 3) errors.push("engine tournament needs at least HOLD, Expansion, and Hatchery candidates");
+    if (!tournament?.laboratoryWinner) errors.push("no independent Laboratory winner selected");
+    if (!tournament?.siblingIsolation?.allRestoredIdenticalToSource) errors.push("a candidate restore diverged from source");
+    if (!tournament?.siblingIsolation?.sourceRawStateUnchanged) errors.push("source raw state changed after tournament");
+    return { ok: errors.length === 0, errors };
+  }
+
+  async function runLaboratoryEngineTournament(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const sourceSave = options.sourceSave;
+    if (typeof sourceSave !== "string" || !sourceSave) {
+      return { ok: false, error: "runEngineTournament requires a sourceSave string." };
+    }
+    const game = getGame();
+    const phaseTarget = String(options.phaseTarget || "larva-engine-throughput");
+
+    // Engine/HOLD candidate set. The achievement-based larva upgrade is optional
+    // and only added when its id is supplied; if it does not resolve it is
+    // recorded as an inapplicable candidate rather than silently dropped.
+    const candidateSpecs = [
+      { candidateId: "HOLD", command: null },
+      { candidateId: "BUY_EXPANSION", command: { kind: "upgrade", targetId: "expansion", amount: "1" } },
+      { candidateId: "BUY_HATCHERY", command: { kind: "upgrade", targetId: "hatchery", amount: "1" } },
+    ];
+    if (options.achievementLarvaUpgradeId) {
+      candidateSpecs.push({ candidateId: "BUY_ACHIEVEMENT_LARVA", command: { kind: "upgrade", targetId: String(options.achievementLarvaUpgradeId), amount: "1" } });
+    }
+
+    const priorEnabled = config.enabled;
+    config.enabled = false;
+    try {
+      const baseline = await laboratoryRestoreBranchSource(game, sourceSave);
+      if (!baseline.ok) return { ok: false, error: "source restore failed", detail: baseline };
+      const sourceRawStateHash = baseline.rawStateHash;
+
+      const candidates = [];
+      for (const spec of candidateSpecs) {
+        const restored = await laboratoryRestoreBranchSource(game, sourceSave);
+        const restoredIdenticalToSource = restored.ok && restored.rawStateHash === sourceRawStateHash;
+        const before = laboratoryMeasureEngineState(game);
+        const command = spec.command
+          ? laboratoryExecuteBranchCommand(game, spec.command)
+          : { kind: "hold", status: "hold", executed: false, requestedAmount: "0", amountsAgree: true };
+        const after = laboratoryMeasureEngineState(game);
+        const larvaBefore = decimalFrom(before.larvaRate);
+        const larvaAfter = decimalFrom(after.larvaRate);
+        const larvaRateDelta = larvaAfter.minus(larvaBefore);
+        const larvaGainPercent = larvaBefore.greaterThan(0)
+          ? decimalToNumber(larvaRateDelta.dividedBy(larvaBefore), 0) * 100
+          : null;
+        const applicable = spec.candidateId === "HOLD" || (command && command.status !== "target-unresolved");
+        candidates.push(laboratoryDeepFreeze({
+          candidateId: spec.candidateId,
+          applicable,
+          restoredIdenticalToSource,
+          command,
+          metric: {
+            larvaRateBefore: before.larvaRate,
+            larvaRateAfter: after.larvaRate,
+            larvaRateDelta: laboratorySafeResourceString(larvaRateDelta),
+            larvaGainPercent,
+            expansionEtaSeconds: after.expansionEtaSeconds,
+            hatcheryEtaSeconds: after.hatcheryEtaSeconds,
+          },
+        }));
+      }
+
+      // Independent winner: highest larva-rate delta among applicable candidates
+      // whose click executed (or HOLD). Ranked here from branch measurements, not
+      // from any production score.
+      const ranked = candidates
+        .filter((c) => c.applicable && (c.candidateId === "HOLD" || c.command.executed))
+        .slice()
+        .sort((a, b) => decimalToNumber(decimalFrom(b.metric.larvaRateDelta).minus(decimalFrom(a.metric.larvaRateDelta)), 0));
+      const winner = ranked[0] || null;
+      const runnerUp = ranked[1] || null;
+      const winnerMarginPercent = winner && runnerUp && decimalFrom(runnerUp.metric.larvaRateAfter).greaterThan(0)
+        ? decimalToNumber(decimalFrom(winner.metric.larvaRateDelta).minus(decimalFrom(runnerUp.metric.larvaRateDelta)).dividedBy(decimalFrom(runnerUp.metric.larvaRateAfter)), 0) * 100
+        : null;
+
+      const runtimeChoice = await laboratoryObserveRuntimeEngineChoice(game, sourceSave);
+
+      const restoreAfter = await laboratoryRestoreBranchSource(game, sourceSave);
+      const sourceRawStateUnchanged = restoreAfter.ok && restoreAfter.rawStateHash === sourceRawStateHash;
+
+      const tournament = laboratoryDeepFreeze({
+        schemaVersion: LABORATORY_ENGINE_TOURNAMENT_SCHEMA_VERSION,
+        experimentId: String(options.experimentId || "LC3-ENGINE-TOURNAMENT"),
+        capturedAt: String(options.captureTimestamp || new Date().toISOString()),
+        phaseTarget,
+        timingModel: "live-site-nonhermetic-raw-state",
+        metricModel: "instantaneous-larva-rate-delta",
+        oracleIndependence: "winner ranked by Laboratory larva-rate metric; production winner score never consulted",
+        source: { rawStateHash: sourceRawStateHash },
+        candidates,
+        laboratoryWinner: winner ? winner.candidateId : null,
+        winnerMarginPercent,
+        runtimeChoice,
+        winnerAgreesWithRuntime: winner && runtimeChoice?.engineChoice
+          ? winner.candidateId === runtimeChoice.engineChoice
+          : null,
+        siblingIsolation: {
+          allRestoredIdenticalToSource: candidates.every((c) => c.restoredIdenticalToSource),
+          sourceRawStateUnchanged,
+        },
+        knownLimitations: [
+          "instantaneous larva-rate under-credits Expansion's indirect territory-drone-larva loop; a time-to-gate horizon projection is a declared follow-up",
+          "the 180s/600s save-window matrix and a guaranteed Hatchery/Expansion winner-change boundary need LD-08/LD-09, which are not yet captured",
+        ],
+      });
+      lastLaboratoryEngineTournament = tournament;
+      return { ok: true, tournament, validity: laboratoryValidateEngineTournament(tournament) };
     } finally {
       config.enabled = priorEnabled;
     }
@@ -26376,6 +26553,15 @@ function getDisplayName(item) {
         validateBranchResult(branchResult) {
           return laboratoryValidateBranchResult(branchResult);
         },
+        async runEngineTournament(options = {}) {
+          return runLaboratoryEngineTournament(options);
+        },
+        getLastEngineTournament() {
+          return laboratoryCloneResult(lastLaboratoryEngineTournament);
+        },
+        validateEngineTournament(tournament) {
+          return laboratoryValidateEngineTournament(tournament);
+        },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
         },
@@ -26387,6 +26573,7 @@ function getDisplayName(item) {
           lastLaboratoryLiveStateVerification = null;
           lastLaboratoryDecisionSnapshot = null;
           lastLaboratoryBranchResult = null;
+          lastLaboratoryEngineTournament = null;
           return { ok: true };
         },
         createObservationSummary(result) {
