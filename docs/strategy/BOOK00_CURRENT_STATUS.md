@@ -3,15 +3,32 @@
 Status: Active handoff board. Update this file at every completed work package,
 blocked handoff, milestone transition, and accepted verification result.
 
-Last reviewed: 2026-07-23
+Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **IN PROGRESS**. LC-1 read-only capture is implemented in the dirty
-worktree and has passed its focused and full non-evidence checks; its formal
-exact-SHA evidence cycle remains pending. The full implementation contract is in
-`BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+Status: **LC-1 ACCEPTED**; the milestone continues with the isolation/oracle
+slices (LC-2+). LC-1 read-only capture is implemented, committed, and verified
+through the full exact-SHA evidence cycle. The full implementation contract is
+in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
+
+LC-1 exact-SHA acceptance (2026-07-24):
+
+- Implementation SHA: `0f473fbd07bc3ad66b9a9e532a346d0a6fd227fa`
+  (tree `c351dde4d7f82838fa4bb49118d57ad863d9113e`),
+  branch `codex/9.4.0-clean-room`.
+- Evidence SHA: `0ca579ac758afdab2e9fad0aca14f1b868269a70` (separate evidence
+  commit, allowlisted paths only).
+- Verification mode A: clean checkout, `HEAD == origin branch == impl SHA`.
+- `npm run verify` (full required chain + guardrails) passed exit 0 against the
+  implementation SHA; the previously observed 0.12.3 live-browser navigation
+  timeout did not recur this run.
+- Focused check exercised both LD-00 (deterministic, stable hash
+  `3be3eb65...`) and the LD-05 retained real save, both captured read-only with
+  source-state and run-history non-mutation.
+- Evidence: `docs/live-logs/browser-test-lc1-decision-snapshot.{json,md}` and
+  `docs/test-data/laboratory-lc1/example-decision-snapshot.json`.
 
 Product outcome:
 
