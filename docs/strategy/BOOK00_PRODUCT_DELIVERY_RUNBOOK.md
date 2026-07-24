@@ -1032,9 +1032,11 @@ Nexus-5 save. A first-Ascension execution follow-up
 (`runAscensionExperiment`, schema `swarmsim-lab.ascension-experiment.v1`,
 `check:laboratory:ascension`) is also implemented: it executes `game.ascend()` in
 a disposable sandbox (premutagen 8888 -> mutagen 8888, nexus 5 -> 0), measures
-post-reset recovery, keeps autoAscend false, and proves source non-mutation;
-exact-SHA evidence pending. Ascend-later growth, full return-to-Nexus-5 time, and
-a cross-reset mutagen-value metric need LD-13/LD-14. It projects the save across 5m/1h/1d/long-return offline horizons
+post-reset recovery, keeps autoAscend false, and proves source non-mutation.
+ACCEPTED via exact-SHA evidence: implementation SHA
+`b954e712d5091cabe3efc20e9f321561632d4e3d`, evidence SHA `dc9a929`, full verify
+exit 0. Ascend-later growth, full return-to-Nexus-5 time, and a cross-reset
+mutagen-value metric need LD-13/LD-14. It projects the save across 5m/1h/1d/long-return offline horizons
 with the tick+reify primitive, repeats over samples to report an uncertainty band
 (sample count, min/max, spread), tags natural/injected provenance without
 synthesizing natural timing or merging provenances, and proves no production

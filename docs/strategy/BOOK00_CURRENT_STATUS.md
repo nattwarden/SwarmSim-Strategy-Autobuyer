@@ -15,7 +15,9 @@ evidence cycle. The full implementation contract is in
 `Laboratory Complete Decision Coverage program (LC)`. What remains is bounded
 follow-up work (mostly data capture), not core slices.
 
-First-Ascension execution follow-up (2026-07-24, exact-SHA evidence pending):
+First-Ascension execution follow-up (2026-07-24, ACCEPTED via exact-SHA evidence -
+implementation SHA `b954e712d5091cabe3efc20e9f321561632d4e3d`, evidence SHA
+`dc9a929`, full `npm run verify` exit 0):
 `runAscensionExperiment` (schema `swarmsim-lab.ascension-experiment.v1`) executes
 a real first Ascension in a disposable sandbox - `game.ascend()` converts the
 accrued natural premutagen to permanent mutagen and resets the economy - measures
@@ -26,8 +28,9 @@ and Ascension off (no purchases) and restores config; autoAscend is never enable
 Verified on LD-09: premutagen 8888 -> mutagen 8888, nexus 5 -> 0, source raw state
 unchanged, autoAscend/autoCastAbilities stay false. The ascend-later
 premutagen-growth comparison, full first return-to-Nexus-5 time, and the
-cross-reset mutagen-value metric need LD-13/LD-14 and remain follow-ups. Its own
-exact-SHA evidence cycle is the next step.
+cross-reset mutagen-value metric need LD-13/LD-14 and remain follow-ups. Evidence:
+`docs/live-logs/browser-test-lc7-ascension.{json,md}` and
+`docs/test-data/laboratory-lc7/example-ascension.json`.
 
 LC-7 exact-SHA acceptance (2026-07-24):
 
