@@ -18,6 +18,47 @@ that payload is not present in the repository. Do not import or consume the
 tracked path. Recovery requires a new immutable fixture path with valid export,
 hash, provenance, and lineage; do not overwrite the quarantined evidence.
 
+## manual-play-natural-nexus5-2026-07-24.txt (LD-09)
+
+Fixture identity:
+
+- SHA-256: `3419b7846db89047312c4e5f70b041092228b1b39b8793f04800c37460cbec7f`
+- format prefix: `MS4xLjE3|`
+- source class: player-reported natural save, non-injected; exported from real
+  manual play and provided 2026-07-24. Corresponds to the natural Nexus-5 branch
+  used for the 2026-07-23 BOOK-07 ability / premutagen / Mirror-bridge work.
+- lineage: an independent manual playthrough that reached a balanced Nexus 5;
+  not a time-skipped or injected state.
+
+Import verified 2026-07-24 against production `https://www.swarmsim.com/` via
+`game.importSave` in a disposable headless-Chrome session (same method as
+`scripts/check-default-user-save.js`), with this observed post-import snapshot:
+
+- nexus: `5`
+- energy: `72665.774321871516164` (near the ~72k first-Ascension gate)
+- premutagen: `8888` (Mutagen tab visible)
+- larva: `71563950978.248795347`
+- territory: `5.2396968322570118489e+31`
+- meat: `2.2305473896225688496e+39`
+- drone: `1.8702673978349923305e+32`
+- queen: `2.3613055294631591769e+25`
+- nest: `5326934537264582628.8`
+
+Naturalness / balance: this is the LD-09 "balanced natural Nexus 5" fixture. Its
+territory (`5.2e31`) and meat (`2.2e39`) are many orders of magnitude below the
+mature high-magnitude control `live-user-save-2026-07-18.txt` (LD-10; territory
+`4.1e142`), so it is non-oversupplied with all four economy lanes relevant.
+
+Valid metrics: relative lane balance and next-click decision states at a natural
+Nexus 5, and first-Ascension proximity (a real premutagen is present and Energy
+sits near the first-Ascension gate). It is also a candidate seed for LD-12
+(pre-Mirror/Army Nexus 5) and LD-13 (first real premutagen), pending explicit
+confirmation of its army/Mirror state.
+
+Invalid metrics: absolute wall-clock timing. The exported state is ~1-2 days old
+and reflects offline reconciliation on import; do not treat its absolute rates as
+a clean-timing benchmark without accounting for that age.
+
 ## live-user-save-2026-07-18.txt
 
 Fixture identity:

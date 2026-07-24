@@ -774,7 +774,7 @@ versioned save.
 | LD-06 | Greater Queen/Twin Nest/Faster chain | Existing Twin Nests V and larva-buffer saves; the tracked Faster-GQ file is quarantined (`undefined`, not a save), so reacquire it under a new immutable path or derive an explicitly labelled replacement from a valid ancestor | DT-06 through DT-09, DT-15 |
 | LD-07 | Nexus 1 Energy entry | `manual-play-first-nexus-baseline-2026-07-21.txt`; timing metrics remain restricted by its inflated Meat bank | DT-01, DT-13, DT-17 |
 | LD-08 | Nexus 2, 3, and 4 boundaries | **Missing:** derive three exact scenarios from one registered lineage with only documented Nexus/Energy boundary inputs | DT-01, DT-13, DT-20 |
-| LD-09 | Balanced natural Nexus 5 | **Missing:** capture a non-injected, non-oversupplied save with all four economy lanes relevant | DT-01, DT-04, DT-06, DT-10, DT-12 through DT-18 |
+| LD-09 | Balanced natural Nexus 5 | `manual-play-natural-nexus5-2026-07-24.txt` (sha256 `3419b784…60cbec7f`); non-injected natural Nexus 5, non-oversupplied (territory `5.2e31` vs LD-10 `4.1e142`), premutagen `8888` at the ~72k first-Ascension gate. Provenance in `docs/test-data/player-saves/README.md` | DT-01, DT-04, DT-06, DT-10, DT-12 through DT-18 |
 | LD-10 | Mature/high-magnitude control | Existing `live-user-save-2026-07-18.txt` and pinned clone-ramp fixture; not a balanced timing benchmark | DT-15, DT-17, DT-22 |
 | LD-11 | Energy threshold matrix | Derived from LD-09 at exact below/at/above `1.6k`, `2k`, `2.5k`, and `12k`; explicitly artificial Energy boundaries | DT-12 through DT-17 |
 | LD-12 | Full Army/Mirror crossover | **Missing retained branch:** natural Nexus-5 state before a material Mirror/Army choice, with complete roster and Twins | DT-10, DT-11, DT-12 |
