@@ -1023,10 +1023,11 @@ defaults or normal authority.
 
 #### LC-7 - Phase, Ascension, stochastic, and offline experiments
 
-Status: **offline/elapsed experiment implemented; exact-SHA evidence pending
-(2026-07-24)**. `runOfflineHorizonExperiment` (schema
-`swarmsim-lab.offline-horizon.v1`) is green on
-`npm run check:laboratory:offline-horizon` over the hash-pinned LD-09 natural
+Status: **ACCEPTED via exact-SHA evidence (2026-07-24) - final LC slice; LC-1..LC-7
+complete.** Implementation SHA `e4e0adbe78ce39c8a51e2342a03adf4b6529bf58`; evidence
+SHA `3aa800b` on `codex/9.4.0-clean-room`; full `npm run verify` passed exit 0
+against the implementation SHA. `runOfflineHorizonExperiment` (schema
+`swarmsim-lab.offline-horizon.v1`) is verified on the hash-pinned LD-09 natural
 Nexus-5 save. It projects the save across 5m/1h/1d/long-return offline horizons
 with the tick+reify primitive, repeats over samples to report an uncertainty band
 (sample count, min/max, spread), tags natural/injected provenance without
