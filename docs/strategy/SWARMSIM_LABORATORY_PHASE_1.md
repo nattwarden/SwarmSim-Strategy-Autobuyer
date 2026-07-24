@@ -2,6 +2,102 @@
 
 Status: 0.12.3 Phase 1A snapshot foundation plus live effective-count and reason-propagation hardening.
 
+## Current disposition (2026-07-23)
+
+Phase 1 and Phase 2A remain useful, verified, version-scoped Laboratory
+contracts. They are not the complete current strategy-testing system and
+should not be expanded in place or interpreted as a global recommendation
+engine.
+
+The canonical testing objective, next-click protocol, three-surface evidence
+model, hard boundaries, and complete-coverage L1--L6 development direction now live in
+`docs/BOOK-04-strategy-intelligence-findings.md` under:
+
+- `Canonical strategy-testing protocol`
+- `Laboratory disposition and development direction`
+
+The accepted direction is **keep and extend** until every canonical DT decision
+test is runnable through Laboratory. Begin with a read-only decision
+snapshot/candidate manifest, then add disposable cloned-save branch execution
+instead of attempting to encode the entire game in one simulator. Preserve the
+immutable snapshot, player-save non-mutation, formula provenance, explicit
+uncertainty, and development gates. Add new versioned experiment schemas rather
+than changing the meaning of the Phase 1/2A results described below.
+
+The implementation program, required LD test-data catalog, slice boundaries,
+and verification gates are canonical in
+`docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+`Laboratory Complete Decision Coverage program (LC)`. The selected LC-1 work
+package is canonical in `docs/strategy/BOOK00_CURRENT_STATUS.md`.
+
+### LC-1 capture mapping (2026-07-23)
+
+LC-1 deliberately captures the existing runtime verdict rather than producing
+another planner. The mapping is therefore one-way and read-only:
+
+| Decision-snapshot field | Runtime source | Honest limitation retained in the schema |
+| --- | --- | --- |
+| phase, milestone, target, verdict and declared horizon | `strategyInspector`, `getCurrentStrategyIdentity(...)`, and the existing six-domain coordinator snapshot | A missing inspector becomes an explicit `UNMODELED` verdict; capture never runs a planner merely to fill it. |
+| action budget and executed main actions | `strategyInspector.maxMainActions`, `globalMainActionBudget*`, and `executedMainActions` | The capture reports the most recently observed cycle; it does not create a new cycle. |
+| lane proposals, BUY/HOLD identity, reason, blockers, amount, cost and reserve | `laneCandidates`, `summarizeLaneCandidates()`, and each row's existing `wouldBuyAmount`, `resource`, `reserveAfter`, and sanitized `raw` metrics | Legacy candidate rows lack a stable per-main-path origin and may lack a numeric cost/reserve. LC-1 records those fields as `UNMODELED`, never invents them. |
+| main-cycle path coverage | `MAIN_CYCLE_COVERAGE_PATHS` and `strategyInspector.mainCycleCoverage` / `buildMainCycleCoverageLedger()` | A path without current-cycle applicability evidence is emitted as `UNMODELED`; this is a coverage gap, not a negative result. |
+| complete visible Army roster | the live `game.unitlist()` filtered to visible Territory/army units, with runtime count, buyability and territory production | This roster is broader than the 11 House-of-Mirrors rows and preserves visible zero-count families. |
+| formula provenance | the immutable base Laboratory snapshot's `formulaProvenance` and its source hash | LC-1 does not introduce formula claims; candidate-only values retain their runtime-observability provenance. |
+
+The resulting schemas are `swarmsim-lab.decision-snapshot.v1` and
+`swarmsim-lab.candidate-manifest.v1`. They are capture-only contracts: no
+candidate is executed, ranked, re-scored, or used as production authority by
+this slice.
+
+#### Implemented LC-1 surface (intermediate, 2026-07-23)
+
+The development-only API now exposes:
+
+- `laboratory.captureDecisionSnapshot(...)` for a deterministic scenario or,
+  with both existing Laboratory gates enabled, a live read-only capture;
+- `laboratory.captureLiveDecisionSnapshot(...)` for the explicit live form;
+- `laboratory.validateDecisionSnapshot(...)`,
+  `exportDecisionSnapshotJson(...)`, `exportDecisionSnapshotMarkdown(...)`,
+  and `getLastDecisionSnapshot()` for inspection and export.
+
+The capture embeds the existing immutable Phase 1/2A-compatible state snapshot
+as `stateSnapshot`; it does not change that schema or its exports. It emits the
+complete visible Territory/Army roster from `game.unitlist()`, including
+zero-count families, and deep-freezes the finished decision evidence.
+
+The first LC-1 focused browser check is
+`npm run check:laboratory:decision-snapshot`. It verifies fixture and live
+read-only capture, deterministic hashing, existing Strategy Inspector parity,
+all 11 current main-cycle coverage paths, visible zero-count Army families,
+formula-provenance retention, deep immutability, and source/run-history
+non-mutation. It also exercises the LD-05 focused data explicitly: it imports
+the retained real player save
+`docs/test-data/player-saves/manual-play-active-chain-pre-ascension-2026-07-18.txt`
+(hash-pinned), captures a read-only decision snapshot against that real
+economy, and reasserts capture validity, deep immutability, schema identity,
+a non-empty visible Army roster, formula provenance, and both source-state and
+run-history non-mutation. It is a development check until the required
+exact-SHA verification protocol is completed.
+
+`npm run verify:laboratory:decision-snapshot` is the corresponding declared
+evidence generator. It writes only the LC-1 paths named in the delivery
+runbook and must not run before the LC-1 implementation commit has been pushed
+and re-synchronized to its exact SHA.
+
+On 2026-07-24 the LC-1 check, build check, guardrails, and a prior complete
+non-evidence chain were green. Later full-chain retries were blocked before
+LC-1 by the pre-existing 0.12.3 live browser verifier timing out during its
+60-second navigation to SwarmSim; its isolated run remained green. This is
+recorded as external browser/site availability, not evidence of a Laboratory
+behavior change, and no evidence generator was run from the dirty worktree.
+
+Known bounded gap retained intentionally: the current legacy main-cycle ledger
+records path dispositions and candidate decisions but not a stable
+path-to-candidate ID. LC-1 reports that link as `UNMODELED` in every affected
+coverage row rather than assigning one heuristically. LC-2 or a later narrow
+observability package may add an origin ID only after proving it does not alter
+planner behavior.
+
 ## 0.12.3 narrow contract update
 
 0.12.3 adds a narrow live-capture hardening patch for House of Mirrors and ability

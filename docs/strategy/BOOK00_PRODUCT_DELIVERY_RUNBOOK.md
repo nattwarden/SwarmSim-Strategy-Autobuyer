@@ -635,6 +635,398 @@ Escalate when: supported cast/ascend candidates cannot be compared on a shared
 milestone basis, default-safety boundaries conflict with proposed behavior, or
 execution introduces irreversible-risk ambiguity.
 
+## Laboratory Complete Decision Coverage program (LC) - ACTIVE
+
+Selected by the user on 2026-07-23. This program supersedes “live observation
+only” as the immediate direction. It turns the existing Laboratory foundation
+into the common test orchestrator for every open decision-data question without
+changing normal strategy or hard safety defaults.
+
+### Product capability
+
+From one exact SwarmSim state, a developer can ask “which next click starts the
+fastest allowed route to this phase target?” Laboratory enumerates every
+material candidate, restores the same state for isolated branches, executes or
+projects each branch through the declared horizon, compares the outcomes on one
+target metric, and reports whether the production runtime selected the same
+first click.
+
+Player-visible change during this program is intentionally limited to
+development-only Laboratory/Council evidence. Normal automation remains
+unchanged until a separately authorized, independently verified strategy
+change consumes a reproduced finding.
+
+Recommended run: **GPT-5.6 Sol (high reasoning)** for LC-1 through LC-4,
+where schema, isolation, formula provenance, and independent-oracle design
+matter. LC-5 through LC-8 may use the same model; downgrade to
+**GPT-5.6 Terra (medium reasoning)** only for mechanical fixture registration
+or report formatting after the contracts are frozen.
+
+Escalate when: a formula cannot be sourced or captured, disposable branches
+cannot prove isolation, a proposed metric is not causally aligned with the
+named target, production and Laboratory ranking logic become circular, or a
+slice would widen execution authority or change hard safety defaults.
+
+### Program boundaries
+
+Included:
+
+- DT-01 through DT-22 coverage from BOOK-04;
+- same-state deterministic and sandbox counterfactuals;
+- active, passive, offline, threshold, sequence, and stochastic horizons;
+- complete candidate manifests across Engine, Meat, Territory, Larvae/Clone,
+  Energy, and reset domains;
+- Laboratory-versus-runtime verdict comparison;
+- minimal reusable fixtures and retained distilled findings.
+
+Excluded:
+
+- production strategy changes during Laboratory construction;
+- new ability or Ascension execution authority;
+- default changes;
+- a second executable userscript;
+- a full reimplementation of Swarm Simulator;
+- raw per-run evidence retention;
+- a free-form package scripting language;
+- hidden synthetic resources presented as natural timing.
+
+### Target architecture
+
+Laboratory is one orchestration surface with several bounded backends:
+
+```text
+decision snapshot
+    -> candidate manifest (all lanes + HOLD + UNMODELED)
+        -> branch specification
+            -> pure projection backend
+            -> disposable cloned-save backend
+            -> bounded sequence backend
+            -> elapsed/offline backend
+            -> stochastic sampler
+        -> common target/horizon evaluator
+        -> Laboratory winner vs runtime-selected click
+        -> coverage/provenance/non-mutation report
+```
+
+The runtime remains assembled from the single
+`dev-src/runtime-sections/runtime-main.js`. Do not recreate the removed
+per-lane `dev-src/` scaffolding. Browser/test orchestration helpers may be
+small modules under `scripts/lib/` when they have multiple consumers.
+
+### Versioned data contracts
+
+Add contracts instead of changing Phase 1/2A meanings:
+
+1. `swarmsim-lab.decision-snapshot.v1`
+   - source/save/scenario identity and deterministic hash;
+   - active phase target and horizon;
+   - resource banks, rates, caps, cooldowns, unlocks, upgrades, Twins;
+   - complete visible Army roster including zero-count families;
+   - runtime-selected action, alternatives, reasons, blockers, action budget;
+   - formula provenance and uncertain fields.
+2. `swarmsim-lab.candidate-manifest.v1`
+   - stable candidate identity and DT IDs;
+   - lane, action type, exact bounded amount and amount basis;
+   - costs, reserves, dependencies, target path;
+   - legal/safe/modeled status;
+   - screened-out or `UNMODELED` reason.
+3. `swarmsim-lab.branch-spec.v1`
+   - immutable start hash;
+   - backend;
+   - one action or bounded exact step sequence;
+   - horizon mode and stop condition;
+   - random/time policy;
+   - expected mutation scope inside the disposable branch.
+4. `swarmsim-lab.branch-result.v1`
+   - restored and final fingerprints;
+   - per-step accepted/command/confirmed/observed amounts;
+   - immediate and reconstructed state;
+   - target metric before/after and completion time;
+   - next bottleneck, warnings, uncertainty, state leakage.
+5. `swarmsim-lab.decision-result.v1`
+   - all candidates including HOLD;
+   - Laboratory winner, margin, confidence, and evidence grade;
+   - runtime winner and agreement classification;
+   - missing coverage and formula status.
+6. `swarmsim-lab.coverage.v1`
+   - DT ID -> adapter -> backend -> fixture/sample -> verifier -> status;
+   - `COVERED`, `PARTIAL`, `UNMODELED`, or `LIVE_CALIBRATION_REQUIRED`.
+
+Every precise game quantity remains a Decimal string. Every schema is
+deterministically canonicalized and versioned. Timestamps, browser IDs, and
+other volatile fields are excluded from hashes explicitly, never implicitly.
+
+### Required test-data catalog
+
+Reuse existing immutable saves whenever their provenance fits. Generated
+boundary states should be compact scenario definitions, not copied save files.
+Only natural states that cannot be reconstructed honestly should add a new
+versioned save.
+
+| Data ID | State family | Existing source or acquisition | Primary DT coverage |
+|---|---|---|---|
+| LD-00 | Clean start and first legal producer | Deterministic generated scenario; no retained save needed. LC-1 fixture: `docs/test-data/laboratory-lc1/decision-snapshot-fixture.json` | DT-01, DT-03, DT-20 |
+| LD-01 | Early Engine/Territory conflict | `manual-play-early-pre-ascension-2026-07-18.txt` plus frozen-time derived boundaries | DT-02, DT-03, DT-04, DT-10, DT-11 |
+| LD-02 | First Nest sacrifice | `manual-play-first-nest-threshold-2026-07-18.txt` | DT-07, DT-08, DT-09 |
+| LD-03 | Expansion bridge | Existing Expansion 10 and Expansion 12 saves | DT-02, DT-10, DT-11, DT-20 |
+| LD-04 | Twin Queen reserve boundaries | Existing Twin Queens II and Twin Queen III/Nest 1200 saves | DT-07, DT-08, DT-22 |
+| LD-05 | Late-early multi-lane economy | `manual-play-active-chain-pre-ascension-2026-07-18.txt` | DT-04 through DT-10 |
+| LD-06 | Greater Queen/Twin Nest/Faster chain | Existing Twin Nests V and larva-buffer saves; the tracked Faster-GQ file is quarantined (`undefined`, not a save), so reacquire it under a new immutable path or derive an explicitly labelled replacement from a valid ancestor | DT-06 through DT-09, DT-15 |
+| LD-07 | Nexus 1 Energy entry | `manual-play-first-nexus-baseline-2026-07-21.txt`; timing metrics remain restricted by its inflated Meat bank | DT-01, DT-13, DT-17 |
+| LD-08 | Nexus 2, 3, and 4 boundaries | **Missing:** derive three exact scenarios from one registered lineage with only documented Nexus/Energy boundary inputs | DT-01, DT-13, DT-20 |
+| LD-09 | Balanced natural Nexus 5 | **Missing:** capture a non-injected, non-oversupplied save with all four economy lanes relevant | DT-01, DT-04, DT-06, DT-10, DT-12 through DT-18 |
+| LD-10 | Mature/high-magnitude control | Existing `live-user-save-2026-07-18.txt` and pinned clone-ramp fixture; not a balanced timing benchmark | DT-15, DT-17, DT-22 |
+| LD-11 | Energy threshold matrix | Derived from LD-09 at exact below/at/above `1.6k`, `2k`, `2.5k`, and `12k`; explicitly artificial Energy boundaries | DT-12 through DT-17 |
+| LD-12 | Full Army/Mirror crossover | **Missing retained branch:** natural Nexus-5 state before a material Mirror/Army choice, with complete roster and Twins | DT-10, DT-11, DT-12 |
+| LD-13 | First real premutagen | **Missing natural save:** capture immediately when the first premutagen appears, before spending or Ascension | DT-18, DT-20 |
+| LD-14 | First post-Ascension recovery | **Missing paired save:** capture immediately after the first natural Ascension, retaining pre-reset lineage | DT-01, DT-19, DT-20 |
+| LD-15 | Offline/elapsed horizons | Derived frozen-time scenarios from LD-01, LD-05, LD-09, and LD-14 at 5m, 1h, 1d, and a long-return horizon | DT-08, DT-21 |
+| LD-16 | Decimal, Twin, exact-target, and stale-button edges | Generated synthetic boundary fixtures with source-verified costs and real command acceptance | DT-05, DT-22 |
+| LD-17 | Random award cohorts | Repeated disposable Hatchery/Expansion branches with recorded RNG/time provenance where available | DT-16, DT-18, DT-20 |
+
+Before any save enters a verifier, its README entry must include SHA-256, game
+format/build, source class, capture time, lineage, natural/derived/injected
+fields, offline-reconciliation behavior, valid metrics, invalid metrics, and
+the exact DT consumers. Never overwrite an existing save.
+
+### DT coverage map
+
+| Decision group | Laboratory package | Required data | Required backend |
+|---|---|---|---|
+| DT-01 phase target | LC-3, LC-7 | LD-00, LD-07--LD-09, LD-13--LD-14 | projection + sandbox + sequence |
+| DT-02--DT-03 Engine/save windows | LC-3 | LD-01, LD-03, LD-09 | projection confirmed by sandbox |
+| DT-04--DT-06 global arbitration/action budget/larvae | LC-4 | LD-05, LD-06, LD-09 | sandbox + fresh re-evaluation |
+| DT-07--DT-09 Meat packages/reserve/filler | LC-5 | LD-02, LD-04--LD-06 | bounded sequence |
+| DT-10--DT-12 Army/seed/Mirror | LC-4, LC-6 | LD-01, LD-03, LD-09, LD-12 | projection + sandbox |
+| DT-13--DT-17 Energy/Clone/Crystals/producers | LC-6 | LD-07--LD-11, LD-13 | projection + sandbox + sequence |
+| DT-18--DT-20 Ascension/Mutagen/random transitions | LC-7 | LD-13, LD-14, LD-17 | sandbox + stochastic sampler |
+| DT-21 offline return | LC-7 | LD-15 | elapsed/offline backend |
+| DT-22 amount/precision/stale UI | LC-2, LC-4 | LD-04, LD-10, LD-16 | sandbox command acceptance |
+
+### Work-package sequence
+
+Each package is a separate implementation commit followed by exact-SHA
+verification and a separate evidence commit when evidence is generated. Do not
+combine adjacent packages merely because the code is nearby.
+
+#### LC-0 - Contract and data qualification
+
+Status: documentation plan complete; data qualification remains part of LC-1.
+
+Outcome: one agreed next-click protocol, DT matrix, Laboratory architecture,
+test-data catalog, retention rule, and coverage target.
+
+Stop condition: BOOK-04, Laboratory contract, status, and this runbook agree.
+No runtime code is changed.
+
+#### LC-1 - Decision snapshot and candidate manifest
+
+Outcome: one read-only capture exposes the target, horizon, runtime verdict,
+all lane candidates/rejections, exact amounts, constraints, roster, and gaps.
+
+Focused data: LD-00 plus one existing real save from LD-05.
+
+Focused verification:
+
+- deterministic hash/deep-freeze;
+- complete reached-path ledger;
+- zero-count Army visibility;
+- `UNMODELED` retention;
+- source-save/run-history non-mutation;
+- Phase 1/2A compatibility.
+
+Declared generated evidence (only after the implementation commit and an exact
+SHA re-synchronization):
+
+- `docs/live-logs/browser-test-lc1-decision-snapshot.json`;
+- `docs/live-logs/browser-test-lc1-decision-snapshot.md`;
+- `docs/test-data/laboratory-lc1/example-decision-snapshot.json`.
+
+Stop condition: capture only. No candidate execution or winner score.
+
+#### LC-2 - Disposable cloned-save branch backend
+
+Outcome: Laboratory can restore the exact same save into sibling sandbox
+branches, execute one exact bounded game command, collect before/after state,
+and destroy the branch without touching the source.
+
+Focused data: LD-00, LD-04, and LD-16.
+
+Focused verification:
+
+- identical restored fingerprint for every sibling;
+- accepted/command/confirmed/observed amount equality;
+- expected branch-only mutation;
+- source and sibling non-mutation;
+- failure on stale button, illegal action, or restore drift;
+- controlled timestamp/offline reconciliation.
+
+Stop condition: one-action sandbox execution only. No sequences or ranking.
+
+Implementation caution: prefer the pinned/local game build for hermetic runs.
+If RH-4 Outcome 2 is still unavailable, retain an explicit live-site dependency
+and do not claim fully hermetic timing.
+
+#### LC-3 - Engine one-click tournament and target evaluator
+
+Outcome: Hatchery, Expansion, achievement-based larva upgrade, and HOLD share
+one next-target metric and produce an independent winner.
+
+Focused data: LD-01, LD-03, LD-08, and LD-09.
+
+Focused verification:
+
+- below/at/above 180s and 600s save windows;
+- both Engine actions buyable and near-buyable;
+- percentage larva gain and complete target ETA;
+- fixed-order runtime decision compared with Laboratory winner;
+- boundary where Hatchery/Expansion winner changes.
+
+Stop condition: Engine/HOLD only; do not add Meat or Army scoring.
+
+#### LC-4 - Cross-lane bounded one-click tournament
+
+Outcome: all current reversible one-click candidates across Meat, Territory,
+Larvae, Engine, and Energy production can be compared without lane omission.
+
+Focused data: LD-05, LD-06, LD-09, LD-12, and LD-16.
+
+Focused verification:
+
+- every visible Army family uses one common bounded-resource rule;
+- shared larvae cannot be double-spent across candidates;
+- one-, two-, and four-action budgets re-evaluate after each click;
+- natural Territory-over-Meat crossover is found or honestly remains open;
+- production ordering bias is separated from Laboratory outcome ranking.
+
+Stop condition: one-click interventions only. Sacrifice/rebuild sequences wait
+for LC-5.
+
+#### LC-5 - Package and reserve-policy runner
+
+Outcome: exact build -> sacrifice -> unlock -> rebuild packages and HOLD can be
+compared under active and passive reserve horizons.
+
+Focused data: LD-02, LD-04--LD-06, and LD-15.
+
+Focused verification:
+
+- Faster versus Twin versus parent unlock versus refill;
+- `0x`, `1.25x`, `1.5x`, and `2x` reserve policies;
+- active, 5-minute, 1-hour, and offline horizons;
+- reconstruction time and downstream production included;
+- branch stops/replans when an intermediate state invalidates the package.
+
+Stop condition: a bounded declarative step schema only; no general-purpose
+scripts or loops.
+
+#### LC-6 - Energy, abilities, Clone, and Crystal allocation
+
+Outcome: Nexus, Lepidoptera, Bat/Nightbug when allowed, Clone, House of Mirrors,
+Rushes, Swarmwarp, Crystal conversion, Ascension reserve, and HOLD can compete
+at their exact thresholds.
+
+Focused data: LD-07--LD-13.
+
+Focused verification:
+
+- below/at/above `1.6k`, `2k`, `2.5k`, and `12k`;
+- Clone 99.8/99.9/100% cap and named post-Clone uses;
+- Mirror now versus seed then Mirror;
+- Crystal exact/full/hold and cooldown-ready/not-ready;
+- pre-Nexus-5 and post-Nexus-5 horizons remain separate;
+- advisor-only actions remain non-executable in production.
+
+Stop condition: Laboratory recommendations only; no widening of auto-cast
+defaults or normal authority.
+
+#### LC-7 - Phase, Ascension, stochastic, and offline experiments
+
+Outcome: Laboratory can orchestrate complete phase benchmarks, sampled random
+events, first Ascension, post-reset recovery, and elapsed-time returns.
+
+Focused data: LD-08--LD-09 and LD-13--LD-17.
+
+Focused verification:
+
+- Nexus 1 -> 5 benchmark from named seeds;
+- first real premutagen retained and never synthesized for natural timing;
+- Ascend now/later and one-last-gate branches;
+- first post-reset return-to-Nexus-5 time;
+- sample count, RNG/time provenance, confidence interval/uncertainty;
+- 5m/1h/1d/long-return offline horizons;
+- natural and injected results cannot be merged.
+
+Stop condition: no production auto-Ascend/Mutagen authority.
+
+#### LC-8 - Coverage, boundary matrix, and calibration gate
+
+Outcome: one command reports complete DT coverage, runs selected boundary
+matrices, compares Laboratory and runtime winners, and identifies the exact
+disagreement layer.
+
+Focused data: all qualified LD fixtures; raw routine outputs remain untracked.
+
+Focused verification:
+
+- every DT ID is `COVERED` or the command fails;
+- no `UNMODELED` candidate survives the complete-coverage gate;
+- `resetVerified=true` and `stateLeakageDetected=false`;
+- deterministic cases reproduce;
+- stochastic cases meet declared sample minimums;
+- at least one cross-lane and one within-lane winner crossover reproduce;
+- report distinguishes formula, coverage, ranking, ordering, guard,
+  execution, observability, and harness defects.
+
+Stop condition: findings are distilled into BOOK-04/BOOK-07, raw matrices are
+deleted or left untracked, and no production threshold changes are bundled.
+
+### Program verification and evidence
+
+Every LC implementation slice follows
+`docs/process/GIT_VERIFICATION_PROTOCOL.md`:
+
+1. implementation commit and push;
+2. exact implementation/tree SHA capture;
+3. clean exact-SHA verification;
+4. predeclared pure checks versus evidence generators;
+5. only allowlisted generated paths may become dirty;
+6. separate evidence commit and push;
+7. final `HEAD == origin/main` and clean tree.
+
+Minimum focused checks grow cumulatively:
+
+- LC-1: existing Phase 1/2A plus decision-snapshot check;
+- LC-2: branch isolation/non-mutation/amount acceptance;
+- LC-3: Engine tournament and save-window boundaries;
+- LC-4: candidate completeness and cross-lane tournament;
+- LC-5: sequence/reconstruction/reserve matrix;
+- LC-6: Energy threshold/ability opportunity matrix;
+- LC-7: phase/offline/stochastic contracts;
+- LC-8: full DT coverage and selected reproduced boundary suite.
+
+The complete repository-required build/verify/guardrail suite remains mandatory
+for every implementation slice. Expectations may not be rewritten after a run
+to force a pass.
+
+### Program completion gate
+
+LC closes only when:
+
+1. all DT-01 through DT-22 tests are runnable through Laboratory;
+2. required natural and derived datasets are registered and import-verified;
+3. every backend proves isolation and source-save non-mutation;
+4. Laboratory ranking is target-aligned and independent;
+5. runtime comparison identifies why disagreements occur;
+6. full exact-SHA verification and separate evidence are accepted;
+7. BOOK-04 contains the distilled decision findings and BOOK-07 contains the
+   durable live/calibration facts;
+8. no raw test-output tree or parallel planning document remains.
+
+LC completion does not mean the production strategy is automatically changed.
+Each resulting strategy change still requires its own narrow authorized work
+package.
+
 ## Repository health hardening track (RH) - CLOSED 2026-07-19
 
 Source: `REPOSITORY_AUDIT_REVIEW_2026-07-19.md` (findings R1-R9, audited at
@@ -911,7 +1303,21 @@ If question 1 or 2 has no concrete answer, do not declare the milestone done.
 
 ## Immediate next action
 
-Read `BOOK00_CURRENT_STATUS.md` for the active work package. As of 2026-07-19
-that is the Repository health hardening track (RH) above: Wave 1 packages
-RH-1, RH-2, and RH-3 may start in parallel, one agent and one worktree per
-package, without widening authority or changing hard safety defaults.
+Read `BOOK00_CURRENT_STATUS.md` for the active work package. The Repository
+health hardening track closed on 2026-07-19. As of 2026-07-23 the selected
+work package is **LC-1 decision snapshot and candidate manifest** in the active
+Laboratory Complete Decision Coverage program above.
+
+Before editing runtime code, map the exact current proposal/result objects from
+every reached main-cycle path into the proposed
+`swarmsim-lab.decision-snapshot.v1` and
+`swarmsim-lab.candidate-manifest.v1` fields. Stop and report any lane that
+cannot expose stable identity, exact amount, costs, blockers, target path, or
+formula provenance without changing its production decision.
+
+Recommended run: **GPT-5.6 Sol (high reasoning)** because LC-1 fixes the
+architecture and evidence contract consumed by every later Laboratory slice.
+
+Escalate when: candidate capture would require production behavior changes,
+the proposed schema cannot represent `UNMODELED`/missing candidates honestly,
+or Laboratory capture cannot prove player-save and run-history non-mutation.

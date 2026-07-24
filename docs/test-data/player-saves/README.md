@@ -5,6 +5,19 @@ provenance-documented fixtures. Never overwrite an existing pinned save in
 place (see `docs/test-data/clone-ramp/README.md` for the original pinned
 fixture and that rule).
 
+## Quarantined invalid fixture
+
+`manual-play-faster-greater-queen-i-branch-baseline-2026-07-18.txt` is not a
+valid save. A 2026-07-23 repository audit found that the tracked file is 10
+bytes containing the literal string `undefined` plus newline, with SHA-256
+`770c2d18aa4ec3159f46da461ef452972949942ff4f6a9771044485faa146398`.
+
+BOOK-07 previously recorded the intended export hash as
+`d40d8f3d1af165d0d345aef394233bc1ee3050bfb626ee5ea393f6491b7f08a5`;
+that payload is not present in the repository. Do not import or consume the
+tracked path. Recovery requires a new immutable fixture path with valid export,
+hash, provenance, and lineage; do not overwrite the quarantined evidence.
+
 ## live-user-save-2026-07-18.txt
 
 Fixture identity:

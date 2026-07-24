@@ -3,7 +3,137 @@
 Status: Active handoff board. Update this file at every completed work package,
 blocked handoff, milestone transition, and accepted verification result.
 
-Last reviewed: 2026-07-19
+Last reviewed: 2026-07-23
+
+## Active milestone - Laboratory Complete Decision Coverage
+
+Status: **IN PROGRESS**. LC-1 read-only capture is implemented in the dirty
+worktree and has passed its focused and full non-evidence checks; its formal
+exact-SHA evidence cycle remains pending. The full implementation contract is in
+`BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+`Laboratory Complete Decision Coverage program (LC)`.
+
+Product outcome:
+
+> From any retained or generated SwarmSim decision state, Laboratory can
+> enumerate every materially relevant next click, run isolated same-state
+> branches across the required active/passive/offline/stochastic horizon,
+> compare them on the named phase target, and report whether the production
+> runtime chose the same first click.
+
+This milestone makes Laboratory the common orchestration surface for every
+DT-01 through DT-22 test in
+`docs/BOOK-04-strategy-intelligence-findings.md`. It does not grant Laboratory
+or the production coordinator new execution authority.
+
+Completion checklist:
+
+- [ ] Every DT-01 through DT-22 row maps to a Laboratory experiment, backend,
+      fixture/sample protocol, focused verifier, and retained conclusion owner.
+- [ ] Candidate manifests include all relevant lanes plus HOLD and expose
+      `UNMODELED`/missing candidates instead of silently omitting them.
+- [ ] Pure projection, disposable cloned-save execution, bounded sequence,
+      elapsed/offline, and stochastic-sampling backends share one result
+      contract.
+- [ ] Every branch proves identical start identity, sibling isolation, and zero
+      mutation of the player's source save.
+- [ ] Target/horizon metrics compare next clicks without reusing the production
+      winner score as the oracle.
+- [ ] The fixture catalog covers clean start through first natural Ascension
+      and post-reset recovery, with hashes, lineage, scope, and time controls.
+- [ ] Boundary matrices reproduce at least one cross-lane winner change and
+      directly compare Laboratory winner versus runtime-selected click.
+
+Recommended run: **GPT-5.6 Sol (high reasoning)** for LC-1's exact-SHA
+verification and the following isolation/oracle slices. A later mechanical
+fixture-registration pass may use **GPT-5.6 Terra (medium reasoning)** after
+schemas and provenance rules are fixed.
+
+Escalate when: implementing a candidate requires guessing a base-game formula,
+the cloned-save backend cannot prove source-save non-mutation, Laboratory and
+production share enough ranking code to make the oracle circular, or a proposed
+slice needs to change a hard safety default.
+
+## Current work package - LC-1 decision snapshot and candidate manifest
+
+Outcome:
+
+> One manually triggered Laboratory capture produces a versioned immutable
+> decision snapshot containing the phase target, declared horizon, runtime
+> verdict, action budget, every lane proposal/rejection, exact bounded amounts,
+> costs, reserves, unlock dependencies, complete visible Army roster, formula
+> provenance, and explicit coverage gaps.
+
+Included:
+
+- new versioned decision-snapshot and candidate-manifest schemas;
+- adapters that capture existing runtime proposals without changing them;
+- HOLD and `UNMODELED` records;
+- DT coverage identifiers and fixture identity;
+- deterministic hashing, deep-freeze, export, and non-mutation checks;
+- one focused generated fixture plus one existing real-save capture.
+
+Excluded:
+
+- candidate execution or simulation;
+- target-based winner ranking;
+- new game formulas;
+- sequence/package execution;
+- production strategy, thresholds, defaults, or authority changes;
+- UI redesign beyond a minimal development-only export/readout if needed.
+
+Expected files:
+
+- `dev-src/runtime-sections/runtime-main.js`;
+- rebuilt `src/SwarmSim-Strategy-Autobuyer.user.js`;
+- one focused `scripts/check-laboratory-...` verifier;
+- `package.json` only for the focused check entry;
+- `docs/strategy/SWARMSIM_LABORATORY_PHASE_1.md` for the new versioned contract;
+- minimal versioned fixture/evidence paths declared before verification.
+
+Focused acceptance:
+
+1. identical captures hash identically apart from excluded timestamp fields;
+2. every reached main-cycle path is present or explicitly `UNMODELED`;
+3. runtime-selected and rejected identities/amounts match the existing
+   observability surfaces without changing their decisions;
+4. Army capture contains every visible family, including zero-count families;
+5. source save and normal run history fingerprints are unchanged;
+6. existing Phase 1/2A snapshots and exports remain byte/contract compatible;
+7. canonical build, focused verifier, full required verification, and Git
+   exact-SHA evidence protocol pass.
+
+Stop condition:
+
+LC-1 stops after honest capture and coverage reporting. Do not begin branch
+execution, scoring, or L2 sandbox work in the same implementation commit.
+
+Exact next action:
+
+Read `AGENTS.md`, this section, the LC runbook section,
+`docs/BOOK-04-strategy-intelligence-findings.md`, and
+`docs/strategy/SWARMSIM_LABORATORY_PHASE_1.md`; then inventory the exact current
+proposal/result objects exposed by every main-cycle path and write the LC-1
+schema/field mapping before editing runtime code.
+
+Progress note (2026-07-23, intermediate): the mapping is recorded in
+`SWARMSIM_LABORATORY_PHASE_1.md` and LC-1 capture code plus its focused
+browser check have been added. The first focused run passed for deterministic
+hashing, Inspector parity, eleven-path coverage, visible zero-count Army
+families, and non-mutation. Its LD-00 fixture now lives at
+`docs/test-data/laboratory-lc1/decision-snapshot-fixture.json` and is read by
+the focused check. `npm run verify:laboratory:decision-snapshot` is the
+declared evidence generator and must run only after its implementation commit
+and exact-SHA re-synchronization. Do not mark LC-1 complete until its implementation
+commit, full exact-SHA verification, generated evidence, and separate evidence
+commit meet `GIT_VERIFICATION_PROTOCOL.md`.
+
+Verification note (2026-07-24, intermediate): the focused check, build check,
+guardrails, and earlier full non-evidence chain passed. Subsequent retries of
+`npm run verify` stopped before LC-1 when the existing 0.12.3 browser check
+timed out navigating to `https://www.swarmsim.com/#/tab/territory` after 60
+seconds; that check passed in isolation. Treat the current full-chain result
+as externally blocked, not as formal acceptance or a production regression.
 
 ## 9.4.0 release (2026-07-19)
 
@@ -227,7 +357,7 @@ paths remain `0` of `10`, the WAIT precondition remains `FAIL` with
 `ADVISOR_ONLY` authority, whole-cycle ownership eligibility remains `false`,
 and `m6DecisionOwnsMainCycle` stays `false`.
 
-Current work package: none selected. The path-boundary sweep of all ten
+Historical state at that checkpoint: no work package was selected. The path-boundary sweep of all ten
 retained legacy paths is complete. There is no further boundary slice to take;
 the next direction must be chosen deliberately (e.g. begin converting a bounded
 path toward complete M6 coverage, or a separate product capability) and is not
@@ -362,7 +492,7 @@ A new implementation agent should read, in order:
 4. `docs/BOOK-00-vision-goals-and-dreams.md`
 5. `docs/strategy/BOOK00_PRODUCT_DELIVERY_RUNBOOK.md`
 6. `docs/SWARMSIM_GAME_MODEL.md`
-7. only the files named under **Current work package** below
+7. only the files named under the active **Current work package** at the top
 
 Do not start by reading every historical audit or release note. Follow the
 current work package and open evidence only when that package requires it.
@@ -452,7 +582,7 @@ Current runtime version: `9.3.0`
 - Council UI3 and its fixed desktop window are integrated through `40c258a` and
   `04bb946`; both are mandatory M7 baselines.
 
-## Active milestone
+## Historical milestone closures
 
 **Milestone 8 - ETA-grounded false-wait reduction (CLOSED at 8.1.0)**
 
@@ -562,7 +692,7 @@ Formal closure:
 6. The next best step is a product capability: calibrate a real advisor action
    against WAIT on the same milestone/horizon.
 
-## Current work package
+## Historical work-package record
 
 Implementation status: Milestone 8 is formally closed at `8.1.0`
 (implementation `c014158cea82696cbdb18506045e60126c676116`), but a critical
@@ -602,14 +732,14 @@ separate entry in the distilled handoff index below: the SA1 9.0.0-vs-9.1.0 comp
 `blockerCategories` replace regex-over-text in the stall-breaker decision
 gate), and F7 (`DEFAULT_CONFIG.unitStrategy` now matches the Smart preset).
 
-No work package is currently in flight. The **Repository health hardening track
+Historical status at the time: no work package was in flight. The **Repository health hardening track
 (RH-1 .. RH-6) closed on 2026-07-19** - see the 2026-07-19 section at the top of
 this file and the distilled results in the runbook's RH section. The next
 direction is the previously stated one: live observation of the accepted
 baseline, unless a player-reported issue arrives first. One unscheduled
 follow-up remains from the track (RH-4 Outcome 2: hermetic local game server).
 
-## Immediate next actions
+## Historical immediate next actions (superseded)
 
 M8, M9, the live purchase acceptance check, the SA1 9.0.0-vs-9.1.0
 comparison (F2 evidence), F3, and F7 are all closed as of 2026-07-14 (see

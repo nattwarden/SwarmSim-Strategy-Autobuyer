@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "swarmsim-lab.lc1-fixture.v1",
+  "fixtureId": "LC1-DETERMINISTIC-ARMY-ROSTER",
+  "purpose": "Deterministic read-only decision capture with visible zero-count and positive-count Army families.",
+  "scenario": {
+    "id": "LC1-DETERMINISTIC-FIXTURE",
+    "source": "deterministic-scenario",
+    "overrides": {
+      "resourceCounts": {
+        "energy": "25000",
+        "larva": "1000000",
+        "cocoon": "100",
+        "territory": "100000",
+        "nexus": "5"
+      },
+      "resourceVelocities": {
+        "energy": "0",
+        "larva": "0",
+        "cocoon": "0",
+        "territory": "0"
+      }
+    }
+  },
+  "army": [
+    { "unitId": "swarmling", "count": "0" },
+    { "unitId": "stinger", "count": "7" },
+    { "unitId": "roach", "count": "11" }
+  ]
+}

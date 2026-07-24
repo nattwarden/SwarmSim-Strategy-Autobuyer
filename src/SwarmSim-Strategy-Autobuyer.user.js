@@ -640,6 +640,10 @@
   let lastLaboratoryLiveSnapshot = null;
   let lastLaboratoryLiveExperiment = null;
   let lastLaboratoryLiveStateVerification = null;
+  // LC-1 keeps its decision evidence separate from the existing Phase 1/2A
+  // simulation snapshots. It is a read-only observation, never an input to
+  // normal automation or a substitute for the player save.
+  let lastLaboratoryDecisionSnapshot = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -10745,9 +10749,240 @@ function getDisplayName(item) {
   const LABORATORY_PHASE2A_ACTION_IDS = ["WAIT", "LARVA_RUSH", "MEAT_RUSH", "TERRITORY_RUSH"];
   const LABORATORY_PHASE1_HORIZONS_SECONDS = ["60", "300"];
   const LABORATORY_PHASE1_AFFECTED_UNIT_IDS = ["swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
+  const LABORATORY_DECISION_SNAPSHOT_SCHEMA_VERSION = "swarmsim-lab.decision-snapshot.v1";
+  const LABORATORY_CANDIDATE_MANIFEST_SCHEMA_VERSION = "swarmsim-lab.candidate-manifest.v1";
+  const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function laboratoryDecisionSnapshotHashPayload(snapshot) {
+    const clone = laboratoryCloneJson(snapshot || {});
+    delete clone.decisionSnapshotHash;
+    if (clone.source) delete clone.source.capturedAt;
+    if (clone.stateSnapshot?.source) delete clone.stateSnapshot.source.capturedAt;
+    return clone;
+  }
+
+  function laboratoryDecimalPositive(value) {
+    const decimal = laboratoryDecimalOrNull(value);
+    if (!decimal) return false;
+    try {
+      return decimal.greaterThan ? decimal.greaterThan(0) : Number(decimal) > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  function laboratoryVisibleArmyUnitId(unit, index) {
+    const name = String(unit?.name || "unknown").trim();
+    const suffix = String(unit?.suffix || "").trim();
+    return `${name || "unknown"}${suffix ? ` ${suffix}` : ""}#${index}`;
+  }
+
+  function buildLaboratoryVisibleArmyRoster(game) {
+    const runtimeUnits = safe("Laboratory visible Army roster", () => game?.unitlist?.()) || [];
+    const rows = [];
+
+    for (let index = 0; index < runtimeUnits.length; index++) {
+      const unit = runtimeUnits[index];
+      const visible = !!safe(`Laboratory Army visibility ${unit?.name || index}`, () => unit?.isVisible?.());
+      if (!visible || String(unit?.name || "") === "territory") continue;
+
+      const territoryPerUnit = productionPerUnit(unit, "territory");
+      const isTerritoryFamily = getTabName(unit) === "territory"
+        || laboratoryDecimalPositive(territoryPerUnit)
+        || LABORATORY_PHASE1_AFFECTED_UNIT_IDS.includes(String(unit?.name || ""));
+      if (!isTerritoryFamily) continue;
+
+      const count = safe(`Laboratory Army count ${unit?.name || index}`, () => unit?.count?.());
+      const totalTerritory = safe(`Laboratory Army territory ${unit?.name || index}`, () => unit?.totalProduction?.()?.territory);
+      rows.push({
+        rosterUnitId: laboratoryVisibleArmyUnitId(unit, index),
+        runtimeUnitName: String(unit?.name || "unknown"),
+        runtimeSuffix: String(unit?.suffix || ""),
+        label: getDisplayName(unit) || String(unit?.name || "unknown"),
+        tab: getTabName(unit) || "unknown",
+        visible: true,
+        buyable: !!safe(`Laboratory Army buyability ${unit?.name || index}`, () => unit?.isBuyable?.()),
+        count: laboratoryDecimalString(count) || "0",
+        territoryPerSecondPerUnit: laboratoryDecimalString(territoryPerUnit) || "0",
+        territoryPerSecondFromRuntime: laboratoryDecimalString(totalTerritory) || "0",
+        houseOfMirrorsFamily: LABORATORY_PHASE1_AFFECTED_UNIT_IDS.includes(String(unit?.name || "")),
+      });
+    }
+
+    return rows.sort((left, right) => left.rosterUnitId.localeCompare(right.rosterUnitId));
+  }
+
+  function laboratoryCandidateExactField(value, source) {
+    const present = value !== null && value !== undefined && value !== "";
+    return {
+      value: present ? value : null,
+      source,
+      status: present ? "OBSERVED" : "UNMODELED",
+    };
+  }
+
+  function buildLaboratoryCandidateManifest() {
+    const summary = summarizeLaneCandidates();
+    const candidates = (summary?.laneCandidates || []).map((candidate, index) => {
+      const raw = candidate?.raw || {};
+      return {
+        candidateId: `lane-${index + 1}-${String(candidate?.lane || "other").toLowerCase()}-${String(candidate?.decision || "unknown").toLowerCase()}`,
+        kind: "RUNTIME_LANE_CANDIDATE",
+        lane: candidate?.lane || "Other",
+        disposition: candidate?.decision || "UNKNOWN",
+        identity: candidate?.candidate || "unknown",
+        reason: candidate?.reason || "no reason recorded",
+        blockers: candidate?.blockers || [],
+        blockerCategories: candidate?.blockerCategories || [],
+        observations: candidate?.observations || [],
+        target: candidate?.target || null,
+        strategicTarget: candidate?.strategicTarget || null,
+        blockedStrategicCandidate: candidate?.blockedStrategicCandidate || null,
+        topMeatBlockedBy: candidate?.topMeatBlockedBy || null,
+        requestedAmount: laboratoryCandidateExactField(candidate?.wouldBuyAmount, "laneCandidates.wouldBuyAmount"),
+        cost: {
+          resource: laboratoryCandidateExactField(candidate?.resource, "laneCandidates.resource"),
+          amount: laboratoryCandidateExactField(raw?.costAmount, "laneCandidates.raw.costAmount"),
+        },
+        reserve: {
+          after: laboratoryCandidateExactField(candidate?.reserveAfter || raw?.reserveAfter, "laneCandidates.reserveAfter/raw.reserveAfter"),
+          required: laboratoryCandidateExactField(raw?.reserveRequired, "laneCandidates.raw.reserveRequired"),
+          ratio: laboratoryCandidateExactField(raw?.reserveRatio, "laneCandidates.raw.reserveRatio"),
+        },
+        timing: {
+          etaBefore: laboratoryCandidateExactField(candidate?.etaBefore || raw?.etaBeforeSeconds || raw?.etaSeconds, "laneCandidates.etaBefore/raw.etaBeforeSeconds/raw.etaSeconds"),
+          etaAfter: laboratoryCandidateExactField(candidate?.etaAfter || raw?.etaAfterSeconds, "laneCandidates.etaAfter/raw.etaAfterSeconds"),
+          payback: laboratoryCandidateExactField(candidate?.payback || raw?.paybackSeconds, "laneCandidates.payback/raw.paybackSeconds"),
+        },
+        runtimeMetrics: raw,
+        runtimeObservabilityProvenance: {
+          source: "laneCandidates/summarizeLaneCandidates",
+          formulaStatus: raw?.metricBasis ? "runtime-metric-basis-captured" : "UNMODELED",
+          metricBasis: raw?.metricBasis || null,
+          metricId: raw?.metricId || null,
+          metricTarget: raw?.metricTarget || null,
+          metricUnit: raw?.metricUnit || null,
+        },
+      };
+    });
+    const coverageLedger = strategyInspector?.mainCycleCoverage || buildMainCycleCoverageLedger();
+    const pathCoverage = (coverageLedger?.paths || []).map((path) => {
+      const disposition = path?.cycleDisposition || null;
+      return {
+        pathId: path?.pathId || "unknown",
+        sourceCall: path?.sourceCall || "unknown",
+        executionClass: path?.actionClass || "unknown",
+        status: disposition ? "OBSERVED" : "UNMODELED",
+        observedDisposition: disposition?.disposition || "UNMODELED",
+        reason: disposition?.reason || "No same-cycle applicability evidence was captured by the legacy path.",
+        candidateIdentity: "UNMODELED",
+        candidateIdentityReason: "Legacy main-cycle evidence records candidate decisions but not a stable path-to-candidate identity.",
+        candidateDecisions: disposition?.candidateDecisions || [],
+        pathBoundaryEvidence: path?.pathBoundaryEvidence || "NOT_REQUIRED",
+      };
+    });
+
+    return {
+      schemaVersion: LABORATORY_CANDIDATE_MANIFEST_SCHEMA_VERSION,
+      kind: "read-only-runtime-candidate-manifest",
+      candidates,
+      selected: {
+        main: summary?.bestAllowedMainCandidate || null,
+        side: summary?.bestAllowedSideCandidate || null,
+        rejected: summary?.bestRejectedStrategicCandidate || null,
+      },
+      pathCoverage,
+      coverageGaps: pathCoverage.filter((row) => row.status === "UNMODELED" || row.candidateIdentity === "UNMODELED"),
+    };
+  }
+
+  async function buildLaboratoryDecisionSnapshot(game, stateSnapshot, options = {}) {
+    const inspector = strategyInspector ? laboratoryCloneJson(strategyInspector) : null;
+    const manifest = buildLaboratoryCandidateManifest();
+    const roster = buildLaboratoryVisibleArmyRoster(game);
+    const snapshot = {
+      schemaVersion: LABORATORY_DECISION_SNAPSHOT_SCHEMA_VERSION,
+      kind: "read-only-decision-snapshot",
+      decisionSnapshotId: String(options.decisionSnapshotId || `DECISION-${stateSnapshot?.snapshotId || "UNKNOWN"}`),
+      decisionSnapshotHash: null,
+      decisionSnapshotHashScope: LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE,
+      source: {
+        scriptVersion: SCRIPT_VERSION,
+        captureMode: stateSnapshot?.source?.captureMode || "unknown",
+        scenarioId: stateSnapshot?.source?.scenarioId || null,
+        stateSnapshotId: stateSnapshot?.snapshotId || null,
+        stateSnapshotHash: stateSnapshot?.snapshotHash || null,
+        sourceStateFingerprint: stateSnapshot?.source?.sourceStateFingerprint || null,
+        capturedAt: String(options.captureTimestamp || new Date().toISOString()),
+      },
+      stateSnapshot: laboratoryCloneJson(stateSnapshot),
+      decision: {
+        phase: inspector?.phase || stateSnapshot?.context?.activePhase || "UNMODELED",
+        activeMilestone: inspector?.goal || stateSnapshot?.context?.activeMilestone || "UNMODELED",
+        activeTarget: inspector?.activePlannerAction || stateSnapshot?.context?.activeTarget || "UNMODELED",
+        declaredHorizon: {
+          id: inspector?.selectedHorizonId || "UNMODELED",
+          seconds: inspector?.selectedHorizonSeconds ?? "UNMODELED",
+          source: inspector ? "strategyInspector" : "UNMODELED",
+        },
+        runtimeVerdict: {
+          status: inspector ? "OBSERVED" : "UNMODELED",
+          decision: inspector?.decision || "UNMODELED",
+          mainDecision: inspector?.mainDecision || "UNMODELED",
+          sideDecision: inspector?.sideDecision || "UNMODELED",
+          reason: inspector?.reason || "strategyInspector was unavailable during read-only capture.",
+          selectedMain: inspector?.bestAllowedMainCandidate || null,
+          selectedSide: inspector?.bestAllowedSideCandidate || null,
+          selectedRejected: inspector?.bestRejectedStrategicCandidate || null,
+        },
+        actionBudget: {
+          maxMainActions: inspector?.maxMainActions ?? "UNMODELED",
+          used: inspector?.globalMainActionBudgetUsed ?? "UNMODELED",
+          remaining: inspector?.globalMainActionBudgetRemaining ?? "UNMODELED",
+          executedMainActions: inspector?.executedMainActions || [],
+          source: inspector ? "strategyInspector" : "UNMODELED",
+        },
+      },
+      candidateManifest: manifest,
+      army: {
+        schemaVersion: "swarmsim-lab.visible-army-roster.v1",
+        roster: roster,
+        visibleFamilyCount: roster.length,
+        zeroCountFamilyIds: roster.filter((row) => !laboratoryDecimalPositive(row.count)).map((row) => row.rosterUnitId),
+        source: "live game.unitlist() visible Territory/army families",
+      },
+      formulaProvenance: laboratoryCloneJson(stateSnapshot?.formulaProvenance || {
+        status: "UNMODELED",
+        warnings: ["Base Laboratory formula provenance was unavailable."],
+      }),
+      coverageGaps: manifest.coverageGaps,
+      nonMutation: {
+        sourceStateFingerprint: stateSnapshot?.source?.sourceStateFingerprint || null,
+        captureOnly: true,
+        productionAuthority: "none",
+      },
+    };
+    snapshot.decisionSnapshotHash = `sha256:${await laboratorySha256(laboratoryCanonicalJson(laboratoryDecisionSnapshotHashPayload(snapshot)))}`;
+    return laboratoryDeepFreeze(snapshot);
+  }
+
+  function laboratoryValidateDecisionSnapshot(snapshot) {
+    const errors = [];
+    if (!snapshot || typeof snapshot !== "object") errors.push("decision snapshot is missing");
+    if (snapshot?.schemaVersion !== LABORATORY_DECISION_SNAPSHOT_SCHEMA_VERSION) errors.push("unexpected decision snapshot schemaVersion");
+    if (snapshot?.kind !== "read-only-decision-snapshot") errors.push("unexpected decision snapshot kind");
+    if (!snapshot?.decisionSnapshotId) errors.push("decisionSnapshotId is missing");
+    if (!snapshot?.decisionSnapshotHash) errors.push("decisionSnapshotHash is missing");
+    if (snapshot?.candidateManifest?.schemaVersion !== LABORATORY_CANDIDATE_MANIFEST_SCHEMA_VERSION) errors.push("candidate manifest schema is missing or unexpected");
+    if (!Array.isArray(snapshot?.candidateManifest?.candidates)) errors.push("candidate manifest candidates are missing");
+    if (!Array.isArray(snapshot?.candidateManifest?.pathCoverage)) errors.push("candidate manifest path coverage is missing");
+    if (!Array.isArray(snapshot?.army?.roster)) errors.push("visible Army roster is missing");
+    if (!snapshot?.formulaProvenance) errors.push("formula provenance is missing");
+    return { ok: errors.length === 0, errors };
   }
 
   function laboratoryDecimalOrNull(value) {
@@ -11863,6 +12098,39 @@ function getDisplayName(item) {
     return lines.join("\n");
   }
 
+  function laboratoryExportDecisionSnapshotJson(snapshot) {
+    return JSON.stringify(snapshot, null, 2);
+  }
+
+  function laboratoryExportDecisionSnapshotMarkdown(snapshot) {
+    const lines = [];
+    lines.push("# SwarmSim Laboratory Decision Snapshot");
+    lines.push("");
+    lines.push(`- Decision snapshot ID: \`${snapshot?.decisionSnapshotId || "unknown"}\``);
+    lines.push(`- Decision snapshot hash: \`${snapshot?.decisionSnapshotHash || "unknown"}\``);
+    lines.push(`- Base snapshot hash: \`${snapshot?.source?.stateSnapshotHash || "unknown"}\``);
+    lines.push(`- Capture mode: \`${snapshot?.source?.captureMode || "unknown"}\``);
+    lines.push(`- Target: \`${snapshot?.decision?.activeTarget || "UNMODELED"}\``);
+    lines.push(`- Runtime verdict: \`${snapshot?.decision?.runtimeVerdict?.decision || "UNMODELED"}\``);
+    lines.push(`- Visible Army families: \`${snapshot?.army?.visibleFamilyCount ?? 0}\``);
+    lines.push(`- Coverage gaps: \`${snapshot?.coverageGaps?.length ?? 0}\``);
+    lines.push("");
+    lines.push("## Candidate manifest");
+    lines.push("");
+    lines.push("| Lane | Decision | Candidate | Amount | Cost | Reserve | Target |");
+    lines.push("|---|---|---|---|---|---|---|");
+    for (const candidate of snapshot?.candidateManifest?.candidates || []) {
+      lines.push(`| ${candidate.lane} | ${candidate.disposition} | ${candidate.identity} | ${candidate.requestedAmount?.value ?? "UNMODELED"} | ${candidate.cost?.amount?.value ?? "UNMODELED"} ${candidate.cost?.resource?.value ?? ""} | ${candidate.reserve?.after?.value ?? "UNMODELED"} | ${candidate.target ?? ""} |`);
+    }
+    lines.push("");
+    lines.push("## Main-cycle coverage");
+    lines.push("");
+    for (const path of snapshot?.candidateManifest?.pathCoverage || []) {
+      lines.push(`- ${path.pathId}: ${path.status} — ${path.reason}`);
+    }
+    return lines.join("\n");
+  }
+
   function laboratoryExportResultCsv(result) {
     const header = [
       "snapshot_id",
@@ -12128,6 +12396,90 @@ function getDisplayName(item) {
       };
     } finally {
       if (scenario) clearScenarioContext();
+    }
+  }
+
+  async function captureLaboratoryLiveDecisionSnapshot(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const game = getGame();
+    const before = buildLaboratoryLiveStateFingerprint(game, options.captureTimestampBefore || new Date());
+    const beforeFingerprint = await laboratoryHashLiveStructuralState(before.structural);
+    const captureTimestamp = String(options.captureTimestamp || new Date().toISOString());
+    const stateSnapshot = await buildLaboratorySnapshot(game, {
+      snapshotId: options.snapshotId,
+      captureMode: "live-read-only",
+      captureTimestamp,
+      scenarioId: "LIVE-READ-ONLY",
+      scenarioPayload: {
+        scenarioId: "LIVE-READ-ONLY",
+        source: "live-browser",
+        overrides: null,
+      },
+      gameBuild: options.gameBuild || "live-browser",
+      liveMetadata: {
+        activePhase: before.capture.phase,
+        activeMilestone: before.capture.goal,
+        currentPlannerTarget: before.capture.activePlannerAction,
+        relevantConfig: before.capture.config,
+      },
+      sourceStateFingerprint: beforeFingerprint,
+    });
+    const decisionSnapshot = await buildLaboratoryDecisionSnapshot(game, stateSnapshot, {
+      decisionSnapshotId: options.decisionSnapshotId,
+      captureTimestamp,
+    });
+    const after = buildLaboratoryLiveStateFingerprint(game, options.captureTimestampAfter || new Date());
+    const liveStateVerification = await laboratoryBuildLiveStateVerification(before, after);
+    lastLaboratoryDecisionSnapshot = decisionSnapshot;
+    return {
+      ok: true,
+      fileName: `swarm-lab-decision-snapshot-${decisionSnapshot.decisionSnapshotId}.json`,
+      decisionSnapshot,
+      liveStateVerification,
+      validity: laboratoryValidateDecisionSnapshot(decisionSnapshot),
+      liveState: before.capture,
+    };
+  }
+
+  async function captureLaboratoryDecisionSnapshot(options = {}) {
+    if (!options?.scenario) return captureLaboratoryLiveDecisionSnapshot(options);
+    const gate = laboratoryRequireDevelopmentGate();
+    if (!gate.ok) return gate;
+    if (!isScenarioHarnessEnabled()) {
+      return {
+        ok: false,
+        error: `Scenario harness is disabled. Enable explicitly with localStorage key ${SCENARIO_HARNESS_ENABLE_KEY}=true.`,
+      };
+    }
+
+    const game = getGame();
+    const scenario = options.scenario;
+    setScenarioContext({
+      scenarioId: String(scenario.id || "LAB-DECISION-001"),
+      source: String(scenario.source || "deterministic-scenario"),
+      overrides: scenario.overrides || {},
+    });
+    try {
+      const stateSnapshot = await buildLaboratorySnapshot(game, {
+        snapshotId: options.snapshotId,
+        captureTimestamp: options.captureTimestamp,
+        scenarioId: String(scenario.id || "LAB-DECISION-001"),
+        scenarioPayload: scenario,
+      });
+      const decisionSnapshot = await buildLaboratoryDecisionSnapshot(game, stateSnapshot, {
+        decisionSnapshotId: options.decisionSnapshotId,
+        captureTimestamp: options.captureTimestamp,
+      });
+      lastLaboratoryDecisionSnapshot = decisionSnapshot;
+      return {
+        ok: true,
+        fileName: `swarm-lab-decision-snapshot-${decisionSnapshot.decisionSnapshotId}.json`,
+        decisionSnapshot,
+        validity: laboratoryValidateDecisionSnapshot(decisionSnapshot),
+      };
+    } finally {
+      clearScenarioContext();
     }
   }
 
@@ -25713,6 +26065,12 @@ function getDisplayName(item) {
         captureLiveSnapshot(options = {}) {
           return captureLaboratoryLiveSnapshot(options);
         },
+        captureDecisionSnapshot(options = {}) {
+          return captureLaboratoryDecisionSnapshot(options);
+        },
+        captureLiveDecisionSnapshot(options = {}) {
+          return captureLaboratoryLiveDecisionSnapshot(options);
+        },
         downloadSnapshot(options = {}) {
           const gate = laboratoryRequireDevelopmentGate();
           if (!gate.ok) return gate;
@@ -25743,6 +26101,9 @@ function getDisplayName(item) {
         },
         validateSnapshot(snapshot) {
           return laboratoryValidateSnapshotShape(snapshot);
+        },
+        validateDecisionSnapshot(snapshot) {
+          return laboratoryValidateDecisionSnapshot(snapshot);
         },
         applyAction(snapshot, action) {
           const actionId = String(action?.actionId || action || "").toUpperCase();
@@ -25796,6 +26157,12 @@ function getDisplayName(item) {
         exportLiveSnapshotMarkdown(snapshot) {
           return laboratoryExportSnapshotMarkdown(snapshot);
         },
+        exportDecisionSnapshotJson(snapshot) {
+          return laboratoryExportDecisionSnapshotJson(snapshot);
+        },
+        exportDecisionSnapshotMarkdown(snapshot) {
+          return laboratoryExportDecisionSnapshotMarkdown(snapshot);
+        },
         exportResultJson(result) {
           return laboratoryExportResultJson(result);
         },
@@ -25832,6 +26199,9 @@ function getDisplayName(item) {
         getLastSnapshot() {
           return laboratoryCloneResult(lastLaboratoryLiveSnapshot || lastLaboratorySnapshot);
         },
+        getLastDecisionSnapshot() {
+          return laboratoryCloneResult(lastLaboratoryDecisionSnapshot);
+        },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
         },
@@ -25841,6 +26211,7 @@ function getDisplayName(item) {
           lastLaboratoryLiveSnapshot = null;
           lastLaboratoryLiveExperiment = null;
           lastLaboratoryLiveStateVerification = null;
+          lastLaboratoryDecisionSnapshot = null;
           return { ok: true };
         },
         createObservationSummary(result) {
