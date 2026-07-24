@@ -98,6 +98,50 @@ coverage row rather than assigning one heuristically. LC-2 or a later narrow
 observability package may add an origin ID only after proving it does not alter
 planner behavior.
 
+### LC-2 disposable cloned-save branch backend (2026-07-24)
+
+LC-2 adds real bounded command execution against a save restored into the live
+game, never against the player's source save. The development-only API exposes
+`laboratory.runDisposableBranchExperiment({ sourceSave, branches })`,
+`laboratory.getLastBranchResult()`, and
+`laboratory.validateBranchResult(...)`. The result schema is
+`swarmsim-lab.branch-result.v1`.
+
+Isolation model (`sequential-single-instance`): one browser page holds one game
+instance, so sibling sandbox branches are proven sequentially. For every branch
+the backend restores the source with `game.importSave(...)`, records the raw
+pre-reification state hash, executes exactly one bounded command through the
+same `buyUpgradeAmount`/`buyUnitAmount` path as production (never `buyMax`), and
+after all branches re-restores the source and proves its raw state is unchanged.
+The bot's own automation is quiesced (`config.enabled=false`) for the duration
+and restored afterward, so no background cycle buys into a sandbox.
+
+Timing model (`live-site-nonhermetic-raw-state`): SwarmSim units reify continuous
+production against the wall clock, and a days-old save triggers large offline
+reconciliation, so `unit.count()` is never bit-identical across restores. The
+fingerprint therefore reads the raw `session.state.unittypes` written by
+`importSave` before any getter or command reifies it - the deliberate,
+controlled offline-reconciliation point. This makes restore identity and source
+non-mutation deterministic on the live site. It does **not** claim fully hermetic
+timing: because executing a command reifies live production, per-branch
+post-command whole-state is intentionally not asserted bit-identical. Fully
+hermetic sibling timing needs the pinned local game build (RH-4 Outcome 2), which
+is not yet available; per the delivery runbook's LC-2 caution the live-site
+dependency is retained and no hermetic-timing claim is made.
+
+Verified by `npm run check:laboratory:branch-backend`: identical raw-state
+restore for every sibling, a bounded upgrade command with agreeing
+requested/command/confirmed/observed amounts (the four-value contract), the
+executed branch mutating only its own sandbox, explicit rejection of an illegal
+(unresolved-target) command, and raw source-state non-mutation across all
+branches - exercised on both the hash-pinned LD-05 real save and an LD-00
+clean-start source captured via `session.exportSave()`.
+`npm run verify:laboratory:branch-backend` is the declared evidence generator.
+
+Remaining LC-2 data coverage (bounded follow-up, not asserted yet): LD-04 Twin
+Queen reserve boundaries and LD-16 exact-target/decimal/stale-button edges, and
+any fully hermetic timing once the local build lands.
+
 ## 0.12.3 narrow contract update
 
 0.12.3 adds a narrow live-capture hardening patch for House of Mirrors and ability

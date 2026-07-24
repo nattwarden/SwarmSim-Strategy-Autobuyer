@@ -644,6 +644,7 @@
   // simulation snapshots. It is a read-only observation, never an input to
   // normal automation or a substitute for the player save.
   let lastLaboratoryDecisionSnapshot = null;
+  let lastLaboratoryBranchResult = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -10751,6 +10752,7 @@ function getDisplayName(item) {
   const LABORATORY_PHASE1_AFFECTED_UNIT_IDS = ["swarmling", "stinger", "spider", "mosquito", "locust", "roach", "giantspider", "centipede", "wasp", "devourer", "goon"];
   const LABORATORY_DECISION_SNAPSHOT_SCHEMA_VERSION = "swarmsim-lab.decision-snapshot.v1";
   const LABORATORY_CANDIDATE_MANIFEST_SCHEMA_VERSION = "swarmsim-lab.candidate-manifest.v1";
+  const LABORATORY_BRANCH_RESULT_SCHEMA_VERSION = "swarmsim-lab.branch-result.v1";
   const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
@@ -12480,6 +12482,169 @@ function getDisplayName(item) {
       };
     } finally {
       clearScenarioContext();
+    }
+  }
+
+  // LC-2 disposable cloned-save branch backend. Executes one real bounded game
+  // command against a save restored into the live game, never against the
+  // player's source save. Isolation is proven sequentially in a single game
+  // instance: every sibling restores the identical source structural
+  // fingerprint, each records whether its bounded command mutated only its own
+  // sandbox, and the source is re-restorable unchanged after all branches. It
+  // deliberately does not run parallel game instances (impossible in one page);
+  // that bound is recorded as isolationModel. Execute-only: one bounded command
+  // per branch, no sequences, no ranking, no production execution authority.
+  // Purpose-built LC-2 game-state fingerprint. It reads the raw, pre-reification
+  // saved unittype counts (`session.state.unittypes`) rather than `unit.count()`,
+  // because the live count getters reify continuous production against the wall
+  // clock and would never be bit-identical across restores. The raw saved state
+  // is exactly what importSave writes, so two restores of one source hash
+  // identically. This is the controlled offline-reconciliation point for the
+  // fingerprint: reification is measured deliberately, not incidentally.
+  function laboratoryBranchStateFingerprint(game) {
+    const raw = safe("LC2 branch raw state", () => game?.session?.state?.unittypes) || {};
+    const unittypes = {};
+    for (const key of Object.keys(raw).sort()) unittypes[key] = String(raw[key]);
+    return { unittypes };
+  }
+
+  async function laboratoryRestoreBranchSource(game, sourceSave) {
+    if (!game || typeof game.importSave !== "function") {
+      return { ok: false, status: "import-unavailable", rawStateHash: null };
+    }
+    const imported = safe("LC2 branch restore", () => game.importSave(sourceSave));
+    if (imported === null) return { ok: false, status: "import-failed", rawStateHash: null };
+    // Read the raw state immediately, before any getter or command reifies it.
+    const rawStateHash = await laboratoryHashLiveStructuralState(laboratoryBranchStateFingerprint(game));
+    return { ok: true, status: "restored", rawStateHash };
+  }
+
+  function laboratoryExecuteBranchCommand(game, command) {
+    const kind = command?.kind === "upgrade" ? "upgrade" : "unit";
+    const targetId = String(command?.targetId || "");
+    const requestedAmount = String(command?.amount ?? "1");
+    const num = newDecimal(command?.amount ?? 1);
+    const base = {
+      kind,
+      targetId,
+      requestedAmount,
+      commandAmount: laboratorySafeResourceString(num),
+      confirmedAmount: "0",
+      observedAmount: "0",
+      beforeCount: null,
+      afterCount: null,
+      executed: false,
+      amountsAgree: false,
+    };
+    const target = kind === "upgrade" ? getGameUpgrade(game, targetId) : getGameUnit(game, targetId);
+    if (!target) return { ...base, status: "target-unresolved" };
+    const visible = !!safe("LC2 branch visible", () => target.isVisible?.());
+    const buyable = !!safe("LC2 branch buyable", () => target.isBuyable?.());
+    const beforeCount = laboratorySafeResourceString(safe("LC2 branch before", () => target.count?.()));
+    base.beforeCount = beforeCount;
+    if (!visible || !buyable) {
+      return { ...base, afterCount: beforeCount, status: !visible ? "not-visible" : "not-buyable" };
+    }
+    const commands = getCommands();
+    const deltaOut = {};
+    const executed = kind === "upgrade"
+      ? buyUpgradeAmount(commands, target, num, "LC2 Branch", deltaOut)
+      : buyUnitAmount(commands, target, num, "LC2 Branch", deltaOut);
+    const afterCount = laboratorySafeResourceString(safe("LC2 branch after", () => target.count?.()));
+    const confirmedAmount = deltaOut.value != null ? laboratorySafeResourceString(deltaOut.value) : "0";
+    const observedAmount = laboratorySafeResourceString(decimalFrom(afterCount).minus(decimalFrom(beforeCount)));
+    // Four-value amount contract: requested == command == confirmed == observed
+    // for a cleanly executed bounded command. Any divergence is a real finding.
+    const amountsAgree = !!executed
+      && confirmedAmount === observedAmount
+      && confirmedAmount === laboratorySafeResourceString(num)
+      && requestedAmount === laboratorySafeResourceString(num);
+    return {
+      ...base,
+      confirmedAmount,
+      observedAmount,
+      afterCount,
+      executed: !!executed,
+      amountsAgree,
+      status: executed ? "executed" : "no-op",
+    };
+  }
+
+  function laboratoryValidateBranchResult(branchResult) {
+    const errors = [];
+    if (branchResult?.schemaVersion !== LABORATORY_BRANCH_RESULT_SCHEMA_VERSION) errors.push("unexpected branch-result schema");
+    if (!Array.isArray(branchResult?.branches) || !branchResult.branches.length) errors.push("no branches recorded");
+    if (!branchResult?.siblingIsolation?.allRestoredIdenticalToSource) errors.push("a sibling restore diverged from source");
+    if (!branchResult?.siblingIsolation?.sourceRawStateUnchanged) errors.push("source raw state changed after branches");
+    return { ok: errors.length === 0, errors };
+  }
+
+  async function runLaboratoryDisposableBranchExperiment(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const sourceSave = options.sourceSave;
+    if (typeof sourceSave !== "string" || !sourceSave) {
+      return { ok: false, error: "runDisposableBranchExperiment requires a sourceSave string." };
+    }
+    const branches = Array.isArray(options.branches) ? options.branches : [];
+    if (!branches.length) {
+      return { ok: false, error: "runDisposableBranchExperiment requires at least one branch." };
+    }
+    const game = getGame();
+
+    // Quiesce the bot's own automation for the duration so no background cycle
+    // buys into a sandbox mid-experiment. Restored afterward regardless.
+    const priorEnabled = config.enabled;
+    config.enabled = false;
+    try {
+      const baseline = await laboratoryRestoreBranchSource(game, sourceSave);
+      if (!baseline.ok) return { ok: false, error: "source restore failed", detail: baseline };
+      const sourceRawStateHash = baseline.rawStateHash;
+
+      const branchResults = [];
+      for (let index = 0; index < branches.length; index += 1) {
+        const branch = branches[index] || {};
+        const restored = await laboratoryRestoreBranchSource(game, sourceSave);
+        const restoredIdenticalToSource = restored.ok && restored.rawStateHash === sourceRawStateHash;
+        const command = laboratoryExecuteBranchCommand(game, branch.command || {});
+        branchResults.push(laboratoryDeepFreeze({
+          branchId: String(branch.branchId || `branch-${index + 1}`),
+          restoredRawStateHash: restored.rawStateHash || null,
+          restoredIdenticalToSource,
+          command,
+          // Mutation evidence is the bounded command's own target delta, not a
+          // whole-state hash: executing a command reifies continuous production,
+          // so a post-state hash would be wall-clock dependent, not "branch-only".
+          sandboxMutated: !!command.executed && command.observedAmount !== "0",
+        }));
+      }
+
+      const restoreAfter = await laboratoryRestoreBranchSource(game, sourceSave);
+      const sourceRawStateUnchanged = restoreAfter.ok && restoreAfter.rawStateHash === sourceRawStateHash;
+
+      const branchResult = laboratoryDeepFreeze({
+        schemaVersion: LABORATORY_BRANCH_RESULT_SCHEMA_VERSION,
+        experimentId: String(options.experimentId || "LC2-BRANCH-EXPERIMENT"),
+        capturedAt: String(options.captureTimestamp || new Date().toISOString()),
+        // Honest bounds. One page holds one game instance, so siblings are proven
+        // by identical raw-state restores and source re-restoration, not by
+        // concurrently live parallel instances. Command execution reifies live
+        // wall-clock production, so per-branch post-state is intentionally not
+        // claimed bit-identical: fully hermetic timing needs the pinned local
+        // build (RH-4 Outcome 2) and is not asserted against the live site.
+        isolationModel: "sequential-single-instance",
+        timingModel: "live-site-nonhermetic-raw-state",
+        source: { rawStateHash: sourceRawStateHash },
+        branches: branchResults,
+        siblingIsolation: {
+          allRestoredIdenticalToSource: branchResults.every((entry) => entry.restoredIdenticalToSource),
+          sourceRawStateUnchanged,
+        },
+      });
+      lastLaboratoryBranchResult = branchResult;
+      return { ok: true, branchResult, validity: laboratoryValidateBranchResult(branchResult) };
+    } finally {
+      config.enabled = priorEnabled;
     }
   }
 
@@ -26202,6 +26367,15 @@ function getDisplayName(item) {
         getLastDecisionSnapshot() {
           return laboratoryCloneResult(lastLaboratoryDecisionSnapshot);
         },
+        async runDisposableBranchExperiment(options = {}) {
+          return runLaboratoryDisposableBranchExperiment(options);
+        },
+        getLastBranchResult() {
+          return laboratoryCloneResult(lastLaboratoryBranchResult);
+        },
+        validateBranchResult(branchResult) {
+          return laboratoryValidateBranchResult(branchResult);
+        },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
         },
@@ -26212,6 +26386,7 @@ function getDisplayName(item) {
           lastLaboratoryLiveExperiment = null;
           lastLaboratoryLiveStateVerification = null;
           lastLaboratoryDecisionSnapshot = null;
+          lastLaboratoryBranchResult = null;
           return { ok: true };
         },
         createObservationSummary(result) {

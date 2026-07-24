@@ -7,11 +7,27 @@ Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **LC-1 ACCEPTED**; the milestone continues with the isolation/oracle
-slices (LC-2+). LC-1 read-only capture is implemented, committed, and verified
-through the full exact-SHA evidence cycle. The full implementation contract is
-in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+Status: **LC-1 ACCEPTED; LC-2 backend implemented (exact-SHA evidence pending)**.
+LC-1 read-only capture is committed and verified through the full exact-SHA
+evidence cycle. LC-2's disposable cloned-save branch backend is implemented and
+locally green on its focused check and the pure guardrail/build checks; its
+formal exact-SHA evidence cycle is the next step. The full implementation
+contract is in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
+
+LC-2 progress note (2026-07-24, intermediate): the branch backend
+(`runDisposableBranchExperiment`, schema `swarmsim-lab.branch-result.v1`)
+restores a source save into the live game, executes one bounded command through
+the production buy path, and proves deterministic raw-state restore identity and
+source non-mutation. It reads the raw pre-reification `session.state.unittypes`
+because live `unit.count()` reifies continuous production and is never
+bit-identical; it therefore retains an explicit live-site dependency and makes no
+fully hermetic timing claim (that needs the RH-4 Outcome 2 local build). Verified
+by `npm run check:laboratory:branch-backend` on the LD-05 real save and an LD-00
+clean-start source. Remaining LC-2 data coverage (LD-04 Twin reserves, LD-16
+exact-target/stale-button edges, hermetic timing) is a bounded follow-up. Do not
+mark LC-2 complete until its implementation commit, full exact-SHA verification,
+generated evidence, and separate evidence commit meet `GIT_VERIFICATION_PROTOCOL.md`.
 
 LC-1 exact-SHA acceptance (2026-07-24):
 
