@@ -648,6 +648,7 @@
   let lastLaboratoryEngineTournament = null;
   let lastLaboratoryCrossLaneTournament = null;
   let lastLaboratoryPackageTournament = null;
+  let lastLaboratoryEnergyTournament = null;
   let meatFallbackState = null;
   let meatActionUnitPaybackBypassState = null;
   let actionUnitRefillState = null;
@@ -10759,6 +10760,7 @@ function getDisplayName(item) {
   const LABORATORY_ENGINE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.engine-tournament.v1";
   const LABORATORY_CROSS_LANE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.cross-lane-tournament.v1";
   const LABORATORY_PACKAGE_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.package-tournament.v2";
+  const LABORATORY_ENERGY_TOURNAMENT_SCHEMA_VERSION = "swarmsim-lab.energy-tournament.v1";
   const LABORATORY_DECISION_SNAPSHOT_HASH_SCOPE = "deterministic-decision-payload-v1";
 
   function laboratoryCloneJson(value) {
@@ -13210,6 +13212,150 @@ function getDisplayName(item) {
       });
       lastLaboratoryPackageTournament = tournament;
       return { ok: true, tournament, validity: laboratoryValidatePackageTournament(tournament) };
+    } finally {
+      config.enabled = priorEnabled;
+    }
+  }
+
+  // LC-6 Energy, abilities, Clone, and Crystal allocation tournament. Compares
+  // energy-domain candidates - construct Nexus, Rush casts, Clone Larvae, House of
+  // Mirrors, Swarm Warp, Lepidoptera, and HOLD - at a Nexus-energy state. Each
+  // candidate is cast/bought once in its own disposable branch (LC-2 backend) and
+  // scored by Laboratory's own larva-at-horizon metric using the tick+reify
+  // horizon primitive, never the production score. Crucially, these ability casts
+  // happen only in disposable sandboxes: the tournament records the production
+  // auto-cast authority (autoCastAbilities/HouseOfMirrors/CloneLarvae/autoAscend)
+  // before and after and proves it is unchanged, so advisor-only actions remain
+  // non-executable in production. Laboratory recommendations only.
+  function laboratoryCaptureAutoCastAuthority() {
+    return {
+      autoCastAbilities: !!config.autoCastAbilities,
+      autoCastCloneLarvae: !!config.autoCastCloneLarvae,
+      autoCastHouseOfMirrors: !!config.autoCastHouseOfMirrors,
+      autoAscend: !!config.autoAscend,
+    };
+  }
+
+  function laboratoryValidateEnergyTournament(tournament) {
+    const errors = [];
+    if (tournament?.schemaVersion !== LABORATORY_ENERGY_TOURNAMENT_SCHEMA_VERSION) errors.push("unexpected energy-tournament schema");
+    if (!Array.isArray(tournament?.candidates) || tournament.candidates.length < 2) errors.push("energy tournament needs HOLD plus at least one candidate");
+    if (!Array.isArray(tournament?.horizonsSeconds) || !tournament.horizonsSeconds.length) errors.push("no horizons measured");
+    if (!tournament?.laboratoryWinner) errors.push("no independent Laboratory winner selected");
+    if (!tournament?.siblingIsolation?.allRestoredIdenticalToSource) errors.push("a candidate restore diverged from source");
+    if (!tournament?.siblingIsolation?.sourceRawStateUnchanged) errors.push("source raw state changed after the tournament");
+    if (!tournament?.advisorOnlyAuthority?.unchanged) errors.push("production auto-cast authority changed during the tournament");
+    return { ok: errors.length === 0, errors };
+  }
+
+  async function runLaboratoryEnergyTournament(options = {}) {
+    const gate = laboratoryRequireLiveGates();
+    if (!gate.ok) return gate;
+    const sourceSave = options.sourceSave;
+    if (typeof sourceSave !== "string" || !sourceSave) {
+      return { ok: false, error: "runEnergyTournament requires a sourceSave string." };
+    }
+    const game = getGame();
+    const phaseTarget = String(options.phaseTarget || "larva-throughput-at-nexus-energy");
+    const horizonsSeconds = (Array.isArray(options.horizonsSeconds) && options.horizonsSeconds.length
+      ? options.horizonsSeconds
+      : [0, 3600]).map(Number).filter((n) => Number.isFinite(n) && n >= 0).sort((a, b) => a - b);
+    const candidateSpecs = Array.isArray(options.candidates) && options.candidates.length ? options.candidates : [
+      { candidateId: "CONSTRUCT_NEXUS", kind: "unit", targetId: "nexus" },
+      { candidateId: "CAST_MEAT_RUSH", kind: "upgrade", targetId: "meatrush" },
+      { candidateId: "CAST_TERRITORY_RUSH", kind: "upgrade", targetId: "territoryrush" },
+      { candidateId: "CAST_LARVA_RUSH", kind: "upgrade", targetId: "larvarush" },
+      { candidateId: "CAST_CLONE_LARVAE", kind: "upgrade", targetId: "clonelarvae" },
+      { candidateId: "CAST_HOUSE_OF_MIRRORS", kind: "upgrade", targetId: "clonearmy" },
+      { candidateId: "CAST_SWARM_WARP", kind: "upgrade", targetId: "swarmwarp" },
+      { candidateId: "BUY_LEPIDOPTERA", kind: "unit", targetId: "moth" },
+    ];
+
+    const priorEnabled = config.enabled;
+    const autoCastBefore = laboratoryCaptureAutoCastAuthority();
+    config.enabled = false;
+    try {
+      const baseline = await laboratoryRestoreBranchSource(game, sourceSave);
+      if (!baseline.ok) return { ok: false, error: "source restore failed", detail: baseline };
+      const sourceRawStateHash = baseline.rawStateHash;
+
+      const specs = [{ candidateId: "HOLD", kind: "hold", targetId: null }, ...candidateSpecs];
+      const candidates = [];
+      for (const spec of specs) {
+        const restored = await laboratoryRestoreBranchSource(game, sourceSave);
+        const restoredIdenticalToSource = restored.ok && restored.rawStateHash === sourceRawStateHash;
+        const energyBefore = laboratorySafeResourceString(getCurrentResource(game, "energy"));
+        const command = spec.candidateId === "HOLD"
+          ? { kind: "hold", status: "hold", executed: false }
+          : laboratoryExecuteBranchCommand(game, { kind: spec.kind === "unit" ? "unit" : "upgrade", targetId: String(spec.targetId || ""), amount: spec.amount ?? "1" });
+        const energyAfter = laboratorySafeResourceString(getCurrentResource(game, "energy"));
+        const energySpent = laboratorySafeResourceString(decimalFrom(energyBefore).minus(decimalFrom(energyAfter)));
+        const horizons = [];
+        let elapsed = 0;
+        for (const horizonSeconds of horizonsSeconds) {
+          let advancedSeconds = 0;
+          if (horizonSeconds > elapsed) {
+            advancedSeconds = laboratoryAdvanceHorizon(game, horizonSeconds - elapsed).advancedSeconds;
+            elapsed = horizonSeconds;
+          }
+          horizons.push({ horizonSeconds, advancedSeconds, ...laboratoryMeasureHorizonLarva(game) });
+        }
+        candidates.push(laboratoryDeepFreeze({
+          candidateId: spec.candidateId,
+          restoredIdenticalToSource,
+          command,
+          executed: !!command.executed,
+          energyBefore,
+          energyAfter,
+          energySpent,
+          horizons,
+        }));
+      }
+
+      // Independent winner: most larva at the longest horizon among candidates
+      // whose cast/buy executed (HOLD included). Ranked from branch measurements.
+      const finalHorizon = horizonsSeconds[horizonsSeconds.length - 1];
+      const larvaAt = (entry, h) => decimalFrom((entry.horizons.find((row) => row.horizonSeconds === h) || {}).larva || "0");
+      const ranked = candidates
+        .filter((entry) => entry.candidateId === "HOLD" || entry.executed)
+        .slice()
+        .sort((a, b) => decimalToNumber(larvaAt(b, finalHorizon).minus(larvaAt(a, finalHorizon)), 0));
+      const winner = ranked[0] || null;
+
+      const restoreAfter = await laboratoryRestoreBranchSource(game, sourceSave);
+      const sourceRawStateUnchanged = restoreAfter.ok && restoreAfter.rawStateHash === sourceRawStateHash;
+      const autoCastAfter = laboratoryCaptureAutoCastAuthority();
+      const authorityUnchanged = laboratoryCanonicalJson(autoCastBefore) === laboratoryCanonicalJson(autoCastAfter);
+
+      const tournament = laboratoryDeepFreeze({
+        schemaVersion: LABORATORY_ENERGY_TOURNAMENT_SCHEMA_VERSION,
+        experimentId: String(options.experimentId || "LC6-ENERGY-TOURNAMENT"),
+        capturedAt: String(options.captureTimestamp || new Date().toISOString()),
+        phaseTarget,
+        timingModel: "live-site-tick-reify-horizons",
+        metricModel: "larva-at-horizon-with-energy-spend",
+        oracleIndependence: "winner ranked by Laboratory larva-at-horizon metric; production winner score never consulted",
+        horizonsSeconds,
+        finalHorizonSeconds: finalHorizon,
+        source: { rawStateHash: sourceRawStateHash },
+        candidates,
+        laboratoryWinner: winner ? winner.candidateId : null,
+        // Advisor-only actions remain non-executable in production: casting these
+        // abilities in disposable sandboxes never touched the production auto-cast
+        // authority.
+        advisorOnlyAuthority: { before: autoCastBefore, after: autoCastAfter, unchanged: authorityUnchanged },
+        siblingIsolation: {
+          allRestoredIdenticalToSource: candidates.every((entry) => entry.restoredIdenticalToSource),
+          sourceRawStateUnchanged,
+        },
+        knownLimitations: [
+          "the larva-at-horizon metric under-credits non-larva abilities (House of Mirrors doubles army->territory, Meat/Territory Rush add meat/territory); a per-target energy-value metric across lanes is a follow-up",
+          "the exact 1.6k/2k/2.5k/12k energy-threshold matrix, Clone 99.8/99.9/100% cap levels, Mirror-now-vs-seed-then-Mirror, Crystal exact/full/hold, and the pre-vs-post-Nexus-5 split need LD-08/LD-11/LD-12/LD-13 and are declared follow-ups",
+          "Crystal conversion and Bat/Nightbug candidates are included only when resolvable and buyable in the source state; otherwise they are recorded as non-executed, never hidden",
+        ],
+      });
+      lastLaboratoryEnergyTournament = tournament;
+      return { ok: true, tournament, validity: laboratoryValidateEnergyTournament(tournament) };
     } finally {
       config.enabled = priorEnabled;
     }
@@ -26978,6 +27124,15 @@ function getDisplayName(item) {
           if (!guard.ok) return guard;
           return laboratoryAdvanceHorizon(getGame(), seconds);
         },
+        async runEnergyTournament(options = {}) {
+          return runLaboratoryEnergyTournament(options);
+        },
+        getLastEnergyTournament() {
+          return laboratoryCloneResult(lastLaboratoryEnergyTournament);
+        },
+        validateEnergyTournament(tournament) {
+          return laboratoryValidateEnergyTournament(tournament);
+        },
         getLastExperiment() {
           return laboratoryCloneResult(lastLaboratoryLiveExperiment || lastLaboratoryExperiment);
         },
@@ -26992,6 +27147,7 @@ function getDisplayName(item) {
           lastLaboratoryEngineTournament = null;
           lastLaboratoryCrossLaneTournament = null;
           lastLaboratoryPackageTournament = null;
+          lastLaboratoryEnergyTournament = null;
           return { ok: true };
         },
         createObservationSummary(result) {

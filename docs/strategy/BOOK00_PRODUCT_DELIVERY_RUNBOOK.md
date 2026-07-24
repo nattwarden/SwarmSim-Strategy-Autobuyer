@@ -987,6 +987,20 @@ scripts or loops.
 
 #### LC-6 - Energy, abilities, Clone, and Crystal allocation
 
+Status: **energy tournament implemented; exact-SHA evidence pending
+(2026-07-24)**. `runEnergyTournament` (schema `swarmsim-lab.energy-tournament.v1`)
+is green on `npm run check:laboratory:energy-tournament` over the hash-pinned
+LD-09 Nexus-5 and LD-07 pre-Nexus-5 saves. It casts/buys each energy-domain
+candidate (construct Nexus, Rushes, Clone Larvae, House of Mirrors, Swarm Warp,
+Lepidoptera) and HOLD in isolated disposable branches, records energy spend
+(matching documented ability costs: Rush 1600, HoM 2500, Swarm Warp 2000, Clone
+Larvae 12000), and ranks by Laboratory's own larva-at-horizon metric. It proves
+**advisor-only actions remain non-executable in production**: the production
+auto-cast authority is captured before/after and shown unchanged. The
+1.6k/2k/2.5k/12k threshold matrix, Clone cap levels, Mirror-now-vs-seed, Crystal
+states, and full pre/post-Nexus-5 split need LD-08/LD-11/LD-12/LD-13 and remain a
+bounded follow-up. See `SWARMSIM_LABORATORY_PHASE_1.md` and the status board.
+
 Outcome: Nexus, Lepidoptera, Bat/Nightbug when allowed, Clone, House of Mirrors,
 Rushes, Swarmwarp, Crystal conversion, Ascension reserve, and HOLD can compete
 at their exact thresholds.

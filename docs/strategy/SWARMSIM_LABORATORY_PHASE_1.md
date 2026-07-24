@@ -266,6 +266,47 @@ The full 0x/1.25x/1.5x/2x reserve-policy matrix, a cap-aware throughput metric f
 capped economies, and the LD-15 frozen-time offline horizon set remain declared
 follow-ups.
 
+### LC-6 Energy, abilities, Clone, and Crystal allocation (2026-07-24)
+
+LC-6 compares energy-domain candidates at a Nexus-energy state. The
+development-only API exposes
+`laboratory.runEnergyTournament({ sourceSave, candidates, horizonsSeconds })`,
+`laboratory.getLastEnergyTournament()`, and
+`laboratory.validateEnergyTournament(...)`; the result schema is
+`swarmsim-lab.energy-tournament.v1`.
+
+Each candidate - construct Nexus, Meat/Territory/Larva Rush, Clone Larvae, House
+of Mirrors, Swarm Warp, Lepidoptera, and HOLD - is cast or bought once in its own
+disposable branch (LC-2 backend), and scored by Laboratory's own larva-at-horizon
+metric using the tick+reify horizon primitive, never the production score. The
+tournament records each candidate's energy spend and the horizon larva, so no
+candidate is hidden (unresolvable/unaffordable ones are recorded as non-executed).
+
+**Advisor-only actions remain non-executable in production.** These ability casts
+happen only in disposable sandboxes. The tournament captures the production
+auto-cast authority (`autoCastAbilities`, `autoCastCloneLarvae`,
+`autoCastHouseOfMirrors`, `autoAscend`) before and after and proves it is
+unchanged, so evaluating an advisor-only ability never widens production
+auto-cast defaults. Laboratory recommendations only.
+
+Verified by `npm run check:laboratory:energy-tournament` on the hash-pinned LD-09
+balanced Nexus-5 save and the LD-07 pre-Nexus-5 save (kept separate). On LD-09
+seven energy candidates cast in sandboxes with the expected energy costs (Meat /
+Territory / Larva Rush `1600`, House of Mirrors `2500`, Swarm Warp `2000`, Clone
+Larvae `12000`), all branch restores identical with source non-mutation, the
+production auto-cast authority unchanged (`autoCastAbilities` stays `false`), and
+Clone Larvae won on larva at the 1h horizon.
+`npm run verify:laboratory:energy-tournament` is the declared evidence generator.
+
+Honest bounds (`metricModel: larva-at-horizon-with-energy-spend`,
+`timingModel: live-site-tick-reify-horizons`): the larva-at-horizon metric
+under-credits non-larva abilities (House of Mirrors doubles army -> territory;
+Meat/Territory Rush add meat/territory), so a per-target energy-value metric across
+lanes is a follow-up. The exact `1.6k/2k/2.5k/12k` energy-threshold matrix, the
+Clone `99.8/99.9/100%` cap levels, Mirror-now-vs-seed-then-Mirror, Crystal
+exact/full/hold, and the full pre-vs-post-Nexus-5 split need the LD-08/LD-11/
+LD-12/LD-13 data and are declared follow-ups.
+
 ## 0.12.3 narrow contract update
 
 0.12.3 adds a narrow live-capture hardening patch for House of Mirrors and ability
