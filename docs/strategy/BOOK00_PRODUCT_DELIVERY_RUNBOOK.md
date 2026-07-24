@@ -953,20 +953,20 @@ for LC-5.
 
 #### LC-5 - Package and reserve-policy runner
 
-Status: **declarative package runner implemented; exact-SHA evidence pending
-(2026-07-24)**. `runPackageTournament` (schema
-`swarmsim-lab.package-tournament.v1`) is green on
-`npm run check:laboratory:package-tournament` over the hash-pinned LD-02 save. It
-executes a bounded declarative step schema (build -> sacrifice -> unlock ->
-rebuild) and HOLD in isolated branches, stops and records on step invalidation (no
-loops), and ranks by Laboratory's own active larva-rate metric (LD-02: Engine
-Hatchery+Expansion wins 11.69 vs HOLD 8.86; an invalid package stops at
-target-unresolved). Key finding: **live-site `game.skipTime` is a no-op**, so only
-the active horizon is measured; the active/5m/1h/offline reconstruction spread
-(where the sacrifice payoff appears) and the 0x/1.25x/1.5x/2x reserve-policy matrix
-need the local build (RH-4 Outcome 2) or working clock control plus LD-15/LD-12,
-and remain a bounded follow-up. See `SWARMSIM_LABORATORY_PHASE_1.md` and the
-status board.
+Status: **ACCEPTED via exact-SHA evidence (2026-07-24)**. Implementation SHA
+`2dd52c62c310c858ae08582071264483b9700c7c`; evidence SHA `ec1ff28` on
+`codex/9.4.0-clean-room`; full `npm run verify` passed exit 0 against the
+implementation SHA. `runPackageTournament` (schema
+`swarmsim-lab.package-tournament.v1`) executes a bounded declarative step schema
+(build -> sacrifice -> unlock -> rebuild) and HOLD in isolated branches, stops and
+records on step invalidation (no loops), and ranks by Laboratory's own active
+larva-rate metric (LD-02: Engine Hatchery+Expansion wins 11.69 vs HOLD 8.86; an
+invalid package stops at target-unresolved). Key finding: **live-site
+`game.skipTime` is a no-op**, so only the active horizon is measured; the
+active/5m/1h/offline reconstruction spread and the 0x/1.25x/1.5x/2x reserve-policy
+matrix need the local build (RH-4 Outcome 2) or working clock control plus
+LD-15/LD-12, and remain a bounded follow-up. See
+`SWARMSIM_LABORATORY_PHASE_1.md` and the status board.
 
 Outcome: exact build -> sacrifice -> unlock -> rebuild packages and HOLD can be
 compared under active and passive reserve horizons.

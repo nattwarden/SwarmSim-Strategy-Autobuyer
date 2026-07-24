@@ -7,29 +7,36 @@ Last reviewed: 2026-07-24
 
 ## Active milestone - Laboratory Complete Decision Coverage
 
-Status: **LC-1..LC-4 ACCEPTED; LC-5 package runner implemented (exact-SHA
-evidence pending)**. LC-1 read-only capture, the LC-2 branch backend, the LC-3
-Engine tournament, and the LC-4 cross-lane tournament are each committed and
-verified through the full exact-SHA evidence cycle. LC-5's declarative package
-runner is implemented and locally green on its focused check and the pure
-guardrail/build checks; its formal exact-SHA evidence cycle is the next step. The
-full implementation contract is in `BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
+Status: **LC-1..LC-5 all ACCEPTED via exact-SHA evidence**; the milestone
+continues with LC-6 (Energy, abilities, Clone, and Crystal allocation). LC-1..LC-4
+plus the LC-5 declarative package runner are each committed and verified through
+the full exact-SHA evidence cycle. The full implementation contract is in
+`BOOK00_PRODUCT_DELIVERY_RUNBOOK.md` under
 `Laboratory Complete Decision Coverage program (LC)`.
 
-LC-5 progress note (2026-07-24, intermediate): `runPackageTournament` (schema
-`swarmsim-lab.package-tournament.v1`) runs a bounded declarative step schema
-(build -> sacrifice -> unlock -> rebuild) and HOLD in isolated branches, stops and
-records when an intermediate state invalidates a step (no loops), and ranks by
-Laboratory's own active larva-rate metric. Verified on LD-02: a two-step
-Hatchery+Expansion package and a three-step queen -> nest-sacrifice -> rebuild
-package completed; an invalid package stopped at target-unresolved; Engine won on
-active larva rate (11.69 vs HOLD 8.86). Key honest finding: **live-site
-`game.skipTime` is a no-op**, so only the active horizon is measured - the
-active/5m/1h/offline reconstruction spread and the 0x/1.25x/1.5x/2x reserve matrix
-need the local build (RH-4 Outcome 2) or working clock control and remain a
-bounded follow-up. Do not mark LC-5 complete until its implementation commit, full
-exact-SHA verification, generated evidence, and separate evidence commit meet
-`GIT_VERIFICATION_PROTOCOL.md`.
+LC-5 exact-SHA acceptance (2026-07-24):
+
+- Implementation SHA: `2dd52c62c310c858ae08582071264483b9700c7c`
+  (tree `8f42cc10fbe9cdb6d5039dc05920f259fdb04d9c`), branch `codex/9.4.0-clean-room`.
+- Evidence SHA: `ec1ff28` (separate evidence commit, allowlisted paths only).
+- Verification mode A; `npm run verify` (full required chain + guardrails)
+  passed exit 0 against the implementation SHA.
+- `runPackageTournament` (schema `swarmsim-lab.package-tournament.v1`) runs a
+  bounded declarative step schema (build -> sacrifice -> unlock -> rebuild) and
+  HOLD in isolated branches, stops and records on step invalidation (no loops),
+  and ranks by Laboratory's own active larva-rate metric. On LD-02: two-step
+  Hatchery+Expansion and three-step queen -> nest-sacrifice -> rebuild completed;
+  an invalid package stopped at target-unresolved; Engine won 11.69 vs HOLD 8.86.
+- Evidence: `docs/live-logs/browser-test-lc5-package-tournament.{json,md}` and
+  `docs/test-data/laboratory-lc5/example-package-tournament.json`.
+
+Key honest finding (blocks the horizon dimension repo-wide): **live-site
+`game.skipTime` is a no-op** - the game clock does not advance - so LC-5 measures
+only the active horizon. The active/5m/1h/offline reconstruction spread, the
+0x/1.25x/1.5x/2x reserve-policy matrix (LC-5), and the time-to-gate horizon
+projections deferred by LC-3/LC-4 all need the local game build (RH-4 Outcome 2)
+or working clock control, plus LD-08/LD-12/LD-15. This makes RH-4 Outcome 2 the
+single highest-leverage unblock for the remaining Laboratory follow-ups.
 
 LC-4 exact-SHA acceptance (2026-07-24):
 
